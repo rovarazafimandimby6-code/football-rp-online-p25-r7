@@ -1,0 +1,24 @@
+name: Football RP Online - Android Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download P25 R7 archive
+        run: |
+          curl -L \
+            -o football-rp-online-p25-r7.zip \
+            https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/releases/download/v25-r7/Football-RP-Online-P25-R7.zip
+
+      - name: Extract project
+        run: |
+          unzip football-rp-online-p25-r7.zip -d project
+
+      - name: Check project
+        run: |
+          find project -name package.json
+          find project -name index.html
