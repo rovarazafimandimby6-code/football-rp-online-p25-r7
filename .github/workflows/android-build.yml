@@ -1,5 +1,5 @@
 
-name: Football RP Online - Android Build
+name: Football RP Online - Android APK
 
 'on':
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  prepare:
+  android:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,7 +17,16 @@ jobs:
         with:
           node-version: 20
 
-      - name: Download P25 R7 archive
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Download P25 R7
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -27,14 +36,61 @@ jobs:
 
       - name: Extract project
         run: |
-          unzip Football-RP-Online-P25-R7.zip -d project
+          unzip Football-RP-Online-P25-R7.zip -d unpacked
+          PROJECT_DIR="$(dirname "$(find unpacked -type f -name package.json -not -path '*/node_modules/*' -print -quit)")"
+          test -n "$PROJECT_DIR"
+          test -f "$PROJECT_DIR/index.html"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Locate project
+      - name: Test project
         run: |
-          find project -name package.json -print
-
-      - name: Run project tests
-        run: |
-          cd "$(dirname "$(find project -name package.json -print -quit)")"
+          cd "$PROJECT_DIR"
           npm test
+
+      - name: Prepare web application
+        run: |
+          mkdir -p "$PROJECT_DIR/www"
+          rsync -a \
+            --exclude='server/' \
+            --exclude='tests/' \
+            --exclude='node_modules/' \
+            --exclude='android/' \
+            --exclude='www/' \
+            "$PROJECT_DIR/" "$PROJECT_DIR/www/"
+
+      - name: Install Capacitor
+        run: |
+          cd "$PROJECT_DIR"
+          npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.footballrponline.p25",
+            "appName": "Football RP Online",
+            "webDir": "www",
+            "server": {
+              "androidScheme": "https"
+            }
+          }
+          EOF
+
+      - name: Create Android project
+        run: |
+          cd "$PROJECT_DIR"
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR/android"
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Football-RP-Online-P25-R7-APK
+          path: ${{ env.PROJECT_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
           
