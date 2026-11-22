@@ -3,14 +3,38 @@ name: Football RP Online - Android Build
 
 'on':
   workflow_dispatch:
-  push:
-    branches:
-      - main
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  prepare:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Verify GitHub Actions
-        run: echo "GitHub Actions fonctionne correctement"
-        
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download P25 R7 archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v25-r7 \
+            --repo rovarazafimandimby6-code/football-rp-online-p25-r7 \
+            --pattern "Football-RP-Online-P25-R7.zip"
+
+      - name: Extract project
+        run: |
+          unzip Football-RP-Online-P25-R7.zip -d project
+
+      - name: Locate project
+        run: |
+          find project -name package.json -print
+
+      - name: Run project tests
+        run: |
+          cd "$(dirname "$(find project -name package.json -print -quit)")"
+          npm test
+          
