@@ -17,16 +17,33 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Java
+      - name: Install Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Configure preinstalled Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "/usr/local/lib/android/sdk/platform-tools" >> "$GITHUB_PATH"
 
-      - name: Download P25 R7
+          SDKMANAGER="/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager"
+
+          if [ ! -f "$SDKMANAGER" ]; then
+            echo "sdkmanager introuvable"
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --sdk_root=/usr/local/lib/android/sdk --licenses || true
+
+          "$SDKMANAGER" --sdk_root=/usr/local/lib/android/sdk \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Download P25 R7 archive
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -37,9 +54,12 @@ jobs:
       - name: Extract project
         run: |
           unzip Football-RP-Online-P25-R7.zip -d unpacked
+
           PROJECT_DIR="$(dirname "$(find unpacked -type f -name package.json -not -path '*/node_modules/*' -print -quit)")"
+
           test -n "$PROJECT_DIR"
           test -f "$PROJECT_DIR/index.html"
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Test project
@@ -50,18 +70,26 @@ jobs:
       - name: Prepare web application
         run: |
           mkdir -p "$PROJECT_DIR/www"
+
           rsync -a \
             --exclude='server/' \
             --exclude='tests/' \
             --exclude='node_modules/' \
             --exclude='android/' \
             --exclude='www/' \
+            --exclude='.git/' \
             "$PROJECT_DIR/" "$PROJECT_DIR/www/"
+
+          test -f "$PROJECT_DIR/www/index.html"
 
       - name: Install Capacitor
         run: |
           cd "$PROJECT_DIR"
-          npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+          npm install --no-save --no-package-lock \
+            @capacitor/core@7 \
+            @capacitor/cli@7 \
+            @capacitor/android@7
 
           cat > capacitor.config.json <<'EOF'
           {
@@ -93,4 +121,3 @@ jobs:
           path: ${{ env.PROJECT_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-          
