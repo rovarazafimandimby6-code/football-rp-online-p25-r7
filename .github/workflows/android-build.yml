@@ -1,7 +1,9 @@
 
 name: Football RP Online - Android Build
 
- on: [workflow_dispatch]
+"on":
+  workflow_dispatch:
+
 permissions:
   contents: read
 
