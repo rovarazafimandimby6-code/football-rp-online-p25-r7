@@ -1,0 +1,23 @@
+AUDIT TECHNIQUE — FOOTBALL RP ONLINE P10 (LOT 1)
+
+Base auditée : P9.1
+
+Modifications intégrées :
+- Refonte du scoreboard supérieur : noms des équipes, score central, repères de club et chronomètre plus lisibles.
+- Horloge virtuelle 00:00–90:00, synchronisée sur le temps réel du match.
+- Deux périodes virtuelles de 45 minutes.
+- Durée réelle sélectionnable : 3 min (90 s par période) ou 5 min (150 s par période).
+- Une durée sélectionnée pendant un match est appliquée au prochain match, sans modifier le match en cours.
+- Statistiques retirées de l'accès HUD et déplacées dans le menu Pause.
+- Conservation du contrôle individuel du personnage humain.
+
+Vérifications exécutées :
+- Suite Node.js : 32 tests réussis, 0 échec.
+- Vérification syntaxique Node.js de tous les fichiers src/*.js et tests/*.mjs : réussie.
+- Vérification de l'archive ZIP après création : à effectuer sur l'archive finale.
+
+Non inclus dans ce lot :
+- Modèles humanoïdes 3D réalistes GLB/GLTF et motion capture.
+- Refonte complète de la locomotion et des animations.
+- Nouvelle couche avancée d'IA tactique et collective.
+- Validation sur appareil Android physique.

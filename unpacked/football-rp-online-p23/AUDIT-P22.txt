@@ -1,0 +1,45 @@
+AUDIT TECHNIQUE — P22
+Date : 22/11/2026
+
+BASE REELLE
+- Archive source : football-rp-online-p21.zip récupérée depuis la Library.
+- Taille source : 146 121 octets.
+- Contrôle initial : unzip -t sans erreur.
+- Code source P21 extrait avant modification ; aucun remplacement par un projet neuf.
+
+MODIFICATIONS P22
+1. Caméra
+- Nouveau module src/camera-presets.js : quatre modes distincts et paramètres bornés.
+- src/camera.js : changement de mode à chaud, champ de vision adapté, distances et
+  hauteurs différentes, suivi lissé conservé.
+- src/game.js : connexion du changement de caméra au menu de pause.
+- src/main.js : choix caméra dans les paramètres généraux et sauvegarde locale.
+- src/ui.js : choix caméra dans le menu pause.
+
+2. Rendu
+- src/field.js : texture de pelouse 1024x512, bandes plus fines, micro-détails,
+  anisotropie augmentée et matériau standard rugueux.
+- src/player.js : géométries corporelles plus lisses et volumes du torse adoucis ;
+  matériaux standard moins plastiques.
+- src/scene.js : paramètres de caméra, brouillard et tonemapping ajustés.
+- index.html : version affichée mise à jour en P22.
+
+3. Compatibilité du gameplay
+- Les contrôles tactiles et le joueur humain contrôlé ne changent pas.
+- Les systèmes de match, IA, carrière, clubs, statistiques et physique P21 sont repris.
+- Aucune durée de match supérieure à 5 minutes n'a été introduite.
+
+VALIDATION AUTOMATISÉE
+- node --check sur tous les modules src/*.js et tests/*.mjs : réussi.
+- npm test : 102 tests réussis, 0 échec.
+- 4 tests P22 ajoutés : modes disponibles, paramètres bornés, fallback, intégration UI.
+- Tests Node : ne valident pas la qualité du rendu WebGL à l'écran.
+
+LIMITES / TRAVAUX NON VALIDÉS
+- Les joueurs sont encore des modèles procéduraux composés de géométries primitives
+  améliorées. Ils ne sont pas encore remplacés par des modèles humains professionnels
+  riggés avec textures PBR haute définition et animations de capture de mouvement.
+- Le stade, les tribunes et le public n'ont pas encore fait l'objet d'une refonte AAA.
+- Pas de test navigateur WebGL ni d'essai Android physique effectué.
+- La lisibilité des joueurs éloignés et les performances doivent être jugées sur
+  plusieurs appareils Android réels avant d'annoncer une qualité graphique finale.

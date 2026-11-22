@@ -1,0 +1,19 @@
+AUDIT P23 — IDENTITÉS VESTIMENTAIRES DES CLUBS
+
+Périmètre
+- 16 profils de maillots distincts, un motif dédié par club.
+- Palette domicile issue des trois couleurs propres au club.
+- Tenue de gardien contrastée : couleurs principales et secondaires permutées pour utiliser l'accent comme couleur dominante.
+- Motifs géométriques intégrés au modèle humanoïde Three.js : vertical, sash, hoops, wave, pinstripes, quartered, chevron, sunburst, horizontal, diagonal, central, split, shoulder, ripple, cross, sidepanels.
+- Les profils de tenues sont transmis via les effectifs et les compositions 5v5.
+- Les champs kitDesign et kitVariant sont conservés dans les sauvegardes locales.
+
+Contrôles
+- 155 tests automatisés réussis.
+- Vérification syntaxique des modules modifiés.
+- Tests spécifiques : 16 motifs distincts, gardiens différenciés, couleurs valides.
+
+Limites
+- Les motifs sont des créations originales inspirées de conventions générales du football ; aucun maillot ou logo de club réel n'est reproduit.
+- Les modèles restent des joueurs 3D procéduraux : il ne s'agit pas encore de textures textiles haute définition ni de tenues sous licence.
+- Le rendu doit encore être contrôlé visuellement sur navigateur et sur appareil Android physique.

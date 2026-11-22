@@ -1,0 +1,322 @@
+import * as THREE from 'three';
+import { PITCH } from './pitch.js';
+import { renderClubCrest } from './club-identity.js';
+
+export class UIManager {
+  constructor(players, callbacks) {
+    this.abortController = new AbortController();
+    this.listenerOptions = { signal: this.abortController.signal };
+    this.blueScoreEl = document.getElementById('blue-score');
+    this.redScoreEl = document.getElementById('red-score');
+    this.periodEl = document.getElementById('period');
+    this.clockEl = document.getElementById('clock');
+    this.statusEl = document.getElementById('status');
+    this.staminaFillEl = document.getElementById('stamina-fill');
+    this.activeNameEl = document.getElementById('active-player-name');
+    this.fpsEl = document.getElementById('fps-badge');
+
+    this.overlay = document.getElementById('overlay');
+    this.overlayTitle = document.getElementById('overlay-title');
+    this.overlayText = document.getElementById('overlay-text');
+    this.overlayAction = document.getElementById('overlay-action');
+    this.overlayStats = document.getElementById('overlay-stats');
+    this.callbacks = callbacks;
+    this.players = players;
+    this.pauseActionsEl = document.createElement('div');
+    this.pauseActionsEl.className = 'pause-actions';
+    this.overlay.querySelector('.overlay-card')?.appendChild(this.pauseActionsEl);
+    this.durationSelect = document.getElementById('match-duration');
+
+    this.statsPanel = document.getElementById('stats-panel');
+    this.statsBody = document.getElementById('stats-body');
+
+    this.labelsLayer = document.getElementById('labels-layer');
+    this.minimapEl = document.getElementById('minimap');
+    this.statusTimer = 0;
+    this.tacticsToggle = document.getElementById('tactics-toggle');
+    this.tacticsBar = document.getElementById('tactics-bar');
+
+    this.playerLabels = new Map();
+    this.mmDots = new Map();
+    this.projVec = new THREE.Vector3();
+    this.nameDisplayMode = 'standard';
+    this.labelCandidates = [];
+
+    this.initPlayerUI(players);
+    this.bindEvents(callbacks);
+  }
+
+  initPlayerUI(players) {
+    this.labelsLayer.innerHTML = '';
+    this.playerLabels.clear();
+
+    // Nettoyer anciens points sans supprimer les lignes du terrain
+    this.minimapEl.querySelectorAll('.mm-dot').forEach((el) => el.remove());
+    this.mmDots.clear();
+
+    for (const p of players) {
+      const label = document.createElement('div');
+      label.className = `p-label ${p.team}`;
+      label.textContent = `${p.number ? `#${p.number} ` : ''}${p.name}`;
+      this.labelsLayer.appendChild(label);
+      this.playerLabels.set(p.id, label);
+
+      const dot = document.createElement('span');
+      dot.className = `mm-dot ${p.team}`;
+      this.minimapEl.appendChild(dot);
+      this.mmDots.set(p.id, dot);
+    }
+
+    this.ballDot = document.createElement('span');
+    this.ballDot.className = 'mm-dot ball';
+    this.minimapEl.appendChild(this.ballDot);
+  }
+
+  bindEvents(cb) {
+    document.getElementById('pause').addEventListener('click', () => cb.onTogglePause(), this.listenerOptions);
+    this.overlayStats.addEventListener('click', () => {
+      this.overlay.classList.add('hidden');
+      this.statsPanel.classList.remove('hidden');
+      cb.onOpenStats?.();
+    }, this.listenerOptions);
+    document.getElementById('stats-close').addEventListener('click', () => {
+      this.statsPanel.classList.add('hidden');
+      if (this.pauseMenuOpen) this.overlay.classList.remove('hidden');
+    }, this.listenerOptions);
+    if (this.tacticsToggle && this.tacticsBar) this.tacticsToggle.addEventListener('click', () => {
+      const expanded = this.tacticsBar.classList.toggle('expanded');
+      this.tacticsBar.classList.toggle('collapsed', !expanded);
+      this.tacticsToggle.setAttribute('aria-expanded', String(expanded));
+      this.tacticsToggle.classList.toggle('active', expanded);
+    }, this.listenerOptions);
+
+    this.durationSelect?.addEventListener('change', (e) => cb.onDuration?.(Number(e.target.value)), this.listenerOptions);
+
+    this.overlayAction.addEventListener('click', () => cb.onOverlayAction(), this.listenerOptions);
+    this.overlay.addEventListener('click', (event) => {
+      const action = event.target.closest('[data-pause-action]')?.dataset.pauseAction;
+      if (action) this.handlePauseAction(action);
+    }, this.listenerOptions);
+  }
+
+  setStatus(text) {
+    this.statusEl.textContent = text;
+    this.statusEl.classList.remove('show');
+    void this.statusEl.offsetWidth;
+    this.statusEl.classList.add('show');
+    window.clearTimeout(this.statusTimer);
+    this.statusTimer = window.setTimeout(() => this.statusEl.classList.remove('show'), 2300);
+  }
+
+  updateHUD(match, activePlayer, fps) {
+    this.blueScoreEl.textContent = String(match.blueScore);
+    this.redScoreEl.textContent = String(match.redScore);
+    this.periodEl.textContent = match.period === 1 ? '1RE MI-TEMPS' : '2E MI-TEMPS';
+    if (this.durationSelect) { this.durationSelect.value = String(match.pendingDurationMinutes || match.durationMinutes); this.durationSelect.disabled = false; }
+    this.clockEl.textContent = match.formatClock();
+
+    if (activePlayer) {
+      const pct = Math.round(activePlayer.stamina * 100);
+      this.staminaFillEl.style.width = `${pct}%`;
+      this.staminaFillEl.classList.toggle('low', pct < 28);
+      const roleLabels = { GK: 'GARDIEN', DEF: 'DÉFENSEUR', MID: 'MILIEU', FWD: 'ATTAQUANT' };
+      this.activeNameEl.textContent = `${activePlayer.name} #${activePlayer.number} · ${roleLabels[activePlayer.role] || 'JOUEUR'}`;
+      this.activeNameEl.dataset.role = String(activePlayer.role || 'MID').toLowerCase();
+    }
+
+    if (fps > 0) {
+      this.fpsEl.textContent = `${fps} FPS`;
+    }
+  }
+
+  updateMinimapAndLabels(players, ball, camera) {
+    const width = this.labelsLayer.clientWidth || window.innerWidth;
+    const height = this.labelsLayer.clientHeight || window.innerHeight;
+    const candidates = [];
+
+    for (const player of players) {
+      const dot = this.mmDots.get(player.id);
+      if (dot) {
+        dot.style.left = `${Math.max(2, Math.min(98, ((player.pos.x + PITCH.HALF_L) / PITCH.L) * 100))}%`;
+        dot.style.top = `${Math.max(3, Math.min(97, ((player.pos.z + PITCH.HALF_W) / PITCH.W) * 100))}%`;
+        dot.classList.toggle('active', player.isControlled);
+      }
+
+      const label = this.playerLabels.get(player.id);
+      if (!label) continue;
+      this.projVec.set(player.pos.x, 2.05, player.pos.z).project(camera);
+      const inFrustum = Number.isFinite(this.projVec.x) && Number.isFinite(this.projVec.y) && Number.isFinite(this.projVec.z)
+        && this.projVec.z >= -1 && this.projVec.z <= 1
+        && Math.abs(this.projVec.x) < 0.94 && Math.abs(this.projVec.y) < 0.90;
+      if (!inFrustum) continue;
+
+      const screenX = (this.projVec.x * 0.5 + 0.5) * width;
+      const screenY = (-this.projVec.y * 0.5 + 0.5) * height;
+      const distanceBall = Math.hypot(player.pos.x - ball.pos.x, player.pos.z - ball.pos.z);
+      if (player.isControlled || distanceBall < 4.2) {
+        candidates.push({ player, label, x: screenX, y: screenY, distanceBall, priority: player.isControlled ? -1 : distanceBall });
+      }
+    }
+
+    candidates.sort((a, b) => a.priority - b.priority);
+    const accepted = [];
+    let nearbyCount = 0;
+    for (const item of candidates) {
+      if (!item.player.isControlled && nearbyCount >= 2) continue;
+      const labelWidth = item.player.isControlled ? 148 : 112;
+      const labelHeight = item.player.isControlled ? 25 : 21;
+      const overlaps = accepted.some((other) => {
+        const otherWidth = other.player.isControlled ? 148 : 112;
+        const otherHeight = other.player.isControlled ? 25 : 21;
+        return Math.abs(item.x - other.x) < (labelWidth + otherWidth) * 0.46
+          && Math.abs(item.y - other.y) < (labelHeight + otherHeight) * 0.62;
+      });
+      if (overlaps && !item.player.isControlled) continue;
+      accepted.push(item);
+      if (!item.player.isControlled) nearbyCount += 1;
+    }
+
+    for (const player of players) {
+      const label = this.playerLabels.get(player.id);
+      if (!label) continue;
+      const item = accepted.find((candidate) => candidate.player.id === player.id);
+      label.style.display = item ? 'block' : 'none';
+      if (!item) continue;
+      label.style.left = `${Math.max(64, Math.min(width - 64, item.x))}px`;
+      label.style.top = `${Math.max(28, Math.min(height - 24, item.y))}px`;
+      label.classList.toggle('active', player.isControlled);
+      label.style.setProperty('--label-scale', player.isControlled ? '1' : String(Math.max(0.84, 1 - item.distanceBall * 0.025)));
+    }
+
+    if (this.ballDot) {
+      this.ballDot.style.left = `${Math.max(1, Math.min(99, ((ball.pos.x + PITCH.HALF_L) / PITCH.L) * 100))}%`;
+      this.ballDot.style.top = `${Math.max(2, Math.min(98, ((ball.pos.z + PITCH.HALF_W) / PITCH.W) * 100))}%`;
+    }
+  }
+
+  renderStats(match) {
+    const pos = match.getPossessionPercent();
+    const b = match.stats.blue;
+    const r = match.stats.red;
+    this.statsBody.innerHTML = `
+      <div><b>BLEU</b><span>${b.shots}</span><span>${b.onTarget}</span><span>${b.passes}</span><span>${b.interceptions}</span><span>${b.tackles}</span><span>${b.saves}</span><span>${pos.blue}%</span></div>
+      <div><b>ROUGE</b><span>${r.shots}</span><span>${r.onTarget}</span><span>${r.passes}</span><span>${r.interceptions}</span><span>${r.tackles}</span><span>${r.saves}</span><span>${pos.red}%</span></div>
+    `;
+  }
+
+  showOverlay(title, text, actionLabel) {
+    this.pauseMenuOpen = false;
+    this.pauseActionsEl.innerHTML = '';
+    this.overlayTitle.textContent = title;
+    this.overlayText.textContent = text;
+    this.overlayAction.textContent = actionLabel;
+    this.overlayAction.style.display = 'inline-flex';
+    this.overlayStats.style.display = 'none';
+    this.overlay.classList.remove('hidden');
+  }
+
+  showPauseMenu(match, activePlayer) {
+    this.pauseMenuOpen = true;
+    this.pauseMatch = match;
+    this.pausePlayer = activePlayer;
+    this.overlayTitle.textContent = 'Match en pause';
+    this.overlayText.textContent = 'La rencontre est suspendue sur cet appareil. Consultez les informations ou reprenez la partie.';
+    this.overlayAction.style.display = 'none';
+    this.overlayStats.style.display = 'none';
+    this.renderPauseActions('home');
+    this.overlay.classList.remove('hidden');
+  }
+
+  renderPauseActions(section) {
+    const button = (action, label, cls = '') => `<button type="button" class="pause-menu-button ${cls}" data-pause-action="${action}">${label}</button>`;
+    if (section === 'home') {
+      this.overlayTitle.textContent = 'Match en pause';
+      const score = this.pauseMatch ? `${this.pauseMatch.blueScore} – ${this.pauseMatch.redScore}` : '0 – 0';
+      const homeName = document.getElementById('blue-name')?.textContent || 'Antananarivo FC';
+      const awayName = document.getElementById('red-name')?.textContent || 'Toamasina United';
+      this.pauseActionsEl.innerHTML = `<div class="pause-score"><div>${renderClubCrest({id:'antananarivo-fc',name:homeName,size:44,compact:true})}<b>${homeName}</b></div><strong>${score}</strong><div>${renderClubCrest({id:'toamasina-united',name:awayName,size:44,compact:true})}<b>${awayName}</b></div></div><div class="pause-menu-grid">${button('resume','▶  REPRENDRE','primary')}${button('stats','▥  STATISTIQUES')}${button('player','◉  MON JOUEUR')}${button('events','☷  ÉVÉNEMENTS')}${button('settings','⚙  PARAMÈTRES')}${button('quit','↩  QUITTER LE MATCH','danger')}</div>`;
+      this.overlayText.textContent = 'Score, performances et réglages de la rencontre.';
+      return;
+    }
+    const back = button('back','←  RETOUR AU MENU PAUSE','back');
+    if (section === 'player') {
+      const p = this.pausePlayer;
+      const name = p?.name || 'Joueur';
+      const stamina = Math.round((p?.stamina ?? 0) * 100);
+      this.overlayTitle.textContent = 'Mon joueur';
+      this.overlayText.textContent = `${name} · N°${p?.number ?? 10} · Endurance ${stamina}%
+Cette fiche décrit uniquement le footballeur contrôlé par vous.`;
+      this.pauseActionsEl.innerHTML = back;
+    } else if (section === 'events') {
+      const events = (this.pauseMatch?.events || []).slice().reverse().slice(0, 8);
+      const names = { goal:'BUT', 'second-half-start':'COUP D’ENVOI', foul:'FAUTE', yellow_card:'CARTON JAUNE', red_card:'CARTON ROUGE', substitution:'REMPLACEMENT' };
+      const lines = events.length ? events.map(ev => {
+        const half = this.pauseMatch.halfDuration || 150;
+        const elapsed = (ev.period === 2 ? half : 0) + Math.max(0, half - (ev.timeLeft || 0));
+        const virtual = Math.floor((elapsed / (half * 2)) * 5400);
+        const minute = Math.floor(virtual / 60);
+        return `${String(minute).padStart(2,'0')}′  ${names[ev.type] || String(ev.type).replace(/[-_]/g,' ').toUpperCase()}${ev.team ? ` · ${ev.team === 'blue' ? 'BLEU' : 'ROUGE'}` : ''}`;
+      }).join('\n') : 'Aucun événement enregistré pour le moment.';
+      this.overlayTitle.textContent = 'Événements du match';
+      this.overlayText.textContent = lines;
+      this.pauseActionsEl.innerHTML = back;
+    } else if (section === 'settings') {
+      this.overlayTitle.textContent = 'Paramètres du match';
+      this.overlayText.textContent = 'Réglez la qualité graphique. La durée choisie s’appliquera au prochain match si la rencontre a déjà commencé.';
+      this.pauseActionsEl.innerHTML = `<div class="pause-setting"><label for="pause-camera">Caméra</label><select id="pause-camera"><option value="touchline">Ligne de touche</option><option value="broadcast">Diffusion TV · P25</option><option value="close">Rapprochée</option><option value="tactical">Tactique</option></select></div><div class="pause-setting"><label for="pause-zoom">Zoom caméra · référence 55 %</label><input id="pause-zoom" type="range" min="0" max="100" value="${this.callbacks.getCameraZoom?.() ?? 55}"></div><div class="pause-setting"><label for="pause-quality">Qualité graphique</label><select id="pause-quality"><option value="auto" selected>Automatique</option><option value="low">Basse</option><option value="medium">Moyenne</option><option value="high">Haute</option></select></div><div class="pause-setting"><label for="pause-duration">Durée du prochain match</label><select id="pause-duration"><option value="3">3 minutes</option><option value="5" selected>5 minutes</option></select></div>${button('apply-settings','APPLIQUER','primary')}${back}`;
+      const q = document.getElementById('quality');
+      const d = document.getElementById('match-duration');
+      if (q) document.getElementById('pause-quality').value = q.value;
+      const cameraSelect = document.getElementById('pause-camera');
+      if (cameraSelect) cameraSelect.value = this.callbacks.getCameraMode?.() || 'broadcast';
+      const zoomInput = document.getElementById('pause-zoom');
+      if (zoomInput) zoomInput.value = String(this.callbacks.getCameraZoom?.() ?? 55);
+      if (d) document.getElementById('pause-duration').value = d.value;
+    } else if (section === 'quit') {
+      this.overlayTitle.textContent = 'Quitter le match ?';
+      this.overlayText.textContent = 'Vous allez quitter cette rencontre locale. Votre progression de carrière n’est pas enregistrée par ce prototype.';
+      this.pauseActionsEl.innerHTML = `${button('confirm-quit','CONFIRMER ET QUITTER','danger')}${button('back','ANNULER','back')}`;
+    }
+  }
+
+  handlePauseAction(action) {
+    if (action === 'resume') { this.callbacks.onOverlayAction(); return; }
+    if (action === 'stats') {
+      this.renderStats(this.pauseMatch);
+      this.overlay.classList.add('hidden');
+      this.statsPanel.classList.remove('hidden');
+      return;
+    }
+    if (action === 'back') { this.renderPauseActions('home'); return; }
+    if (['player','events','settings','quit'].includes(action)) { this.renderPauseActions(action); return; }
+    if (action === 'apply-settings') {
+      const quality = document.getElementById('pause-quality')?.value || 'auto';
+      const duration = Number(document.getElementById('pause-duration')?.value || 5);
+      this.callbacks.onQuality?.(quality);
+      this.callbacks.onCameraMode?.(document.getElementById('pause-camera')?.value || 'broadcast');
+      this.callbacks.onCameraZoom?.(Number(document.getElementById('pause-zoom')?.value ?? 55));
+      this.callbacks.onDuration?.(duration);
+      this.renderPauseActions('home');
+      this.setStatus('PARAMÈTRES APPLIQUÉS');
+      return;
+    }
+    if (action === 'confirm-quit') this.callbacks.onExitMatch?.();
+  }
+
+  hideOverlay() {
+    this.pauseMenuOpen = false;
+    this.pauseActionsEl.innerHTML = '';
+    this.overlayAction.style.display = 'inline-flex';
+    this.overlayStats.style.display = 'none';
+    this.overlay.classList.add('hidden');
+  }
+
+  dispose() {
+    this.abortController.abort();
+    window.clearTimeout(this.statusTimer);
+    this.pauseActionsEl?.remove();
+    this.playerLabels?.clear();
+    this.mmDots?.clear();
+  }
+
+}

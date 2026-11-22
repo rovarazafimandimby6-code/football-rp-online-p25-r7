@@ -1,0 +1,23 @@
+AUDIT P16 — 2026-11-22
+
+Base : archive P15 fournie dans la conversation, extraite et inspectée. ZIP source valide.
+
+Changements P16 :
+- Nouveau module src/player-season-stats.js.
+- Agrégation persistante des statistiques individuelles du joueur contrôlé.
+- Compteurs dans Game pour les passes exécutées, tirs, tacles réussis, interceptions et buts attribuables au dernier toucher du personnage contrôlé.
+- Transmission playerStats via le callback de fin de match.
+- Connexion de PlayerSeasonStats au callback dans main.js.
+- Écran Mon footballeur enrichi avec les statistiques saisonnières et les cinq derniers résultats.
+- Calcul d'une note individuelle bornée entre 1 et 10.
+- Réinitialisation des compteurs individuels au lancement du match suivant.
+
+Vérifications :
+- npm test : 77 réussis, 0 échec.
+- node --check sur src/*.js : réussi.
+- Archive ZIP : test d'intégrité réussi.
+
+Limites explicites :
+- Passes décisives non attribuées, pour éviter les crédits erronés.
+- Les statistiques de match ne sont pas encore validées sur Android physique.
+- Persistance locale uniquement ; pas de serveur, de comptes en ligne ni de synchronisation multijoueur.

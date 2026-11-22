@@ -1,0 +1,30 @@
+AUDIT P20 — 22/11/2026
+
+Base contrôlée
+- Archive P19 réellement extraite et utilisée comme base de travail.
+- Contrôle initial : npm test = 89 réussis, 0 échec.
+- Les fichiers de gameplay et de progression sont conservés ; aucune refonte
+  des règles de match ni du modèle de contrôle RP.
+
+Constat et corrections P20
+- Constat : FieldBuilder recalculait les normales des filets à chaque frame,
+  même quand aucune animation de but n'était active.
+- Correction : recalcul limité à la période d'impulsion ; remise en place exacte
+  des sommets et recalcul unique à la fin de l'animation.
+- Ajout d'un mouvement subtil des fanions de corner.
+- Ajout du profil graphique automatique adaptatif, basé sur les capacités
+  disponibles de l'appareil et un ratio de pixels plafonné.
+- Les réglages manuels restent disponibles ; le mode haut reste prudent sur
+  les appareils détectés comme modestes.
+- Paramètre automatique ajouté aux écrans de réglages principal et pause.
+
+Validation finale
+- npm test : 94 réussis, 0 échec.
+- node --check sur tous les src/*.js : réussi.
+- node --check sur tous les tests/*.mjs : réussi.
+- Intégrité ZIP : à confirmer après génération de l'archive finale.
+
+Limites
+- Aucune mesure FPS réelle ni test navigateur automatisé de rendu.
+- Aucun test sur appareil Android physique.
+- Les cibles 30/60 FPS sont des profils indicatifs, non une garantie de débit.

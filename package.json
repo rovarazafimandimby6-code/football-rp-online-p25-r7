@@ -1,0 +1,11 @@
+{
+  "name": "football-rp-online-prototype",
+  "version": "25.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Football RP Online P25 — prototype 3D mobile et simulation serveur autoritaire consolidée",
+  "scripts": {
+    "test": "node --test",
+    "start": "node server/index.js"
+  }
+}

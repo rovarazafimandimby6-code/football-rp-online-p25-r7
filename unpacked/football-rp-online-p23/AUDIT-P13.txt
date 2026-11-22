@@ -1,0 +1,28 @@
+AUDIT P13 — 2026-11-22
+
+Base : football-rp-online-p12.1.zip (98 505 octets, 61 entrées, récupérée depuis la bibliothèque).
+
+Travaux P13 intégrés :
+- Sélection des clubs domicile / extérieur avant chaque match.
+- Présentation avant-match avec écussons, villes, formation annoncée et format 5 contre 5.
+- Transmission des noms des équipes sélectionnées au tableau d'affichage.
+- Éditeur de profil local : nom, numéro, poste, pied préféré, maillot, teint, coiffure et couleur des cheveux.
+- Sauvegarde locale du profil via PlayerProfileStore.
+- Reprise locale d'un club disponible, avec limite d'un club par joueur.
+- Écran Compétitions avec classement et génération d'un calendrier aller simple de 10 rencontres.
+- Conservation du menu principal, du menu Pause, des commandes individuelles et des systèmes de match hérités.
+
+Vérifications effectuées dans l'environnement de développement :
+- node --check sur tous les modules src/*.js : OK.
+- npm test : 64 tests réussis, 0 échec.
+- Tests P13 dédiés : sauvegarde du profil, reprise de club, calendrier, parcours de présentation avant match et présence des écrans intégrés.
+- Intégrité ZIP : archive finale testée avec unzip -t, aucune erreur.
+
+Non vérifié / limites :
+- Aucun essai visuel dans un navigateur réel ni sur téléphone Android physique.
+- Le jeu reste un prototype local contre l'IA ; aucun serveur multijoueur n'est connecté.
+- Les choix de teint et coiffure sont sauvegardés mais ne modifient pas encore le modèle 3D.
+- La reprise des clubs et le calendrier ne sont pas synchronisés avec un serveur et ne sont pas persistants après fermeture.
+- Les blasons sont provisoires ; effectifs et maillots des clubs ne sont pas encore liés au moteur 3D.
+- L'écran de présentation est une séquence UI 2D ; tunnel, entrée animée des joueurs et cinématique 3D complète restent à développer.
+- Mercato jouable, contrats et négociations ne sont pas encore intégrés à l'interface.
