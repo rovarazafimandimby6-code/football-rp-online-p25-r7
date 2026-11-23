@@ -589,7 +589,7 @@ menu.addEventListener('click', event => {
   } else if (action === 'show-lineup') {
     const content=document.getElementById('menu-content');
     const home=clubs.getClub(selectedMatchup.home), away=clubs.getClub(selectedMatchup.away);
-    const homeSquad = createMatchSquad('blue','2-2',home.roster);
+    const homeSquad = createMatchSquad('blue','2-2',home.roster,'career-player');
     const awaySquad = createMatchSquad('red','2-2',away.roster);
     const roleLabels = { GK:'Gardien', DEF:'Défenseur', MID:'Milieu', FWD:'Attaquant' };
     const renderPlayers = (players) => players.map(player=>`<div class="pre-match-player"><span class="pre-match-number">${player.number}</span><b>${escapeHTML(player.name)}</b><small>${roleLabels[player.role]||player.role}</small><strong>${player.rating}</strong></div>`).join('');
