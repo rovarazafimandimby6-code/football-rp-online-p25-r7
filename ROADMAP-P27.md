@@ -114,3 +114,14 @@ Limite de validation : la suite automatisée confirme le câblage des palettes e
 - Validation GitHub Actions : run [P27 validation](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45160346982), **228/228 tests réussis**, contrôle de syntaxe réussi.
 
 Périmètre : ce lot améliore l'IA locale de match. La simulation en ligne reste autoritaire côté serveur et n'a pas été remplacée par cette logique client.
+
+### Lot 4 — appels offensifs et occupation des couloirs IA (intégré)
+- [x] Ajouter un calcul de cible de soutien qui tient compte du rôle tactique et de la position du porteur.
+- [x] Faire attaquer la profondeur aux profils coureurs et finisseurs, avec une cible différente pour les meneurs en soutien derrière le ballon.
+- [x] Adapter le couloir de course à l'espace disponible face aux défenseurs adverses, en conservant une préférence de position liée au poste.
+- [x] Maintenir les profils de couverture dans leur ligne plutôt que de les envoyer systématiquement devant le ballon.
+- [x] Borner les courses aux limites jouables du terrain.
+- [x] Ajouter des tests ciblés sur les appels en profondeur, le choix d'un couloir libre et les positions de soutien.
+- Validation GitHub Actions : run [P27 validation](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45161152708), **230/230 tests réussis**, contrôle de syntaxe réussi.
+
+Périmètre : les appels concernent les joueurs IA locaux et les soutiens autour d'un porteur humain ou IA. La simulation en ligne autoritaire côté serveur reste distincte.
