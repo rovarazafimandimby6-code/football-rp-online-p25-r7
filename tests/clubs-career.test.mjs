@@ -149,3 +149,26 @@ test('contrats: un contrat expiré ne peut pas conclure un transfert', () => {
   assert.equal(offer.ok, true);
   assert.equal(career.acceptOffer(offer.offer.id, new Date(now + 3 * 86400000).toISOString()).reason, 'contract-expired');
 });
+
+
+test('mercato: les offres échues passent automatiquement à expirées et sont persistées', () => {
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const career = new CareerManager({ storage, storageKey: 'expired-offers-p27' });
+  career.signContract({ clubId: 'club-a', durationDays: 365, signedAt: '2026-01-01T00:00:00Z' });
+  const offer = career.makeOffer({ fromClubId: 'club-b', expiresAt: '2026-02-01T00:00:00Z' });
+  const refreshed = career.refreshOfferStatuses('2026-02-02T00:00:00Z');
+  assert.equal(refreshed.updated, 1);
+  assert.equal(career.offers.get(offer.offer.id).status, 'expired');
+  const restored = new CareerManager({ storage, storageKey: 'expired-offers-p27' });
+  assert.equal(restored.offers.get(offer.offer.id).status, 'expired');
+});
+
+test('mercato: les offres sans échéance restent ouvertes et une date invalide ne modifie rien', () => {
+  const career = new CareerManager();
+  career.signContract({ clubId: 'club-a', durationDays: 365, signedAt: '2026-01-01T00:00:00Z' });
+  const offer = career.makeOffer({ fromClubId: 'club-b' });
+  assert.deepEqual(career.refreshOfferStatuses('invalid-date'), { ok: false, reason: 'invalid-date', updated: 0 });
+  assert.equal(career.refreshOfferStatuses('2030-01-01T00:00:00Z').updated, 0);
+  assert.equal(career.offers.get(offer.offer.id).status, 'pending');
+});

@@ -71,6 +71,22 @@ export class CareerManager {
     };
   }
 
+  refreshOfferStatuses(at = Date.now()) {
+    const now = timestamp(at);
+    if (now === null) return { ok: false, reason: 'invalid-date', updated: 0 };
+    let updated = 0;
+    for (const offer of this.offers.values()) {
+      if (offer.status !== 'pending' || !offer.expiresAt) continue;
+      const expiry = timestamp(offer.expiresAt);
+      if (expiry !== null && expiry <= now) {
+        offer.status = 'expired';
+        updated++;
+      }
+    }
+    if (updated) this.persist();
+    return { ok: true, updated };
+  }
+
   refreshContractStatus(at = Date.now()) {
     const state = this.getContractStatus(at);
     if (!state || !state.expired || this.contract.status !== 'active') return state;

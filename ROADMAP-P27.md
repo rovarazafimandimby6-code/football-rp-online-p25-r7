@@ -332,3 +332,11 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Utiliser l'identifiant pour protéger les récompenses et statistiques hors ligne contre les doubles traitements.
 - [x] Couvrir la rotation des identifiants et le traitement idempotent par tests.
 - [ ] Vérifier le cycle de plusieurs matchs locaux sur Android.
+
+
+### Lot 26 — cycle de vie automatique des contrats et offres (intégré)
+- [x] Actualiser le statut du contrat à l'ouverture du tableau de bord, pas uniquement dans l'écran mercato.
+- [x] Libérer le joueur du club et annuler les offres en attente lorsque le contrat expire.
+- [x] Expirer automatiquement les offres arrivées à échéance lors de l'ouverture du mercato.
+- [x] Persister les changements d'état et tester la restauration après expiration.
+- [ ] Vérifier le passage du temps et les écrans carrière sur Android.

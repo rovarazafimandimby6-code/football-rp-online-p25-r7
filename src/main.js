@@ -184,6 +184,7 @@ function renderPage(page = 'home') {
   const subtitle = document.getElementById('menu-page-subtitle');
   document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page));
   if (page === 'home') {
+    career.refreshContractStatus();
     const profile = profileStore.profile;
     const season = seasonStats.snapshot().totals;
     const latestMatch = seasonStats.snapshot().matches.slice(-1)[0];
@@ -308,6 +309,7 @@ function renderPage(page = 'home') {
     content.innerHTML = `<div class="settings-card"><label>Caméra du match<select id="pref-camera"><option value="player" ${preferences.cameraMode==='player'?'selected':''}>Immersion joueur · adaptée au poste</option><option value="touchline" ${preferences.cameraMode==='touchline'?'selected':''}>Ligne de touche · latérale</option><option value="broadcast" ${preferences.cameraMode==='broadcast'?'selected':''}>Retransmission · oblique</option><option value="close" ${preferences.cameraMode==='close'?'selected':''}>Rapprochée · joueurs plus grands</option><option value="tactical" ${preferences.cameraMode==='tactical'?'selected':''}>Tactique · vue large</option></select></label><label>Zoom caméra · référence 55 %<input id="pref-zoom" type="range" min="0" max="100" value="${preferences.cameraZoom}"></label><label>Affichage des noms<select id="pref-names"><option value="standard" selected>Standard · joueur contrôlé + deux proches</option></select></label><label>Durée du match<select id="pref-duration"><option value="5" ${preferences.duration===5?'selected':''}>5 minutes · 2 × 2 min 30</option><option value="3" ${preferences.duration===3?'selected':''}>3 minutes · 2 × 1 min 30</option></select></label><label>Qualité graphique<select id="pref-quality"><option value="auto" ${preferences.quality==='auto'?'selected':''}>Automatique · recommandé</option><option value="low" ${preferences.quality==='low'?'selected':''}>Basse · appareils modestes</option><option value="medium" ${preferences.quality==='medium'?'selected':''}>Moyenne · recommandée</option><option value="high" ${preferences.quality==='high'?'selected':''}>Haute</option></select></label><button class="primary-cta" data-action="save-settings">ENREGISTRER</button></div><p class="notice">Les réglages graphiques s'appliquent au prochain lancement du match.</p>`;
   } else if (page === 'mercato') {
     career.refreshContractStatus();
+    career.refreshOfferStatuses();
     const clubsList = clubs.listClubs();
     const currentClub = career.clubId ? clubs.getClub(career.clubId) : null;
     const hasActiveContract = Boolean(career.contract && !career.getContractStatus()?.expired);
