@@ -885,6 +885,13 @@ html, body {
 .pre-match-player-list { display:grid; gap:5px; }.pre-match-player { display:grid; grid-template-columns:24px minmax(0,1fr) auto 22px; align-items:center; gap:6px; min-height:30px; padding:5px 6px; border-radius:6px; background:rgba(0,0,0,.2); }
 .pre-match-number { display:grid; place-items:center; width:21px; height:21px; border-radius:5px; background:rgba(255,255,255,.12); color:#f1d17c; font-size:8px; font-weight:900; }.pre-match-player>b { overflow:hidden; color:#f0f5f1; font-size:8px; text-overflow:ellipsis; white-space:nowrap; }.pre-match-player>small { color:#9bb3a4; font-size:7px; }.pre-match-player>strong { color:#f0d27c; font-size:9px; text-align:right; }
 @media(max-width:560px) { .pre-match-lineups { grid-template-columns:1fr; }.pre-match-player { grid-template-columns:24px minmax(0,1fr) auto 22px; } }
+.pre-match-bench-heading { display:flex; justify-content:space-between; align-items:center; margin:12px 0 6px; padding-top:9px; border-top:1px solid rgba(255,255,255,.1); color:#d7c58e; font-size:7px; letter-spacing:.12em; }
+.pre-match-bench-heading>b { color:#b9d8c4; font-size:8px; }
+.pre-match-bench-list .pre-match-player { min-height:26px; opacity:.86; background:rgba(0,0,0,.13); }
+.pre-match-bench-list .pre-match-number { width:19px; height:19px; }
+.pre-match-no-bench { margin:0; padding:6px; color:#91a79a; font-size:8px; }
+.pre-match-squad-total { display:block; margin-top:8px; color:#91a79a; font-size:7px; text-align:right; }
+
 
 /* P25 — match presentation rebuilt: restrained broadcast HUD and uncluttered player identification */
 #labels-layer { z-index: 3; }

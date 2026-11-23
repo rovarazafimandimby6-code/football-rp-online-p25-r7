@@ -423,3 +423,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des tests de présence, poste, numéro et sélection compétitive de repli.
 - Limite : garantit la présence dans le onze du club passé au match ; la sélection du club adverse ou d'une équipe hors club reste inchangée.
 
+
+
+### Lot 36 — profondeur d'effectif et banc de remplaçants avant-match (intégré)
+- [x] Séparer explicitement les cinq titulaires de la réserve issue de l'effectif réel du club.
+- [x] Construire un banc stable à partir des joueurs non retenus dans le onze, sans générer de faux remplaçants.
+- [x] Préserver la priorité du footballeur de carrière dans les titulaires et éviter sa duplication sur le banc.
+- [x] Limiter l'affichage du banc à cinq remplaçants pour le format 5 contre 5, avec un effectif disponible compté à partir des données réelles.
+- [x] Présenter les remplaçants et le volume d'effectif dans le centre avant-match, pour les deux clubs.
+- [x] Couvrir les effectifs incomplets, les identifiants dupliqués, l'absence de banc et la priorité du joueur de carrière par tests.
+- Limite : les réservistes sont identifiés et affichés avant le match ; leur entrée effective en jeu, les changements tactiques et la gestion de fatigue restent à connecter au moteur de match dans les lots suivants.
