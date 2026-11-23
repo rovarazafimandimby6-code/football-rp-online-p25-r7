@@ -1,9 +1,9 @@
 {
   "name": "football-rp-online-prototype",
-  "version": "26.0.0",
+  "version": "27.0.0",
   "private": true,
   "type": "module",
-  "description": "Football RP Online P26 — historique des matchs, statistiques détaillées et multijoueur RP.",
+  "description": "Football RP Online P27 — interface carrière paysage, gameplay RP et multijoueur.",
   "scripts": {
     "test": "node --test",
     "start": "node server/index.js"

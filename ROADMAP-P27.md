@@ -174,6 +174,6 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des accès directs vers joueur, clubs/effectifs, compétitions et mercato, en plus des entrées match local et multijoueur.
 - [x] Recomposer le menu principal en navigation horizontale et panneaux fixes adaptés au format paysage.
 - [x] Verrouiller l'expérience menu en paysage, avec écran d'orientation dédié en portrait et sans défilement vertical global.
-- [x] Mettre à jour les métadonnées et libellés de version du shell vers P27.
+- [x] Mettre à jour les métadonnées, le manifeste npm et les libellés de version du shell vers P27.
 - Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
 - Limite : ce lot refond le shell et l'accueil. Les pages secondaires et la présentation détaillée du HUD restent à harmoniser dans les lots UI suivants ; essai visuel Android réel requis.

@@ -46,10 +46,10 @@ test('P23 : le profil de rendu auto reste prudent sur appareils modestes', () =>
   assert.match(scene, /deviceMemory/);
 });
 
-test('P26 : la version affichée et le manifeste passent en P26', () => {
+test('P27 : la version affichée et le manifeste passent en P27', () => {
   assert.match(JSON.parse(pkg).version, /^26\.0\.0$/);
-  assert.match(html, /VERSION P26/);
-  assert.match(html, /Football RP Online — P26/);
+  assert.match(html, /P27 · NOUVELLE GÉNÉRATION/);
+  assert.match(html, /Football RP Online — P27/);
 });
 
 test('P23 consolidation : le plafond de rendu suit le profil matériel et les réglages', async () => {
