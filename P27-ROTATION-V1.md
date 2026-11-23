@@ -10,7 +10,10 @@
 - Les postes ne sont pas verrouillés : un joueur peut entrer à un autre poste, y compris le gardien si la composition est réorganisée.
 - Le joueur humain sur le banc reste dans la rencontre en mode observation ; les commandes de jeu doivent être masquées jusqu'à son entrée effective.
 - À son entrée, le contrôle et les commandes tactiles sont transférés vers son avatar ; à sa sortie, retour en observation depuis le banc.
-- En cas de déconnexion, l'IA prend temporairement le contrôle de l'avatar, puis rend le contrôle au retour du joueur.
+- En cas de déconnexion, l'IA prend temporairement le contrôle du même avatar et rend le contrôle au retour du joueur.
+- Le niveau de jeu de cette IA de remplacement est plafonné à une performance moyenne : elle doit rester fonctionnelle et cohérente sans surperformer comme une IA experte ni pénaliser volontairement l'équipe.
+- Tant que l'IA contrôle l'avatar, un indicateur discret « Contrôlé par l’IA » apparaît près du nom du joueur ; il disparaît dès que le contrôle humain est rétabli.
+- La prise en charge IA ne change ni l'identité, ni le poste courant, ni les statistiques déjà acquises par l'avatar.
 
 ## Fondations techniques ajoutées
 Le module `src/rotation-rules.js` formalise les limites de feuille de match, la validation des échanges, l'absence de quota et le délai de retour. Les tests couvrent les règles de base et l'échange de joueurs en conservant le slot tactique.
