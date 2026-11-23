@@ -63,6 +63,8 @@ export class OnlineMatchBridge {
       activeIds.add(remote.id);
       local.name = String(remote.name || local.name).slice(0, 20);
       local.isControlled = remote.id === this.localServerId;
+      local.aiControlled = remote.aiControlled === true || remote.controlMode === 'ai';
+      local.controlMode = local.aiControlled ? 'ai' : (remote.controlMode || 'human');
       local.stamina = Number.isFinite(remote.stamina) ? clamp(remote.stamina, 0, 1) : local.stamina;
       this.buffer.push(remote.id, { time, x: remote.x, z: remote.z, facing: remote.facing, sequence: state.sequence });
       local._onlineVelocity = { x: remote.vx, z: remote.vz };

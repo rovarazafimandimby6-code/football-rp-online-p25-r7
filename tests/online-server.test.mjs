@@ -558,3 +558,55 @@ test('P27 appel de balle en ligne : quitter le salon invalide immédiatement la 
   manager.leave(room.id, joined.token);
   assert.equal(human.callForPassUntil, 0);
 });
+
+
+test('P27 déconnexion : le même avatar passe sous IA moyenne, conserve le ballon et reste dans la simulation', () => {
+  let now = 100_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 500 });
+  const room = manager.create();
+  const joined = manager.join(room.id, { displayName: 'Joueur déconnecté' });
+  const internal = manager.rooms.get(room.id);
+  const player = internal.players.get(joined.playerId);
+  internal.ball.ownerId = player.id;
+  const beforeId = player.id;
+  manager.leave(room.id, joined.token);
+  assert.equal(player.aiControlled, true);
+  assert.equal(player.controlMode, 'ai');
+  assert.equal(internal.ball.ownerId, beforeId, 'la possession ne doit pas être perdue au changement de contrôleur');
+  assert.equal(manager.get(room.id).players.find(p => p.id === beforeId).aiControlled, true);
+  now += 1_000;
+  manager.tick(0.05);
+  assert.equal(internal.players.has(beforeId), true, 'le joueur ne doit pas être supprimé après le délai de grâce');
+  assert.equal(internal.ball.ownerId, beforeId);
+});
+
+test('P27 déconnexion : la reconnexion après le délai de grâce rend le contrôle au même joueur sans doublon', () => {
+  let now = 200_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 100 });
+  const room = manager.create();
+  const joined = manager.join(room.id, { displayName: 'Retour humain' });
+  const internal = manager.rooms.get(room.id);
+  const player = internal.players.get(joined.playerId);
+  manager.leave(room.id, joined.token);
+  now += 5_000;
+  const resumed = manager.reconnect(room.id, joined.token);
+  assert.equal(resumed.reconnected, true);
+  assert.equal(resumed.state.players.filter(p => p.id === joined.playerId).length, 1);
+  assert.equal(player.connected, true);
+  assert.equal(player.aiControlled, false);
+  assert.equal(player.controlMode, 'human');
+  assert.ok(resumed.state.events.some(event => event.type === 'control-restored' && event.playerId === joined.playerId));
+});
+
+test('P27 déconnexion : une prise en charge IA ne compte pas comme un nouveau bot et conserve les cinq slots', () => {
+  let now = 300_000;
+  const manager = new RoomManager({ now: () => now });
+  const room = manager.create();
+  const joined = manager.join(room.id);
+  const internal = manager.rooms.get(room.id);
+  manager.leave(room.id, joined.token);
+  manager.ensureBotCoverage(internal);
+  const teamPlayers = [...internal.players.values()].filter(player => player.team === internal.players.get(joined.playerId).team);
+  assert.equal(teamPlayers.length, 3);
+  assert.equal(teamPlayers.filter(player => player.aiControlled).length, 1);
+});

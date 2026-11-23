@@ -60,6 +60,8 @@ export class UIManager {
       const label = document.createElement('div');
       label.className = `p-label ${p.team}`;
       label.textContent = `${p.number ? `#${p.number} ` : ''}${p.name}`;
+      label.dataset.playerName = p.name;
+      label.dataset.aiControlled = 'false';
       this.labelsLayer.appendChild(label);
       this.playerLabels.set(p.id, label);
 
@@ -214,6 +216,12 @@ export class UIManager {
       label.style.left = `${Math.max(64, Math.min(width - 64, item.x))}px`;
       label.style.top = `${Math.max(28, Math.min(height - 24, item.y))}px`;
       label.classList.toggle('active', player.isControlled);
+      const aiControlled = player.aiControlled === true;
+      label.classList.toggle('ai-controlled', aiControlled);
+      if (label.dataset.aiControlled !== String(aiControlled)) {
+        label.dataset.aiControlled = String(aiControlled);
+        label.textContent = `${player.number ? `#${player.number} ` : ''}${player.name}${aiControlled ? ' · IA' : ''}`;
+      }
       label.style.setProperty('--label-scale', player.isControlled ? '1' : String(Math.max(0.84, 1 - item.distanceBall * 0.025)));
     }
 

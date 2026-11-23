@@ -57,7 +57,7 @@ export class RoomManager {
       z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
       role: ['GK','DEF','MID','FWD'].includes(role) ? role : 'FWD', isBot: false,
       input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0, lastCallForPassAt: -Infinity, callForPassUntil: 0,
-      connected: true, lastSeen: this.now(), disconnectedAt: null,
+      connected: true, controlMode: 'human', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
       stats: { passes: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
     };
     room.players.set(player.id, player);
@@ -70,7 +70,7 @@ export class RoomManager {
   ensureBotCoverage(room) {
     if (room.phase === 'fulltime') return;
     for (const team of ['blue', 'red']) {
-      let count = [...room.players.values()].filter(p => p.team === team && p.connected).length;
+      let count = [...room.players.values()].filter(p => p.team === team && (p.connected || p.aiControlled)).length;
       while (count < 3 && room.players.size < 10) {
         const usedSlots = new Set([...room.players.values()].filter(p => p.team === team).map(p => p.slot));
         const slot = [0,1,2,3,4].find(value => !usedSlots.has(value)) ?? count;
@@ -81,7 +81,7 @@ export class RoomManager {
           z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
           role: slot === 0 ? 'GK' : slot === 1 ? 'DEF' : 'MID', isBot: true,
           input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0,
-          connected: true, lastSeen: this.now(), disconnectedAt: null,
+          connected: true, controlMode: 'ai', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
           stats: { passes: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
         });
         count++;
@@ -90,11 +90,11 @@ export class RoomManager {
   }
 
   updateBots(room) {
-    const bots = [...room.players.values()].filter(p => p.isBot && p.connected);
+    const bots = [...room.players.values()].filter(p => (p.isBot || p.aiControlled) && (p.connected || p.aiControlled));
     const ball = room.ball;
     for (const bot of bots) {
-      const teammates = [...room.players.values()].filter(p => p.team === bot.team && p.id !== bot.id && p.connected);
-      const opponents = [...room.players.values()].filter(p => p.team !== bot.team && p.connected);
+      const teammates = [...room.players.values()].filter(p => p.team === bot.team && p.id !== bot.id && (p.connected || p.aiControlled));
+      const opponents = [...room.players.values()].filter(p => p.team !== bot.team && (p.connected || p.aiControlled));
       const owner = ball.ownerId ? room.players.get(ball.ownerId) : null;
       const nearestTeammate = [bot, ...teammates].sort((a,b) => Math.hypot(a.x-ball.x,a.z-ball.z)-Math.hypot(b.x-ball.x,b.z-ball.z))[0];
       const now = this.now();
@@ -158,7 +158,11 @@ export class RoomManager {
       }
       const dx = targetX - bot.x, dz = targetZ - bot.z;
       const distance = Math.hypot(dx, dz) || 1;
-      bot.input = { x: Math.abs(dx) < 0.8 ? 0 : dx / distance, z: Math.abs(dz) < 0.8 ? 0 : dz / distance, sprint: distance > 8 };
+      const decisionX = Math.abs(dx) < 0.8 ? 0 : dx / distance;
+      const decisionZ = Math.abs(dz) < 0.8 ? 0 : dz / distance;
+      // L'IA de remplacement reste volontairement moyenne : déplacements plus mesurés et aucun sprint automatique.
+      const skillScale = bot.aiControlled ? 0.88 : 1;
+      bot.input = { x: decisionX * skillScale, z: decisionZ * skillScale, sprint: !bot.aiControlled && distance > 8 };
       if (distance > 0.2) bot.facing = Math.atan2(dx, dz);
       if (bot.role !== 'GK' && owner && owner.team !== bot.team && Math.hypot(owner.x-bot.x, owner.z-bot.z) < 1.5) applyPlayerAction(room, bot, 'tackle', this.now());
     }
@@ -174,7 +178,7 @@ export class RoomManager {
 
   teamCounts(room) {
     const counts = { blue: 0, red: 0 };
-    for (const p of room.players.values()) if (p.connected) counts[p.team]++;
+    for (const p of room.players.values()) if (p.connected || p.aiControlled) counts[p.team]++;
     return counts;
   }
 
@@ -222,20 +226,18 @@ export class RoomManager {
     const dt = clamp(Number.isFinite(deltaSeconds) ? deltaSeconds : 0, 0, 0.05);
     const now = this.now();
     for (const [id, room] of this.rooms) {
-      const allPlayersExpired = room.players.size > 0 && [...room.players.values()].every(p => !p.connected && p.disconnectedAt && now - p.disconnectedAt > this.disconnectGraceMs);
-      if (now - room.updatedAt > this.roomTtlMs || allPlayersExpired) {
+      const allPlayersExpired = room.phase !== 'playing' && room.phase !== 'halftime' && room.players.size > 0 && [...room.players.values()].every(p => !p.connected && p.disconnectedAt && now - p.disconnectedAt > this.disconnectGraceMs);
+      if (now - room.updatedAt > this.roomTtlMs && room.phase !== 'playing' && room.phase !== 'halftime' || allPlayersExpired) {
         this.rooms.delete(id); continue;
       }
       for (const p of room.players.values()) {
         if (!p.isBot && p.connected && now - p.lastSeen > this.disconnectGraceMs) {
-          p.connected = false; p.disconnectedAt = now; p.input = { x: 0, z: 0, sprint: false };
+          p.connected = false; p.controlMode = 'ai'; p.aiControlled = true; p.disconnectedAt = now; p.input = { x: 0, z: 0, sprint: false };
           p.callForPassUntil = 0;
-          if (room.ball.ownerId === p.id) room.ball.ownerId = null;
+          room.events.push({ type: 'control-takeover', controller: 'ai', skill: 'average', playerId: p.id, at: room.elapsedMs });
         }
       }
-      for (const [playerId, p] of room.players) {
-        if (!p.connected && p.disconnectedAt && now - p.disconnectedAt > this.disconnectGraceMs) room.players.delete(playerId);
-      }
+      // Un avatar humain déconnecté reste dans le match et passe sous contrôle IA jusqu'au coup de sifflet final.
       this.ensureBotCoverage(room);
       if (room.phase === 'halftime') {
         room.lastTickAt = now;
@@ -301,6 +303,7 @@ export class RoomManager {
         }
       }
       if (room.phase === 'playing') {
+        room.updatedAt = now;
         if (room.goalPauseMs <= 0) this.updateBots(room);
         stepRoomSimulation(room, Math.min(Math.max(dt, elapsedSinceTick), 0.05));
       }
@@ -354,9 +357,10 @@ export class RoomManager {
     const { room, player } = this.authenticate(roomId, token);
     if (player.isBot || room.phase === 'fulltime') throw new Error('UNAUTHORIZED');
     const now = this.now();
-    if (!player.connected && (!player.disconnectedAt || now - player.disconnectedAt > this.disconnectGraceMs)) throw new Error('SESSION_EXPIRED');
-    player.lastSeen = now; player.connected = true; player.disconnectedAt = null;
+    const wasAiControlled = player.aiControlled === true;
+    player.lastSeen = now; player.connected = true; player.controlMode = 'human'; player.aiControlled = false; player.disconnectedAt = null;
     player.input = { x: 0, z: 0, sprint: false };
+    if (wasAiControlled) room.events.push({ type: 'control-restored', controller: 'human', playerId: player.id, at: room.elapsedMs });
     room.updatedAt = now;
     return { alive: true, reconnected: true, nextSequence: Math.max(1, player.lastInputSequence + 1), state: this.publicState(room) };
   }
@@ -365,8 +369,9 @@ export class RoomManager {
 
   leave(roomId, token) {
     const { room, player } = this.authenticate(roomId, token);
-    player.connected = false; player.disconnectedAt = this.now(); player.input = { x: 0, z: 0, sprint: false };
+    player.connected = false; player.controlMode = 'ai'; player.aiControlled = true; player.disconnectedAt = this.now(); player.input = { x: 0, z: 0, sprint: false };
     player.callForPassUntil = 0;
+    room.events.push({ type: 'control-takeover', controller: 'ai', skill: 'average', playerId: player.id, at: room.elapsedMs });
     room.updatedAt = this.now();
     return true;
   }
