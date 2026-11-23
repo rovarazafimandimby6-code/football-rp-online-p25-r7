@@ -119,7 +119,7 @@ export class OnlineMatchBridge {
     if (this.lastState?.ball?.ownerId === this.localServerId) action = shoot ? 'shoot' : (pass || lob) ? 'pass' : null;
     else action = shoot || lob ? 'tackle' : press ? 'tackle' : null;
     try {
-      await this.client.sendInput({ x: move.x, z: move.z, sprint: this.controls.isSprinting?.() === true, action, callForPass });
+      await this.client.sendInput({ x: move.x, z: move.z, sprint: this.controls.isSprinting?.() === true, action, ...(callForPass ? { callForPass: true } : {}) });
       return true;
     } catch (error) {
       this.pollErrorCount = Math.min(8, this.pollErrorCount + 1);
