@@ -40,7 +40,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/rooms') {
       const body = await readBody(req);
-      return json(res, 201, manager.create({ name: body.name, durationMinutes: body.durationMinutes }));
+      return json(res, 201, manager.create({ name: body.name, durationMinutes: body.durationMinutes, blueClubId: body.blueClubId, redClubId: body.redClubId }));
     }
     const joinMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})\/join$/);
     if (req.method === 'POST' && joinMatch) {

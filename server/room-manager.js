@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { applyPlayerAction, stepRoomSimulation, resetRoomBall } from './simulation.js';
+import { resolveMatchClub, cloneMatchTeams } from './club-catalog.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -13,7 +14,11 @@ export class RoomManager {
     this.rooms = new Map();
   }
 
-  create({ name = 'Match rapide', durationMinutes = 5 } = {}) {
+  create({ name = 'Match rapide', durationMinutes = 5, blueClubId = null, redClubId = null } = {}) {
+    const blueClub = resolveMatchClub(blueClubId);
+    const redClub = resolveMatchClub(redClubId);
+    if (Boolean(blueClub) !== Boolean(redClub)) throw new Error('INVALID_CLUB_MATCHUP');
+    if (blueClub && redClub && blueClub.id === redClub.id) throw new Error('INVALID_CLUB_MATCHUP');
     const roomId = randomBytes(6).toString('hex');
     const room = {
       id: roomId, name: String(name).trim().slice(0, 36) || 'Match rapide',
@@ -21,6 +26,7 @@ export class RoomManager {
       phase: 'lobby', createdAt: this.now(), updatedAt: this.now(),
       startedAt: null, elapsedMs: 0, sequence: 0, players: new Map(),
       period: 1, halftimeUntil: null, halftimeDurationMs: 5_000, goalPauseMs: 0, lastTickAt: this.now(), attackDirection: { blue: 1, red: -1 },
+      teams: { blue: blueClub, red: redClub },
       nextEventId: 1, result: null, score: { blue: 0, red: 0 }, ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null }, events: [],
     };
     this.rooms.set(roomId, room);
@@ -287,6 +293,7 @@ export class RoomManager {
     const blue = room.score.blue, red = room.score.red;
     room.result = Object.freeze({
       roomId: room.id, phase: 'fulltime', score: Object.freeze({ blue, red }),
+      teams: Object.freeze(cloneMatchTeams(room.teams)),
       outcome: blue === red ? 'draw' : blue > red ? 'blue' : 'red',
       durationMs: room.elapsedMs, durationMinutes: room.durationMinutes,
       finalizedAt: this.now(), players: Object.freeze(players.map(player => Object.freeze({ ...player, stats: Object.freeze({ ...player.stats }) }))),
@@ -373,7 +380,7 @@ export class RoomManager {
       id: room.id, name: room.name, durationMinutes: room.durationMinutes,
       phase: room.phase, period: room.period, halftimeRemainingMs: room.phase === 'halftime' && room.halftimeUntil ? Math.max(0, room.halftimeUntil - this.now()) : 0, attackDirection: { ...room.attackDirection }, elapsedMs: room.elapsedMs, durationMs: room.durationMinutes * 60_000, sequence: room.sequence,
       virtualClock: `${String(Math.floor(Math.min(5400, room.elapsedMs / (room.durationMinutes * 60_000) * 5400) / 60)).padStart(2,'0')}:${String(Math.floor(Math.min(5400, room.elapsedMs / (room.durationMinutes * 60_000) * 5400) % 60)).padStart(2,'0')}`,
-      score: { ...room.score }, counts: this.teamCounts(room),
+      score: { ...room.score }, teams: cloneMatchTeams(room.teams), counts: this.teamCounts(room),
       players, ball: { ...room.ball }, result: room.result, events: room.events.slice(-40), eventCursor: room.nextEventId - 1,
     };
   }

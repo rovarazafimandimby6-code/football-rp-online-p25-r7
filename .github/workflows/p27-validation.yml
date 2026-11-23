@@ -1,0 +1,26 @@
+name: P27 validation
+on:
+  push:
+    branches: [p27-dev]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p27-dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run automated tests
+        run: npm test
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do
+            node --check "$file"
+          done < <(find src server tests -type f \( -name '*.js' -o -name '*.mjs' \) -print)

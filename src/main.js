@@ -257,9 +257,9 @@ async function renderResultDetail(roomId, requestId = resultsRequestSequence) {
     const result = await response.json();
     if (requestId !== resultsRequestSequence || !document.getElementById('result-detail')) return;
     const stats = result.teamStats || {};
-    const teamPanel = (key, label) => { const row = stats[key] || {}; return `<div class="result-team-stats"><b>${label}</b><span>${resultNumber(row.goals)} but(s)</span><span>${resultNumber(row.shots)} tir(s)</span><span>${resultNumber(row.passes)} passe(s)</span><span>${resultNumber(row.tackles)} tacle(s)</span><span>${resultNumber(row.interceptions)} interception(s)</span><span>${resultNumber(row.saves)} arrêt(s)</span></div>`; };
+    const teamPanel = (key, fallback) => { const row = stats[key] || {}; const label = result.teams?.[key]?.name || fallback; return `<div class="result-team-stats"><b>${escapeHTML(label)}</b><span>${resultNumber(row.goals)} but(s)</span><span>${resultNumber(row.shots)} tir(s)</span><span>${resultNumber(row.passes)} passe(s)</span><span>${resultNumber(row.tackles)} tacle(s)</span><span>${resultNumber(row.interceptions)} interception(s)</span><span>${resultNumber(row.saves)} arrêt(s)</span></div>`; };
     const players = Array.isArray(result.players) ? result.players : [];
-    const playerRows = players.slice().sort((a,b) => (a.team || '').localeCompare(b.team || '') || (b.stats?.goals || 0) - (a.stats?.goals || 0)).map(player => `<tr><td>${escapeHTML(player.name || 'Joueur')}</td><td>${player.team === 'blue' ? 'Bleu' : 'Rouge'}</td><td>${player.isBot ? 'IA' : 'Humain'}</td><td>${resultNumber(player.stats?.goals)}</td><td>${resultNumber(player.stats?.assists)}</td><td>${resultNumber(player.stats?.shots)}</td><td>${resultNumber(player.stats?.passes)}</td><td>${resultNumber(player.stats?.tackles)}</td><td>${resultNumber(player.stats?.interceptions)}</td><td>${resultNumber(player.stats?.saves)}</td></tr>`).join('');
+    const playerRows = players.slice().sort((a,b) => (a.team || '').localeCompare(b.team || '') || (b.stats?.goals || 0) - (a.stats?.goals || 0)).map(player => `<tr><td>${escapeHTML(player.name || 'Joueur')}</td><td>${escapeHTML(result.teams?.[player.team]?.name || (player.team === 'blue' ? 'Bleu' : 'Rouge'))}</td><td>${player.isBot ? 'IA' : 'Humain'}</td><td>${resultNumber(player.stats?.goals)}</td><td>${resultNumber(player.stats?.assists)}</td><td>${resultNumber(player.stats?.shots)}</td><td>${resultNumber(player.stats?.passes)}</td><td>${resultNumber(player.stats?.tackles)}</td><td>${resultNumber(player.stats?.interceptions)}</td><td>${resultNumber(player.stats?.saves)}</td></tr>`).join('');
     host.innerHTML = `<section class="result-detail-card"><div class="panel-heading"><div><span class="eyebrow">FEUILLE DE MATCH · ${escapeHTML(roomId)}</span><h2>Statistiques détaillées</h2></div><button class="small-action" data-action="close-result">FERMER</button></div><div class="result-team-grid">${teamPanel('blue','ÉQUIPE BLEUE')}${teamPanel('red','ÉQUIPE ROUGE')}</div><div class="table-scroll"><table class="standings-table result-player-table"><thead><tr><th>JOUEUR</th><th>ÉQUIPE</th><th>TYPE</th><th>BUTS</th><th>PD</th><th>TIRS</th><th>PASSES</th><th>TACLES</th><th>INT.</th><th>ARRÊTS</th></tr></thead><tbody>${playerRows || '<tr><td colspan="10">Aucune statistique individuelle disponible.</td></tr>'}</tbody></table></div></section>`;
   } catch (error) {
     if (requestId === resultsRequestSequence && host.isConnected) host.innerHTML = `<p class="notice">${escapeHTML(error?.message || 'Erreur de chargement de la feuille de match.')}</p>`;
@@ -286,7 +286,11 @@ async function createOnlineRoom() {
   const status = document.getElementById('online-status');
   if (status) status.textContent = 'Création du salon…';
   try {
-    const room = await onlineClient.createRoom({ name: `${profileStore.profile.identity.displayName} · Match`, durationMinutes: preferences.duration });
+    const homeClub = career.clubId ? clubs.getClub(career.clubId) : null;
+    const awayCandidates = clubs.listClubs().filter(club => club.control === 'ai' && club.id !== homeClub?.id);
+    const awayClub = awayCandidates.length ? awayCandidates[Math.floor(Math.random() * awayCandidates.length)] : null;
+    const clubMatch = homeClub && awayClub ? { blueClubId: homeClub.id, redClubId: awayClub.id } : {};
+    const room = await onlineClient.createRoom({ name: `${profileStore.profile.identity.displayName} · Match`, durationMinutes: preferences.duration, ...clubMatch });
     const id = room.id;
     const field = document.getElementById('online-room-id'); if (field) field.value = id;
     if (status) status.textContent = `Salon créé : ${id}. Connexion en cours…`;
