@@ -283,7 +283,7 @@ Cette fiche décrit uniquement le footballeur contrôlé par vous.`;
       const pairs = data.pairs || [];
       this.overlayTitle.textContent = 'Remplacements';
       this.overlayText.textContent = `Remplacements utilisés : ${data.used}/${data.limit}. Votre joueur de carrière reste toujours sur le terrain. Les remplaçants doivent occuper le même poste.`;
-      this.pauseActionsEl.innerHTML = `${pairs.length ? pairs.map(({outgoing,incoming}) => button('substitute', `${safe(outgoing.name)} #${safe(outgoing.number)} → ${safe(incoming.name)} #${safe(incoming.number)} · ${safe(role[outgoing.role] || outgoing.role)}`)).join('') : '<p class="pause-empty">Aucun remplacement disponible pour le moment.</p>'}${back}`;
+      this.pauseActionsEl.innerHTML = `${pairs.length ? pairs.map(({outgoing,incoming}) => `<button type="button" class="pause-menu-button" data-pause-action="substitute" data-out-id="${safe(outgoing.id)}" data-in-id="${safe(incoming.id)}">${safe(outgoing.name)} #${safe(outgoing.number)} → ${safe(incoming.name)} #${safe(incoming.number)} · ${safe(role[outgoing.role] || outgoing.role)}</button>`).join('') : '<p class="pause-empty">Aucun remplacement disponible pour le moment.</p>'}${back}`;
     } else if (section === 'events') {
       const events = (this.pauseMatch?.events || []).slice().reverse().slice(0, 8);
       const names = { goal:'BUT', 'second-half-start':'COUP D’ENVOI', foul:'FAUTE', yellow_card:'CARTON JAUNE', red_card:'CARTON ROUGE', substitution:'REMPLACEMENT' };

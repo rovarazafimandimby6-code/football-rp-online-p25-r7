@@ -16,7 +16,9 @@ test('P27 remplacements : le banc est chargé depuis le roster réel et les chan
 
 test('P27 remplacements : le menu pause expose les paires compatibles et conserve le joueur personnel', () => {
   assert.match(ui, /button\('substitutions'/);
-  assert.match(ui, /data\.pairs\.map/);
+  assert.match(ui, /pairs\.map/);
+  assert.match(ui, /data-out-id/);
+  assert.match(ui, /data-in-id/);
   assert.match(ui, /onSubstitute/);
   assert.match(game, /controlled-player-protected/);
 });
