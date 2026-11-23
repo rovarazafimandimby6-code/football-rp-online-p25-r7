@@ -14,7 +14,7 @@ const normalizeCareerState = state => {
   if (!state || typeof state !== 'object' || Array.isArray(state)) return null;
   const contract = state.contract && typeof state.contract === 'object' && idOf(state.contract.clubId)
     && timestamp(state.contract.expiresAt) !== null && ['active','expired','terminated'].includes(state.contract.status)
-    ? { ...state.contract, clubId: idOf(state.contract.clubId), salary: nonNegativeInt(state.contract.salary), status: state.contract.status } : null;
+    ? { ...state.contract, clubId: idOf(state.contract.clubId), salary: nonNegativeInt(state.contract.salary), status: state.contract.status, lastSalaryPaidAt: timestamp(state.contract.lastSalaryPaidAt) !== null ? new Date(timestamp(state.contract.lastSalaryPaidAt)).toISOString() : (typeof state.contract.signedAt === 'string' ? state.contract.signedAt : null) } : null;
   const offers = Array.isArray(state.offers) ? state.offers.filter(item => item && typeof item === 'object' && idOf(item.id) && idOf(item.fromClubId) && ['pending','accepted','rejected','expired','cancelled'].includes(item.status)).map(item => ({ ...item, id: idOf(item.id), fromClubId: idOf(item.fromClubId), salary: nonNegativeInt(item.salary), fee: nonNegativeInt(item.fee) })) : [];
   return { wallet: nonNegativeInt(state.wallet, 500), clubId: state.clubId ? idOf(state.clubId) : null, contract, offers, history: Array.isArray(state.history) ? state.history.filter(item => item && typeof item === 'object').slice(-200) : [], processedMatchIds: Array.isArray(state.processedMatchIds) ? [...new Set(state.processedMatchIds.filter(id => typeof id === 'string' && id.trim()).map(id => id.slice(0, 64)))].slice(-2000) : [], nextOfferNumber: Math.max(1, nonNegativeInt(state.nextOfferNumber, 1)) };
 };
@@ -71,6 +71,27 @@ export class CareerManager {
     };
   }
 
+  processSalary(at = Date.now()) {
+    const now = timestamp(at);
+    if (now === null) return { ok: false, reason: 'invalid-date', paid: 0, periods: 0 };
+    const contract = this.contract;
+    if (!contract || contract.status !== 'active') return { ok: true, paid: 0, periods: 0 };
+    const signed = timestamp(contract.signedAt);
+    const expiry = timestamp(contract.expiresAt);
+    const lastPaid = timestamp(contract.lastSalaryPaidAt) ?? signed;
+    if (signed === null || expiry === null || lastPaid === null) return { ok: false, reason: 'invalid-contract', paid: 0, periods: 0 };
+    const payableUntil = Math.min(now, expiry);
+    const periods = Math.max(0, Math.floor((payableUntil - lastPaid) / (7 * 86400000)));
+    if (!periods) return { ok: true, paid: 0, periods: 0 };
+    const paid = Math.min(1_000_000_000 - this.wallet, nonNegativeInt(contract.salary) * periods);
+    const paidThrough = lastPaid + periods * 7 * 86400000;
+    this.wallet += paid;
+    this.contract = { ...contract, lastSalaryPaidAt: new Date(paidThrough).toISOString() };
+    if (paid > 0) this.history.push({ type: 'salary', salary: contract.salary, periods, amount: paid, date: new Date(paidThrough).toISOString(), paidAt: new Date(now).toISOString() });
+    this.persist();
+    return { ok: true, paid, periods, nextPaymentAt: new Date(paidThrough + 7 * 86400000).toISOString() };
+  }
+
   refreshOfferStatuses(at = Date.now()) {
     const now = timestamp(at);
     if (now === null) return { ok: false, reason: 'invalid-date', updated: 0 };
@@ -88,6 +109,7 @@ export class CareerManager {
   }
 
   refreshContractStatus(at = Date.now()) {
+    this.processSalary(at);
     const state = this.getContractStatus(at);
     if (!state || !state.expired || this.contract.status !== 'active') return state;
     const now = timestamp(at);
@@ -109,12 +131,14 @@ export class CareerManager {
       return { ok: false, reason: 'contract-expired' };
     }
     if (salary !== undefined && !Number.isFinite(Number(salary))) return { ok: false, reason: 'invalid-salary' };
+    this.processSalary(now);
     const days = Math.max(1, Math.min(3650, nonNegativeInt(durationDays, 180) || 180));
     const wage = salary === undefined ? this.contract.salary : nonNegativeInt(salary);
     this.contract = {
       ...this.contract,
       salary: wage,
       renewedAt: new Date(now).toISOString(),
+      lastSalaryPaidAt: new Date(now).toISOString(),
       expiresAt: new Date(now + days * 86400000).toISOString(),
       status: 'active'
     };
@@ -130,6 +154,7 @@ export class CareerManager {
       if (this.contract) this.refreshContractStatus(now);
       return { ok: false, reason: 'contract-expired' };
     }
+    this.processSalary(now);
     const previousClub = this.clubId;
     this.contract = { ...this.contract, status: 'terminated', terminatedAt: new Date(now).toISOString() };
     this.clubId = null;
@@ -151,7 +176,7 @@ export class CareerManager {
     const start = new Date(startMs);
     const expires = new Date(startMs + days * 86400000);
     this.clubId = club;
-    this.contract = { clubId: club, salary: wage, signedAt: start.toISOString(), expiresAt: expires.toISOString(), status: 'active' };
+    this.contract = { clubId: club, salary: wage, signedAt: start.toISOString(), lastSalaryPaidAt: start.toISOString(), expiresAt: expires.toISOString(), status: 'active' };
     this.history.push({ type: 'signing', clubId: club, date: start.toISOString(), salary: wage });
     this.persist();
     return { ok: true, contract: { ...this.contract } };
@@ -212,12 +237,14 @@ export class CareerManager {
     if (this.wallet < offer.fee) return { ok: false, reason: 'insufficient-funds' };
     const previousClub = this.clubId;
     const signedAt = new Date(now).toISOString();
+    this.processSalary(now);
     this.wallet -= offer.fee;
     this.clubId = offer.fromClubId;
     this.contract = {
       clubId: offer.fromClubId,
       salary: offer.salary,
       signedAt,
+      lastSalaryPaidAt: signedAt,
       expiresAt: new Date(now + 180 * 86400000).toISOString(),
       status: 'active'
     };

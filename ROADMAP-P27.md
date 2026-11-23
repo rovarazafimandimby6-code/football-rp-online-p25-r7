@@ -349,3 +349,14 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Afficher les erreurs de ressources et le plafond d'attribut sans modifier le profil.
 - [x] Ajouter les tests de consommation, d'insuffisance et de plafond.
 - [ ] Vérifier le centre d'entraînement et les valeurs sur Android.
+
+
+### Lot 28 — rémunération hebdomadaire des contrats (intégré)
+- [x] Calculer les échéances de salaire à partir de la date de signature ou de renouvellement.
+- [x] Verser automatiquement les périodes acquises lors de l'actualisation de la carrière.
+- [x] Limiter le dernier paiement à la date d'expiration du contrat.
+- [x] Éviter les doubles paiements après plusieurs ouvertures ou rechargements.
+- [x] Régler les périodes acquises avant un renouvellement, transfert ou une résiliation.
+- [x] Ajouter les versements au journal de carrière.
+- [x] Couvrir les échéances, la restauration et l'expiration par tests.
+- [ ] Vérifier le cycle de paie sur Android après plusieurs jours simulés.

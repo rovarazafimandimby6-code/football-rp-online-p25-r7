@@ -172,3 +172,39 @@ test('mercato: les offres sans échéance restent ouvertes et une date invalide 
   assert.equal(career.refreshOfferStatuses('2030-01-01T00:00:00Z').updated, 0);
   assert.equal(career.offers.get(offer.offer.id).status, 'pending');
 });
+
+
+test('salaire : verse les semaines dues une seule fois et conserve le prochain paiement après rechargement', () => {
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const career = new CareerManager({ storage, storageKey: 'weekly-salary-p27', initialCoins: 50 });
+  career.signContract({ clubId: 'club-a', salary: 120, durationDays: 90, signedAt: '2031-01-01T00:00:00Z' });
+  const first = career.processSalary('2031-01-15T00:00:00Z');
+  assert.equal(first.periods, 2);
+  assert.equal(first.paid, 240);
+  assert.equal(career.wallet, 290);
+  assert.equal(career.processSalary('2031-01-15T00:00:00Z').paid, 0);
+  const restored = new CareerManager({ storage, storageKey: 'weekly-salary-p27' });
+  assert.equal(restored.processSalary('2031-01-15T00:00:00Z').paid, 0);
+  assert.equal(restored.wallet, 290);
+});
+
+test('salaire : un contrat expiré ne verse que les échéances hebdomadaires atteintes avant son expiration', () => {
+  const career = new CareerManager({ initialCoins: 0 });
+  career.signContract({ clubId: 'club-a', salary: 200, durationDays: 10, signedAt: '2031-01-01T00:00:00Z' });
+  const status = career.refreshContractStatus('2031-01-15T00:00:00Z');
+  assert.equal(status.status, 'expired');
+  assert.equal(career.wallet, 200);
+  assert.equal(career.processSalary('2031-01-20T00:00:00Z').paid, 0);
+  assert.equal(career.history.filter(item => item.type === 'salary').length, 1);
+});
+
+test('salaire : le renouvellement règle les périodes acquises avant de repartir sur un nouveau cycle', () => {
+  const career = new CareerManager({ initialCoins: 0 });
+  career.signContract({ clubId: 'club-a', salary: 100, durationDays: 90, signedAt: '2031-01-01T00:00:00Z' });
+  const renewed = career.renewContract({ salary: 150, durationDays: 90, renewedAt: '2031-01-15T00:00:00Z' });
+  assert.equal(renewed.ok, true);
+  assert.equal(career.wallet, 200);
+  assert.equal(career.contract.lastSalaryPaidAt, '2031-01-15T00:00:00.000Z');
+  assert.equal(career.processSalary('2031-01-22T00:00:00Z').paid, 150);
+});
