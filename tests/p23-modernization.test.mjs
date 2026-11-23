@@ -47,7 +47,7 @@ test('P23 : le profil de rendu auto reste prudent sur appareils modestes', () =>
 });
 
 test('P27 : la version affichée et le manifeste passent en P27', () => {
-  assert.match(JSON.parse(pkg).version, /^26\.0\.0$/);
+  assert.match(JSON.parse(pkg).version, /^27\.0\.0$/);
   assert.match(html, /P27 · NOUVELLE GÉNÉRATION/);
   assert.match(html, /Football RP Online — P27/);
 });
