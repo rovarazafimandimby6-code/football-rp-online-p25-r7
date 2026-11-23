@@ -457,3 +457,12 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des tests sur le timing, la fatigue, le poste, le banc vide, la protection du joueur personnel et la limite.
 - Validation GitHub Actions : réussie sur le commit `a46863d9a26d03fa9837fe86ac036f0abd31ab4a` (tests automatisés et contrôle syntaxique réussis).
 - [ ] Vérifier les changements IA, la fatigue et le banc sur Android en conditions de match ; la CI ne remplace pas l'essai réel.
+
+
+### Lot 40 bis — niveau réellement moyen de l'IA de remplacement (en cours de validation)
+- [x] Réduire le déplacement du même avatar contrôlé par l'IA à une allure modérée, sans sprint automatique.
+- [x] Introduire une petite dérive de déplacement pour éviter une conduite robotique parfaite.
+- [x] Rendre les décisions de passe, de tir et de tacle probabilistes : l'IA peut hésiter ou ne pas choisir l'action optimale.
+- [x] Ajouter une imprécision contrôlée sur l'orientation des passes et des tirs.
+- [x] Garder les règles et actions fondamentales : se déplacer, conserver/jouer le ballon, passer, tirer et défendre.
+- [ ] Vérifier la difficulté ressentie en match réel et ajuster les probabilités après essais Android.
