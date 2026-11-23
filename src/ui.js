@@ -126,7 +126,8 @@ export class UIManager {
       this.activeNameEl.dataset.role = String(activePlayer.role || 'MID').toLowerCase();
       if (this.playerGuidanceEl) {
         const guidance = resolvePlayerGuidance(activePlayer, ball, match.phase);
-        if (this.playerGuidanceEl.textContent !== guidance.text) this.playerGuidanceEl.textContent = guidance.text;
+        const guidanceText = activePlayer.callTimer > 0 ? 'APPEL DE BALLE · ' + guidance.text : guidance.text;
+        if (this.playerGuidanceEl.textContent !== guidanceText) this.playerGuidanceEl.textContent = guidanceText;
         this.playerGuidanceEl.dataset.phase = guidance.phase;
         this.playerGuidanceEl.dataset.role = String(activePlayer.role || 'MID').toLowerCase();
       }

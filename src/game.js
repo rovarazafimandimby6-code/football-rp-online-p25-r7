@@ -32,6 +32,7 @@ export class Game {
     this.onlineHalftimeShown = false;
     this.playerMatchStats = this.createPlayerMatchStats();
     this.pendingControlledPass = null;
+    this.callForPassCooldown = 0;
     this.onMatchEnd = callbacks.onMatchEnd || null;
     this.onExitMatch = callbacks.onExitMatch || null;
 
@@ -466,6 +467,8 @@ export class Game {
     if (!p) return;
 
     if (p.actionCooldown > 0) p.actionCooldown = Math.max(0, p.actionCooldown - dt);
+    this.callForPassCooldown = Math.max(0, this.callForPassCooldown - dt);
+    p.callTimer = Math.max(0, (p.callTimer || 0) - dt);
     if (p.tackleTimer > 0) {
       p.tackleTimer = Math.max(0, p.tackleTimer - dt);
       p.pos.x += p.vel.x * dt;
@@ -505,6 +508,12 @@ export class Game {
     const pressReq = this.controls.consumePress();
     const shootReq = this.controls.consumeShoot();
     const lobReq = this.controls.consumeLob();
+    const callReq = this.controls.consumeCallForPass();
+    if (callReq && this.callForPassCooldown <= 0 && this.ball.owner !== p) {
+      p.callTimer = 3.2;
+      this.callForPassCooldown = 4.5;
+      this.ui.setStatus('APPEL DE BALLE — DEMANDE TRANSMISE');
+    }
 
     if (this.ball.owner === p) {
       if (shootReq) this.executeShoot(p, shootReq.power);
@@ -641,7 +650,8 @@ export class Game {
         this.ai.update(this.players, this.ball, dt, {
           aiPass: (p, target) => this.executePass(p, false, target),
           aiShoot: (p) => this.executeShoot(p, 0.82),
-          tryTackle: (p) => this.tryTackle(p)
+          tryTackle: (p) => this.tryTackle(p),
+          requestedReceiver: this.activePlayer?.callTimer > 0 ? this.activePlayer : null
         });
 
         this.physics.resolvePlayerCollisions(this.players);

@@ -261,8 +261,9 @@ export class TeamAI {
     if (ball.owner === p) {
       const opponents = players.filter((other) => other.team !== p.team && other.role !== 'GK');
       const teammates = players.filter((other) => other.team === p.team && other !== p);
+      const requestedReceiver = actions.requestedReceiver?.team === p.team ? actions.requestedReceiver : null;
       const passOptions = teammates
-        .map((mate) => ({ mate, score: scorePassOption(p, mate, opponents, attackDir) }))
+        .map((mate) => ({ mate, score: scorePassOption(p, mate, opponents, attackDir) + (mate === requestedReceiver ? 1.65 : 0) }))
         .filter((option) => Number.isFinite(option.score))
         .sort((a, b) => b.score - a.score);
       const bestPass = passOptions[0];
@@ -280,7 +281,8 @@ export class TeamAI {
       );
       const passBias = p.specialty === 'playmaker' ? 1.05 : p.specialty === 'runner' ? 0.32 : 0.55;
       const usefulPass = bestPass && bestPass.score > -0.25;
-      const passChance = (p.specialty === 'playmaker' ? 3.8 : passBias * 3.0)
+      const passChance = ((p.specialty === 'playmaker' ? 3.8 : passBias * 3.0)
+        + (bestPass?.mate === requestedReceiver ? 0.85 : 0))
         * decisionAttributeFactor(p, 'passing', 'vision');
       if (p.decisionTimer <= 0 && usefulPass && ((pressed && Math.random() < dt * passChance) || Math.random() < dt * passBias)) {
         p.decisionTimer = 0.5 + Math.random() * 0.35;

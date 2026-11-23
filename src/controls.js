@@ -15,6 +15,8 @@ export class ControlsManager {
     this.pendingPress = false;
     this.pendingShoot = null; // Bouton A : tir en attaque, tacle en défense.
     this.pendingLob = false;  // Bouton C : ballon lobé.
+    this.pendingCallForPass = false;
+    this.callPressAt = 0;
     this.role = null;
     this.actionLabels = { shoot: document.querySelector('#shoot small'), pass: document.querySelector('#pass small'), defend: document.querySelector('#defend small') };
     this.bindJoystick();
@@ -82,7 +84,13 @@ export class ControlsManager {
 
     const b = document.getElementById('pass');
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); b.setPointerCapture?.(e.pointerId); b.classList.add('active'); this.passPressAt = performance.now(); }, this.listenerOptions);
-    b.addEventListener('pointerup', (e) => { e.preventDefault(); b.classList.remove('active'); this.pendingPass = { lofted: false }; this.pendingPress = true; this.passPressAt = 0; }, this.listenerOptions);
+    b.addEventListener('pointerup', (e) => {
+      e.preventDefault(); b.classList.remove('active');
+      const heldFor = this.passPressAt ? performance.now() - this.passPressAt : 0;
+      if (heldFor >= 480) this.pendingCallForPass = true;
+      else { this.pendingPass = { lofted: false }; this.pendingPress = true; }
+      this.passPressAt = 0;
+    }, this.listenerOptions);
     b.addEventListener('pointercancel', () => { b.classList.remove('active'); this.passPressAt = 0; }, this.listenerOptions);
 
     bindTap('defend', () => { this.pendingLob = true; });
@@ -100,11 +108,12 @@ export class ControlsManager {
       if (e.code === 'KeyE') { this.pendingPass = { lofted: false }; this.pendingPress = true; }
       if (e.code === 'Space') { e.preventDefault(); this.pendingShoot = { power: 0.92 }; }
       if (e.code === 'KeyC') this.pendingLob = true;
+      if (e.code === 'KeyQ') this.pendingCallForPass = true;
     }, this.listenerOptions);
     window.addEventListener('keyup', (e) => this.keys.delete(e.code), this.listenerOptions);
     window.addEventListener('blur', () => {
       this.keys.clear(); this.sprintHeld = false; this.passPressAt = 0;
-      this.pendingPass = null; this.pendingPress = false; this.pendingShoot = null; this.pendingLob = false;
+      this.pendingPass = null; this.pendingPress = false; this.pendingShoot = null; this.pendingLob = false; this.pendingCallForPass = false; this.callPressAt = 0;
       this.joy.active = false; this.joy.pointerId = null; this.joy.x = 0; this.joy.z = 0;
       this.stickBase.classList.remove('on'); this.stickKnob.style.transform = 'translate(0px, 0px)';
       document.querySelectorAll('.control.active').forEach((el) => el.classList.remove('active'));
@@ -126,6 +135,7 @@ export class ControlsManager {
   consumePress() { const v = this.pendingPress; this.pendingPress = false; return v; }
   consumeShoot() { const v = this.pendingShoot; this.pendingShoot = null; return v; }
   consumeLob() { const v = this.pendingLob; this.pendingLob = false; return v; }
+  consumeCallForPass() { const v = this.pendingCallForPass; this.pendingCallForPass = false; return v; }
 
   dispose() {
     this.abortController.abort();

@@ -239,3 +239,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des tests sur les quatre rôles et les quatre états de possession.
 - Validation GitHub Actions : en attente sur le commit de ce lot.
 - Limite : ces conseils sont une première assistance de lecture du jeu. Les indications directionnelles spatiales, appels de balle et perception périphérique seront ajoutés après validation de leur cohérence avec la simulation solo et autoritaire en ligne.
+
+
+### Lot 16 — appel de balle et réponse mesurée des coéquipiers IA (intégré)
+- [x] Ajouter un appel de balle sans créer une commande tactile supplémentaire : maintien du bouton B pendant 480 ms, ou touche Q au clavier.
+- [x] Différencier clairement l'appui court (passe/pression) du maintien (appel), avec annulation propre des états d'entrée.
+- [x] Afficher brièvement l'appel actif dans le HUD et limiter les demandes par un délai de récupération.
+- [x] Donner une préférence pondérée au joueur demandeur dans l'évaluation des options de passe de ses coéquipiers IA.
+- [x] Conserver les critères de qualité de ligne de passe, d'espace, de rôle et d'attributs : l'appel ne force jamais une passe dangereuse.
+- Validation GitHub Actions : en attente sur le commit de ce lot.
+- Limite : le premier comportement s'applique aux coéquipiers IA contrôlés par la simulation locale ; la propagation explicite des appels dans le protocole de match en ligne reste à concevoir pour respecter l'autorité serveur.
