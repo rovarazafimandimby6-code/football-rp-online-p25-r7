@@ -24,7 +24,7 @@ test('P14: une offre peut être négociée puis transférée uniquement pendant 
   const start = '2026-11-01T00:00:00Z';
   const end = '2026-12-01T00:00:00Z';
   const career = new CareerManager({ initialCoins: 2000, transferWindows: [{ start, end }] });
-  career.signContract({ clubId: 'club-a', salary: 100, signedAt: '2026-10-01T00:00:00Z' });
+  career.signContract({ clubId: 'club-a', salary: 100, durationDays: 365, signedAt: '2026-10-01T00:00:00Z' });
   const offer = career.makeOffer({ fromClubId: 'club-b', salary: 140, fee: 500, expiresAt: '2026-11-30T00:00:00Z' });
   assert.equal(career.negotiate(offer.offer.id, { salary: 180, fee: 600 }, '2026-11-10T00:00:00Z').ok, true);
   const result = career.acceptOffer(offer.offer.id, '2026-11-15T00:00:00Z');
@@ -36,11 +36,11 @@ test('P14: une offre peut être négociée puis transférée uniquement pendant 
 
 test('P14: transfert refusé hors fenêtre et si le budget est insuffisant', () => {
   const career = new CareerManager({ initialCoins: 10, transferWindows: [{ start: '2026-11-01', end: '2026-11-30' }] });
-  career.signContract({ clubId: 'club-a', signedAt: '2026-10-01' });
+  career.signContract({ clubId: 'club-a', durationDays: 365, signedAt: '2026-10-01' });
   const offer = career.makeOffer({ fromClubId: 'club-b', fee: 100 });
   assert.equal(career.acceptOffer(offer.offer.id, '2026-12-02').reason, 'window-closed');
   const other = new CareerManager({ initialCoins: 10, transferWindows: [{ start: '2026-11-01', end: '2026-11-30' }] });
-  other.signContract({ clubId: 'club-a', signedAt: '2026-10-01' });
+  other.signContract({ clubId: 'club-a', durationDays: 365, signedAt: '2026-10-01' });
   const expensive = other.makeOffer({ fromClubId: 'club-b', fee: 100 });
   assert.equal(other.acceptOffer(expensive.offer.id, '2026-11-10').reason, 'insufficient-funds');
 });
