@@ -19,6 +19,7 @@ export function createDefaultProfile() {
     identity: { displayName: 'Nouveau joueur', number: 10, preferredFoot: 'right', role: 'MID' },
     appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic' },
     progression: { level: 1, experience: 0, coins: 250, trainingPoints: 0, attributes: { ...DEFAULT_ATTRIBUTES } },
+    appliedMatchIds: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -53,6 +54,7 @@ export function validateProfile(input) {
       trainingPoints: Math.round(clamp(progression.trainingPoints, 0, 100_000)),
       attributes: Object.fromEntries(Object.keys(DEFAULT_ATTRIBUTES).map(k => [k, Math.round(clamp(attrs[k] ?? DEFAULT_ATTRIBUTES[k], 1, 99))]))
     },
+    appliedMatchIds: Array.isArray(p.appliedMatchIds) ? [...new Set(p.appliedMatchIds.filter(id => typeof id === 'string' && id.trim()).map(id => id.slice(0, 64)))].slice(-2000) : [],
     createdAt: typeof p.createdAt === 'string' ? p.createdAt : base.createdAt,
     updatedAt: new Date().toISOString()
   };
@@ -84,7 +86,9 @@ export class PlayerProfileStore {
   updateAppearance(changes = {}) {
     return this.save({ ...this.profile, appearance: { ...this.profile.appearance, ...changes } });
   }
-  grantMatchRewards({ experience = 0, coins = 0 } = {}) {
+  grantMatchRewards({ experience = 0, coins = 0, matchId = null } = {}) {
+    const id = typeof matchId === 'string' ? matchId.trim().slice(0, 64) : '';
+    if (id && this.profile.appliedMatchIds.includes(id)) return { ok: true, duplicate: true, progression: this.profile.progression };
     const p = structuredClone(this.profile);
     p.progression.experience += Math.round(clamp(experience, 0, 100_000));
     p.progression.coins = Math.min(1_000_000_000, p.progression.coins + Math.round(clamp(coins, 0, 100_000)));
@@ -95,8 +99,9 @@ export class PlayerProfileStore {
       p.progression.coins = Math.min(1_000_000_000, p.progression.coins + 50);
     }
     if (p.progression.level >= 99) p.progression.experience = 0;
+    if (id) { p.appliedMatchIds.push(id); p.appliedMatchIds = p.appliedMatchIds.slice(-2000); }
     this.save(p);
-    return this.profile.progression;
+    return { ok: true, duplicate: false, progression: this.profile.progression };
   }
   addExperience(amount) {
     const p = structuredClone(this.profile);

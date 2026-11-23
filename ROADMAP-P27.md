@@ -368,3 +368,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ne pas annoncer de versement hebdomadaire qui tomberait après l'expiration du contrat.
 - [x] Garder cette consultation sans effet de bord : elle ne crédite pas le portefeuille.
 - [x] Ajouter des tests sur la veille de l'échéance, le jour d'échéance et les contrats trop courts.
+
+
+### Lot 30 — récupération des récompenses après interruption (intégré)
+- [x] Conserver un registre borné des récompenses exactes associées aux identifiants de match déjà traités.
+- [x] Lorsqu'un rapport est retraité après une interruption, restituer la récompense initiale au lieu de renvoyer zéro.
+- [x] Rendre l'application des récompenses au profil idempotente par identifiant de match.
+- [x] Permettre de réparer le cas où la carrière a été sauvegardée mais où le profil n'a pas encore reçu son XP et ses crédits.
+- [x] Ajouter des tests de reprise après interruption et de double application.
+- [ ] Vérifier la récupération après fermeture forcée et redémarrage sur Android.
+- Limite : cela fiabilise la reprise locale sur un appareil ; ce n'est pas une synchronisation de compte entre appareils. Une authentification persistante et une autorité serveur sur la carrière restent nécessaires avant toute synchronisation multi-appareils.
