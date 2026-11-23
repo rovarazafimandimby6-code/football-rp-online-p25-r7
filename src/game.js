@@ -206,7 +206,7 @@ export class Game {
       return { pairs: [], used: this.substitutionsUsed.blue, limit: this.substitutionLimit };
     }
     const outgoing = this.players.filter(player => player.team === 'blue' && !player.isControlled);
-    const pairs = outgoing.flatMap(player => this.benchPlayers
+    const pairs = outgoing.flatMap(player => this.benchPlayers.blue
       .filter(candidate => candidate.role === player.role)
       .map(candidate => ({ outgoing: player, incoming: candidate })));
     return { pairs, used: this.substitutionsUsed.blue, limit: this.substitutionLimit };
@@ -265,7 +265,7 @@ export class Game {
     this.benchPlayers.blue.splice(incomingIndex, 1);
     const attributes = { ...outgoing.attributes };
     const averageRating = Math.round(Object.values(attributes).reduce((sum, value) => sum + value, 0) / Math.max(1, Object.keys(attributes).length));
-    this.benchPlayers.push({
+    this.benchPlayers.blue.push({
       id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number,
       attributes, rating: averageRating, specialty: outgoing.specialty,
       preferredFoot: outgoing.preferredFoot
