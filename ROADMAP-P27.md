@@ -92,3 +92,14 @@
 - Validation GitHub Actions : run [P27 validation](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45159608964), **225/225 tests réussis**, contrôle de syntaxe réussi.
 
 Limite assumée : les salons créés sans affiche de clubs valide restent neutres ; aucune affiliation fictive n'est attribuée au joueur.
+
+### Lot 2 — identité visuelle des clubs sur le terrain (intégré)
+- [x] Transmettre la palette primaire/secondaire/accent de chaque club aux modèles 3D de tous les joueurs, sans écraser l'apparence personnelle du joueur humain contrôlé.
+- [x] Utiliser les palettes des clubs dans les maillots des joueurs de champ et les variantes prévues pour les gardiens.
+- [x] Remplacer les écussons génériques du tableau de match par les écussons SVG générés à partir de l'identité des clubs.
+- [x] Pour les salons en ligne, utiliser les identifiants de clubs renvoyés dans l'état serveur du salon afin que les joueurs voient la même affiche.
+- [x] Ajouter des styles responsives pour les écussons et les noms longs dans le tableau de score.
+- [x] Ajouter des tests de non-régression sur la transmission des palettes, l'affichage des écussons et la conservation de l'apparence du profil.
+- Validation GitHub Actions : run [P27 validation](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45160108472), **227/227 tests réussis**, contrôle de syntaxe réussi.
+
+Limite de validation : la suite automatisée confirme le câblage des palettes et des écussons ; le rendu réel sur téléphone Android et les performances GPU restent à vérifier sur appareil.
