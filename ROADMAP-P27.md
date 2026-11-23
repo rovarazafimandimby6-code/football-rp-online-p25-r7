@@ -167,3 +167,13 @@ Périmètre : IA locale de match. Le pressing principal et la couverture rapproc
 - Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
 
 Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas encore une base de contrats autoritaire synchronisée entre plusieurs joueurs.
+
+
+### Lot 9 — accueil carrière et shell d'interface paysage (intégré)
+- [x] Remplacer l'accueil promotionnel simple par un tableau de bord carrière : identité du joueur, niveau, club/contrat, statistiques de saison et dernière performance réellement enregistrée.
+- [x] Ajouter des accès directs vers joueur, clubs/effectifs, compétitions et mercato, en plus des entrées match local et multijoueur.
+- [x] Recomposer le menu principal en navigation horizontale et panneaux fixes adaptés au format paysage.
+- [x] Verrouiller l'expérience menu en paysage, avec écran d'orientation dédié en portrait et sans défilement vertical global.
+- [x] Mettre à jour les métadonnées et libellés de version du shell vers P27.
+- Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
+- Limite : ce lot refond le shell et l'accueil. Les pages secondaires et la présentation détaillée du HUD restent à harmoniser dans les lots UI suivants ; essai visuel Android réel requis.

@@ -146,18 +146,54 @@ function renderPage(page = 'home') {
   const subtitle = document.getElementById('menu-page-subtitle');
   document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page));
   if (page === 'home') {
-    title.textContent = 'Votre carrière commence ici';
-    subtitle.textContent = 'Un joueur. Un club. Une histoire à écrire.';
+    const profile = profileStore.profile;
+    const season = seasonStats.snapshot().totals;
+    const latestMatch = seasonStats.snapshot().matches.slice(-1)[0];
+    const careerClub = career.clubId ? clubs.getClub(career.clubId) : null;
+    const contractStatus = career.getContractStatus?.();
+    const contractLabel = contractStatus?.active ? `Contrat actif · ${contractStatus.daysRemaining} j` : 'Agent libre';
+    const clubLabel = careerClub?.name || 'Sans club';
+    title.textContent = 'Tableau de bord';
+    subtitle.textContent = `Bienvenue, ${profile.identity.displayName}. Votre carrière se construit ici.`;
     content.innerHTML = `
-      <div class="home-feature">
-        <div class="feature-copy"><span class="eyebrow">FOOTBALL RP ONLINE</span><h2>Entrez dans<br>le jeu.</h2><p>Rejoignez le terrain, développez votre footballeur et construisez votre parcours.</p><button class="primary-cta" data-action="choose-match">MATCH LOCAL <span>→</span></button><button class="secondary-cta" data-action="online-menu">MULTIJOUEUR EN LIGNE</button></div>
-        <div class="feature-ball" aria-hidden="true">⚽</div>
-        <div class="feature-foot">MODE DE DÉMONSTRATION · 5 CONTRE 5 · IA LOCALE</div>
-      </div>
-      <div class="quick-grid">
-        <button class="quick-card" data-page="player"><span>01</span><b>Mon joueur</b><small>Profil et progression</small></button>
-        <button class="quick-card" data-page="clubs"><span>02</span><b>Les clubs</b><small>Identités et effectifs</small></button>
-        <button class="quick-card" data-page="competitions"><span>03</span><b>Compétitions</b><small>Classement local</small></button>
+      <div class="home-dashboard">
+        <section class="home-feature">
+          <div class="feature-copy">
+            <span class="eyebrow">FOOTBALL RP ONLINE · SAISON PERSONNELLE</span>
+            <h2>Écrivez votre<br>histoire.</h2>
+            <p>Entrez sur le terrain, imposez votre style et faites progresser votre footballeur match après match.</p>
+            <div class="home-primary-actions">
+              <button class="primary-cta" data-action="choose-match">JOUER UN MATCH <span>→</span></button>
+              <button class="secondary-cta" data-action="online-menu">MODE EN LIGNE</button>
+            </div>
+          </div>
+          <div class="feature-ball" aria-hidden="true">⚽</div>
+          <div class="feature-foot">5 CONTRE 5 · CONTRÔLE INDIVIDUEL · IA LOCALE</div>
+        </section>
+        <aside class="home-side-panel">
+          <div class="home-player-heading">
+            <span class="user-avatar">${escapeHTML(profile.identity.number)}</span>
+            <div><small>VOTRE FOOTBALLEUR</small><b>${escapeHTML(profile.identity.displayName)}</b><span>NIVEAU ${profile.progression.level} · ${escapeHTML(profile.identity.role)}</span></div>
+          </div>
+          <div class="home-career-row"><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div>
+          <div class="home-career-row"><span>CONTRAT</span><b>${escapeHTML(contractLabel)}</b></div>
+          <div class="home-stat-grid">
+            <div><b>${season.matches}</b><span>MATCHS</span></div>
+            <div><b>${season.goals}</b><span>BUTS</span></div>
+            <div><b>${season.shots}</b><span>TIRS</span></div>
+            <div><b>${season.tackles + season.interceptions}</b><span>RÉCUPÉRATIONS</span></div>
+          </div>
+          <div class="home-last-match">
+            <span class="eyebrow">DERNIÈRE PERFORMANCE</span>
+            ${latestMatch ? `<b>${latestMatch.rating.toFixed(1)} <small>/ 10</small></b><span>${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · ${latestMatch.goals} but(s)</span>` : '<b class="home-no-match">Aucun match joué</b><span>Votre première performance apparaîtra ici.</span>'}
+          </div>
+        </aside>
+        <nav class="quick-grid home-shortcuts" aria-label="Accès rapides">
+          <button class="quick-card" data-page="player"><span>01</span><b>Mon joueur</b><small>Profil et progression</small></button>
+          <button class="quick-card" data-page="clubs"><span>02</span><b>Clubs & effectifs</b><small>Équipes et joueurs</small></button>
+          <button class="quick-card" data-page="competitions"><span>03</span><b>Compétitions</b><small>Calendrier et saison</small></button>
+          <button class="quick-card" data-page="mercato"><span>04</span><b>Carrière & mercato</b><small>Contrats et transferts</small></button>
+        </nav>
       </div>`;
   } else if (page === 'player') {
     const p = profileStore.profile;

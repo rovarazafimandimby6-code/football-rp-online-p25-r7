@@ -51,3 +51,23 @@ test('P12.1: la liste des clubs et la pause utilisent le composant d’écusson 
   assert.match(ui, /renderClubCrest/);
   assert.doesNotMatch(ui, /pause-crest blue/);
 });
+
+
+test('P27 UI: accueil carrière présente les statistiques réelles et les accès rapides', () => {
+  assert.match(main, /home-dashboard/);
+  assert.match(main, /seasonStats\.snapshot\(\)\.totals/);
+  assert.match(main, /data-action="choose-match"/);
+  assert.match(main, /data-action="online-menu"/);
+  assert.match(main, /data-page="mercato"/);
+});
+
+test('P27 UI: shell principal verrouillé en paysage sans défilement vertical', () => {
+  assert.match(html, /id="menu-orientation"/);
+  assert.match(cssText(), /#main-menu[\s\S]*?overflow:\s*hidden/);
+  assert.match(cssText(), /grid-template-rows:\s*48px minmax\(0, 1fr\)/);
+  assert.match(cssText(), /@media \(orientation: portrait\)[\s\S]*?#menu-orientation \{ display: flex/);
+});
+
+function cssText() {
+  return readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+}

@@ -983,3 +983,222 @@ html, body {
 #board .club-crest-svg svg { display: block; width: 100%; height: 100%; }
 #board .team { min-width: 0; }
 #board .team b { max-width: clamp(54px, 12vw, 150px); overflow: hidden; text-overflow: ellipsis; }
+
+
+/* P27 — refonte du shell principal : paysage fixe, navigation horizontale et dashboard carrière */
+#main-menu {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: #07120f;
+}
+.menu-topbar {
+  flex: 0 0 54px;
+  height: 54px;
+  padding-inline: clamp(14px, 2.6vw, 38px);
+}
+.menu-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  grid-template-columns: 1fr;
+  grid-template-rows: 48px minmax(0, 1fr);
+  gap: 9px;
+  padding: 10px clamp(14px, 2.6vw, 38px) 8px;
+  overflow: hidden;
+}
+.menu-sidebar {
+  min-width: 0;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 5px;
+  padding: 0 0 7px;
+  border: 0;
+  border-bottom: 1px solid rgba(255,255,255,.11);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.menu-sidebar::-webkit-scrollbar { display: none; }
+.menu-section-label, .sidebar-spacer { display: none; }
+.menu-sidebar button {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 82px;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.menu-sidebar button span { width: auto; font-size: 14px; }
+.menu-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 2px 0 0;
+  overflow: hidden;
+}
+.menu-heading {
+  flex: 0 0 auto;
+  min-height: 52px;
+  margin-bottom: 10px;
+}
+.menu-heading h1 { margin: 4px 0; font-size: clamp(20px, 2.5vw, 30px); }
+.menu-heading p { font-size: 10px; }
+#menu-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.menu-footer {
+  flex: 0 0 24px;
+  min-height: 24px;
+  padding-block: 6px;
+}
+.home-dashboard {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1.45fr) minmax(230px, .82fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 11px;
+}
+.home-feature {
+  min-height: 0;
+  height: 100%;
+  padding: clamp(18px, 3vw, 34px);
+  border-radius: 14px;
+  background:
+    linear-gradient(100deg, rgba(4,16,11,.97), rgba(7,37,23,.82) 57%, rgba(13,61,37,.48)),
+    radial-gradient(ellipse at 80% 40%, rgba(175,220,177,.22), transparent 42%);
+}
+.home-feature:before {
+  content: "";
+  position: absolute;
+  inset: 12% 5% 8% 42%;
+  border: 1px solid rgba(222,246,225,.13);
+  border-radius: 50%;
+  transform: rotate(-17deg);
+  box-shadow: 0 0 0 18px rgba(255,255,255,.018), 0 0 0 48px rgba(255,255,255,.012);
+  pointer-events: none;
+}
+.feature-copy { max-width: 470px; }
+.feature-copy h2 {
+  margin: 8px 0;
+  font-size: clamp(34px, 5.1vw, 62px);
+  letter-spacing: -2px;
+}
+.feature-copy p { max-width: 350px; margin: 8px 0; font-size: 11px; }
+.feature-ball { right: 8%; font-size: clamp(90px, 13vw, 160px); opacity: .13; }
+.home-primary-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.home-primary-actions .primary-cta, .home-primary-actions .secondary-cta {
+  min-height: 38px;
+  margin-top: 9px;
+  padding-inline: 15px;
+  gap: 12px;
+  font-size: 9px;
+}
+.home-primary-actions .secondary-cta {
+  border-color: rgba(208,232,215,.3);
+  background: rgba(255,255,255,.07);
+  color: #e8f1eb;
+  box-shadow: none;
+}
+.feature-foot { right: 15px; bottom: 12px; font-size: 7px; }
+.home-side-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 9px;
+  padding: clamp(12px, 1.8vw, 19px);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 13px;
+  background: linear-gradient(155deg, rgba(13,37,26,.94), rgba(5,17,12,.96));
+}
+.home-player-heading { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,.09); }
+.home-player-heading .user-avatar { flex: 0 0 38px; width: 38px; height: 38px; }
+.home-player-heading div { min-width: 0; display: grid; gap: 3px; }
+.home-player-heading small, .home-player-heading span { color: #8fa998; font-size: 7px; font-weight: 850; letter-spacing: .8px; }
+.home-player-heading b { overflow: hidden; color: #f4f8f5; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.home-career-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 8px; }
+.home-career-row span { color: #809b8a; font-weight: 900; letter-spacing: .8px; }
+.home-career-row b { overflow: hidden; color: #dce9df; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.home-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 5px; margin-top: auto; }
+.home-stat-grid > div { display: grid; gap: 4px; min-width: 0; padding: 9px 5px; border: 1px solid rgba(255,255,255,.08); border-radius: 7px; background: rgba(255,255,255,.035); text-align: center; }
+.home-stat-grid b { color: #f0d27c; font-size: clamp(15px, 2vw, 21px); font-variant-numeric: tabular-nums; }
+.home-stat-grid span { color: #8ea695; font-size: 6px; font-weight: 900; letter-spacing: .45px; }
+.home-last-match { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 9px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
+.home-last-match .eyebrow { grid-column: 1/-1; font-size: 7px; }
+.home-last-match > b { color: #e8cf83; font-size: 20px; }
+.home-last-match > b small { color: #879f90; font-size: 9px; }
+.home-last-match > span:last-child { color: #a4b8aa; font-size: 8px; }
+.home-last-match .home-no-match { font-size: 11px; color: #d9e5dc; }
+.home-shortcuts { grid-column: 1/-1; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin: 0; }
+.home-shortcuts .quick-card {
+  min-height: 66px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: rgba(8,25,17,.82);
+}
+.home-shortcuts .quick-card b { margin-top: 12px; font-size: 10px; }
+.home-shortcuts .quick-card small { margin-top: 3px; font-size: 8px; }
+.home-shortcuts .quick-card span { top: 9px; right: 10px; font-size: 8px; }
+#menu-orientation {
+  display: none;
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: #07120f;
+  color: #f4f7f5;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 850;
+}
+@media (orientation: portrait) {
+  #main-menu, #game-shell { display: none !important; }
+  #menu-orientation { display: flex; }
+}
+@media (orientation: landscape) and (max-height: 460px) {
+  .menu-topbar { flex-basis: 46px; height: 46px; }
+  .menu-layout { grid-template-rows: 42px minmax(0,1fr); gap: 6px; padding-top: 6px; }
+  .menu-heading { min-height: 42px; margin-bottom: 6px; }
+  .menu-heading h1 { font-size: 20px; }
+  .home-dashboard { gap: 7px; }
+  .home-side-panel { gap: 5px; padding: 8px; }
+  .home-stat-grid > div { padding: 5px 3px; }
+  .home-last-match { padding-top: 5px; }
+  .home-shortcuts .quick-card { min-height: 54px; }
+  .menu-footer { flex-basis: 20px; min-height: 20px; padding-block: 4px; }
+}
+@media (orientation: landscape) and (max-width: 760px) {
+  .menu-layout { padding-inline: 10px; }
+  .menu-sidebar button { min-width: 70px; padding-inline: 8px; font-size: 8px; }
+  .menu-sidebar button span { font-size: 12px; }
+  .menu-heading h1 { font-size: 19px; }
+  .menu-heading p { max-width: 48vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu-user { padding: 4px 7px; }
+  .user-avatar { width: 29px; height: 29px; }
+  .home-dashboard { grid-template-columns: minmax(0,1.2fr) minmax(190px,.8fr); gap: 7px; }
+  .home-feature { padding: 14px; }
+  .feature-copy h2 { font-size: clamp(30px, 5vw, 43px); }
+  .feature-copy p { max-width: 250px; font-size: 9px; }
+  .home-primary-actions .primary-cta, .home-primary-actions .secondary-cta { min-height: 32px; padding-inline: 9px; font-size: 7px; }
+  .home-side-panel { padding: 9px; gap: 6px; }
+  .home-player-heading .user-avatar { width: 30px; height: 30px; flex-basis: 30px; }
+  .home-player-heading b { font-size: 10px; }
+  .home-stat-grid > div { padding: 6px 2px; }
+  .home-stat-grid b { font-size: 15px; }
+  .home-stat-grid span { font-size: 5px; }
+  .home-shortcuts .quick-card { min-height: 55px; padding: 6px 8px; }
+  .home-shortcuts .quick-card b { font-size: 8px; }
+  .home-shortcuts .quick-card small { font-size: 6px; }
+}
