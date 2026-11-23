@@ -232,3 +232,35 @@ test('contrats: aucune échéance salariale n’est annoncée après la fin du c
   assert.equal(status.nextPaymentAt, null);
   assert.equal(status.daysUntilPayment, null);
 });
+
+test('clubs: numéros de maillot uniques et attribution automatique à l’inscription', () => {
+  const clubs = new ClubManager([{ id: 'shirts', name: 'Shirts', control: 'open', capacity: 5 }], null, 'shirt-test');
+  const first = clubs.addPlayer('shirts', { id: 'shirt-a', name: 'A', number: 9 });
+  const second = clubs.addPlayer('shirts', { id: 'shirt-b', name: 'B', number: 9 });
+  assert.equal(first.number, 9);
+  assert.equal(second.number, 1);
+  assert.equal(clubs.getClub('shirts').roster.filter(player => player.number === 9).length, 1);
+});
+
+test('clubs: modification refuse un numéro déjà porté par un coéquipier', () => {
+  const clubs = new ClubManager([{ id: 'shirts', name: 'Shirts', control: 'open', capacity: 5 }], null, 'shirt-edit-test');
+  clubs.addPlayer('shirts', { id: 'shirt-a', number: 9 });
+  clubs.addPlayer('shirts', { id: 'shirt-b', number: 10 });
+  assert.equal(clubs.updatePlayer('shirts', { id: 'shirt-b', number: 9 }).reason, 'shirt-number-taken');
+  assert.equal(clubs.updatePlayer('shirts', { id: 'shirt-b', number: 11 }).ok, true);
+});
+
+test('clubs: un transfert réattribue un numéro si celui-ci est déjà occupé dans le club cible', () => {
+  const clubs = new ClubManager([
+    { id: 'source', name: 'Source', control: 'open', capacity: 5 },
+    { id: 'target', name: 'Target', control: 'open', capacity: 5 }
+  ], null, 'shirt-transfer-test');
+  clubs.addPlayer('source', { id: 'moving-player', number: 7 });
+  clubs.addPlayer('target', { id: 'target-player', number: 7 });
+  const transfer = clubs.transferPlayer('source', 'target', 'moving-player');
+  assert.equal(transfer.ok, true);
+  assert.equal(transfer.number, 1);
+  assert.equal(clubs.getClub('source').roster.some(player => player.id === 'moving-player'), false);
+  assert.equal(clubs.getClub('target').roster.filter(player => player.number === 7).length, 1);
+  assert.equal(clubs.getClub('target').roster.filter(player => player.number === 1).length, 1);
+});

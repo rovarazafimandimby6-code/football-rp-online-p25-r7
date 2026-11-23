@@ -403,3 +403,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des tests sur signature, transfert, libération, mise à jour du profil et capacité d'effectif.
 - Limite : cohérence des effectifs locaux de la carrière personnelle ; aucune connexion Google, synchronisation cloud ou autorité économique multijoueur n'est ajoutée dans ce lot.
 
+
+### Lot 34 — intégrité des numéros de maillot et des transferts d'effectif (intégré)
+- [x] Empêcher deux joueurs d'un même club de porter le même numéro.
+- [x] Attribuer automatiquement un numéro libre lors de l'inscription si le numéro demandé est déjà occupé.
+- [x] Refuser une modification qui créerait un doublon de numéro.
+- [x] Réattribuer automatiquement un numéro libre lors d'un transfert si le numéro du joueur est déjà utilisé dans le club cible.
+- [x] Préserver l'effectif source si aucun numéro ne peut être attribué dans la destination.
+- [x] Ajouter des tests d'inscription, de modification et de transfert.
+- Limite : règles locales de numérotation d'effectif ; pas de synchronisation cloud ni d'authentification Google.
+

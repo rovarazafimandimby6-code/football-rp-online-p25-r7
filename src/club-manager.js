@@ -29,6 +29,18 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
   };
 };
 
+
+const availableShirtNumber = (club, preferred, playerId = null) => {
+  const occupied = new Set(club.roster
+    .filter(player => player.id !== playerId)
+    .map(player => Number(player.number))
+    .filter(number => Number.isInteger(number) && number >= 1 && number <= 99));
+  const requested = Number(preferred);
+  if (Number.isInteger(requested) && requested >= 1 && requested <= 99 && !occupied.has(requested)) return requested;
+  for (let number = 1; number <= 99; number++) if (!occupied.has(number)) return number;
+  return null;
+};
+
 const COMPETITION_KEY = 'football-rp-online.competition-season.v1';
 
 const club = (id, name, city, country, countryCode, division, rating, control, colors, stadium, reputation, budget) => ({
@@ -163,8 +175,11 @@ export class ClubManager {
     if (!club || !id) return { ok: false, reason: 'invalid-player' };
     if ([...this.clubs.values()].some(item => item.roster.some(existing => existing.id === id))) return { ok: false, reason: 'already-registered' };
     if (club.roster.length >= club.capacity) return { ok: false, reason: 'roster-full' };
-    club.roster.push(normalizeRosterPlayer({ ...player, id }, club, club.roster.length));
-    this.saveSeason(); return { ok: true, rosterSize: club.roster.length };
+    const normalized = normalizeRosterPlayer({ ...player, id }, club, club.roster.length);
+    normalized.number = availableShirtNumber(club, normalized.number);
+    if (!normalized.number) return { ok: false, reason: 'shirt-numbers-full' };
+    club.roster.push(normalized);
+    this.saveSeason(); return { ok: true, rosterSize: club.roster.length, number: normalized.number };
   }
 
   updatePlayer(clubId, player) {
@@ -174,6 +189,8 @@ export class ClubManager {
     if (index < 0) return { ok: false, reason: 'player-not-found' };
     if ([...this.clubs.values()].some(other => other.id !== club.id && other.roster.some(existing => existing.id === id))) return { ok: false, reason: 'duplicate-player' };
     const updated = normalizeRosterPlayer({ ...club.roster[index], ...player, id }, club, index);
+    const requestedNumber = Number(updated.number);
+    if (club.roster.some(existing => existing.id !== id && existing.number === requestedNumber)) return { ok: false, reason: 'shirt-number-taken' };
     if (JSON.stringify(club.roster[index]) !== JSON.stringify(updated)) {
       club.roster[index] = updated;
       this.saveSeason();
@@ -191,10 +208,13 @@ export class ClubManager {
     if ([...this.clubs.values()].some(other => other.id !== from.id && other.roster.some(player => player.id === id))) return { ok: false, reason: 'duplicate-player' };
     if (to.roster.some(player => player.id === id)) return { ok: false, reason: 'already-registered' };
     if (to.roster.length >= to.capacity) return { ok: false, reason: 'roster-full' };
-    const [player] = from.roster.splice(sourceIndex, 1);
-    to.roster.push({ ...player, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
+    const player = from.roster[sourceIndex];
+    const assignedNumber = availableShirtNumber(to, player.number);
+    if (!assignedNumber) return { ok: false, reason: 'shirt-numbers-full' };
+    from.roster.splice(sourceIndex, 1);
+    to.roster.push({ ...player, number: assignedNumber, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
     this.saveSeason();
-    return { ok: true, fromRosterSize: from.roster.length, toRosterSize: to.roster.length };
+    return { ok: true, fromRosterSize: from.roster.length, toRosterSize: to.roster.length, number: assignedNumber };
   }
 
   removePlayer(clubId, playerId) {
