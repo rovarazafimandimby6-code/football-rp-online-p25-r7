@@ -214,7 +214,7 @@ test('contrats: expose la prochaine échéance salariale sans modifier le portef
   const career = new CareerManager();
   const signedAt = '2030-01-01T12:00:00.000Z';
   career.signContract({ clubId: 'club-a', salary: 75, durationDays: 30, signedAt });
-  const beforeDue = career.getSalaryStatus('2030-01-07T11:59:59.000Z');
+  const beforeDue = career.getSalaryStatus('2030-01-07T23:59:59.000Z');
   assert.equal(beforeDue.salary, 75);
   assert.equal(beforeDue.nextPaymentAt, '2030-01-08T12:00:00.000Z');
   assert.equal(beforeDue.daysUntilPayment, 1);
