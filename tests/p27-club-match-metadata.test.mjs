@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { JsonResultStore } from '../server/result-store.js';
 import { RoomManager } from '../server/room-manager.js';
 
@@ -50,4 +51,12 @@ test('P27: les feuilles de résultats restent rétrocompatibles sans identité d
   room.elapsedMs = 300000;
   const result = manager.finalizeResult(room);
   assert.deepEqual(result.teams, { blue: null, red: null });
+});
+
+test('P27: la création de match utilise le club de carrière et affiche les noms archivés', async () => {
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /const homeClub = career\.clubId \? clubs\.getClub\(career\.clubId\) : null/);
+  assert.match(main, /const clubMatch = homeClub && awayClub \? \{ blueClubId: homeClub\.id, redClubId: awayClub\.id \} : \{\}/);
+  assert.match(main, /result\.teams\?\.\[key\]\?\.name/);
+  assert.match(main, /result\.teams\?\.\[player\.team\]\?\.name/);
 });
