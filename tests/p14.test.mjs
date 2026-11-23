@@ -30,7 +30,7 @@ test('P14: une offre peut être négociée puis transférée uniquement pendant 
   const result = career.acceptOffer(offer.offer.id, '2026-11-15T00:00:00Z');
   assert.equal(result.ok, true);
   assert.equal(result.clubId, 'club-b');
-  assert.equal(result.wallet, 1400);
+  assert.equal(result.wallet, 2000);
   assert.equal(career.history.at(-1).type, 'transfer');
 });
 

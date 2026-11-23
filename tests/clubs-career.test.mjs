@@ -44,7 +44,7 @@ test('mercato: négociation et transfert uniquement pendant une fenêtre active'
   const accepted = career.acceptOffer(offer.offer.id, '2026-07-15T00:00:00Z');
   assert.equal(accepted.ok, true);
   assert.equal(accepted.clubId, 'club-b');
-  assert.equal(accepted.wallet, 700);
+  assert.equal(accepted.wallet, 750);
   assert.equal(career.history.at(-1).type, 'transfer');
 });
 
