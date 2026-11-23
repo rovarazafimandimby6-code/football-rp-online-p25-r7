@@ -455,10 +455,35 @@ menu.addEventListener('click', event => {
     joinOnlineRoom(id);
   } else if (action === 'choose-match') {
     const options = clubs.listClubs().map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('');
-    document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MODE DISPONIBLE · MATCH RAPIDE</span><h2>Préparez votre entrée sur le terrain</h2><p>Match local de démonstration en 5 contre 5 face à l'intelligence artificielle. Chaque commande reste limitée à votre propre footballeur.</p><div class="matchup-selectors"><label>Équipe domicile<select id="match-home">${options}</select></label><div class="versus-mark">VS</div><label>Équipe extérieure<select id="match-away">${options}</select></label></div><div class="lineup-presentation"><div class="lineup-team home"><span class="eyebrow">DOMICILE · 5 JOUEURS</span><div class="lineup-dots">${[1,2,3,4,5].map((n)=>`<i>${n}</i>`).join('')}</div><b id="home-preview-name">Antananarivo FC</b></div><div class="lineup-team away"><span class="eyebrow">EXTÉRIEUR · 5 JOUEURS</span><div class="lineup-dots">${[1,2,3,4,5].map((n)=>`<i>${n}</i>`).join('')}</div><b id="away-preview-name">Toamasina United</b></div></div><div class="mode-details"><span>5 contre 5</span><span>${preferences.duration} minutes</span><span>Présentation des équipes</span><span>IA locale</span></div><button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button></div>`;
+    document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MODE DISPONIBLE · MATCH RAPIDE</span><h2>Préparez votre entrée sur le terrain</h2><p>Match local de démonstration en 5 contre 5 face à l'intelligence artificielle. Chaque commande reste limitée à votre propre footballeur.</p><div class="matchup-selectors"><label>Équipe domicile<select id="match-home">${options}</select></label><div class="versus-mark">VS</div><label>Équipe extérieure<select id="match-away">${options}</select></label></div><div class="match-centre">
+      <div class="match-centre-heading"><span class="eyebrow">AVANT-MATCH · CENTRE DE PRÉPARATION</span><b>CHOISISSEZ VOTRE AFFiche</b></div>
+      <div class="matchup-selectors"><label>ÉQUIPE DOMICILE<select id="match-home">${options}</select></label><div class="versus-mark">VS</div><label>ÉQUIPE EXTÉRIEURE<select id="match-away">${options}</select></label></div>
+      <div class="match-preview-grid">
+        <article class="match-preview-card home"><div id="home-match-identity" class="match-preview-identity"></div><div class="match-preview-stadium" id="home-match-stadium"></div><div class="match-preview-rating"><span>NOTE GLOBALE</span><b id="home-match-rating">—</b><small id="home-match-squad">— joueurs</small></div><div class="match-preview-stars" id="home-match-stars"></div></article>
+        <div class="match-pitch-preview" aria-label="Schéma tactique cinq contre cinq"><div class="pitch-half-line"></div><div class="pitch-circle"></div><div class="pitch-box top"></div><div class="pitch-box bottom"></div><div class="pitch-formation-label">2 — 2</div><div class="pitch-dots home-dots"><i></i><i></i><i></i><i></i><i></i></div><div class="pitch-dots away-dots"><i></i><i></i><i></i><i></i><i></i></div></div>
+        <article class="match-preview-card away"><div id="away-match-identity" class="match-preview-identity"></div><div class="match-preview-stadium" id="away-match-stadium"></div><div class="match-preview-rating"><span>NOTE GLOBALE</span><b id="away-match-rating">—</b><small id="away-match-squad">— joueurs</small></div><div class="match-preview-stars" id="away-match-stars"></div></article>
+      </div>
+      <div class="match-centre-foot"><span>FORMAT 5 CONTRE 5</span><span>CONTRÔLE INDIVIDUEL</span><span>IA LOCALE</span><span>${preferences.duration} MINUTES</span></div>
+      <button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button>
+    </div><div class="mode-details"><span>5 contre 5</span><span>${preferences.duration} minutes</span><span>Présentation des équipes</span><span>IA locale</span></div><button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button></div>`;
     const homeSelect=document.getElementById('match-home'), awaySelect=document.getElementById('match-away');
     homeSelect.value=selectedMatchup.home; awaySelect.value=selectedMatchup.away;
-    const updateMatchup=()=>{ if(homeSelect.value===awaySelect.value){awaySelect.value=clubs.listClubs().find(c=>c.id!==homeSelect.value)?.id||awaySelect.value;} selectedMatchup={home:homeSelect.value,away:awaySelect.value}; document.getElementById('home-preview-name').textContent=clubs.getClub(selectedMatchup.home)?.name||''; document.getElementById('away-preview-name').textContent=clubs.getClub(selectedMatchup.away)?.name||''; };
+    const updateMatchup=()=>{
+      if(homeSelect.value===awaySelect.value) awaySelect.value=clubs.listClubs().find(c=>c.id!==homeSelect.value)?.id||awaySelect.value;
+      selectedMatchup={home:homeSelect.value,away:awaySelect.value};
+      const renderSide=(side,club)=>{
+        if(!club) return;
+        const average=club.roster.length?Math.round(club.roster.reduce((sum,p)=>sum+p.rating,0)/club.roster.length):0;
+        const leaders=club.roster.slice().sort((a,b)=>b.rating-a.rating).slice(0,3);
+        document.getElementById(side+'-match-identity').innerHTML=`${crest(club)}<div><b>${escapeHTML(club.name)}</b><small>${escapeHTML(club.city)} · ${escapeHTML(club.country)}</small></div>`;
+        document.getElementById(side+'-match-stadium').textContent=club.stadium;
+        document.getElementById(side+'-match-rating').textContent=average||club.rating;
+        document.getElementById(side+'-match-squad').textContent=club.roster.length+' joueurs · Niveau club '+club.rating;
+        document.getElementById(side+'-match-stars').innerHTML=leaders.map((p,i)=>`<span><i>${i+1}</i><b>${escapeHTML(p.name)}</b><small>${p.role} · ${p.rating}</small></span>`).join('');
+      };
+      renderSide('home',clubs.getClub(selectedMatchup.home));
+      renderSide('away',clubs.getClub(selectedMatchup.away));
+    };
     homeSelect.addEventListener('change',updateMatchup); awaySelect.addEventListener('change',updateMatchup); updateMatchup();
   } else if (action === 'show-lineup') {
     const content=document.getElementById('menu-content');

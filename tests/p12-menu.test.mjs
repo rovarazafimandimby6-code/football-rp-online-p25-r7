@@ -110,3 +110,15 @@ test('P27 UI: les pages secondaires disposent d’un panneau interne navigable e
   assert.match(css, /\.club-discovery-toolbar \{[\s\S]*?grid-template-columns/);
   assert.match(css, /\.roster-table thead \{[\s\S]*?position:sticky/);
 });
+
+
+test('P27 UI: le centre avant-match compare les clubs et leurs meilleurs joueurs', () => {
+  assert.match(main, /match-centre/);
+  assert.match(main, /home-match-rating/);
+  assert.match(main, /away-match-rating/);
+  assert.match(main, /match-preview-stars/);
+  assert.match(main, /renderSide\('home'/);
+  assert.match(main, /renderSide\('away'/);
+  assert.match(css, /\.match-pitch-preview \{/);
+  assert.match(css, /\.match-preview-card \{/);
+});

@@ -198,3 +198,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Améliorer la lisibilité des tableaux d'effectifs avec en-tête fixe et panneau défilant.
 - Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
 - Limite : l'interface des clubs est désormais exploratoire et filtrable ; les interactions avancées sur les cartes joueurs et les écrans de préparation de match restent à approfondir.
+
+
+### Lot 12 — centre de préparation avant-match (intégré)
+- [x] Remplacer le simple choix domicile/extérieur par un centre de préparation immersif.
+- [x] Afficher les écussons, noms, villes, pays, stades et notes réelles des deux clubs sélectionnés.
+- [x] Présenter les trois joueurs les mieux notés de chaque effectif, sans inventer de statistiques.
+- [x] Ajouter un terrain tactique 5 contre 5 avec représentation des deux équipes et formation.
+- [x] Mettre à jour instantanément les fiches lors du changement de club et empêcher une affiche avec le même club deux fois.
+- Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
+- Limite : la présentation tactique reste un aperçu de formation ; l'éditeur de composition, les remplacements et les consignes tactiques détaillées sont à développer.
