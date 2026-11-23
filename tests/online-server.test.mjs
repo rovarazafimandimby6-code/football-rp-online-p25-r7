@@ -123,7 +123,7 @@ test('API HTTP : health check et création de salon répondent sans dépendance 
     assert.equal(invalidResultsPage.status, 400);
     assert.equal((await invalidResultsPage.json()).error, 'INVALID_PAGINATION');
     const joined = await fetch(`${base}/api/rooms/${payload.id}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ displayName: 'Joueur test' }) });
-    assert.equal(joined.status, 200);
+    assert.equal(joined.status, 200, await joined.clone().text());
     const player = await joined.json();
     const heartbeat = await fetch(`${base}/api/rooms/${payload.id}/heartbeat`, { method: 'POST', headers: { authorization: `Bearer ${player.token}` } });
     assert.equal(heartbeat.status, 200);
