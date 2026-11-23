@@ -1,3 +1,5 @@
+import { readJsonWithBackup, writeJsonWithBackup } from './persistent-json.js';
+
 const STORAGE_KEY = 'football-rp-online.player-profile.v1';
 const clamp = (n, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(n)) ? Number(n) : min));
 const cleanText = (value, fallback, max = 24) => String(value ?? fallback).replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max) || fallback;
@@ -56,6 +58,8 @@ export function validateProfile(input) {
   };
 }
 
+const normalizeStoredProfile = value => value && typeof value === 'object' && !Array.isArray(value) && value.identity && value.progression ? validateProfile(value) : null;
+
 export class PlayerProfileStore {
   constructor(storage, key = STORAGE_KEY) {
     if (storage === undefined) {
@@ -67,16 +71,12 @@ export class PlayerProfileStore {
     this.load();
   }
   load() {
-    try {
-      const raw = this.storage?.getItem(this.key);
-      if (raw) this.profile = validateProfile(JSON.parse(raw));
-    } catch (_) { this.profile = createDefaultProfile(); }
+    this.profile = readJsonWithBackup(this.storage, this.key, normalizeStoredProfile) || createDefaultProfile();
     return this.profile;
   }
   save(profile = this.profile) {
     this.profile = validateProfile(profile);
-    try { this.storage?.setItem(this.key, JSON.stringify(this.profile)); return true; }
-    catch (_) { return false; }
+    return writeJsonWithBackup(this.storage, this.key, this.profile, normalizeStoredProfile);
   }
   updateIdentity(changes = {}) {
     return this.save({ ...this.profile, identity: { ...this.profile.identity, ...changes } });

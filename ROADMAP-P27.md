@@ -306,3 +306,12 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Attribuer les récompenses de carrière en tenant compte des buts et passes décisives réellement enregistrés.
 - [x] Ajouter des tests sur les deux équipes, le nul, les identités absentes et les statistiques invalides.
 - [ ] Vérifier la synchronisation sur deux appareils Android connectés à un même salon.
+
+
+### Lot 23 — récupération des sauvegardes de carrière après corruption locale (intégré)
+- [x] Ajouter un instantané de secours pour le profil, la progression, les contrats et les statistiques de saison.
+- [x] Ne remplacer la sauvegarde de secours qu'à partir d'un état primaire valide.
+- [x] Restaurer automatiquement le dernier instantané cohérent si le stockage principal est corrompu ou incompatible.
+- [x] Normaliser les données restaurées et borner les historiques et ressources.
+- [x] Couvrir la récupération après corruption JSON et après schéma invalide par des tests.
+- [ ] Vérifier la récupération après fermeture forcée et redémarrage sur Android.

@@ -3,9 +3,20 @@ const nonNegativeInt = (value, fallback = 0, max = 1_000_000_000) => {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : fallback;
 };
+import { readJsonWithBackup, writeJsonWithBackup } from './persistent-json.js';
+
 const timestamp = value => {
   const n = new Date(value).getTime();
   return Number.isFinite(n) ? n : null;
+};
+
+const normalizeCareerState = state => {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return null;
+  const contract = state.contract && typeof state.contract === 'object' && idOf(state.contract.clubId)
+    && timestamp(state.contract.expiresAt) !== null && ['active','expired','terminated'].includes(state.contract.status)
+    ? { ...state.contract, clubId: idOf(state.contract.clubId), salary: nonNegativeInt(state.contract.salary), status: state.contract.status } : null;
+  const offers = Array.isArray(state.offers) ? state.offers.filter(item => item && typeof item === 'object' && idOf(item.id) && idOf(item.fromClubId) && ['pending','accepted','rejected','expired','cancelled'].includes(item.status)).map(item => ({ ...item, id: idOf(item.id), fromClubId: idOf(item.fromClubId), salary: nonNegativeInt(item.salary), fee: nonNegativeInt(item.fee) })) : [];
+  return { wallet: nonNegativeInt(state.wallet, 500), clubId: state.clubId ? idOf(state.clubId) : null, contract, offers, history: Array.isArray(state.history) ? state.history.filter(item => item && typeof item === 'object').slice(-200) : [], nextOfferNumber: Math.max(1, nonNegativeInt(state.nextOfferNumber, 1)) };
 };
 
 export class CareerManager {
@@ -29,22 +40,14 @@ export class CareerManager {
     return { wallet: this.wallet, clubId: this.clubId, contract: this.contract, offers: [...this.offers.values()], history: this.history, nextOfferNumber: this.nextOfferNumber };
   }
 
-  persist() {
-    try { this.storage?.setItem(this.storageKey, JSON.stringify(this.snapshot())); return true; } catch (_) { return false; }
-  }
+  persist() { return writeJsonWithBackup(this.storage, this.storageKey, this.snapshot(), normalizeCareerState); }
 
   load() {
-    try {
-      const raw = this.storage?.getItem(this.storageKey);
-      if (!raw) return this.snapshot();
-      const state = JSON.parse(raw);
-      this.wallet = nonNegativeInt(state.wallet, this.wallet);
-      this.clubId = state.clubId ? idOf(state.clubId) : null;
-      this.contract = state.contract && typeof state.contract === 'object' ? state.contract : null;
-      this.offers = new Map((Array.isArray(state.offers) ? state.offers : []).filter(item => item && item.id).map(item => [idOf(item.id), item]));
-      this.history = Array.isArray(state.history) ? state.history.slice(-200) : [];
-      this.nextOfferNumber = Math.max(1, nonNegativeInt(state.nextOfferNumber, 1));
-    } catch (_) { /* Ignore corrupted local state and keep safe defaults. */ }
+    const state = readJsonWithBackup(this.storage, this.storageKey, normalizeCareerState);
+    if (!state) return this.snapshot();
+    this.wallet = state.wallet; this.clubId = state.clubId; this.contract = state.contract;
+    this.offers = new Map(state.offers.map(item => [item.id, item]));
+    this.history = state.history; this.nextOfferNumber = state.nextOfferNumber;
     return this.snapshot();
   }
 

@@ -1,7 +1,13 @@
+import { readJsonWithBackup, writeJsonWithBackup } from './persistent-json.js';
+
 const KEY = 'football-rp-online.player-season-stats.v1';
 const FIELDS = ['matches','goals','assists','shots','passes','tackles','interceptions','cleanSheets','wins','draws','losses'];
 const count = value => Number.isFinite(Number(value)) ? Math.max(0, Math.min(1_000_000, Math.floor(Number(value)))) : 0;
 const blank = () => Object.fromEntries(FIELDS.map(field => [field, 0]));
+const normalizeSeason = data => {
+  if (!data || typeof data !== 'object' || Array.isArray(data) || (!data.totals && !Array.isArray(data.matches))) return null;
+  return { totals: { ...blank(), ...Object.fromEntries(FIELDS.map(field => [field, count(data.totals?.[field])])) }, matches: Array.isArray(data.matches) ? data.matches.filter(match => match && typeof match === 'object' && ['win','draw','loss'].includes(match.result)).slice(-100).map(match => ({ ...match })) : [] };
+};
 
 export function calculateMatchRating(stats = {}, result = 'draw') {
   const goals = count(stats.goals), assists = count(stats.assists);
@@ -22,17 +28,12 @@ export class PlayerSeasonStats {
     this.storage = storage; this.key = key; this.totals = blank(); this.matches = []; this.load();
   }
   load() {
-    try {
-      const data = JSON.parse(this.storage?.getItem(this.key) || 'null');
-      if (data && typeof data === 'object') {
-        this.totals = { ...blank(), ...Object.fromEntries(FIELDS.map(f => [f, count(data.totals?.[f])])) };
-        this.matches = Array.isArray(data.matches) ? data.matches.slice(-100).filter(m => m && typeof m === 'object') : [];
-      }
-    } catch (_) { this.totals = blank(); this.matches = []; }
+    const data = readJsonWithBackup(this.storage, this.key, normalizeSeason);
+    this.totals = data?.totals || blank(); this.matches = data?.matches || [];
     return this.snapshot();
   }
   snapshot() { return { totals: { ...this.totals }, matches: this.matches.map(m => ({ ...m })) }; }
-  save() { try { this.storage?.setItem(this.key, JSON.stringify(this.snapshot())); return true; } catch (_) { return false; } }
+  save() { return writeJsonWithBackup(this.storage, this.key, this.snapshot(), normalizeSeason); }
   recordMatch({ result = 'draw', stats = {}, date = new Date().toISOString() } = {}) {
     if (!['win','draw','loss'].includes(result)) return { ok: false, reason: 'invalid-result' };
     const entry = {};
