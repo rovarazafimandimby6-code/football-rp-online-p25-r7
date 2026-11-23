@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scorePassOption, TeamAI, createTeamRoster } from '../src/ai.js';
+import { scorePassOption, getSupportTarget, TeamAI, createTeamRoster } from '../src/ai.js';
 
 const player = (id, team, x, z, specialty = 'balanced') => ({
   id, team, role: 'FWD', specialty,
@@ -71,4 +71,33 @@ test('P27: le pressing IA coordonne un poursuivant et un défenseur de couvertur
   assert.ok(chaser.vel.x > 0, 'le joueur le plus proche doit presser le porteur');
   assert.ok(cover.vel.x < 0, 'le deuxième joueur doit fermer la ligne de passe');
   assert.ok(line.vel.x > 0, 'le troisième joueur doit conserver sa ligne plutôt que converger sur le ballon');
+});
+
+test('P27: les appels offensifs choisissent un couloir moins occupé par les défenseurs', () => {
+  const runner = player('runner', 'blue', 0, -4, 'runner');
+  runner.homePos = { x: 0, z: -4 };
+  const carrier = player('carrier', 'blue', 1, 0, 'playmaker');
+  const defenders = [
+    player('def-1', 'red', 9, -4),
+    player('def-2', 'red', 10, -7),
+    player('def-3', 'red', 8, -1)
+  ];
+  const target = getSupportTarget(runner, carrier, [runner, carrier, ...defenders], 1);
+  assert.ok(target.x > carrier.pos.x, 'le coureur doit attaquer la profondeur');
+  assert.ok(target.z > 0, 'le coureur doit exploiter le couloir opposé devenu libre');
+  assert.ok(target.z <= 15 && target.z >= -15, 'la course doit rester dans les limites du terrain');
+});
+
+test('P27: le meneur se rend disponible derrière le porteur et le défenseur de couverture garde sa ligne', () => {
+  const carrier = player('carrier', 'blue', 8, 2, 'runner');
+  const playmaker = player('maker', 'blue', 2, 7, 'playmaker');
+  const cover = player('cover', 'blue', -8, -5, 'cover');
+  cover.homePos = { x: -8, z: -5 };
+  const opponents = [player('opponent', 'red', 5, 7)];
+  const players = [carrier, playmaker, cover, ...opponents];
+  const makerTarget = getSupportTarget(playmaker, carrier, players, 1);
+  const coverTarget = getSupportTarget(cover, carrier, players, 1);
+  assert.ok(makerTarget.x < carrier.pos.x, 'le meneur doit offrir une solution en retrait');
+  assert.ok(coverTarget.x < carrier.pos.x, 'le joueur de couverture ne doit pas dépasser le porteur');
+  assert.ok(Math.abs(coverTarget.z - cover.homePos.z) < 2, 'le joueur de couverture conserve son couloir');
 });

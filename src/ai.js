@@ -30,6 +30,44 @@ export function scorePassOption(passer, mate, opponents, attackDir = 1) {
   return forward * 2.1 + space + roleBonus - distance * 0.045 - laneRisk * 1.7;
 }
 
+/**
+ * Choisit une zone de soutien qui conserve le rôle du joueur tout en évitant
+ * les couloirs déjà occupés par les défenseurs adverses.
+ */
+export function getSupportTarget(player, owner, players, attackDir = 1) {
+  const ball = owner?.pos || { x: 0, z: 0 };
+  const opponents = players.filter((other) => other.team !== player.team && other.role !== 'GK');
+  const forwardOffset = player.specialty === 'runner' ? 8.2
+    : player.specialty === 'finisher' ? 5.6
+      : player.specialty === 'playmaker' ? -3.2 : 0;
+  const targetX = clamp(ball.x + attackDir * forwardOffset, -PITCH.HALF_L + 2, PITCH.HALF_L - 2);
+  if (player.specialty === 'cover') {
+    return {
+      x: clamp(player.homePos.x + attackDir * 1.5, -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
+      z: clamp(player.homePos.z + (ball.z - player.homePos.z) * 0.16, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
+    };
+  }
+
+  const preferredLane = player.homePos.z >= 0 ? 1 : -1;
+  const laneCandidates = player.specialty === 'playmaker'
+    ? [0, -3.5, 3.5]
+    : [preferredLane * 4.5, preferredLane * 8.5, -preferredLane * 4.5, -preferredLane * 8.5];
+  let best = null;
+  for (const lane of laneCandidates) {
+    const targetZ = clamp(ball.z * 0.28 + lane * 0.72, -PITCH.HALF_W + 2, PITCH.HALF_W - 2);
+    let nearest = 14;
+    for (const opponent of opponents) {
+      nearest = Math.min(nearest, Math.hypot(opponent.pos.x - targetX, opponent.pos.z - targetZ));
+    }
+    const continuityPenalty = Math.abs(targetZ - player.homePos.z) * 0.13;
+    const ballSeparation = Math.hypot(targetX - ball.x, targetZ - ball.z);
+    const score = Math.min(nearest, 12) * 0.7 - continuityPenalty
+      - Math.max(0, 3.2 - ballSeparation) * 0.8;
+    if (!best || score > best.score) best = { x: targetX, z: targetZ, score };
+  }
+  return { x: best.x, z: best.z };
+}
+
 const FORMATIONS = {
   '2-2': [
     { role: 'GK', x: -25.2, z: 0 },
@@ -238,21 +276,11 @@ export class TeamAI {
     } else if (teamHasBall) {
       // Soutien sans ballon, y compris lorsque le porteur est un joueur humain.
       const owner = ball.owner;
+      const support = getSupportTarget(p, owner, players, attackDir);
       const ownerDir = owner ? Math.sign((owner.pos.x - p.pos.x) * attackDir) : 0;
-      let tx = p.homePos.x + shiftX + ball.pos.x * 0.22;
-      let tz = p.homePos.z + (ball.pos.z - p.homePos.z) * 0.22;
-      if (p.specialty === 'runner' || p.specialty === 'finisher') {
-        tx = ball.pos.x + attackDir * (p.specialty === 'runner' ? 7.5 : 5.0);
-        tz = ball.pos.z + (p.homePos.z >= 0 ? 3.8 : -3.8);
-      } else if (p.specialty === 'playmaker') {
-        tx = ball.pos.x - attackDir * 3.0;
-        tz = ball.pos.z + (p.homePos.z >= 0 ? 5.0 : -5.0);
-      } else if (p.specialty === 'cover') {
-        tx = p.homePos.x + attackDir * 1.5;
-        tz = p.homePos.z + (ball.pos.z - p.homePos.z) * 0.16;
-      }
-      tx += ownerDir * attackDir * 0.8;
-      this.steerPlayer(p, clamp(tx, -PITCH.HALF_L + 2, PITCH.HALF_L - 2), clamp(tz, -PITCH.HALF_W + 2, PITCH.HALF_W - 2), 6.9 * staminaFactor * paceFactor, dt);
+      const tx = clamp(support.x + ownerDir * attackDir * 0.45, -PITCH.HALF_L + 2, PITCH.HALF_L - 2);
+      const tz = support.z;
+      this.steerPlayer(p, tx, tz, 6.9 * staminaFactor * paceFactor, dt);
     } else {
       const tx = p.homePos.x + shiftX + ball.pos.x * 0.35;
       const tz = p.homePos.z + (ball.pos.z - p.homePos.z) * 0.28;
