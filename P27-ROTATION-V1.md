@@ -18,10 +18,12 @@
 ## Fondations techniques ajoutées
 Le module `src/rotation-rules.js` formalise les limites de feuille de match, la validation des échanges, l'absence de quota et le délai de retour. Les tests couvrent les règles de base et l'échange de joueurs en conservant le slot tactique.
 
-## Intégration restante
-Cette étape ne prétend pas encore livrer le mode banc complet. Il reste à relier ces règles :
+## Intégration et état d'avancement
+La prise en charge IA d'un avatar déconnecté est désormais intégrée au serveur autoritaire : l'avatar reste dans la simulation, garde son identifiant et la possession du ballon, et peut être repris par le même jeton jusqu'à la fin du match. L'IA de remplacement utilise une vitesse réduite, ne sprinte pas automatiquement et son statut est diffusé dans les snapshots ; l'interface affiche « · IA » avec l'intitulé accessible « Contrôlé par l’IA · niveau moyen ».
+
+Le mode banc complet n'est pas encore livré. Il reste à relier ces règles :
 1. au modèle autoritaire du serveur multijoueur (joueurs actifs et réserves humains distincts) ;
 2. aux actions de demande/validation de remplacement et à leur synchronisation réseau ;
 3. à la scène 3D du banc, à la caméra spectateur et aux commandes tactiles conditionnelles ;
-4. à la gestion du contrôle IA temporaire lors d'une déconnexion et au retour du contrôle humain ;
+4. à la gestion du contrôle IA temporaire lors d'une déconnexion et au retour du contrôle humain ; (socle serveur et indication de statut déjà intégrés, scénarios avancés à compléter)
 5. aux statistiques individuelles, minutes jouées et historique des rotations.
