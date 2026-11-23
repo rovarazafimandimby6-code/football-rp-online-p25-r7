@@ -82,7 +82,7 @@ test('P23 consolidation : la personnalisation du profil est appliquée au footba
   assert.match(player, /hairByColor/);
   assert.match(player, /appearance\?\.hairStyle === 'curly'/);
   assert.match(player, /appearance\?\.hairStyle === 'shaved'/);
-  assert.match(game, /appearance: callbacks\.playerAppearance/);
+  assert.match(game, /cfg === controlledConfig \? \(callbacks\.playerAppearance \|\| \{\}\) : \{\}/);
   assert.match(game, /attributes: callbacks\.playerAttributes/);
   assert.match(game, /preferredFoot: callbacks\.preferredFoot/);
   assert.match(main, /playerAppearance: profileStore\.profile\.appearance/);
