@@ -455,4 +455,5 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Appliquer la limite de trois changements par équipe, remettre le joueur sortant sur le banc et enregistrer l'événement.
 - [x] Garder les remplacements automatiques désactivés en multijoueur tant que le protocole autoritaire ne les prend pas en charge.
 - [x] Ajouter des tests sur le timing, la fatigue, le poste, le banc vide, la protection du joueur personnel et la limite.
-- Validation GitHub Actions : en attente.
+- Validation GitHub Actions : réussie sur le commit `a46863d9a26d03fa9837fe86ac036f0abd31ab4a` (tests automatisés et contrôle syntaxique réussis).
+- [ ] Vérifier les changements IA, la fatigue et le banc sur Android en conditions de match ; la CI ne remplace pas l'essai réel.
