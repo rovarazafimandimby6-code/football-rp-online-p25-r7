@@ -51,3 +51,37 @@ test('progression: niveau maximal ne stocke pas une expérience inutilisable', (
   assert.equal(store.profile.progression.level, 99);
   assert.equal(store.profile.progression.experience, 0);
 });
+
+
+test('entraînement encadré : consomme les points de niveau et les crédits sans créer d’expérience', () => {
+  const store = new PlayerProfileStore(memoryStorage());
+  store.addExperience(100);
+  const beforeXp = store.profile.progression.experience;
+  const beforeCoins = store.profile.progression.coins;
+  const result = store.train('passing', 2);
+  assert.equal(result.ok, true);
+  assert.equal(result.spentCoins, 80);
+  assert.equal(store.profile.progression.trainingPoints, 0);
+  assert.equal(store.profile.progression.attributes.passing, 52);
+  assert.equal(store.profile.progression.experience, beforeXp);
+  assert.equal(store.profile.progression.coins, beforeCoins - 80);
+});
+
+test('entraînement encadré : refuse une séance sans points ou crédits suffisants sans modifier le profil', () => {
+  const store = new PlayerProfileStore(memoryStorage());
+  const before = structuredClone(store.profile.progression);
+  const result = store.train('defense', 1);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'insufficient-resources');
+  assert.deepEqual(store.profile.progression, before);
+});
+
+test('entraînement encadré : refuse de dépasser le plafond de 99', () => {
+  const store = new PlayerProfileStore(memoryStorage());
+  store.addExperience(100);
+  store.save({ ...store.profile, progression: { ...store.profile.progression, attributes: { ...store.profile.progression.attributes, stamina: 98 } } });
+  const result = store.train('stamina', 2);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'attribute-cap');
+  assert.equal(store.profile.progression.attributes.stamina, 98);
+});

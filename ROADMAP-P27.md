@@ -340,3 +340,12 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Expirer automatiquement les offres arrivées à échéance lors de l'ouverture du mercato.
 - [x] Persister les changements d'état et tester la restauration après expiration.
 - [ ] Vérifier le passage du temps et les écrans carrière sur Android.
+
+
+### Lot 27 — centre d'entraînement relié à la progression (intégré)
+- [x] Exposer dans l'interface les deux voies de progression déjà prises en charge par le profil.
+- [x] Permettre d'utiliser les points d'entraînement gagnés en montant de niveau.
+- [x] Distinguer clairement le coût en crédits, l'expérience gagnée et les points consommés.
+- [x] Afficher les erreurs de ressources et le plafond d'attribut sans modifier le profil.
+- [x] Ajouter les tests de consommation, d'insuffisance et de plafond.
+- [ ] Vérifier le centre d'entraînement et les valeurs sur Android.
