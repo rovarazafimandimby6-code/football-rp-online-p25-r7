@@ -315,3 +315,12 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Normaliser les données restaurées et borner les historiques et ressources.
 - [x] Couvrir la récupération après corruption JSON et après schéma invalide par des tests.
 - [ ] Vérifier la récupération après fermeture forcée et redémarrage sur Android.
+
+
+### Lot 24 — idempotence des résultats de match (intégré)
+- [x] Associer les récompenses et statistiques d'un match en ligne à l'identifiant stable du salon.
+- [x] Empêcher un rapport serveur répété de créditer deux fois expérience et monnaie.
+- [x] Empêcher les doublons dans les statistiques de saison, y compris après rechargement.
+- [x] Conserver un registre borné d'identifiants déjà traités dans les sauvegardes récupérables.
+- [x] Tester les répétitions de rapport et la reconnexion après traitement initial.
+- [ ] Vérifier le scénario de reconnexion sur deux appareils Android.

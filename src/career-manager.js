@@ -32,12 +32,13 @@ export class CareerManager {
       .filter(window => window.start !== null && window.end !== null && window.end >= window.start);
     this.offers = new Map();
     this.history = [];
+    this.processedMatchIds = [];
     this.nextOfferNumber = 1;
     this.load();
   }
 
   snapshot() {
-    return { wallet: this.wallet, clubId: this.clubId, contract: this.contract, offers: [...this.offers.values()], history: this.history, nextOfferNumber: this.nextOfferNumber };
+    return { wallet: this.wallet, clubId: this.clubId, contract: this.contract, offers: [...this.offers.values()], history: this.history, processedMatchIds: this.processedMatchIds, nextOfferNumber: this.nextOfferNumber };
   }
 
   persist() { return writeJsonWithBackup(this.storage, this.storageKey, this.snapshot(), normalizeCareerState); }
@@ -47,7 +48,7 @@ export class CareerManager {
     if (!state) return this.snapshot();
     this.wallet = state.wallet; this.clubId = state.clubId; this.contract = state.contract;
     this.offers = new Map(state.offers.map(item => [item.id, item]));
-    this.history = state.history; this.nextOfferNumber = state.nextOfferNumber;
+    this.history = state.history; this.processedMatchIds = state.processedMatchIds; this.nextOfferNumber = state.nextOfferNumber;
     return this.snapshot();
   }
 
@@ -218,14 +219,17 @@ export class CareerManager {
     return true;
   }
 
-  recordMatch({ result, goals = 0, assists = 0, cleanSheet = false } = {}) {
+  recordMatch({ result, goals = 0, assists = 0, cleanSheet = false, matchId = null } = {}) {
     if (!['win', 'draw', 'loss'].includes(result)) return { ok: false, reason: 'invalid-result' };
+    const id = typeof matchId === 'string' ? matchId.trim().slice(0, 64) : '';
+    if (id && this.processedMatchIds.includes(id)) return { experience: 0, coins: 0, duplicate: true };
     const scored = nonNegativeInt(goals, 0, 99);
     const assisted = nonNegativeInt(assists, 0, 99);
     const points = (result === 'win' ? 30 : result === 'draw' ? 15 : 5) + scored * 12 + assisted * 8 + (cleanSheet ? 8 : 0);
     const reward = Math.floor(points / 5);
     this.wallet = Math.min(1_000_000_000, this.wallet + reward);
-    this.history.push({ type: 'match', result, goals: scored, assists: assisted, cleanSheet: !!cleanSheet, reward, date: new Date().toISOString() });
+    this.history.push({ type: 'match', ...(id ? { matchId: id } : {}), result, goals: scored, assists: assisted, cleanSheet: !!cleanSheet, reward, date: new Date().toISOString() });
+    if (id) { this.processedMatchIds.push(id); this.processedMatchIds = this.processedMatchIds.slice(-2000); }
     this.persist();
     return { experience: points, coins: reward };
   }

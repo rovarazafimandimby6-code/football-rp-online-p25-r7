@@ -476,14 +476,16 @@ async function startMatch(online = null) {
               const serverResult = await online.client.request(`/api/rooms/${encodeURIComponent(online.client.roomId)}/result`);
               const performance = resolveOnlinePlayerPerformance(serverResult, online.joinResult?.playerId);
               if (!performance) throw new Error('ONLINE_PLAYER_RESULT_UNAVAILABLE');
+              const matchId = online.client.roomId;
               const reward = career.recordMatch({
+                matchId,
                 result: performance.result,
                 goals: performance.stats.goals,
                 assists: performance.stats.assists,
                 cleanSheet: performance.cleanSheet
               });
-              profileStore.grantMatchRewards(reward);
-              seasonStats.recordMatch({ result: performance.result, stats: { ...performance.stats, cleanSheet: performance.cleanSheet } });
+              if (!reward.duplicate) profileStore.grantMatchRewards(reward);
+              seasonStats.recordMatch({ matchId, result: performance.result, stats: { ...performance.stats, cleanSheet: performance.cleanSheet } });
             } catch (error) {
               console.warn('[Football RP Online] Statistiques de carrière en ligne non synchronisées :', error);
             }
