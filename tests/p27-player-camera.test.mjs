@@ -50,3 +50,24 @@ test('P27 caméra RP : le mode Immersion joueur est reconnu sans modifier les qu
   assert.equal(resolveCameraMode('broadcast'), 'broadcast');
   assert.equal(resolveCameraMode('unknown'), 'broadcast');
 });
+
+
+test('P27 caméra RP : le cadrage rapproché rend le joueur plus lisible à zoom standard', () => {
+  const pose = resolvePlayerCameraPose(player('MID'), null, { zoom: 55, aspect: 2.05 });
+  const distance = Math.hypot(pose.x, pose.z);
+  assert.ok(distance < PLAYER_CAMERA_PROFILES.MID.distance, 'la caméra standard est plus proche que le recul de base');
+  assert.ok(pose.fov <= 63, 'le champ vertical est resserré pour mieux lire le joueur');
+  const veryWide = resolvePlayerCameraPose(player('MID'), null, { zoom: 55, aspect: 2.3 });
+  assert.ok(Math.hypot(veryWide.x, veryWide.z) <= distance, 'un écran paysage très large garde un cadrage personnel lisible');
+});
+
+test('P27 caméra RP : chaque poste conserve un recul distinct et un zoom borné', () => {
+  const keeper = resolvePlayerCameraPose(player('GK'), null, { zoom: 55 });
+  const striker = resolvePlayerCameraPose(player('FWD'), null, { zoom: 55 });
+  assert.ok(Math.hypot(keeper.x, keeper.z) > Math.hypot(striker.x, striker.z));
+  for (const role of ['GK','DEF','MID','FWD']) {
+    const close = resolvePlayerCameraPose(player(role), null, { zoom: 100 });
+    const far = resolvePlayerCameraPose(player(role), null, { zoom: 0 });
+    assert.ok(Math.hypot(close.x, close.z) < Math.hypot(far.x, far.z));
+  }
+});

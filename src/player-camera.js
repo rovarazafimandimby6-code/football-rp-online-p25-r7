@@ -1,9 +1,9 @@
 /** Profils de caméra personnelle pour une expérience RP centrée sur un seul footballeur. */
 export const PLAYER_CAMERA_PROFILES = Object.freeze({
-  GK: Object.freeze({ label: 'Gardien', height: 8.2, distance: 14.5, lookAhead: 9.2, visionRange: 34, ballInfluence: 0.12, shoulder: 0.12, fov: 66 }),
-  DEF: Object.freeze({ label: 'Défenseur', height: 7.3, distance: 13.1, lookAhead: 7.8, visionRange: 29, ballInfluence: 0.15, shoulder: 0.18, fov: 65 }),
-  MID: Object.freeze({ label: 'Milieu', height: 7.8, distance: 14.2, lookAhead: 9.3, visionRange: 34, ballInfluence: 0.2, shoulder: 0.2, fov: 66 }),
-  FWD: Object.freeze({ label: 'Attaquant', height: 6.8, distance: 11.6, lookAhead: 8.1, visionRange: 26, ballInfluence: 0.14, shoulder: 0.16, fov: 64 })
+  GK: Object.freeze({ label: 'Gardien', height: 7.4, distance: 12.8, lookAhead: 9.0, visionRange: 34, ballInfluence: 0.12, shoulder: 0.12, fov: 63 }),
+  DEF: Object.freeze({ label: 'Défenseur', height: 6.5, distance: 11.7, lookAhead: 7.7, visionRange: 29, ballInfluence: 0.15, shoulder: 0.18, fov: 62 }),
+  MID: Object.freeze({ label: 'Milieu', height: 6.9, distance: 12.6, lookAhead: 9.0, visionRange: 34, ballInfluence: 0.2, shoulder: 0.2, fov: 63 }),
+  FWD: Object.freeze({ label: 'Attaquant', height: 6.1, distance: 10.4, lookAhead: 7.9, visionRange: 26, ballInfluence: 0.14, shoulder: 0.16, fov: 61 })
 });
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -27,10 +27,14 @@ export function resolvePlayerCameraPose(player, ball, { zoom = 55, aspect = 1.7 
   const rightX = Math.cos(facing);
   const rightZ = -Math.sin(facing);
   const numericZoom = clamp(finite(zoom, 55), 0, 100);
-  const narrowFactor = finite(aspect, 1.7) < 1.55 ? 1.1 : 1;
-  const zoomFactor = 1.22 - numericZoom / 100 * 0.38;
-  const distance = profile.distance * zoomFactor * narrowFactor;
-  const height = profile.height * (finite(aspect, 1.7) < 1.55 ? 1.06 : 1) * zoomFactor;
+  const screenAspect = finite(aspect, 1.7);
+  const narrowFactor = screenAspect < 1.55 ? 1.08 : 1;
+  // Cadrage plus proche par défaut : le footballeur reste lisible sans perdre
+  // les informations de jeu. Le zoom utilisateur conserve toute son amplitude.
+  const zoomFactor = 1.10 - numericZoom / 100 * 0.34;
+  const wideFactor = screenAspect > 1.9 ? clamp(1 - (screenAspect - 1.9) * 0.035, 0.94, 1) : 1;
+  const distance = profile.distance * zoomFactor * narrowFactor * wideFactor;
+  const height = profile.height * (screenAspect < 1.55 ? 1.06 : 1) * zoomFactor;
 
   let ballWeight = 0;
   let ballDX = 0;

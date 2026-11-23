@@ -269,3 +269,12 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ignorer les mesures transitoires nulles pendant les changements d'écran.
 - [x] Adapter le HUD et les commandes tactiles aux téléphones paysage de faible hauteur, en conservant des cibles tactiles utilisables.
 - [ ] Vérifier le plein écran, le cadrage et les zones tactiles sur un véritable appareil Android ; les tests automatisés ne remplacent pas cet essai.
+
+
+### Lot 19 — cadrage personnel et lisibilité du footballeur (intégré)
+- [x] Rapprocher le cadrage Immersion joueur pour rendre l'avatar contrôlé plus lisible sur téléphone.
+- [x] Réduire légèrement le champ vertical par poste, sans supprimer les différences gardien/défenseur/milieu/attaquant.
+- [x] Conserver un zoom utilisateur borné et un recul spécifique au rôle.
+- [x] Adapter très légèrement le recul aux écrans paysage très larges et préserver le facteur de sécurité sur les écrans étroits.
+- [x] Ajouter des tests de distance, de champ et de cohérence du zoom pour les quatre rôles.
+- [ ] Valider visuellement le compromis lisibilité/vision du jeu sur Android lors de la phase de test finale.
