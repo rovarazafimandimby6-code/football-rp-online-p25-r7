@@ -445,3 +445,14 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Enregistrer les changements dans les événements du match et remettre le joueur sortant sur le banc.
 - [x] Bloquer les changements hors pause et en match en ligne (protocole serveur non encore étendu).
 - Limite : l'interface de remplacement est locale. Les remplacements automatiques de l'IA adverse et la synchronisation des changements en ligne restent à développer.
+
+
+### Lot 38 — remplacements automatiques des équipes IA (intégré)
+- [x] Construire un banc réel et distinct pour chaque équipe à partir des effectifs transmis au match.
+- [x] Déclencher l'évaluation des remplacements après 40 % du temps réglementaire, à intervalle limité pour préserver les performances mobiles.
+- [x] Remplacer prioritairement les joueurs IA les plus fatigués, sans jamais remplacer le footballeur contrôlé.
+- [x] Choisir un remplaçant réellement inscrit au banc et compatible avec le poste ; privilégier la meilleure note/potentiel.
+- [x] Appliquer la limite de trois changements par équipe, remettre le joueur sortant sur le banc et enregistrer l'événement.
+- [x] Garder les remplacements automatiques désactivés en multijoueur tant que le protocole autoritaire ne les prend pas en charge.
+- [x] Ajouter des tests sur le timing, la fatigue, le poste, le banc vide, la protection du joueur personnel et la limite.
+- Validation GitHub Actions : en attente.
