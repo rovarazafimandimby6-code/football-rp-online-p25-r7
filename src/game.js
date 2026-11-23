@@ -168,7 +168,9 @@ export class Game {
       p.animState = 'idle';
       p.animTimer = 0;
       p.tackleTimer = 0;
+      p.callTimer = 0;
     }
+    this.callForPassCooldown = 0;
     this.setControlledPlayer(this.activePlayer || this.players.find((p) => p.team === 'blue' && p.slotIndex === 4));
   }
 
