@@ -177,3 +177,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Mettre à jour les métadonnées, le manifeste npm et les libellés de version du shell vers P27.
 - Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
 - Limite : ce lot refond le shell et l'accueil. Les pages secondaires et la présentation détaillée du HUD restent à harmoniser dans les lots UI suivants ; essai visuel Android réel requis.
+
+
+### Lot 10 — HUD de match et panneaux de contrôle paysage (intégré)
+- [x] Hiérarchiser le tableau de score, les écussons, les noms de clubs et l'horloge dans un HUD de type retransmission.
+- [x] Harmoniser le bouton pause, le statut de match, la mini-carte, l'endurance et les commandes tactiles.
+- [x] Renforcer les états actifs et focus des commandes, avec libellés accessibles pour joystick et actions.
+- [x] Compacter les panneaux statistiques et pause pour le format paysage sans défilement vertical interne.
+- [x] Aligner le libellé du menu de pause et des réglages caméra sur P27.
+- Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
+- Limite : le style et les attributs d'accessibilité sont testés par inspection automatisée ; la lisibilité réelle, la précision tactile et le rendu FPS doivent être contrôlés sur Android.

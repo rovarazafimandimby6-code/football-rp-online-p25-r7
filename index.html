@@ -41,7 +41,7 @@
     <div id="webgl-container" aria-label="Terrain 3D Football 5 contre 5"></div>
     <div id="labels-layer" aria-hidden="true"></div>
 
-    <header id="board">
+    <header id="board" aria-label="Score et temps du match">
       <div class="team blue"><span class="crest logo-crest blue">AF</span><b id="blue-name">TANA FC</b></div>
       <div class="sc"><span id="blue-score">0</span><em>–</em><span id="red-score">0</span></div>
       <div class="team red"><b id="red-name">TOAMASINA</b><span class="crest logo-crest red">TU</span></div>
@@ -66,15 +66,15 @@
     </div>
 
     <div id="controls">
-      <div id="stick-zone">
+      <div id="stick-zone" aria-label="Joystick de déplacement">
         <div id="stick-base"><div id="stick-knob"></div></div>
       </div>
       <div id="action-buttons">
         
-        <button id="sprint" type="button" class="control secondary">SPRINT</button>
-        <button id="defend" type="button" class="control defend"><b>C</b><small>LOB</small></button>
-        <button id="pass" type="button" class="control"><b>B</b><small>PASSE / PRESSION</small></button>
-        <button id="shoot" type="button" class="control shoot"><b>A</b><small>TIR / TACLE</small></button>
+        <button id="sprint" type="button" class="control secondary" aria-label="Sprint">SPRINT</button>
+        <button id="defend" type="button" class="control defend" aria-label="Lob et action défensive"><b>C</b><small>LOB</small></button>
+        <button id="pass" type="button" class="control" aria-label="Passe et pression"><b>B</b><small>PASSE / PRESSION</small></button>
+        <button id="shoot" type="button" class="control shoot" aria-label="Tir et tacle"><b>A</b><small>TIR / TACLE</small></button>
       </div>
     </div>
 
@@ -91,7 +91,7 @@
 
     <div id="overlay" class="hidden">
       <div class="overlay-card">
-        <div class="overlay-kicker">FOOTBALL RP ONLINE — P26</div>
+        <div class="overlay-kicker">FOOTBALL RP ONLINE — P27</div>
         <h2 id="overlay-title">Pause</h2>
         <p id="overlay-text"></p>
         <div class="overlay-actions"><button id="overlay-action" type="button">CONTINUER</button><button id="overlay-stats" type="button">STATISTIQUES</button></div>

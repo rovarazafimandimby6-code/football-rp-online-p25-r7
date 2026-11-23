@@ -71,3 +71,23 @@ test('P27 UI: shell principal verrouillé en paysage sans défilement vertical',
 function cssText() {
   return readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 }
+
+
+test('P27 UI match: le HUD expose des commandes tactiles nommées et une identité P27', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const css = cssText();
+  const ui = readFileSync(new URL('../src/ui.js', import.meta.url), 'utf8');
+  assert.match(html, /id="board" aria-label="Score et temps du match"/);
+  for (const id of ['sprint','defend','pass','shoot']) assert.match(html, new RegExp('id="' + id + '"[^>]*aria-label='));
+  assert.match(html, /FOOTBALL RP ONLINE — P27/);
+  assert.match(css, /#board \{[\s\S]*?border-top: 2px solid/);
+  assert.match(css, /#stamina \{[\s\S]*?left: 50%/);
+  assert.match(ui, /Diffusion TV · P27/);
+});
+
+test('P27 UI match: panneaux de pause et statistiques sont bornés au viewport paysage', () => {
+  const css = cssText();
+  assert.match(css, /#stats-panel \{[\s\S]*?max-height: calc\(100dvh - 24px\)/);
+  assert.match(css, /\.overlay-card \{[\s\S]*?max-height: calc\(100dvh - 24px\)/);
+  assert.match(css, /@media \(orientation: portrait\)[\s\S]*?#board, #pause, #minimap/);
+});

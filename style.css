@@ -1202,3 +1202,161 @@ html, body {
   .home-shortcuts .quick-card b { font-size: 8px; }
   .home-shortcuts .quick-card small { font-size: 6px; }
 }
+
+
+/* P27 Lot 10 — HUD de match : hiérarchie broadcast, lisibilité tactile et panneaux sans scroll */
+#board {
+  z-index: 6;
+  min-height: 42px;
+  gap: clamp(8px, 1.5vw, 18px);
+  padding: 6px clamp(10px, 1.5vw, 17px);
+  border: 1px solid rgba(224,239,255,.2);
+  border-top: 2px solid rgba(211,179,96,.9);
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(11,20,31,.94), rgba(3,9,16,.88));
+  box-shadow: 0 7px 22px rgba(0,0,0,.3), inset 0 1px rgba(255,255,255,.06);
+  backdrop-filter: blur(12px);
+}
+#board .team { min-width: 0; gap: 7px; color: #f4f7fb; font-size: clamp(8px,1.1vw,11px); }
+#board .team b { max-width: clamp(48px, 10vw, 132px); font-weight: 850; letter-spacing: .45px; }
+#board .club-crest-svg { flex-basis: 25px; width: 25px; height: 28px; }
+#board .sc { min-width: 58px; gap: 8px; color: #fff; font-size: clamp(22px,3.2vw,30px); font-weight: 950; }
+#board .sc em { color: rgba(229,237,247,.42); font-size: .65em; }
+#board .time { min-width: 48px; padding-left: 10px; border-left: 1px solid rgba(221,236,255,.2); }
+#board .time small { color: #e5c77b; font-size: 7px; letter-spacing: .8px; }
+#board .time strong { font-size: clamp(13px,2vw,17px); font-weight: 900; }
+#pause {
+  z-index: 7;
+  top: calc(9px + env(safe-area-inset-top));
+  right: calc(10px + env(safe-area-inset-right));
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(226,239,255,.22);
+  border-radius: 9px;
+  background: linear-gradient(145deg,rgba(18,31,45,.94),rgba(4,12,20,.9));
+  color: #f4f7fb;
+  box-shadow: 0 4px 14px rgba(0,0,0,.28);
+  font-size: 14px;
+}
+#pause:active { transform: scale(.94); background: rgba(38,75,59,.96); }
+#minimap {
+  z-index: 4;
+  top: calc(65px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
+  width: clamp(88px, 10vw, 112px);
+  height: clamp(52px, 6vw, 66px);
+  border: 1px solid rgba(228,242,255,.24);
+  border-radius: 7px;
+  background: rgba(3,15,19,.42);
+  box-shadow: 0 3px 12px rgba(0,0,0,.16);
+  opacity: .66;
+}
+#status {
+  z-index: 5;
+  top: calc(62px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 38vw;
+  padding: 6px 12px;
+  border: 1px solid rgba(226,239,255,.2);
+  border-radius: 5px;
+  background: rgba(5,14,23,.82);
+  color: #f2f6fa;
+  font-size: clamp(8px,1vw,10px);
+  font-weight: 900;
+  letter-spacing: .9px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.18);
+}
+#stamina {
+  z-index: 5;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(160px, 20vw);
+  padding: 6px 9px;
+  border: 1px solid rgba(225,240,230,.18);
+  border-radius: 6px;
+  background: rgba(4,13,12,.76);
+  color: #f3f7f4;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(0,0,0,.2);
+}
+#stamina > div { height: 5px; margin-top: 4px; }
+#controls { z-index: 5; }
+#stick-zone { width: 42%; height: 70%; }
+#stick-base {
+  border: 1px solid rgba(242,250,245,.42);
+  background: radial-gradient(circle,rgba(232,248,237,.18),rgba(13,32,24,.12) 72%);
+  box-shadow: inset 0 0 22px rgba(255,255,255,.035), 0 4px 18px rgba(0,0,0,.15);
+}
+#stick-knob {
+  border: 1px solid rgba(255,255,255,.9);
+  background: linear-gradient(145deg,rgba(248,255,250,.94),rgba(133,166,147,.86));
+}
+#action-buttons .control {
+  border-width: 1px;
+  box-shadow: 0 5px 14px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.32);
+  transition: transform .1s ease, filter .1s ease;
+}
+#action-buttons .control:focus-visible, #pause:focus-visible {
+  outline: 2px solid #f0d27c;
+  outline-offset: 3px;
+}
+#action-buttons .control small { font-size: clamp(6px,.8vw,8px); font-weight: 850; }
+#stats-panel {
+  z-index: 10;
+  width: min(540px, 88vw);
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+  padding: clamp(10px,1.8vw,16px);
+  border: 1px solid rgba(226,239,255,.22);
+  border-top: 2px solid #d5b45b;
+  border-radius: 10px;
+  background: linear-gradient(150deg,rgba(12,26,37,.98),rgba(3,11,17,.98));
+  box-shadow: 0 18px 48px rgba(0,0,0,.52);
+}
+#stats-panel > b { color: #e7cc83; font-size: 10px; letter-spacing: 1.2px; }
+.stats-labels, #stats-body > div { gap: 3px; padding: 7px 2px; font-size: 8px; }
+.stats-labels { color: #9cb0c0; font-size: 7px; }
+#stats-close { min-height: 34px; padding: 7px 20px; border-radius: 6px; }
+#overlay {
+  z-index: 12;
+  background: rgba(1,7,12,.76);
+  backdrop-filter: blur(9px);
+}
+.overlay-card {
+  width: min(450px, 88vw);
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+  padding: clamp(15px,2.5vw,24px);
+  border: 1px solid rgba(225,239,229,.2);
+  border-top: 2px solid #d5b45b;
+  border-radius: 12px;
+  background: linear-gradient(145deg,rgba(19,39,31,.98),rgba(4,14,11,.99));
+  box-shadow: 0 20px 55px rgba(0,0,0,.55);
+}
+.overlay-kicker { color: #d8bd76; font-size: 8px; letter-spacing: 1.5px; }
+.overlay-card h2 { font-size: clamp(20px,3vw,27px); }
+.overlay-card p { max-height: 22vh; overflow: hidden; color: #b9c9c0; font-size: 10px; line-height: 1.5; }
+.pause-menu-grid { gap: 7px; }
+.pause-menu-button { min-height: 38px; border-radius: 7px; font-size: 8px; }
+.pause-menu-button.primary { min-height: 42px; }
+.pause-score { margin-bottom: 10px; padding: 8px; }
+.pause-score > strong { font-size: 23px; }
+@media (orientation: landscape) and (max-height: 460px) {
+  #board { min-height: 34px; top: calc(5px + env(safe-area-inset-top)); padding: 4px 8px; }
+  #board .club-crest-svg { flex-basis: 20px; width: 20px; height: 23px; }
+  #board .sc { min-width: 48px; font-size: 22px; }
+  #board .time { min-width: 40px; padding-left: 7px; }
+  #pause { top: calc(5px + env(safe-area-inset-top)); width: 32px; height: 32px; }
+  #minimap { top: calc(49px + env(safe-area-inset-top)); width: 78px; height: 46px; }
+  #status { top: calc(48px + env(safe-area-inset-top)); padding: 4px 8px; }
+  #stamina { bottom: calc(5px + env(safe-area-inset-bottom)); width: 125px; padding: 4px 7px; }
+  #stats-panel { padding: 9px; }
+  .overlay-card { padding: 13px 17px; }
+  .overlay-card p { margin-bottom: 10px; }
+  .pause-menu-button { min-height: 32px; }
+}
+@media (orientation: portrait) {
+  #board, #pause, #minimap, #status, #stamina, #controls, #stats-panel, #overlay { display: none !important; }
+}
