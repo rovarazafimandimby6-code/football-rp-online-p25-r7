@@ -387,6 +387,8 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter inscription, connexion, consultation de session et révocation de session.
 - [x] Ajouter une limitation initiale des tentatives d'inscription/connexion par adresse IP.
 - [x] Ajouter un client de compte distinct du client de match et des tests de redémarrage/expiration/révocation.
+- [x] Tester les routes HTTP réelles inscription/connexion/profil/déconnexion et rejeter les corps JSON non objets.
+- [x] Borner le nettoyage de la table de limitation des tentatives pour éviter une croissance mémoire illimitée.
 - [ ] Ajouter une interface de compte dans le jeu et lier explicitement une carrière à un compte authentifié.
 - [ ] Ajouter validation d'origine/HTTPS, politique de récupération de compte et tests multi-processus avant déploiement public.
 - Limite : cette étape crée l'identité et les sessions persistantes ; elle ne synchronise pas encore les données de carrière entre appareils.

@@ -14,6 +14,9 @@ const accountAttempts = new Map();
 function allowAccountAttempt(ip) {
   const now = Date.now();
   const key = String(ip || 'unknown').slice(0, 96);
+  if (accountAttempts.size > 5_000) {
+    for (const [address, attempt] of accountAttempts) if (now - attempt.startedAt >= 15 * 60_000) accountAttempts.delete(address);
+  }
   const current = accountAttempts.get(key);
   if (!current || now - current.startedAt >= 15 * 60_000) { accountAttempts.set(key, { startedAt: now, count: 1 }); return true; }
   if (current.count >= 8) return false;

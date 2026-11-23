@@ -69,7 +69,8 @@ export class JsonAccountStore {
     return { account: this.publicAccount(account), token, expiresAt: new Date(expiresAt).toISOString() };
   }
 
-  register({ username, password, displayName } = {}) {
+  register(input = {}) {
+    const { username, password, displayName } = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
     const handle = String(username ?? '').trim().toLowerCase();
     if (!USERNAME_RE.test(handle)) throw new Error('INVALID_USERNAME');
     if (typeof password !== 'string' || password.length < 10 || password.length > 128) throw new Error('INVALID_PASSWORD');
@@ -85,7 +86,8 @@ export class JsonAccountStore {
     return this.issueSession(account);
   }
 
-  login({ username, password } = {}) {
+  login(input = {}) {
+    const { username, password } = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
     const handle = String(username ?? '').trim().toLowerCase();
     const account = this.state.accounts.find(row => row.username === handle);
     if (typeof password !== 'string' || password.length > 128 || !account) {
