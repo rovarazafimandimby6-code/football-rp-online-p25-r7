@@ -23,7 +23,7 @@ function allowAccountAttempt(ip) {
   current.count++;
   return true;
 }
-function bearer(req) { return req.headers.authorization?.replace(/^Bearer\\s+/i, '') || ''; }
+function bearer(req) { return req.headers.authorization?.replace(/^Bearer\s+/i, '') || ''; }
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json' };
 const MAX_BODY = 8 * 1024;
