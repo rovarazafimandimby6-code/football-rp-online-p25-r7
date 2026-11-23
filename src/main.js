@@ -487,7 +487,8 @@ async function startMatch(online = null) {
                 assists: performance.stats.assists,
                 cleanSheet: performance.cleanSheet
               });
-              profileStore.grantMatchRewards({ ...reward, matchId });
+              reward.matchId = matchId;
+              profileStore.grantMatchRewards(reward);
               seasonStats.recordMatch({ matchId, result: performance.result, stats: { ...performance.stats, cleanSheet: performance.cleanSheet } });
             } catch (error) {
               console.warn('[Football RP Online] Statistiques de carrière en ligne non synchronisées :', error);
@@ -499,7 +500,8 @@ async function startMatch(online = null) {
         const cleanSheet = outcome === 'win' && (result.winner === 'blue' ? result.redScore === 0 : result.blueScore === 0);
         const matchId = result.matchId || game.match.matchId;
         const reward = career.recordMatch({ matchId, result: outcome, goals: result.playerStats?.goals, assists: result.playerStats?.assists, cleanSheet });
-        profileStore.grantMatchRewards({ ...reward, matchId });
+        reward.matchId = matchId;
+              profileStore.grantMatchRewards(reward);
         seasonStats.recordMatch({ matchId, result: outcome, stats: { ...result.playerStats, cleanSheet } });
       }
     });

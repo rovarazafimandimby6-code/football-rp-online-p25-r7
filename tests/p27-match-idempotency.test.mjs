@@ -11,7 +11,7 @@ test('P27 résultat : un rapport serveur répété ne crédite pas deux fois le 
   const walletAfterFirst = career.wallet;
   const duplicate = career.recordMatch({ matchId: 'room-123', result: 'win', goals: 2, assists: 1 });
   assert.equal(first.duplicate, undefined); assert.equal(duplicate.duplicate, true);
-  assert.equal(duplicate.coins, 0); assert.equal(career.wallet, walletAfterFirst);
+  assert.equal(duplicate.coins, first.coins); assert.equal(duplicate.experience, first.experience); assert.equal(duplicate.recoverable, true); assert.equal(career.wallet, walletAfterFirst);
   const restored = new CareerManager({ storage: s, storageKey: 'idempotent-career' });
   assert.equal(restored.recordMatch({ matchId: 'room-123', result: 'win' }).duplicate, true);
   assert.equal(restored.wallet, walletAfterFirst);
