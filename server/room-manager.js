@@ -198,7 +198,8 @@ export class RoomManager {
     const dt = clamp(Number.isFinite(deltaSeconds) ? deltaSeconds : 0, 0, 0.05);
     const now = this.now();
     for (const [id, room] of this.rooms) {
-      if (now - room.updatedAt > this.roomTtlMs || [...room.players.values()].every(p => !p.connected && p.disconnectedAt && now - p.disconnectedAt > this.disconnectGraceMs)) {
+      const allPlayersExpired = room.players.size > 0 && [...room.players.values()].every(p => !p.connected && p.disconnectedAt && now - p.disconnectedAt > this.disconnectGraceMs);
+      if (now - room.updatedAt > this.roomTtlMs || allPlayersExpired) {
         this.rooms.delete(id); continue;
       }
       for (const p of room.players.values()) {

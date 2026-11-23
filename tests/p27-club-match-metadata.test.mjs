@@ -60,3 +60,13 @@ test('P27: la création de match utilise le club de carrière et affiche les nom
   assert.match(main, /result\.teams\?\.\[key\]\?\.name/);
   assert.match(main, /result\.teams\?\.\[player\.team\]\?\.name/);
 });
+
+test('P27: un salon vide reste joignable jusqu’à expiration de son TTL', () => {
+  let now = 1000;
+  const manager = new RoomManager({ now: () => now, roomTtlMs: 60_000 });
+  const created = manager.create();
+  now += 50;
+  manager.tick(0.05);
+  assert.equal(manager.get(created.id).id, created.id);
+  assert.doesNotThrow(() => manager.join(created.id, { displayName: 'Premier joueur' }));
+});
