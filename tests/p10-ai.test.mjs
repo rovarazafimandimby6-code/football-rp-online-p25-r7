@@ -123,3 +123,27 @@ test('P27: la qualité de décision offensive reste bornée pour les attributs e
   assert.ok(decisionAttributeFactor(elite, 'shooting', 'composure') <= 1.28);
   assert.ok(decisionAttributeFactor(elite, 'shooting', 'composure') > decisionAttributeFactor(weak, 'shooting', 'composure'));
 });
+
+test('P27: le bloc défensif protège la profondeur côté but et conserve les couloirs', () => {
+  const defender = player('defender', 'blue', -10, -7, 'balanced');
+  defender.homePos = { x: -10, z: -7 };
+  const carrier = player('carrier', 'red', 8, -3, 'runner');
+  const farRunner = player('runner', 'red', 14, 8, 'runner');
+  const { getDefensiveShapeTarget } = await import('../src/ai.js');
+  const target = getDefensiveShapeTarget(defender,
+    { pos: { x: 9, z: -2 } }, [carrier, farRunner], 1, 'balanced');
+  assert.ok(target.x < carrier.pos.x, 'le défenseur reste du côté de son but par rapport au porteur');
+  assert.ok(target.z > -17 && target.z < 17, 'la position reste dans le terrain');
+  assert.ok(target.z < 0, 'le défenseur ne quitte pas son couloir pour suivre le joueur éloigné');
+});
+
+test('P27: le bloc défensif se replie davantage avec une mentalité prudente', async () => {
+  const { getDefensiveShapeTarget } = await import('../src/ai.js');
+  const defender = player('defender', 'blue', -5, 4);
+  defender.homePos = { x: -5, z: 4 };
+  const carrier = player('carrier', 'red', 10, 3);
+  const ball = { pos: { x: 10, z: 3 } };
+  const balanced = getDefensiveShapeTarget(defender, ball, [carrier], 1, 'balanced');
+  const defensive = getDefensiveShapeTarget(defender, ball, [carrier], 1, 'defensive');
+  assert.ok(defensive.x < balanced.x, 'le bloc prudent doit reculer davantage');
+});

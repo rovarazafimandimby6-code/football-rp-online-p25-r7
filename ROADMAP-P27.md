@@ -145,3 +145,13 @@ Périmètre : ce lot modifie la prise de décision de l'IA locale. Il ne modifie
 - Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
 
 Périmètre : amélioration procédurale du rig Three.js existant ; aucun modèle externe ni coût géométrique supplémentaire. La vérification visuelle sur appareil Android reste nécessaire.
+
+### Lot 7 — compacité et protection de la profondeur défensive (intégré)
+- [x] Ajouter une cible défensive qui tient compte du porteur adverse, des menaces proches et du côté du but à protéger.
+- [x] Conserver une partie de la position de référence du joueur pour éviter les déplacements collectifs désordonnés.
+- [x] Faire varier le repli selon la mentalité tactique sans modifier le contrôle des joueurs humains.
+- [x] Remplacer le simple glissement vers le ballon des joueurs défensifs éloignés par une protection de l'axe et des couloirs.
+- [x] Ajouter des tests sur la position côté but, la conservation du couloir et le repli prudent.
+- Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
+
+Périmètre : IA locale de match. Le pressing principal et la couverture rapprochée restent attribués à leurs rôles dédiés.

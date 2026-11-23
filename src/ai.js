@@ -42,6 +42,38 @@ export function scorePassOption(passer, mate, opponents, attackDir = 1) {
 }
 
 /**
+ * Replace un défenseur dans un bloc compact : il protège d'abord l'axe entre
+ * le porteur adverse et son propre but, tout en conservant une partie de son couloir.
+ */
+export function getDefensiveShapeTarget(player, ball, opponents, attackDir = 1, mentality = 'balanced') {
+  const ownGoalX = -attackDir * PITCH.HALF_L;
+  const threats = (opponents || []).filter((opponent) => opponent && opponent.pos && opponent.role !== 'GK');
+  let threat = null;
+  let threatScore = Infinity;
+  for (const opponent of threats) {
+    const distanceToPlayer = Math.hypot(opponent.pos.x - player.pos.x, opponent.pos.z - player.pos.z);
+    const distanceToBall = Math.hypot(opponent.pos.x - ball.pos.x, opponent.pos.z - ball.pos.z);
+    const score = distanceToPlayer + distanceToBall * 0.24;
+    if (score < threatScore) { threat = opponent; threatScore = score; }
+  }
+  const tacticalPush = mentality === 'defensive' ? -2.4 : mentality === 'attacking' ? 1.8 : 0;
+  const ballShiftX = (ball.pos.x - player.homePos.x) * 0.12;
+  const ballShiftZ = (ball.pos.z - player.homePos.z) * 0.3;
+  let targetX = player.homePos.x + ballShiftX + attackDir * tacticalPush;
+  let targetZ = player.homePos.z + ballShiftZ;
+  if (threat) {
+    const goalSideX = threat.pos.x + (ownGoalX - threat.pos.x) * 0.16;
+    const goalSideZ = threat.pos.z + (player.homePos.z - threat.pos.z) * 0.28;
+    targetX = targetX * 0.58 + goalSideX * 0.42;
+    targetZ = targetZ * 0.62 + goalSideZ * 0.38;
+  }
+  return {
+    x: clamp(targetX, -PITCH.HALF_L + 1.5, PITCH.HALF_L - 1.5),
+    z: clamp(targetZ, -PITCH.HALF_W + 1.5, PITCH.HALF_W - 1.5)
+  };
+}
+
+/**
  * Choisit une zone de soutien qui conserve le rôle du joueur tout en évitant
  * les couloirs déjà occupés par les défenseurs adverses.
  */
@@ -266,9 +298,6 @@ export class TeamAI {
     const teamHasBall = ball.owner && ball.owner.team === p.team;
     // Le même modèle tactique s'applique aux deux équipes ; seule la direction
     // d'attaque change. Cela évite une IA rouge structurellement moins tactique.
-    const tacticalPush = this.mentality === 'attacking' ? 5.5
-      : this.mentality === 'defensive' ? -5.5 : 0;
-    const shiftX = attackDir * tacticalPush + ball.pos.x * 0.12;
 
     const pressRange = this.pressStyle === 'high' ? 16
       : this.pressStyle === 'low' ? 7 : 11;
@@ -295,9 +324,11 @@ export class TeamAI {
       const tz = support.z;
       this.steerPlayer(p, tx, tz, 6.9 * staminaFactor * paceFactor, dt);
     } else {
-      const tx = p.homePos.x + shiftX + ball.pos.x * 0.35;
-      const tz = p.homePos.z + (ball.pos.z - p.homePos.z) * 0.28;
-      this.steerPlayer(p, tx, tz, 6.7 * staminaFactor * paceFactor, dt);
+      // Les joueurs éloignés du ballon protègent l'axe et les menaces proches,
+      // au lieu de simplement glisser tous vers la position du ballon.
+      const opponents = players.filter((other) => other.team !== p.team && other.role !== 'GK');
+      const shape = getDefensiveShapeTarget(p, ball, opponents, attackDir, this.mentality);
+      this.steerPlayer(p, shape.x, shape.z, 6.7 * staminaFactor * paceFactor, dt);
     }
   }
 
