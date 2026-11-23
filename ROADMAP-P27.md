@@ -103,3 +103,14 @@ Limite assumée : les salons créés sans affiche de clubs valide restent neutre
 - Validation GitHub Actions : run [P27 validation](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45160108472), **227/227 tests réussis**, contrôle de syntaxe réussi.
 
 Limite de validation : la suite automatisée confirme le câblage des palettes et des écussons ; le rendu réel sur téléphone Android et les performances GPU restent à vérifier sur appareil.
+
+### Lot 3 — pressing collectif et couverture défensive IA (intégré)
+- [x] Identifier le joueur IA de champ le plus proche du ballon et lui attribuer le pressing principal.
+- [x] Identifier le deuxième joueur IA le plus proche et lui attribuer une position de couverture de la ligne de passe.
+- [x] Éviter que plusieurs joueurs IA convergent systématiquement sur le porteur ; les autres conservent leur structure de ligne.
+- [x] Réserver le déclenchement du tacle opportuniste au premier défenseur, pour limiter les duels redondants.
+- [x] Conserver les facteurs de spécialité, de vitesse, d'endurance et de style de pressing.
+- [x] Ajouter un scénario automatisé vérifiant le poursuivant, le couvreur et le maintien de la ligne défensive.
+- Validation GitHub Actions : run [P27 validation](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45160346982), **228/228 tests réussis**, contrôle de syntaxe réussi.
+
+Périmètre : ce lot améliore l'IA locale de match. La simulation en ligne reste autoritaire côté serveur et n'a pas été remplacée par cette logique client.
