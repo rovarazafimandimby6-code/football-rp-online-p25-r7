@@ -11,7 +11,7 @@ export class BroadcastCamera {
   constructor(camera, mode = 'broadcast') {
     this.mode = resolveCameraMode(mode);
     this.camera = camera;
-    this.camera.fov = CAMERA_PRESETS[this.mode].fov;
+    this.camera.fov = CAMERA_PRESETS[this.mode]?.fov ?? 65;
     this.camera.updateProjectionMatrix();
     this.lookTarget = new THREE.Vector3(0, 0.45, 0);
     this.camPos = new THREE.Vector3(0, 27, 42);
@@ -31,9 +31,9 @@ export class BroadcastCamera {
   }
 
   setMode(mode) {
-    if (!CAMERA_PRESETS[mode]) return false;
+    if (mode !== 'player' && !CAMERA_PRESETS[mode]) return false;
     this.mode = mode;
-    this.camera.fov = CAMERA_PRESETS[mode].fov;
+    this.camera.fov = CAMERA_PRESETS[mode]?.fov ?? 65;
     this.camera.updateProjectionMatrix();
     return true;
   }

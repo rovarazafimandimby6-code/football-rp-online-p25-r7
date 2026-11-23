@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PLAYER_CAMERA_PROFILES, resolvePlayerCameraPose, resolvePlayerCameraProfile } from '../src/player-camera.js';
+import { resolveCameraMode } from '../src/camera-presets.js';
 
 const player = (role = 'MID', facing = 0, x = 0, z = 0) => ({ role, facing, pos: { x, z } });
 
@@ -42,4 +43,10 @@ test('P27 caméra RP : le zoom est borné et rapproche réellement la caméra', 
   const closeDistance = Math.hypot(close.x, close.z);
   assert.ok(closeDistance < farDistance);
   assert.equal(resolvePlayerCameraPose(player('DEF'), null, { zoom: 1000 }).x, close.x);
+});
+
+test('P27 caméra RP : le mode Immersion joueur est reconnu sans modifier les quatre presets TV historiques', () => {
+  assert.equal(resolveCameraMode('player'), 'player');
+  assert.equal(resolveCameraMode('broadcast'), 'broadcast');
+  assert.equal(resolveCameraMode('unknown'), 'broadcast');
 });
