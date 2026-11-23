@@ -1,0 +1,97 @@
+name: Import P26 release into isolated branch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-p26:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download and verify P26 archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --location --fail --retry 3 \
+            "https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/releases/download/v26-archive/Football-RP-Online-P26.zip" \
+            --output /tmp/Football-RP-Online-P26.zip
+          echo "e4f70be55325c552dafc14421221a7b2f22c45bd4e19cc7a4b9a082a23042549  /tmp/Football-RP-Online-P26.zip" | sha256sum --check -
+
+      - name: Safely extract archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, stat, zipfile
+          archive = "/tmp/Football-RP-Online-P26.zip"
+          unpack = pathlib.Path("/tmp/p26-unpack")
+          source = pathlib.Path("/tmp/p26-source")
+          unpack.mkdir()
+          with zipfile.ZipFile(archive) as z:
+              for item in z.infolist():
+                  name = item.filename.replace("\\\\", "/")
+                  p = pathlib.PurePosixPath(name)
+                  if p.is_absolute() or ".." in p.parts:
+                      raise SystemExit(f"Unsafe archive path: {name}")
+                  mode = item.external_attr >> 16
+                  if stat.S_ISLNK(mode):
+                      raise SystemExit(f"Symlink not allowed: {name}")
+                  target = (unpack / pathlib.Path(*p.parts)).resolve()
+                  if unpack.resolve() not in target.parents and target != unpack.resolve():
+                      raise SystemExit(f"Path escapes extraction directory: {name}")
+                  if item.is_dir():
+                      target.mkdir(parents=True, exist_ok=True)
+                  else:
+                      target.parent.mkdir(parents=True, exist_ok=True)
+                      with z.open(item) as src, target.open("wb") as dst:
+                          while chunk := src.read(1024 * 1024):
+                              dst.write(chunk)
+          entries = list(unpack.iterdir())
+          if len(entries) == 1 and entries[0].is_dir():
+              root = entries[0]
+          else:
+              root = unpack
+          source.mkdir()
+          for item in root.iterdir():
+              target = source / item.name
+              if item.is_dir():
+                  import shutil
+                  shutil.copytree(item, target)
+              else:
+                  import shutil
+                  shutil.copy2(item, target)
+          if not any(source.iterdir()):
+              raise SystemExit("Archive extraction produced an empty source directory.")
+          print("P26 source extracted safely.")
+          PY
+
+      - name: Create isolated p26-base branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin refs/heads/p26-base >/dev/null 2>&1; then
+            echo "::error::Branch p26-base already exists; refusing to overwrite it."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --orphan p26-base
+          git rm -rf --ignore-unmatch .
+          cp -a /tmp/p26-source/. .
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::error::No files were imported."
+            exit 1
+          fi
+          git commit -m "Import verified Football RP Online P26 release"
+          git push origin HEAD:refs/heads/p26-base
+          echo "P26 sources published to isolated branch p26-base."
