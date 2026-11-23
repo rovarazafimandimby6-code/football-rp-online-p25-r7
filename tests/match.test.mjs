@@ -127,3 +127,31 @@ test('une durée choisie en cours de match est appliquée au match suivant', () 
   assert.equal(match.durationMinutes, 5);
   assert.equal(match.halfDuration, 150);
 });
+
+
+test('P27 : chaque match local reçoit un identifiant distinct et le conserve dans son résultat', async () => {
+  const { MatchState } = await import('../src/match.js');
+  const match = new MatchState(3);
+  const firstId = match.matchId;
+  assert.equal(typeof firstId, 'string');
+  assert.ok(firstId.startsWith('local-'));
+  match.phase = 'fulltime';
+  const result = match.getResult();
+  assert.equal(result.matchId, firstId);
+  match.reset();
+  assert.notEqual(match.matchId, firstId);
+  assert.equal(match.getResult(), null);
+});
+
+test('P27 : un même identifiant de match local ne crédite pas deux fois les récompenses', async () => {
+  const { CareerManager } = await import('../src/career-manager.js');
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const career = new CareerManager({ storage, storageKey: 'p27-local-idempotence', initialCoins: 20 });
+  const first = career.recordMatch({ matchId: 'local-match-unique', result: 'win', goals: 1 });
+  const balance = career.wallet;
+  const repeated = career.recordMatch({ matchId: 'local-match-unique', result: 'win', goals: 1 });
+  assert.ok(first.experience > 0);
+  assert.equal(repeated.duplicate, true);
+  assert.equal(career.wallet, balance);
+});

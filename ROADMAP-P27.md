@@ -324,3 +324,11 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Conserver un registre borné d'identifiants déjà traités dans les sauvegardes récupérables.
 - [x] Tester les répétitions de rapport et la reconnexion après traitement initial.
 - [ ] Vérifier le scénario de reconnexion sur deux appareils Android.
+
+
+### Lot 25 — identifiants uniques des matchs locaux (intégré)
+- [x] Générer un identifiant distinct à chaque initialisation/réinitialisation d'un match hors ligne.
+- [x] Inclure cet identifiant dans le résultat final du match.
+- [x] Utiliser l'identifiant pour protéger les récompenses et statistiques hors ligne contre les doubles traitements.
+- [x] Couvrir la rotation des identifiants et le traitement idempotent par tests.
+- [ ] Vérifier le cycle de plusieurs matchs locaux sur Android.

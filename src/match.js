@@ -1,3 +1,11 @@
+let localMatchSequence = 0;
+
+function createLocalMatchId() {
+  localMatchSequence = (localMatchSequence + 1) % Number.MAX_SAFE_INTEGER;
+  const random = Math.random().toString(36).slice(2, 10);
+  return `local-${Date.now().toString(36)}-${localMatchSequence.toString(36)}-${random}`;
+}
+
 export class MatchState {
   constructor(durationMinutes = 5) {
     this.durationMinutes = durationMinutes === 3 ? 3 : 5;
@@ -19,6 +27,7 @@ export class MatchState {
   }
 
   reset() {
+    this.matchId = createLocalMatchId();
     if (this.pendingDurationMinutes === 3 || this.pendingDurationMinutes === 5) {
       this.durationMinutes = this.pendingDurationMinutes;
       this.halfDuration = this.durationMinutes * 30;
@@ -83,7 +92,7 @@ export class MatchState {
 
   getResult() {
     if (this.phase !== 'fulltime') return null;
-    return { winner: this.blueScore === this.redScore ? null : (this.blueScore > this.redScore ? 'blue' : 'red'), blueScore: this.blueScore, redScore: this.redScore, durationSeconds: Math.min(this.elapsedMatchTime, this.halfDuration * 2), possession: this.getPossessionPercent() };
+    return { matchId: this.matchId, winner: this.blueScore === this.redScore ? null : (this.blueScore > this.redScore ? 'blue' : 'red'), blueScore: this.blueScore, redScore: this.redScore, durationSeconds: Math.min(this.elapsedMatchTime, this.halfDuration * 2), possession: this.getPossessionPercent() };
   }
 
   getPossessionPercent() {

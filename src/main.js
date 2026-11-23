@@ -494,9 +494,10 @@ async function startMatch(online = null) {
         }
         const outcome = !result.winner ? 'draw' : result.winner === 'blue' ? 'win' : 'loss';
         const cleanSheet = outcome === 'win' && (result.winner === 'blue' ? result.redScore === 0 : result.blueScore === 0);
-        const reward = career.recordMatch({ result: outcome, goals: result.playerStats?.goals, assists: result.playerStats?.assists, cleanSheet });
-        profileStore.grantMatchRewards(reward);
-        seasonStats.recordMatch({ result: outcome, stats: { ...result.playerStats, cleanSheet } });
+        const matchId = result.matchId || game.match.matchId;
+        const reward = career.recordMatch({ matchId, result: outcome, goals: result.playerStats?.goals, assists: result.playerStats?.assists, cleanSheet });
+        if (!reward.duplicate) profileStore.grantMatchRewards(reward);
+        seasonStats.recordMatch({ matchId, result: outcome, stats: { ...result.playerStats, cleanSheet } });
       }
     });
     document.getElementById('blue-name').textContent = homeClub?.name || 'ÉQUIPE DOMICILE';
