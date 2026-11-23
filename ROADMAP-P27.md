@@ -155,3 +155,15 @@ Périmètre : amélioration procédurale du rig Three.js existant ; aucun modèl
 - Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
 
 Périmètre : IA locale de match. Le pressing principal et la couverture rapprochée restent attribués à leurs rôles dédiés.
+
+### Lot 8 — cycle de vie des contrats de carrière (intégré)
+- [x] Calculer l'état réel d'un contrat et le nombre de jours restants.
+- [x] Faire expirer les contrats à échéance, libérer le joueur et annuler les offres pendantes associées.
+- [x] Permettre le renouvellement avec salaire et nouvelle durée contrôlés.
+- [x] Permettre la résiliation explicite et conserver les événements dans l'historique.
+- [x] Bloquer les transferts lorsque le joueur n'est plus sous contrat actif.
+- [x] Ajouter les actions de renouvellement et de résiliation à l'écran Mercato & contrats.
+- [x] Ajouter des tests sur renouvellement, expiration, résiliation et transferts après expiration.
+- Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
+
+Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas encore une base de contrats autoritaire synchronisée entre plusieurs joueurs.

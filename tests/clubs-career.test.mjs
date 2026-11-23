@@ -37,7 +37,7 @@ test('classement: victoire attribue trois points', () => {
 test('mercato: négociation et transfert uniquement pendant une fenêtre active', () => {
   const start = '2026-07-01T00:00:00Z'; const end = '2026-08-01T00:00:00Z';
   const career = new CareerManager({ initialCoins: 1000, transferWindows: [{ start, end }] });
-  assert.equal(career.signContract({ clubId: 'club-a', salary: 25, signedAt: start }).ok, true);
+  assert.equal(career.signContract({ clubId: 'club-a', salary: 25, durationDays: 365, signedAt: start }).ok, true);
   const offer = career.makeOffer({ fromClubId: 'club-b', salary: 40, fee: 300 });
   career.negotiate(offer.offer.id, { salary: 45 });
   assert.equal(career.acceptOffer(offer.offer.id, '2026-06-15T00:00:00Z').reason, 'window-closed');
@@ -85,7 +85,7 @@ test('clubs: les vues retournées ne permettent pas de modifier le roster intern
 
 test('mercato: identifiants uniques après rejet et dates invalides refusées', () => {
   const career = new CareerManager({ transferWindows: [{ start: '2026-07-01T00:00:00Z', end: '2026-08-01T00:00:00Z' }] });
-  career.signContract({ clubId: 'club-a', signedAt: '2026-07-01T00:00:00Z' });
+  career.signContract({ clubId: 'club-a', durationDays: 365, signedAt: '2026-07-01T00:00:00Z' });
   const first = career.makeOffer({ fromClubId: 'club-b', salary: 30 });
   assert.equal(career.rejectOffer(first.offer.id), true);
   const second = career.makeOffer({ fromClubId: 'club-c', salary: 35 });
@@ -104,4 +104,48 @@ test('clubs: un joueur ne peut pas être inscrit dans deux clubs', () => {
   const clubs = new ClubManager();
   assert.equal(clubs.addPlayer('antananarivo-fc', { id: 'unique-player' }).ok, true);
   assert.equal(clubs.addPlayer('mahajanga-city', { id: 'unique-player' }).reason, 'already-registered');
+});
+
+test('contrats: renouvellement met à jour le salaire et prolonge la durée', () => {
+  const career = new CareerManager();
+  const signedAt = '2026-01-01T00:00:00Z';
+  career.signContract({ clubId: 'club-a', salary: 20, durationDays: 30, signedAt });
+  const renewed = career.renewContract({ salary: 35, durationDays: 180, renewedAt: '2026-01-15T00:00:00Z' });
+  assert.equal(renewed.ok, true);
+  assert.equal(renewed.contract.salary, 35);
+  assert.equal(renewed.contract.status, 'active');
+  assert.equal(new Date(renewed.contract.expiresAt).toISOString(), '2026-07-14T00:00:00.000Z');
+  assert.equal(career.history.at(-1).type, 'renewal');
+});
+
+test('contrats: expiration libère le joueur et annule les offres en attente', () => {
+  const career = new CareerManager();
+  const now = Date.now();
+  career.signContract({ clubId: 'club-a', durationDays: 2, signedAt: new Date(now - 86400000).toISOString() });
+  const offer = career.makeOffer({ fromClubId: 'club-b', expiresAt: new Date(now + 30 * 86400000).toISOString() });
+  const status = career.refreshContractStatus(new Date(now + 3 * 86400000).toISOString());
+  assert.equal(status.status, 'expired');
+  assert.equal(career.clubId, null);
+  assert.equal(career.contract.status, 'expired');
+  assert.equal(career.offers.get(offer.offer.id).status, 'cancelled');
+});
+
+test('contrats: résiliation libère le joueur et conserve une trace', () => {
+  const career = new CareerManager();
+  career.signContract({ clubId: 'club-a', durationDays: 365, signedAt: '2026-01-01T00:00:00Z' });
+  const ended = career.terminateContract('2026-02-01T00:00:00Z');
+  assert.equal(ended.ok, true);
+  assert.equal(career.clubId, null);
+  assert.equal(career.contract.status, 'terminated');
+  assert.equal(career.history.at(-1).type, 'termination');
+  assert.equal(career.signContract({ clubId: 'club-b', signedAt: '2026-02-02T00:00:00Z' }).ok, true);
+});
+
+test('contrats: un contrat expiré ne peut pas conclure un transfert', () => {
+  const now = Date.now();
+  const career = new CareerManager({ transferWindows: [{ start: new Date(now - 86400000).toISOString(), end: new Date(now + 30 * 86400000).toISOString() }] });
+  career.signContract({ clubId: 'club-a', durationDays: 2, signedAt: new Date(now - 86400000).toISOString() });
+  const offer = career.makeOffer({ fromClubId: 'club-b' });
+  assert.equal(offer.ok, true);
+  assert.equal(career.acceptOffer(offer.offer.id, new Date(now + 3 * 86400000).toISOString()).reason, 'contract-expired');
 });

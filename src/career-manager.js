@@ -53,6 +53,72 @@ export class CareerManager {
     return time !== null && this.transferWindows.some(window => time >= window.start && time <= window.end);
   }
 
+  getContractStatus(at = Date.now()) {
+    if (!this.contract) return null;
+    const now = timestamp(at);
+    const expiry = timestamp(this.contract.expiresAt);
+    if (now === null || expiry === null) return { status: 'invalid', daysRemaining: 0, expired: true };
+    const inactive = ['expired', 'terminated'].includes(this.contract.status);
+    const expired = expiry <= now || inactive;
+    return {
+      status: inactive ? this.contract.status : expired ? 'expired' : 'active',
+      daysRemaining: expired ? 0 : Math.max(0, Math.ceil((expiry - now) / 86400000)),
+      expired
+    };
+  }
+
+  refreshContractStatus(at = Date.now()) {
+    const state = this.getContractStatus(at);
+    if (!state || !state.expired || this.contract.status !== 'active') return state;
+    const now = timestamp(at);
+    if (now === null) return state;
+    const date = new Date(now).toISOString();
+    this.contract = { ...this.contract, status: 'expired', expiredAt: date };
+    this.clubId = null;
+    for (const offer of this.offers.values()) if (offer.status === 'pending') offer.status = 'cancelled';
+    this.history.push({ type: 'contract-expired', clubId: this.contract.clubId, date });
+    this.persist();
+    return this.getContractStatus(at);
+  }
+
+  renewContract({ salary, durationDays = 180, renewedAt = new Date().toISOString() } = {}) {
+    const now = timestamp(renewedAt);
+    if (now === null) return { ok: false, reason: 'invalid-date' };
+    if (!this.contract || this.getContractStatus(now).expired) {
+      if (this.contract) this.refreshContractStatus(now);
+      return { ok: false, reason: 'contract-expired' };
+    }
+    if (salary !== undefined && !Number.isFinite(Number(salary))) return { ok: false, reason: 'invalid-salary' };
+    const days = Math.max(1, Math.min(3650, nonNegativeInt(durationDays, 180) || 180));
+    const wage = salary === undefined ? this.contract.salary : nonNegativeInt(salary);
+    this.contract = {
+      ...this.contract,
+      salary: wage,
+      renewedAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + days * 86400000).toISOString(),
+      status: 'active'
+    };
+    this.history.push({ type: 'renewal', clubId: this.clubId, date: new Date(now).toISOString(), salary: wage, durationDays: days });
+    this.persist();
+    return { ok: true, contract: { ...this.contract } };
+  }
+
+  terminateContract(at = new Date().toISOString()) {
+    const now = timestamp(at);
+    if (now === null) return { ok: false, reason: 'invalid-date' };
+    if (!this.contract || this.getContractStatus(now).expired) {
+      if (this.contract) this.refreshContractStatus(now);
+      return { ok: false, reason: 'contract-expired' };
+    }
+    const previousClub = this.clubId;
+    this.contract = { ...this.contract, status: 'terminated', terminatedAt: new Date(now).toISOString() };
+    this.clubId = null;
+    for (const offer of this.offers.values()) if (offer.status === 'pending') offer.status = 'cancelled';
+    this.history.push({ type: 'termination', clubId: previousClub, date: new Date(now).toISOString() });
+    this.persist();
+    return { ok: true, previousClub, contract: { ...this.contract } };
+  }
+
   signContract({ clubId, salary = 0, durationDays = 30, signedAt = new Date().toISOString() } = {}) {
     const club = idOf(clubId);
     const wage = nonNegativeInt(salary);
@@ -60,7 +126,8 @@ export class CareerManager {
     const startMs = timestamp(signedAt);
     if (!club) return { ok: false, reason: 'invalid-club' };
     if (startMs === null) return { ok: false, reason: 'invalid-date' };
-    if (this.contract && timestamp(this.contract.expiresAt) > startMs) return { ok: false, reason: 'active-contract' };
+    const current = this.getContractStatus(startMs);
+    if (current && !current.expired) return { ok: false, reason: 'active-contract' };
     const start = new Date(startMs);
     const expires = new Date(startMs + days * 86400000);
     this.clubId = club;
@@ -72,7 +139,7 @@ export class CareerManager {
 
   makeOffer({ fromClubId, salary = 0, fee = 0, expiresAt = null } = {}) {
     const from = idOf(fromClubId);
-    if (!from || !this.contract) return { ok: false, reason: 'no-current-contract' };
+    if (!from || !this.contract || this.getContractStatus().expired) return { ok: false, reason: 'no-current-contract' };
     if (from === this.clubId) return { ok: false, reason: 'same-club' };
     const expiry = expiresAt == null ? null : timestamp(expiresAt);
     if (expiresAt != null && expiry === null) return { ok: false, reason: 'invalid-expiry' };
@@ -114,6 +181,7 @@ export class CareerManager {
     if (!offer || offer.status !== 'pending') return { ok: false, reason: 'offer-unavailable' };
     const now = timestamp(at);
     if (now === null) return { ok: false, reason: 'invalid-date' };
+    if (!this.contract || this.getContractStatus(now).expired) return { ok: false, reason: 'contract-expired' };
     if (!this.isTransferWindowOpen(now)) return { ok: false, reason: 'window-closed' };
     if (offer.expiresAt && timestamp(offer.expiresAt) <= now) {
       offer.status = 'expired';
