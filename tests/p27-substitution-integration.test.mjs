@@ -20,7 +20,8 @@ test('P27 remplacements : le menu pause expose les paires compatibles et conserv
   assert.match(ui, /data-out-id/);
   assert.match(ui, /data-in-id/);
   assert.match(ui, /onSubstitute/);
-  assert.match(game, /controlled-player-protected/);
+  assert.match(game, /validateSubstitution/);
+  assert.match(game, /activePlayer: this\.activePlayer/);
 });
 
 test('P27 présentation : la feuille de match rend les objets squad et non des variables obsolètes', () => {
