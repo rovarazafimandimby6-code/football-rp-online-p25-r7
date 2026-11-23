@@ -116,14 +116,21 @@ export class TeamAI {
   update(players, ball, dt, actions) {
     // Trouver le joueur de champ le plus proche du ballon pour chaque équipe
     const closestByTeam = { blue: null, red: null };
+    const coverByTeam = { blue: null, red: null };
     for (const team of ['blue', 'red']) {
       let bestDist = Infinity;
+      let secondDist = Infinity;
       for (const p of players) {
         if (p.team !== team || p.role === 'GK' || p.isControlled) continue;
         const d = Math.hypot(p.pos.x - ball.pos.x, p.pos.z - ball.pos.z);
         if (d < bestDist) {
+          secondDist = bestDist;
+          coverByTeam[team] = closestByTeam[team];
           bestDist = d;
           closestByTeam[team] = p;
+        } else if (d < secondDist) {
+          secondDist = d;
+          coverByTeam[team] = p;
         }
       }
     }
@@ -139,7 +146,7 @@ export class TeamAI {
       if (p.role === 'GK') {
         this.updateGoalkeeper(p, ball, dt, actions);
       } else {
-        this.updateOutfield(p, players, ball, closestByTeam[p.team] === p, dt, actions);
+        this.updateOutfield(p, players, ball, closestByTeam[p.team] === p, coverByTeam[p.team] === p, dt, actions);
       }
     }
   }
@@ -163,7 +170,7 @@ export class TeamAI {
     }
   }
 
-  updateOutfield(p, players, ball, isChaser, dt, actions) {
+  updateOutfield(p, players, ball, isChaser, isCover, dt, actions) {
     const attackDir = this.attackDirection[p.team] || (p.team === 'blue' ? 1 : -1);
     const staminaFactor = 0.76 + p.stamina * 0.24;
     const paceFactor = 0.82 + clamp(Number(p.attributes?.pace ?? 50), 1, 99) / 100 * 0.36;
@@ -216,13 +223,18 @@ export class TeamAI {
       : this.pressStyle === 'low' ? 7 : 11;
     const distBall = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z);
 
-    const specialistPress = p.specialty === 'stopper' ? 1.2 : p.specialty === 'cover' ? 0.78 : 1;
-    if (!teamHasBall && (isChaser || distBall < pressRange * 0.55 * specialistPress)) {
+    if (!teamHasBall && isChaser) {
       this.steerPlayer(p, ball.pos.x, ball.pos.z, (p.specialty === 'stopper' ? 8.35 : 7.9) * staminaFactor * paceFactor, dt);
-      // Tacle IA occasionnel si adversaire juste devant
+      // Seul le premier défenseur déclenche le duel ; les partenaires gardent leur structure.
       if (ball.owner && ball.owner.team !== p.team && distBall < 1.55 && p.actionCooldown <= 0 && Math.random() < dt * 2.1) {
         actions.tryTackle(p);
       }
+    } else if (!teamHasBall && isCover && distBall < pressRange * 0.9) {
+      // Le deuxième défenseur ferme la ligne de passe au lieu de poursuivre le porteur.
+      const coverX = ball.pos.x - attackDir * (p.specialty === 'cover' ? 3.2 : 4.5);
+      const coverZ = ball.pos.z * 0.55 + p.homePos.z * 0.45;
+      this.steerPlayer(p, clamp(coverX, -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
+        clamp(coverZ, -PITCH.HALF_W + 2, PITCH.HALF_W - 2), 6.6 * staminaFactor * paceFactor, dt);
     } else if (teamHasBall) {
       // Soutien sans ballon, y compris lorsque le porteur est un joueur humain.
       const owner = ball.owner;

@@ -52,3 +52,23 @@ test('P10.1: une passe entre adversaires ou vers soi-même est invalide', () => 
   assert.equal(scorePassOption(passer, opponent, [], 1), -Infinity);
   assert.equal(scorePassOption(passer, passer, [], 1), -Infinity);
 });
+
+test('P27: le pressing IA coordonne un poursuivant et un défenseur de couverture', () => {
+  const chaser = player('blue-chaser', 'blue', 0, 0, 'stopper');
+  const cover = player('blue-cover', 'blue', 4, 0, 'cover');
+  const line = player('blue-line', 'blue', -10, 4, 'balanced');
+  const carrier = player('red-carrier', 'red', 2, 0, 'runner');
+  for (const p of [chaser, cover, line, carrier]) {
+    p.attributes = { pace: 60, stamina: 60, defense: 60, control: 60, passing: 60, shooting: 60 };
+    p.stamina = 1;
+    p.homePos = { ...p.pos };
+  }
+  const ball = { pos: { x: 2, z: 0 }, owner: carrier };
+  const ai = new TeamAI();
+  ai.update([chaser, cover, line, carrier], ball, 0.1, {
+    aiPass() {}, aiShoot() {}, tryTackle() {}
+  });
+  assert.ok(chaser.vel.x > 0, 'le joueur le plus proche doit presser le porteur');
+  assert.ok(cover.vel.x < 0, 'le deuxième joueur doit fermer la ligne de passe');
+  assert.ok(line.vel.x > 0, 'le troisième joueur doit conserver sa ligne plutôt que converger sur le ballon');
+});
