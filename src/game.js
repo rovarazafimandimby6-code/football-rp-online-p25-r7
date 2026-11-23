@@ -43,14 +43,21 @@ export class Game {
     const controlledConfig = rosterConfigs.find((cfg) => cfg.team === 'blue' && cfg.role === requestedRole)
       || rosterConfigs.find((cfg) => cfg.team === 'blue' && cfg.slotIndex === 4)
       || rosterConfigs.find((cfg) => cfg.team === 'blue');
-    this.players = rosterConfigs.map((cfg) => new Player({
-      ...cfg,
-      ...(cfg === controlledConfig ? {
-        appearance: callbacks.playerAppearance,
-        attributes: callbacks.playerAttributes,
-        preferredFoot: callbacks.preferredFoot
-      } : {})
-    }));
+    this.players = rosterConfigs.map((cfg) => {
+      const kitColors = cfg.team === 'blue' ? callbacks.homeKitColors : callbacks.awayKitColors;
+      const appearance = {
+        ...(cfg === controlledConfig ? (callbacks.playerAppearance || {}) : {}),
+        ...(kitColors ? { kitColors } : {})
+      };
+      return new Player({
+        ...cfg,
+        appearance,
+        ...(cfg === controlledConfig ? {
+          attributes: callbacks.playerAttributes,
+          preferredFoot: callbacks.preferredFoot
+        } : {})
+      });
+    });
     for (const p of this.players) {
       this.sceneMgr.scene.add(p.visual.root);
     }

@@ -70,3 +70,23 @@ test('P27: un salon vide reste joignable jusqu’à expiration de son TTL', () =
   assert.equal(manager.get(created.id).id, created.id);
   assert.doesNotThrow(() => manager.join(created.id, { displayName: 'Premier joueur' }));
 });
+
+test('P27: les kits 3D des deux équipes utilisent les palettes des clubs sélectionnés', async () => {
+  const game = await readFile(new URL('../src/game.js', import.meta.url), 'utf8');
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+  const player = await readFile(new URL('../src/player.js', import.meta.url), 'utf8');
+  assert.match(game, /cfg\.team === 'blue' \? callbacks\.homeKitColors : callbacks\.awayKitColors/);
+  assert.match(game, /kitColors \}/);
+  assert.match(main, /homeKitColors: kitPalette\(homeClub\)/);
+  assert.match(main, /awayKitColors: kitPalette\(awayClub\)/);
+  assert.match(player, /kitColors/);
+});
+
+test('P27: le tableau de match affiche les écussons SVG propres aux deux clubs', async () => {
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../style.css', import.meta.url), 'utf8');
+  assert.match(main, /blueCrest\.outerHTML = renderClubCrest/);
+  assert.match(main, /redCrest\.outerHTML = renderClubCrest/);
+  assert.match(main, /onlineTeams\?\.blue\?\.id/);
+  assert.match(css, /#board \.club-crest-svg/);
+});

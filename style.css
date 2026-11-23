@@ -968,3 +968,18 @@ html, body {
 .result-team-stats b { grid-column:1/-1; color:#e8ca73; font-size:10px; }
 .result-player-table { min-width:700px; }
 @media(max-width:600px) { .result-card-bottom,.results-pagination { align-items:flex-start; flex-direction:column; }.results-pagination>div { width:100%; }.results-pagination button { flex:1; }.result-team-grid { grid-template-columns:1fr; }.result-card-bottom .small-action { width:100%; } }
+
+
+/* P27 — écussons de clubs officiels dans le tableau de match */
+#board .club-crest-svg {
+  display: inline-flex;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 29px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#board .club-crest-svg svg { display: block; width: 100%; height: 100%; }
+#board .team { min-width: 0; }
+#board .team b { max-width: clamp(54px, 12vw, 150px); overflow: hidden; text-overflow: ellipsis; }

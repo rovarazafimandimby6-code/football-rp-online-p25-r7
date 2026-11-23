@@ -332,8 +332,12 @@ async function startMatch(online = null) {
     if (!gl2) throw new Error('WebGL 2 est indisponible. Essaie un navigateur récent et active l’accélération matérielle.');
     gl2.getExtension('WEBGL_lose_context')?.loseContext();
     const { Game } = await import('./game.js');
-    const homeClub = clubs.getClub(selectedMatchup.home);
-    const awayClub = clubs.getClub(selectedMatchup.away);
+    const onlineTeams = online?.joinResult?.state?.teams || null;
+    const homeClub = onlineTeams?.blue?.id ? clubs.getClub(onlineTeams.blue.id) : clubs.getClub(selectedMatchup.home);
+    const awayClub = onlineTeams?.red?.id ? clubs.getClub(onlineTeams.red.id) : clubs.getClub(selectedMatchup.away);
+    const kitPalette = (club) => club?.colors?.length >= 3
+      ? { primary: club.colors[0], secondary: club.colors[1], accent: club.colors[2] }
+      : null;
     game = new Game(container, {
       playerRole: profileStore.profile.identity.role,
       playerName: profileStore.profile.identity.displayName,
@@ -345,6 +349,8 @@ async function startMatch(online = null) {
       preferredFoot: profileStore.profile.identity.preferredFoot,
       homeRoster: homeClub?.roster,
       awayRoster: awayClub?.roster,
+      homeKitColors: kitPalette(homeClub),
+      awayKitColors: kitPalette(awayClub),
       cameraMode: preferences.cameraMode,
       cameraZoom: preferences.cameraZoom,
       onCameraMode: (mode) => { preferences.cameraMode = mode; try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {} },
@@ -361,6 +367,10 @@ async function startMatch(online = null) {
     });
     document.getElementById('blue-name').textContent = homeClub?.name || 'ÉQUIPE DOMICILE';
     document.getElementById('red-name').textContent = awayClub?.name || 'ÉQUIPE EXTÉRIEURE';
+    const blueCrest = document.querySelector('#board .team.blue .crest');
+    const redCrest = document.querySelector('#board .team.red .crest');
+    if (blueCrest && homeClub) blueCrest.outerHTML = renderClubCrest({ id: homeClub.id, name: homeClub.name, size: 27, compact: true, colors: homeClub.colors });
+    if (redCrest && awayClub) redCrest.outerHTML = renderClubCrest({ id: awayClub.id, name: awayClub.name, size: 27, compact: true, colors: awayClub.colors });
     const qualityControl = document.getElementById('quality');
     if (qualityControl) qualityControl.value = preferences.quality;
     game.match.setDurationMinutes(preferences.duration);
