@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PITCH } from './pitch.js';
 import { renderClubCrest } from './club-identity.js';
+import { resolvePlayerGuidance } from './player-guidance.js';
 
 export class UIManager {
   constructor(players, callbacks) {
@@ -13,6 +14,7 @@ export class UIManager {
     this.statusEl = document.getElementById('status');
     this.staminaFillEl = document.getElementById('stamina-fill');
     this.activeNameEl = document.getElementById('active-player-name');
+    this.playerGuidanceEl = document.getElementById('player-guidance');
     this.fpsEl = document.getElementById('fps-badge');
 
     this.overlay = document.getElementById('overlay');
@@ -108,7 +110,7 @@ export class UIManager {
     this.statusTimer = window.setTimeout(() => this.statusEl.classList.remove('show'), 2300);
   }
 
-  updateHUD(match, activePlayer, fps) {
+  updateHUD(match, activePlayer, fps, ball = null) {
     this.blueScoreEl.textContent = String(match.blueScore);
     this.redScoreEl.textContent = String(match.redScore);
     this.periodEl.textContent = match.period === 1 ? '1RE MI-TEMPS' : '2E MI-TEMPS';
@@ -122,6 +124,12 @@ export class UIManager {
       const roleLabels = { GK: 'GARDIEN', DEF: 'DÉFENSEUR', MID: 'MILIEU', FWD: 'ATTAQUANT' };
       this.activeNameEl.textContent = `${activePlayer.name} #${activePlayer.number} · ${roleLabels[activePlayer.role] || 'JOUEUR'}`;
       this.activeNameEl.dataset.role = String(activePlayer.role || 'MID').toLowerCase();
+      if (this.playerGuidanceEl) {
+        const guidance = resolvePlayerGuidance(activePlayer, ball, match.phase);
+        if (this.playerGuidanceEl.textContent !== guidance.text) this.playerGuidanceEl.textContent = guidance.text;
+        this.playerGuidanceEl.dataset.phase = guidance.phase;
+        this.playerGuidanceEl.dataset.role = String(activePlayer.role || 'MID').toLowerCase();
+      }
     }
 
     if (fps > 0) {

@@ -1588,3 +1588,31 @@ html, body {
   .player-card-identity { padding:6px 0 4px; }
   .player-card-attributes { margin:5px 0; }
 }
+
+
+/* P27 — aide contextuelle discrète : jouer son poste sans piloter toute l'équipe. */
+#player-guidance {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: calc(37px + env(safe-area-inset-bottom));
+  width: min(310px, 38vw);
+  transform: translateX(-50%);
+  padding: 5px 9px;
+  border: 1px solid rgba(207, 241, 218, .16);
+  border-radius: 7px;
+  background: rgba(5, 18, 12, .58);
+  color: #d8eadf;
+  font-size: clamp(7px, .9vw, 9px);
+  font-weight: 850;
+  letter-spacing: .55px;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 1px 4px #000;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+}
+#player-guidance[data-phase="possession"] { color: #ffe39a; border-color: rgba(255, 227, 154, .24); }
+#player-guidance[data-phase="defend"] { color: #ffb4aa; border-color: rgba(255, 180, 170, .22); }
+#player-guidance[data-phase="loose"] { color: #b9d8ff; border-color: rgba(185, 216, 255, .22); }
+@media(max-height:420px) { #player-guidance { bottom: calc(31px + env(safe-area-inset-bottom)); padding: 3px 7px; } }

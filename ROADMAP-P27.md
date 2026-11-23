@@ -229,3 +229,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des tests unitaires sur les profils de poste, l'ancrage au joueur, le champ de vision directionnel et le zoom.
 - Validation GitHub Actions : en attente sur le commit de ce lot.
 - Limite : les profils de poste correspondent actuellement aux quatre familles de rôles existantes (GK/DEF/MID/FWD). Les rôles fins (latéral, défenseur central, sentinelle, relayeur, ailier, avant-centre) et la perception périphérique avec indices directionnels seront affinés dans les lots suivants. Essai visuel et ergonomique Android requis.
+
+
+### Lot 15 — conseils contextuels de jeu selon le poste et la phase (intégré)
+- [x] Ajouter un indicateur HUD discret qui explique la responsabilité immédiate du footballeur humain.
+- [x] Distinguer possession personnelle, soutien à un coéquipier, phase défensive et ballon libre.
+- [x] Adapter le conseil au rôle gardien, défenseur, milieu ou attaquant, sans automatiser les déplacements ni les actions.
+- [x] Conserver le conseil dans une zone compacte du HUD paysage, sans recouvrir le terrain ni les commandes tactiles.
+- [x] Ajouter des tests sur les quatre rôles et les quatre états de possession.
+- Validation GitHub Actions : en attente sur le commit de ce lot.
+- Limite : ces conseils sont une première assistance de lecture du jeu. Les indications directionnelles spatiales, appels de balle et perception périphérique seront ajoutés après validation de leur cohérence avec la simulation solo et autoritaire en ligne.

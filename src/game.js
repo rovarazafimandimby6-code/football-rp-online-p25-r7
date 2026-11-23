@@ -711,7 +711,7 @@ export class Game {
       this.controls.setRole(this.activePlayer?.role);
       this.cam.update(this.ball, this.activePlayer, dt);
       this.sceneMgr.render();
-      this.ui.updateHUD(this.match, this.activePlayer, this.currentFps);
+      this.ui.updateHUD(this.match, this.activePlayer, this.currentFps, this.ball);
       if (!this.ui.statsPanel.classList.contains('hidden')) this.ui.renderStats(this.match);
       if ((this.fpsFrames % 2) === 0) this.ui.updateMinimapAndLabels(this.players, this.ball, this.sceneMgr.camera);
     };
