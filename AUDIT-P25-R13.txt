@@ -1,0 +1,25 @@
+FOOTBALL RP ONLINE — AUDIT P25 R13
+Base : P25 R12 (archive de référence récupérée depuis la Bibliothèque)
+Version : 25.13.0
+
+Travaux consolidés :
+1. Route authentifiée POST /api/rooms/:id/reconnect.
+2. Réactivation de la même session/joueur pendant le délai de grâce, sans créer un nouvel avatar ni réinitialiser la séquence d'inputs.
+3. Refus explicite des sessions expirées et des salons terminés.
+4. Heartbeat serveur aligné sur la logique de reconnexion, tout en conservant son format de réponse historique.
+5. OnlineMatchClient.reconnectSession() restaure le compteur de séquence renvoyé par le serveur et conserve la session locale.
+6. OnlineMatchBridge passe à un polling moins agressif (80 ms), suspend les polls et inputs pendant le backoff, et applique une temporisation exponentielle après erreurs réseau, avec reconnexion automatique et verrou anti-requêtes concurrentes.
+7. Contrôles de tests ajoutés pour reprise de session, continuité de séquence, expiration du délai de grâce et route HTTP.
+8. Le contrôle reste strictement individuel : un jeton ne pilote que son avatar. Le mode local reste inchangé.
+
+Validation :
+- npm test : 204 tests réussis, 0 échec.
+- Vérification syntaxique JS/MJS prévue sur src, server et tests avant livraison.
+- Contrôle ZIP prévu avant archivage.
+
+Limites connues :
+- Les salons et sessions restent en mémoire et disparaissent au redémarrage du serveur.
+- La reconnexion automatique ne peut restaurer une session qu'avant expiration du délai de grâce configuré côté serveur.
+- Aucun test réel multi-appareils Android ni mesure WebGL sur appareil physique n'est revendiqué.
+- La mi-temps dédiée avec pause visuelle n'est pas encore implémentée.
+- Vérification syntaxique : tous les fichiers JS/MJS de src, server et tests passent node --check.

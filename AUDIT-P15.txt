@@ -1,0 +1,23 @@
+AUDIT P15 — 2026-11-22
+
+Base : P14 récupérée depuis la bibliothèque (113 563 octets) et archive testée sans erreur.
+
+Changements P15 :
+- Ajout d'un callback de résultat final dans Game, déclenché une seule fois par match.
+- Transmission du résultat, du score, de la possession et des statistiques au callback de fin.
+- Connexion du callback au CareerManager dans main.js.
+- Conversion du résultat du camp bleu (joueur) en victoire/nul/défaite.
+- Crédit des récompenses au portefeuille carrière et au profil local.
+- Ajout de PlayerProfileStore.grantMatchRewards avec sauvegarde, progression de niveau et attribution des points d'entraînement.
+- Ajout de tests pour la persistance des récompenses et le passage de niveau.
+
+Vérifications :
+- node --check sur chaque module src/*.js : réussi.
+- npm test : 71 tests réussis, 0 échec.
+- Intégrité ZIP : contrôlée après création.
+
+Limites :
+- Pas de serveur multijoueur ni de synchronisation réseau.
+- Récompense collective uniquement, sans attribution des buts/assists au personnage.
+- Classement de compétition non relié aux résultats des matchs rapides.
+- Pas de validation sur appareil Android physique.

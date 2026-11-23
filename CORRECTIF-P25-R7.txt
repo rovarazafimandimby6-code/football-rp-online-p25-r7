@@ -1,0 +1,14 @@
+Football RP Online P25 R7 — correctif de lancement
+Date: 2026-11-23
+
+Correction:
+- src/game.js: renommage de la seconde variable locale `victim` en `opponentCarrier`
+  dans Game.tryTackle(), afin d'éviter une double déclaration const qui empêchait
+  le navigateur de parser le module et bloquait le lancement du match.
+
+Validation locale:
+- node --check sur les 65 fichiers JavaScript / MJS: OK
+- npm test: 183 tests réussis, 0 échec
+
+Ce correctif ne modifie pas le serveur Render. Le client web / APK doit être reconstruit
+avec cette source corrigée pour bénéficier de la correction.

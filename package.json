@@ -1,0 +1,11 @@
+{
+  "name": "football-rp-online-prototype",
+  "version": "26.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Football RP Online P26 — historique des matchs, statistiques détaillées et multijoueur RP.",
+  "scripts": {
+    "test": "node --test",
+    "start": "node server/index.js"
+  }
+}

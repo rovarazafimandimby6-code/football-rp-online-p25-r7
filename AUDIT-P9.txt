@@ -1,0 +1,23 @@
+AUDIT P9 — PREMIÈRE INTÉGRATION
+
+Source : football-rp-online-p8.2.1.zip
+
+Modifications intégrées :
+- Contrôle humain verrouillé sur un seul avatar : suppression des changements automatiques à la passe, à la récupération et au pressing.
+- Commandes A/B/C et joystick ; sprint secondaire conservé.
+- Noms simplifiés et moins fréquents à l'écran.
+- Mini-carte à points déplacée au centre inférieur et rendue discrète.
+- Scoreboard compact.
+- Ajout de profils de spécialité IA et de pondérations comportementales.
+
+Limites héritées à traiter dans les prochains lots :
+- Le prototype n'a pas de backend ni de réseau multijoueur : les coéquipiers et adversaires sont simulés par IA.
+- Les touches, corners et six mètres sont déjà détectés ; les fautes/coups francs et une vraie séquence de remise en jeu restent à développer.
+- Aucun test de rendu graphique automatisé ni mesure FPS sur téléphone réel.
+
+
+VALIDATION APRÈS INTÉGRATION
+- 30 tests automatisés Node.js réussis.
+- Tous les modules JavaScript passent node --check.
+- Références DOM contrôlées : aucun identifiant HTML manquant.
+- Le rendu WebGL et les commandes multi-touch restent à confirmer sur un navigateur Android réel ; la tentative headless n'a pas permis de produire une capture fiable dans cet environnement.

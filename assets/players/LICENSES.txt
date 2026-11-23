@@ -1,0 +1,23 @@
+FOOTBALL RP ONLINE P25 — LICENCES DES RESSOURCES 3D
+
+Universal Base Characters Kit — Standard FREE
+Licence déclarée dans License_Standard.txt fourni par l'utilisateur :
+CC0 1.0 Universal — Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+Auteur indiqué : Quaternius
+Site : https://quaternius.com
+La version Standard ne contient qu'une partie des modèles disponibles.
+
+Hairstyles
+Les coiffures utilisées proviennent du pack Hairstyles fourni avec le kit
+Universal Base Characters. Elles sont distribuées sous la licence CC0 1.0
+indiquée par l'auteur dans le fichier License_Standard.txt du kit.
+
+Universal Animation Library — Standard
+Licence lue dans License.txt de l'archive fournie :
+CC0 1.0 Universal — Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+Auteur indiqué : Quaternius
+Site : https://quaternius.com
+
+Les licences originales doivent être conservées avec les archives source.

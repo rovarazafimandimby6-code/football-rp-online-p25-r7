@@ -1,0 +1,25 @@
+AUDIT P21 — 22/11/2026
+
+Base réelle
+- Archive P20 récupérée depuis la Library : football-rp-online-p20.zip.
+- Extraction et contrôle effectués avant modification.
+- Tests initiaux : 94 réussis, 0 échec.
+
+Évolutions
+- Ajout de shotSpin() et spinAcceleration() dans gameplay-tuning.js.
+- Ball conserve un spin borné, réinitialisé au reset et défini au tir.
+- PhysicsEngine applique une accélération latérale plafonnée puis amortit
+  progressivement le spin.
+- executeShoot() transmet l'effet calculé selon l'intention latérale,
+  l'attribut technique et le pied de frappe.
+- Quatre tests P21 couvrent le sens, les limites, le pied faible et
+  l'intégration dans le moteur physique.
+
+Validation
+- npm test : 98 réussis, 0 échec.
+- node --check : tous les fichiers src/*.js et tests/*.mjs valides.
+- Vérification ZIP : voir validation finale de livraison.
+
+Limites
+- Pas de test navigateur/WebGL interactif ni de test Android physique.
+- Courbure simplifiée ; réglage à confirmer avec observation visuelle en jeu.

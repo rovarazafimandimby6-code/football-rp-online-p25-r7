@@ -1,0 +1,63 @@
+FOOTBALL RP ONLINE — FEUILLE DE ROUTE P8
+
+P8.0 — LOTS DE CONSOLIDATION LIVRÉS
+- Fiabilité du chronomètre et des transitions de match.
+- Résultat final structuré et journal d'événements borné.
+- Statistiques de reprises de jeu.
+- IA tactique symétrique pour les deux équipes.
+- Tests unitaires renforcés.
+
+LOTS SUIVANTS À INTÉGRER DANS LES LIVRAISONS P8 SUIVANTES
+
+LOT A — ARBITRAGE ET RÈGLES AVANCÉES
+- Fautes avec détection de contact et sanctions cohérentes.
+- Coups francs et placement des joueurs lors des reprises.
+- Hors-jeu adapté au format 5v5, après validation de la règle retenue.
+- Arbitrage des sorties, corners, touches et six mètres avec animation de reprise.
+
+LOT B — JOUEURS ET PERSONNALISATION
+- Identité et apparence persistantes du footballeur.
+- Équipement et variations visuelles.
+- Attributs sportifs, fatigue, entraînement et progression équilibrée.
+- Sauvegarde locale de prototype, puis migration vers le profil serveur.
+
+LOT C — CLUBS ET COMPÉTITIONS
+- Clubs initiaux gérés par IA ou ouverts à une reprise par des joueurs.
+- Effectif, postes, composition, calendrier et classement.
+- Matchs officiels programmés et règles d'absence / forfait.
+- Adaptation du match au nombre de joueurs présents, de 3v3 à 5v5.
+
+LOT D — CARRIÈRE ET MERCATO
+- Contrats, négociations, transferts, fenêtres de mercato.
+- Historique des clubs et statistiques de carrière.
+- Monnaie virtuelle et progression hybride (entraînement, expérience, monnaie).
+- Les achats ne doivent pas contourner l'équilibre compétitif.
+
+LOT E — MULTIJOUEUR EN LIGNE
+- Backend autoritaire, authentification, comptes et profils persistants.
+- Salles, matchmaking, synchronisation réseau et reconnexion.
+- Validation serveur des actions, anti-triche et journal des matchs.
+- Infrastructure de déploiement et tests de charge.
+
+LOT F — QUALITÉ ET ANDROID
+- Profiling sur appareils Android modestes.
+- Réglages graphiques adaptatifs et gestion thermique.
+- Tests tactiles sur différentes tailles d'écran.
+- Tests de non-régression et vérification de bout en bout.
+
+CONTRAINTES NON NÉGOCIABLES
+- Format de lancement : 5 contre 5.
+- Durée d'un match : 3 à 5 minutes, 5 minutes maximum absolu.
+- Format standard : 2 périodes de 2 min 30.
+- Les matchs ne doivent jamais dépasser 300 secondes.
+- Les achats ne doivent jamais donner un avantage compétitif injuste.
+
+IMPORTANT
+Cette feuille de route décrit les lots à construire ; elle ne prétend pas que les systèmes réseau, clubs, carrière ou mercato sont déjà fonctionnels dans P8.0.
+
+P8.1 — LOTS MAJEURS EN COURS DE CONSOLIDATION
+- LOT B : modèle de profil local, identité, numéro, poste préféré, pied fort et apparence paramétrable.
+- LOT B/D : progression par expérience, niveaux, points d'entraînement, monnaie virtuelle et plafonds d'attributs.
+- LOT C : fondation des clubs IA / clubs ouverts à reprise, gestion d'effectif, calendrier, présence minimale et classement.
+- LOT D : contrats, offres, négociation, fenêtres de mercato, frais de transfert et historique de carrière.
+- Ces modules sont des fondations locales testables. Ils ne sont pas encore reliés à un compte serveur ni à un vrai réseau multijoueur.

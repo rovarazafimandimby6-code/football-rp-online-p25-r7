@@ -1,0 +1,34 @@
+AUDIT DE REPRISE — FOOTBALL RP ONLINE P24
+Date : 22/11/2026
+
+RÉCUPÉRATION DE LA BASE
+- Aucun ZIP P24 n'était présent dans la bibliothèque consultée.
+- Récupération de la dernière archive P23 disponible : football-rp-online-p23(20261122-085411).zip (207 154 octets).
+- Extraction et inspection de l'arborescence avant modification.
+- Base P23 contenait le moteur 3D, les clubs, la simulation serveur expérimentale, le client HTTP, 158 tests et les audits antérieurs.
+
+MODIFICATIONS P24 APPLIQUÉES À CETTE BASE
+- Remplissage des équipes jusqu'à 3 joueurs minimum par des bots serveur.
+- Remplacement prioritaire des bots par les joueurs humains qui rejoignent, avec plafond de cinq par équipe.
+- Contrôle serveur des bots : déplacement vers le ballon, soutien du porteur, tentative de tir et tacle de proximité.
+- Les bots n'ont pas de jeton et ne sont pas authentifiables comme utilisateurs.
+- Identifiants séquentiels pour les événements et curseur d'événement.
+- Endpoint de delta avec HTTP 204 si le snapshot n'a pas changé ; le client expose les nouveaux événements et leur curseur.
+- Sauvegarde/restauration de la session de match dans sessionStorage, stockage injecté dans les tests ; suppression au départ du salon.
+- Version du manifeste et étiquettes d'interface mises à P24.
+
+VALIDATION EFFECTUÉE
+- `npm test` : 162 réussis, 0 échec, 0 ignoré.
+- `node --check` sur tous les fichiers src/*.js, server/*.js et tests/*.mjs : réussi.
+- Les tests ajoutés couvrent le remplissage des équipes, le remplacement des bots, leur mouvement, les deltas d'événements et la restauration de session.
+- Le test API HTTP vérifie aussi la réponse 204 sans changement.
+
+LIMITES ET TRAVAUX À POURSUIVRE
+- Cette reprise est basée sur P23, car l'archive P24 du fil précédent n'était pas accessible. Les modifications listées dans le compte rendu utilisateur comme déjà intégrées ne peuvent pas être certifiées à partir du ZIP P23.
+- Le raccordement complet de la scène 3D aux snapshots réseau reste à auditer et valider ; aucune validation graphique interactive ou Android physique n'a été effectuée ici.
+- Le polling HTTP est incrémental et évite les snapshots inchangés, mais ne remplace pas un transport temps réel WebSocket.
+- L'IA serveur des bots est un comportement de remplissage de base ; coordination tactique, arbitrage réseau complet et animation synchronisée restent à renforcer.
+- La persistance serveur est toujours en mémoire ; pas de base de données ni de déploiement public validé.
+
+STATUT
+P24 — base de reprise créée, première consolidation fonctionnelle vérifiée. Ce n'est pas encore la livraison finale P24.

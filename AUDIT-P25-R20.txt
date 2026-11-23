@@ -1,0 +1,23 @@
+FOOTBALL RP ONLINE P25 — AUDIT R20
+Version : 25.20.0
+Base : P25 R19, archive vérifiée avant extraction (SHA-256 : 8c13207890cb25db14ed2c4f126d1343f3eceb7269d39ed7a0993c5b9c6ec38c).
+
+CHANGEMENTS
+- Validation renforcée des résultats avant archivage : identifiant non vide et borné, score entier positif ou nul, horodatage final numérique fini.
+- Noms de fichiers temporaires uniques par écriture afin d'éviter les collisions de fichiers temporaires au sein d'un même processus.
+- Pagination de l'historique des résultats via JsonResultStore.page(), avec total, offset, limite, hasMore et nextOffset.
+- Nouvelle prise en charge de GET /api/results?limit=N&offset=N ; paramètres invalides rejetés avec HTTP 400 / INVALID_PAGINATION.
+- RoomManager expose pageResults() sans modifier les méthodes historiques listResults() et getResult().
+- Tests dédiés à la pagination, aux validations de résultats et à la route HTTP.
+
+VALIDATION
+- npm test : 217/217 réussis, 0 échec.
+- Contrôle syntaxique node --check de tous les fichiers JavaScript et MJS.
+- Archive ZIP vérifiée avec unzip -t.
+
+LIMITES
+- L'écriture atomique protège le remplacement du fichier, mais le JSON local n'est pas une base transactionnelle multi-processus : plusieurs instances écrivant simultanément dans le même dossier peuvent encore perdre une mise à jour.
+- La conservation après redéploiement exige un volume persistant et RESULTS_DIR configuré dessus.
+- Les salons actifs et les matchs en cours restent en mémoire ; seuls les résultats finalisés sont persistés.
+- Aucun test Android physique, multi-appareils, Render réel, multi-instance ou mesure FPS WebGL n'a été effectué.
+- Les tests automatisés ne remplacent pas une validation de gameplay en réseau réel.

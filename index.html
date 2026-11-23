@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d311f">
+  <meta name="description" content="Football RP Online P26 — jeu de football RP mobile, multijoueur et carrière.">
+  <title>Football RP Online — P26</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <section id="main-menu" aria-label="Menu principal Football RP Online">
+    <div class="menu-backdrop"><div class="stadium-lights"></div><div class="stadium-pitch"></div></div>
+    <header class="menu-topbar"><div class="brand-mark"><span class="brand-shield">FR</span><div><strong>FOOTBALL RP</strong><small>ONLINE</small></div></div><div class="menu-status"><i></i> PROTOTYPE JOUABLE LOCAL</div></header>
+    <div class="menu-layout">
+      <aside class="menu-sidebar"><div class="menu-section-label">ESPACE JOUEUR</div>
+        <button data-page="home" class="active"><span>⌂</span> Accueil</button>
+        <button data-page="player"><span>◉</span> Mon joueur</button>
+        <button data-page="clubs"><span>⬟</span> Clubs</button>
+        <div class="menu-section-label secondary-label">UNIVERS FOOTBALL</div>
+        <button data-page="competitions"><span>♜</span> Compétitions</button>
+        <button data-page="results"><span>▣</span> Résultats</button>
+        <button data-page="mercato"><span>⇄</span> Mercato</button>
+        <button data-page="rankings"><span>▤</span> Classements</button>
+        <button data-page="community"><span>◎</span> Communauté</button>
+        <div class="sidebar-spacer"></div><button data-page="settings"><span>⚙</span> Paramètres</button>
+      </aside>
+      <section class="menu-main"><div class="menu-heading"><div><span class="eyebrow">VOTRE ESPACE FOOTBALL</span><h1 id="menu-page-title">Votre carrière commence ici</h1><p id="menu-page-subtitle">Un joueur. Un club. Une histoire à écrire.</p></div><div class="menu-user"><span class="user-avatar">10</span><span><b>Joueur invité</b><small>Profil local</small></span></div></div><div id="menu-content"></div></section>
+    </div>
+    <footer class="menu-footer"><span>FOOTBALL RP ONLINE</span><span>VERSION P26 · NOUVELLE GÉNÉRATION</span></footer>
+  </section>
+  <main id="game-shell" class="hidden">
+    <div id="webgl-container" aria-label="Terrain 3D Football 5 contre 5"></div>
+    <div id="labels-layer" aria-hidden="true"></div>
+
+    <header id="board">
+      <div class="team blue"><span class="crest logo-crest blue">AF</span><b id="blue-name">TANA FC</b></div>
+      <div class="sc"><span id="blue-score">0</span><em>–</em><span id="red-score">0</span></div>
+      <div class="team red"><b id="red-name">TOAMASINA</b><span class="crest logo-crest red">TU</span></div>
+      <div class="time"><small id="period">1RE MI-TEMPS</small><strong id="clock">00:00</strong></div>
+    </header>
+
+    <button id="pause" type="button" aria-label="Mettre le match en pause">Ⅱ</button>
+
+
+    <div id="minimap" aria-label="Mini-carte de match">
+      <div class="mm-line"></div>
+      <div class="mm-circle"></div>
+    </div>
+
+    <div id="status">COUP D'ENVOI</div>
+    <div id="legacy-match-options" hidden><select id="match-duration"><option value="5" selected>5</option><option value="3">3</option></select><select id="quality"><option value="low">low</option><option value="medium" selected>medium</option><option value="high">high</option></select></div>
+    <div id="fps-badge" aria-hidden="true">-- FPS</div>
+
+    <div id="stamina">
+      <span id="active-player-name">JOUEUR #10</span>
+      <div><i id="stamina-fill"></i></div>
+    </div>
+
+    <div id="controls">
+      <div id="stick-zone">
+        <div id="stick-base"><div id="stick-knob"></div></div>
+      </div>
+      <div id="action-buttons">
+        
+        <button id="sprint" type="button" class="control secondary">SPRINT</button>
+        <button id="defend" type="button" class="control defend"><b>C</b><small>LOB</small></button>
+        <button id="pass" type="button" class="control"><b>B</b><small>PASSE / PRESSION</small></button>
+        <button id="shoot" type="button" class="control shoot"><b>A</b><small>TIR / TACLE</small></button>
+      </div>
+    </div>
+
+    <div id="stats-panel" class="hidden">
+      <b>STATISTIQUES DU MATCH</b>
+      <div class="stats-labels">
+        <span>ÉQUIPE</span><span>TIRS</span><span>CADRÉS</span><span>PASSES</span><span>INT.</span><span>TACLES</span><span>ARRÊTS</span><span>POS.</span>
+      </div>
+      <div id="stats-body"></div>
+      <button id="stats-close" type="button">FERMER</button>
+    </div>
+
+    <div id="orientation">Tournez votre téléphone en mode paysage pour jouer.</div>
+
+    <div id="overlay" class="hidden">
+      <div class="overlay-card">
+        <div class="overlay-kicker">FOOTBALL RP ONLINE — P26</div>
+        <h2 id="overlay-title">Pause</h2>
+        <p id="overlay-text"></p>
+        <div class="overlay-actions"><button id="overlay-action" type="button">CONTINUER</button><button id="overlay-stats" type="button">STATISTIQUES</button></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
