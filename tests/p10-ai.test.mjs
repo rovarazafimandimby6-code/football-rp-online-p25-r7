@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scorePassOption, getSupportTarget, TeamAI, createTeamRoster } from '../src/ai.js';
+import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
 
 const player = (id, team, x, z, specialty = 'balanced') => ({
   id, team, role: 'FWD', specialty,
@@ -114,7 +114,7 @@ test('P27: les attributs de passe et de vision influencent la qualité des optio
 });
 
 test('P27: la qualité de décision offensive reste bornée pour les attributs extrêmes', async () => {
-  const { decisionAttributeFactor } = await import('../src/ai.js');
+
   const weak = player('weak', 'blue', 0, 0);
   const elite = player('elite', 'blue', 0, 0);
   weak.attributes = { shooting: 1, composure: 1 };
@@ -129,7 +129,7 @@ test('P27: le bloc défensif protège la profondeur côté but et conserve les c
   defender.homePos = { x: -10, z: -7 };
   const carrier = player('carrier', 'red', 8, -3, 'runner');
   const farRunner = player('runner', 'red', 14, 8, 'runner');
-  const { getDefensiveShapeTarget } = await import('../src/ai.js');
+
   const target = getDefensiveShapeTarget(defender,
     { pos: { x: 9, z: -2 } }, [carrier, farRunner], 1, 'balanced');
   assert.ok(target.x < carrier.pos.x, 'le défenseur reste du côté de son but par rapport au porteur');
@@ -138,7 +138,7 @@ test('P27: le bloc défensif protège la profondeur côté but et conserve les c
 });
 
 test('P27: le bloc défensif se replie davantage avec une mentalité prudente', async () => {
-  const { getDefensiveShapeTarget } = await import('../src/ai.js');
+
   const defender = player('defender', 'blue', -5, 4);
   defender.homePos = { x: -5, z: 4 };
   const carrier = player('carrier', 'red', 10, 3);
