@@ -297,3 +297,12 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Vérifier qu'un adversaire placé sur la ligne bloque la passe vers le demandeur.
 - [x] Ajouter un test de non-régression sur la sortie du salon pendant une demande active.
 - [ ] Vérifier ces scénarios avec deux appareils Android connectés lors des essais finaux.
+
+### Lot 22 — synchronisation des performances en ligne avec la carrière personnelle (intégré)
+- [x] Récupérer le rapport final du serveur autoritaire après le coup de sifflet final.
+- [x] Identifier le joueur humain avec son identifiant de session, sans utiliser les statistiques d'un bot ou d'un autre participant.
+- [x] Calculer victoire/nul/défaite et clean sheet selon l'équipe réellement contrôlée.
+- [x] Alimenter l'historique de saison, la note et les statistiques individuelles avec les données du rapport serveur.
+- [x] Attribuer les récompenses de carrière en tenant compte des buts et passes décisives réellement enregistrés.
+- [x] Ajouter des tests sur les deux équipes, le nul, les identités absentes et les statistiques invalides.
+- [ ] Vérifier la synchronisation sur deux appareils Android connectés à un même salon.

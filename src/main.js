@@ -467,12 +467,33 @@ async function startMatch(online = null) {
       onCameraZoom: (zoom) => { preferences.cameraZoom = zoom; try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {} },
       onExitMatch: showMainMenu,
       onMatchEnd: (result) => {
-        const userTeam = online?.joinResult?.team || 'blue';
-        const outcome = !result.winner ? 'draw' : result.winner === userTeam ? 'win' : 'loss';
-        const cleanSheet = result.winner === userTeam && (userTeam === 'blue' ? result.redScore === 0 : result.blueScore === 0);
-        const reward = career.recordMatch({ result: outcome, cleanSheet });
+        if (online) {
+          // Online career rewards and season statistics must come from the authoritative
+          // server report, never from the local presentation simulation.
+          void (async () => {
+            try {
+              const serverResult = await online.client.request(`/api/rooms/${encodeURIComponent(online.client.roomId)}/result`);
+              const performance = resolveOnlinePlayerPerformance(serverResult, online.joinResult?.playerId);
+              if (!performance) throw new Error('ONLINE_PLAYER_RESULT_UNAVAILABLE');
+              const reward = career.recordMatch({
+                result: performance.result,
+                goals: performance.stats.goals,
+                assists: performance.stats.assists,
+                cleanSheet: performance.cleanSheet
+              });
+              profileStore.grantMatchRewards(reward);
+              seasonStats.recordMatch({ result: performance.result, stats: { ...performance.stats, cleanSheet: performance.cleanSheet } });
+            } catch (error) {
+              console.warn('[Football RP Online] Statistiques de carrière en ligne non synchronisées :', error);
+            }
+          })();
+          return;
+        }
+        const outcome = !result.winner ? 'draw' : result.winner === 'blue' ? 'win' : 'loss';
+        const cleanSheet = outcome === 'win' && (result.winner === 'blue' ? result.redScore === 0 : result.blueScore === 0);
+        const reward = career.recordMatch({ result: outcome, goals: result.playerStats?.goals, assists: result.playerStats?.assists, cleanSheet });
         profileStore.grantMatchRewards(reward);
-        if (!online) seasonStats.recordMatch({ result: outcome, stats: { ...result.playerStats, cleanSheet } });
+        seasonStats.recordMatch({ result: outcome, stats: { ...result.playerStats, cleanSheet } });
       }
     });
     document.getElementById('blue-name').textContent = homeClub?.name || 'ÉQUIPE DOMICILE';
