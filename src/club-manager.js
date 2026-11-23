@@ -7,6 +7,28 @@ const PLAYER_ATTRIBUTE_KEYS = ['pace','shooting','passing','defense','stamina','
 const normalizePlayerAttributes = (attributes, fallback = 50) => Object.fromEntries(PLAYER_ATTRIBUTE_KEYS.map(key => [key, Number.isFinite(Number(attributes?.[key])) ? Math.max(1, Math.min(99, Math.round(Number(attributes[key])))) : Math.max(1, Math.min(99, Math.round(fallback)))]));
 const clonePlayer = player => ({ ...player, attributes: player.attributes ? { ...player.attributes } : null, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
 const cloneClub = club => ({ ...club, colors: [...club.colors], roster: club.roster.map(clonePlayer) });
+
+const normalizeRosterPlayer = (player, club, index = 0) => {
+  const rating = Number(player?.rating);
+  const safeRating = Number.isFinite(rating) ? Math.max(1, Math.min(99, Math.round(rating))) : 50;
+  return {
+    id: safeId(player?.id),
+    name: cleanText(player?.name, 'Joueur', 36),
+    nationality: /^[A-Z]{2}$/.test(player?.nationality || '') ? player.nationality : club.countryCode,
+    age: Number.isInteger(player?.age) ? Math.max(16, Math.min(45, player.age)) : 24,
+    role: ['GK','DEF','MID','FWD'].includes(player?.role) ? player.role : 'MID',
+    number: Number.isInteger(player?.number) ? Math.max(1, Math.min(99, player.number)) : index + 1,
+    rating: safeRating,
+    attributes: normalizePlayerAttributes(player?.attributes, safeRating),
+    potential: Math.max(1, Math.min(99, Number(player?.potential) || safeRating)),
+    preferredFoot: player?.preferredFoot === 'left' ? 'left' : 'right',
+    archetype: cleanText(player?.archetype, 'Joueur polyvalent', 40),
+    appearance: player?.appearance && typeof player.appearance === 'object'
+      ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null }
+      : null
+  };
+};
+
 const COMPETITION_KEY = 'football-rp-online.competition-season.v1';
 
 const club = (id, name, city, country, countryCode, division, rating, control, colors, stadium, reputation, budget) => ({
@@ -141,15 +163,38 @@ export class ClubManager {
     if (!club || !id) return { ok: false, reason: 'invalid-player' };
     if ([...this.clubs.values()].some(item => item.roster.some(existing => existing.id === id))) return { ok: false, reason: 'already-registered' };
     if (club.roster.length >= club.capacity) return { ok: false, reason: 'roster-full' };
-    const rating = Number(player.rating);
-    club.roster.push({ id, name: cleanText(player.name, 'Joueur', 36), nationality: /^[A-Z]{2}$/.test(player.nationality || '') ? player.nationality : club.countryCode,
-      age: Number.isInteger(player.age) ? Math.max(16, Math.min(45, player.age)) : 24, role: ['GK','DEF','MID','FWD'].includes(player.role) ? player.role : 'MID',
-      number: Number.isInteger(player.number) ? Math.max(1, Math.min(99, player.number)) : club.roster.length + 1,
-      rating: Number.isFinite(rating) ? Math.max(1, Math.min(99, Math.round(rating))) : 50, attributes: normalizePlayerAttributes(player.attributes, Number.isFinite(rating) ? rating : 50),
-      potential: Math.max(1, Math.min(99, Number(player.potential) || (Number(rating) || 50)),),
-      preferredFoot: player.preferredFoot === 'left' ? 'left' : 'right', archetype: cleanText(player.archetype, 'Joueur polyvalent', 40),
-      appearance: player.appearance && typeof player.appearance === 'object' ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
+    club.roster.push(normalizeRosterPlayer({ ...player, id }, club, club.roster.length));
     this.saveSeason(); return { ok: true, rosterSize: club.roster.length };
+  }
+
+  updatePlayer(clubId, player) {
+    const club = this.clubs.get(safeId(clubId)); const id = safeId(player?.id);
+    if (!club || !id) return { ok: false, reason: 'invalid-player' };
+    const index = club.roster.findIndex(existing => existing.id === id);
+    if (index < 0) return { ok: false, reason: 'player-not-found' };
+    if ([...this.clubs.values()].some(other => other.id !== club.id && other.roster.some(existing => existing.id === id))) return { ok: false, reason: 'duplicate-player' };
+    const updated = normalizeRosterPlayer({ ...club.roster[index], ...player, id }, club, index);
+    if (JSON.stringify(club.roster[index]) !== JSON.stringify(updated)) {
+      club.roster[index] = updated;
+      this.saveSeason();
+    }
+    return { ok: true, player: clonePlayer(updated) };
+  }
+
+  transferPlayer(fromClubId, toClubId, playerId) {
+    const from = this.clubs.get(safeId(fromClubId));
+    const to = this.clubs.get(safeId(toClubId));
+    const id = safeId(playerId);
+    if (!from || !to || !id || from === to) return { ok: false, reason: 'invalid-transfer' };
+    const sourceIndex = from.roster.findIndex(player => player.id === id);
+    if (sourceIndex < 0) return { ok: false, reason: 'player-not-found' };
+    if ([...this.clubs.values()].some(other => other.id !== from.id && other.roster.some(player => player.id === id))) return { ok: false, reason: 'duplicate-player' };
+    if (to.roster.some(player => player.id === id)) return { ok: false, reason: 'already-registered' };
+    if (to.roster.length >= to.capacity) return { ok: false, reason: 'roster-full' };
+    const [player] = from.roster.splice(sourceIndex, 1);
+    to.roster.push({ ...player, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
+    this.saveSeason();
+    return { ok: true, fromRosterSize: from.roster.length, toRosterSize: to.roster.length };
   }
 
   removePlayer(clubId, playerId) {

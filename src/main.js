@@ -1,6 +1,7 @@
 import { ClubManager } from './club-manager.js';
 import { PlayerProfileStore } from './player-profile.js';
 import { CareerManager } from './career-manager.js';
+import { syncCareerPlayerRoster } from './career-roster-sync.js';
 import { PlayerSeasonStats } from './player-season-stats.js';
 import { resolveOnlinePlayerPerformance } from './online-career-sync.js';
 import { renderClubCrest } from './club-identity.js';
@@ -59,6 +60,7 @@ function buildTransferWindows() {
   return windows;
 }
 const career = new CareerManager({ initialCoins: 2500, transferWindows: buildTransferWindows() });
+syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
 let game = null;
 let pendingOnlineMatch = null;
 const onlineClient = new OnlineMatchClient({ baseUrl: location.origin });
@@ -177,6 +179,7 @@ const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 function renderPage(page = 'home') {
+  syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
   if (page !== 'results') resultsRequestSequence++;
   disposeAvatarPreview();
   const content = document.getElementById('menu-content');
@@ -184,7 +187,6 @@ function renderPage(page = 'home') {
   const subtitle = document.getElementById('menu-page-subtitle');
   document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page));
   if (page === 'home') {
-    career.refreshContractStatus();
     const profile = profileStore.profile;
     const season = seasonStats.snapshot().totals;
     const latestMatch = seasonStats.snapshot().matches.slice(-1)[0];
@@ -622,9 +624,15 @@ menu.addEventListener('click', event => {
       : result.reason === 'attribute-cap' ? 'Cette capacité a atteint son maximum de 99.'
       : 'Séance impossible.';
   } else if (action === 'sign-contract') {
-    const result = career.signContract({ clubId: document.getElementById('contract-club')?.value, salary: Number(document.getElementById('contract-salary')?.value || 0), durationDays: 180 });
+    const clubId = document.getElementById('contract-club')?.value;
+    const targetClub = clubs.getClub(clubId);
+    const alreadyRegistered = clubs.listClubs().some(club => club.roster.some(player => player.id === 'career-player'));
+    const canRegister = targetClub && (alreadyRegistered || targetClub.roster.length < targetClub.capacity);
+    const result = canRegister
+      ? career.signContract({ clubId, salary: Number(document.getElementById('contract-salary')?.value || 0), durationDays: 180 })
+      : { ok: false, reason: targetClub ? 'roster-full' : 'invalid-club' };
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'active-contract' ? 'Vous avez déjà un contrat actif.' : 'Impossible de signer ce contrat.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'active-contract' ? 'Vous avez déjà un contrat actif.' : result.reason === 'roster-full' ? 'Effectif complet : ce club ne peut pas inscrire votre footballeur.' : 'Impossible de signer ce contrat.';
   } else if (action === 'renew-contract') {
     const result = career.renewContract({ salary: Number(document.getElementById('renew-contract-salary')?.value), durationDays: 180 });
     renderPage('mercato');
@@ -651,9 +659,15 @@ menu.addEventListener('click', event => {
     if (!result.ok) document.getElementById('menu-page-subtitle').textContent = 'Cette offre ne peut plus être négociée.';
   } else if (action === 'accept-offer') {
     const id = event.target.closest('[data-offer]')?.dataset.offer;
-    const result = career.acceptOffer(id);
+    const offer = career.offers.get(id);
+    const targetClub = clubs.getClub(offer?.fromClubId);
+    const alreadyRegistered = targetClub?.roster.some(player => player.id === 'career-player');
+    const canRegister = targetClub && (alreadyRegistered || targetClub.roster.length < targetClub.capacity);
+    const result = canRegister
+      ? career.acceptOffer(id)
+      : { ok: false, reason: targetClub ? 'roster-full' : 'invalid-club' };
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'window-closed' ? 'Transfert impossible : la fenêtre officielle est fermée.' : result.reason === 'insufficient-funds' ? 'Budget de transfert insuffisant.' : 'Cette offre ne peut pas être acceptée.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'window-closed' ? 'Transfert impossible : la fenêtre officielle est fermée.' : result.reason === 'insufficient-funds' ? 'Budget de transfert insuffisant.' : result.reason === 'roster-full' ? 'Transfert refusé : l’effectif du club cible est complet.' : 'Cette offre ne peut pas être acceptée.';
   } else if (action === 'reject-offer') {
     career.rejectOffer(event.target.closest('[data-offer]')?.dataset.offer);
     renderPage('mercato');
@@ -675,6 +689,7 @@ menu.addEventListener('submit', event => {
   const data = new FormData(event.target);
   profileStore.updateIdentity({displayName:data.get('displayName'),number:data.get('number'),role:data.get('role'),preferredFoot:data.get('preferredFoot')});
   profileStore.updateAppearance({kit:data.get('kit'),skinTone:data.get('skinTone'),hairStyle:data.get('hairStyle'),hairColor:data.get('hairColor'),bodyBuild:data.get('bodyBuild')});
+  syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
   renderPage('player');
   const status=document.getElementById('profile-save-status');
   if(status) status.textContent='Profil mis à jour et sauvegardé sur cet appareil.';

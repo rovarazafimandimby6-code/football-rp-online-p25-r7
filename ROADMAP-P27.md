@@ -392,3 +392,14 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [ ] Ajouter une interface de compte dans le jeu et lier explicitement une carrière à un compte authentifié.
 - [ ] Ajouter validation d'origine/HTTPS, politique de récupération de compte et tests multi-processus avant déploiement public.
 - Limite : cette étape crée l'identité et les sessions persistantes ; elle ne synchronise pas encore les données de carrière entre appareils.
+
+### Lot 33 — cohérence des contrats et des effectifs de clubs (intégré)
+- [x] Enregistrer le footballeur de carrière dans l'effectif du club à la signature du premier contrat.
+- [x] Conserver un identifiant stable pour le joueur de carrière dans les registres d'effectifs.
+- [x] Déplacer le même joueur entre les effectifs lors d'un transfert, sans duplication ni perte de données.
+- [x] Mettre à jour nom, numéro, poste, note et attributs de la carte du joueur depuis son profil.
+- [x] Retirer le joueur de l'effectif à la résiliation ou à l'expiration du contrat.
+- [x] Bloquer la signature ou le transfert lorsque l'effectif cible est complet.
+- [x] Ajouter des tests sur signature, transfert, libération, mise à jour du profil et capacité d'effectif.
+- Limite : cohérence des effectifs locaux de la carrière personnelle ; aucune connexion Google, synchronisation cloud ou autorité économique multijoueur n'est ajoutée dans ce lot.
+
