@@ -16,7 +16,8 @@ test('P27 match carrière : le footballeur personnel est prioritaire dans le onz
   assert.equal(lineup.some(player => player.id === 'career-player'), true);
   assert.equal(lineup.find(player => player.id === 'career-player').number, 17);
   assert.equal(lineup.find(player => player.id === 'career-player').name, 'Mon joueur');
-  assert.equal(lineup.some(player => player.id === 'forward-star'), false);
+  assert.equal(lineup[3].id, 'career-player');
+  assert.equal(lineup[4].id, 'forward-star');
 });
 
 test('P27 match carrière : le joueur personnel prend le slot correspondant à son poste', () => {
