@@ -123,3 +123,18 @@ test('P27 UI: le centre avant-match compare les clubs et leurs meilleurs joueurs
   assert.match(css, /\.match-pitch-preview \{/);
   assert.match(css, /\.match-preview-card \{/);
 });
+
+
+test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, filtres, tri et chargement progressif', () => {
+  assert.match(html, /data-page="players"/);
+  assert.match(main, /page === 'players'/);
+  assert.match(main, /data-library-card/);
+  assert.match(main, /id="library-search"/);
+  assert.match(main, /id="library-club"/);
+  assert.match(main, /id="library-role"/);
+  assert.match(main, /id="library-sort"/);
+  assert.match(main, /id="library-min-rating"/);
+  assert.match(main, /players-load-more/);
+  assert.match(css, /\.player-library-grid \{/);
+  assert.match(css, /\.player-card-attributes \{/);
+});

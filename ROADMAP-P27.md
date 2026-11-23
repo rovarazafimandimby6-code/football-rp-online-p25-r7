@@ -208,3 +208,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Mettre à jour instantanément les fiches lors du changement de club et empêcher une affiche avec le même club deux fois.
 - Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
 - Limite : la présentation tactique reste un aperçu de formation ; l'éditeur de composition, les remplacements et les consignes tactiques détaillées sont à développer.
+
+
+### Lot 13 — bibliothèque centrale de cartes joueurs (intégrée)
+- [x] Ajouter une entrée dédiée Joueurs dans la navigation et les accès rapides de l'accueil.
+- [x] Centraliser les joueurs présents dans les effectifs locaux connus, en conservant le club source et les données réelles du catalogue.
+- [x] Créer des cartes avec note générale, poste, âge, nationalité, potentiel, archétype et six attributs.
+- [x] Ajouter recherche par nom/archétype, filtres club/poste/note minimale, tri et chargement progressif par lots de 24.
+- [x] Ajouter un panneau de détails extensible par carte et des indicateurs de volume réels.
+- Limite : les joueurs libres, humains en ligne, jeunes de centre, transférables, prêtables, favoris et récemment consultés nécessitent des registres dédiés ; ils ne sont pas présentés comme s'ils existaient déjà.
+- Validation automatisée : en attente du workflow GitHub Actions.

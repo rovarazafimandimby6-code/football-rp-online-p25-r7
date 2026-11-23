@@ -125,6 +125,7 @@ function mountAvatarPreview(profile) {
 
 let selectedMatchup = { home: 'antananarivo-fc', away: 'toamasina-united' };
 let selectedClubId = null;
+let playerLibraryLimit = 24;
 let preferences = { duration: 5, quality: 'auto', cameraMode: 'broadcast', cameraZoom: 55, nameDisplay: 'standard' };
 try {
   const saved = JSON.parse(localStorage.getItem('fpro-menu-preferences') || '{}');
@@ -191,6 +192,7 @@ function renderPage(page = 'home') {
         <nav class="quick-grid home-shortcuts" aria-label="Accès rapides">
           <button class="quick-card" data-page="player"><span>01</span><b>Mon joueur</b><small>Profil et progression</small></button>
           <button class="quick-card" data-page="clubs"><span>02</span><b>Clubs & effectifs</b><small>Équipes et joueurs</small></button>
+          <button class="quick-card" data-page="players"><span>03</span><b>Bibliothèque joueurs</b><small>Recherche et comparaison</small></button>
           <button class="quick-card" data-page="competitions"><span>03</span><b>Compétitions</b><small>Calendrier et saison</small></button>
           <button class="quick-card" data-page="mercato"><span>04</span><b>Carrière & mercato</b><small>Contrats et transferts</small></button>
         </nav>
@@ -206,6 +208,34 @@ function renderPage(page = 'home') {
       <form class="profile-editor" id="profile-editor"><h3>Personnaliser mon joueur</h3><div class="editor-grid"><label>Nom affiché<input name="displayName" maxlength="20" value="${escapeHTML(p.identity.displayName)}" required></label><label>Numéro<input name="number" type="number" min="1" max="99" value="${p.identity.number}" required></label><label>Poste<select name="role"><option value="GK" ${p.identity.role==='GK'?'selected':''}>Gardien</option><option value="DEF" ${p.identity.role==='DEF'?'selected':''}>Défenseur</option><option value="MID" ${p.identity.role==='MID'?'selected':''}>Milieu</option><option value="FWD" ${p.identity.role==='FWD'?'selected':''}>Attaquant</option></select></label><label>Pied préféré<select name="preferredFoot"><option value="right" ${p.identity.preferredFoot==='right'?'selected':''}>Droit</option><option value="left" ${p.identity.preferredFoot==='left'?'selected':''}>Gauche</option></select></label><label>Couleur du maillot<select name="kit">${Object.entries({emerald:'Vert émeraude',crimson:'Rouge',gold:'Or',violet:'Violet',monochrome:'Noir et blanc'}).map(([v,l])=>`<option value="${v}" ${p.appearance.kit===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Teint<select name="skinTone"><option value="light" ${p.appearance.skinTone==='light'?'selected':''}>Clair</option><option value="medium" ${p.appearance.skinTone==='medium'?'selected':''}>Moyen</option><option value="dark" ${p.appearance.skinTone==='dark'?'selected':''}>Foncé</option></select></label><label>Coiffure<select name="hairStyle"><option value="short" ${p.appearance.hairStyle==='short'?'selected':''}>Courte</option><option value="curly" ${p.appearance.hairStyle==='curly'?'selected':''}>Bouclée</option><option value="afro" ${p.appearance.hairStyle==='afro'?'selected':''}>Afro</option><option value="fade" ${p.appearance.hairStyle==='fade'?'selected':''}>Dégradé</option><option value="shaved" ${p.appearance.hairStyle==='shaved'?'selected':''}>Rasée</option></select></label><label>Morphologie<select name="bodyBuild"><option value="lean" ${p.appearance.bodyBuild==='lean'?'selected':''}>Fine</option><option value="athletic" ${p.appearance.bodyBuild==='athletic'?'selected':''}>Athlétique</option><option value="strong" ${p.appearance.bodyBuild==='strong'?'selected':''}>Puissante</option></select></label><label>Couleur des cheveux<select name="hairColor"><option value="dark" ${p.appearance.hairColor==='dark'?'selected':''}>Noir</option><option value="brown" ${p.appearance.hairColor==='brown'?'selected':''}>Brun</option><option value="blond" ${p.appearance.hairColor==='blond'?'selected':''}>Blond</option></select></label></div><button class="primary-cta" type="submit">ENREGISTRER MON JOUEUR</button><p class="notice" id="profile-save-status">Personnalisation enregistrée localement sur cet appareil.</p></form>
       <section class="profile-editor training-panel"><h3>Entraînement individuel</h3><p>Une séance améliore une capacité contre 80 crédits par point et rapporte de l'expérience. Les commandes de match restent individuelles.</p><div class="training-controls"><label>Capacité<select id="practice-attribute"><option value="pace">Vitesse</option><option value="shooting">Finition</option><option value="passing">Passe</option><option value="defense">Défense</option><option value="stamina">Endurance</option><option value="control">Contrôle</option></select></label><label>Intensité<select id="practice-amount"><option value="1">Légère · 1 point</option><option value="2">Moyenne · 2 points</option><option value="3">Intense · 3 points</option></select></label><button class="small-action" data-action="practice-player">EFFECTUER LA SÉANCE</button></div><p class="notice">Crédits disponibles : ${p.progression.coins} · Points d'entraînement gagnés par niveau : 2.</p></section>`;
     mountAvatarPreview(p);
+  } else if (page === 'players') {
+    const rosterPlayers=clubs.listClubs().flatMap(club=>club.roster.map(player=>({...player,clubId:club.id,clubName:club.name,clubDivision:club.division})));
+    const roleNames={GK:'Gardien',DEF:'Défenseur',MID:'Milieu',FWD:'Attaquant'};
+    const average=rosterPlayers.length?Math.round(rosterPlayers.reduce((sum,p)=>sum+p.rating,0)/rosterPlayers.length):0;
+    playerLibraryLimit=24;
+    title.textContent='Bibliothèque des joueurs';
+    subtitle.textContent='Explorez les joueurs des effectifs connus, comparez leurs notes et leurs potentiels.';
+    content.innerHTML=`<div class="player-library">
+      <div class="player-library-overview"><div><b>${rosterPlayers.length}</b><span>JOUEURS RÉPERTORIÉS</span></div><div><b>${clubs.listClubs().length}</b><span>CLUBS COUVERTS</span></div><div><b>${average}</b><span>NOTE MOYENNE</span></div><div><b>${rosterPlayers.filter(p=>p.nationality==='MG').length}</b><span>JOUEURS MALGACHES</span></div></div>
+      <div class="player-library-toolbar">
+        <label><span>RECHERCHE</span><input id="library-search" type="search" placeholder="Nom, archétype…" autocomplete="off"></label>
+        <label><span>CLUB</span><select id="library-club"><option value="all">Tous les clubs</option>${clubs.listClubs().map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('')}</select></label>
+        <label><span>POSTE</span><select id="library-role"><option value="all">Tous les postes</option><option value="GK">Gardiens</option><option value="DEF">Défenseurs</option><option value="MID">Milieux</option><option value="FWD">Attaquants</option></select></label>
+        <label><span>TRI</span><select id="library-sort"><option value="rating">Note générale</option><option value="potential">Potentiel</option><option value="age">Âge</option><option value="name">Nom A–Z</option></select></label>
+        <label><span>NOTE MIN.</span><select id="library-min-rating"><option value="0">Toutes</option><option value="60">60+</option><option value="70">70+</option><option value="80">80+</option></select></label>
+      </div>
+      <div class="player-library-resultline"><span id="library-count">${rosterPlayers.length} joueurs</span><span>DONNÉES ISSUES DES EFFECTIFS LOCAUX</span></div>
+      <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>`<article class="player-library-card" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
+        <div class="player-card-top"><span class="player-card-number">#${player.number}</span><span class="player-card-role">${roleNames[player.role]||player.role}</span><b class="player-card-rating">${player.rating}</b></div>
+        <div class="player-card-identity"><span class="player-card-monogram">${escapeHTML(player.name.split(/\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase())}</span><div><h3>${escapeHTML(player.name)}</h3><p>${escapeHTML(player.clubName)}</p></div></div>
+        <div class="player-card-meta"><span>${escapeHTML(player.nationality)}</span><span>${player.age} ans</span><span>Pot. ${player.potential}</span></div>
+        <div class="player-card-attributes">${[['pace','VIT'],['shooting','TIR'],['passing','PAS'],['defense','DEF'],['stamina','END'],['control','CTR']].map(([key,label])=>`<span><small>${label}</small><b>${player.attributes?.[key]??player.rating}</b></span>`).join('')}</div>
+        <details class="player-card-details"><summary>Profil & archétype</summary><div><b>${escapeHTML(player.archetype)}</b><span>Pied préféré : ${player.preferredFoot==='left'?'Gauche':'Droit'}</span><span>Potentiel : ${player.potential}/99</span><span>Division : ${escapeHTML(player.clubDivision)}</span></div></details>
+      </article>`).join('')}</div>
+      <div class="player-library-footer"><span id="library-visible-count">0 affiché</span><button class="small-action" data-action="players-load-more" id="library-load-more">CHARGER PLUS DE JOUEURS</button></div>
+      <p class="notice">Cette bibliothèque recense les joueurs actuellement présents dans les effectifs locaux connus. Les joueurs libres, les transferts et les prêts ne sont pas inventés : ils seront intégrés quand leurs statuts seront reliés à une source de données fiable.</p>
+    </div>`;
+    filterPlayerLibrary();
   } else if (page === 'clubs') {
     const divisionLabels = { D1: 'D1 · ÉLITE', D2: 'D2 · PROFESSIONNEL', D3: 'D3 · RÉGIONAL', AMATEUR: 'AMATEUR' };
     const nationalityNames = { MG:'Madagascar', FR:'France', SN:'Sénégal', BR:'Brésil', ES:'Espagne', AR:'Argentine', PT:'Portugal', JP:'Japon', NG:'Nigeria', IT:'Italie', GB:'Angleterre', KE:'Kenya' };
@@ -433,7 +463,8 @@ menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
   if (pageButton) { renderPage(pageButton.dataset.page); return; }
   const action = event.target.closest('[data-action]')?.dataset.action;
-  if (action === 'view-roster') { selectedClubId = event.target.closest('[data-club]')?.dataset.club || null; renderPage('clubs'); }
+  if (action === 'players-load-more') { playerLibraryLimit += 24; filterPlayerLibrary(); }
+  else if (action === 'view-roster') { selectedClubId = event.target.closest('[data-club]')?.dataset.club || null; renderPage('clubs'); }
   else if (action === 'back-clubs') { selectedClubId = null; renderPage('clubs'); }
   else if (action === 'results-page') { renderResultsPage(Number(event.target.closest('[data-offset]')?.dataset.offset || 0)); }
   else if (action === 'show-result') { const roomId = event.target.closest('[data-room]')?.dataset.room; if (roomId) renderResultDetail(roomId); }
@@ -578,6 +609,44 @@ menu.addEventListener('submit', event => {
 
 renderPage('home');
 window.addEventListener('pagehide', () => game?.dispose?.(), { once: true });
+
+const filterPlayerLibrary = () => {
+  const root=document.getElementById('player-library-grid');
+  if(!root) return;
+  const query=(document.getElementById('library-search')?.value||'').trim().toLocaleLowerCase('fr');
+  const club=document.getElementById('library-club')?.value||'all';
+  const role=document.getElementById('library-role')?.value||'all';
+  const minRating=Number(document.getElementById('library-min-rating')?.value||0);
+  const sort=document.getElementById('library-sort')?.value||'rating';
+  const cards=[...root.querySelectorAll('[data-library-card]')];
+  cards.sort((a,b)=>{
+    if(sort==='name') return a.dataset.name.localeCompare(b.dataset.name,'fr');
+    const key=sort==='potential'?'potential':sort==='age'?'age':'rating';
+    return sort==='age'?Number(a.dataset.age)-Number(b.dataset.age):Number(b.dataset[key])-Number(a.dataset[key]);
+  });
+  let matched=0,visible=0;
+  for(const card of cards){
+    const match=(card.dataset.name.includes(query)||card.dataset.archetype.includes(query))
+      &&(club==='all'||card.dataset.club===club)&&(role==='all'||card.dataset.role===role)
+      &&Number(card.dataset.rating)>=minRating;
+    card.classList.toggle('hidden',!match);
+    if(match){matched++; if(visible<playerLibraryLimit){card.classList.remove('hidden');visible++;} else card.classList.add('hidden');}
+    root.appendChild(card);
+  }
+  const count=document.getElementById('library-count');
+  const shown=document.getElementById('library-visible-count');
+  const more=document.getElementById('library-load-more');
+  if(count) count.textContent=matched+' joueur'+(matched>1?'s':'')+' trouvé'+(matched>1?'s':'');
+  if(shown) shown.textContent=visible+' / '+matched+' affichés';
+  if(more) more.hidden=visible>=matched;
+};
+const onPlayerLibraryFilter = event => {
+  if(['library-search','library-club','library-role','library-sort','library-min-rating'].includes(event.target.id)){
+    playerLibraryLimit=24; filterPlayerLibrary();
+  }
+};
+menu.addEventListener('input',onPlayerLibraryFilter);
+menu.addEventListener('change',onPlayerLibraryFilter);
 
 const filterClubDiscovery = event => {
   if (!['club-search','club-division-filter','club-country-filter','club-sort'].includes(event.target.id)) return;

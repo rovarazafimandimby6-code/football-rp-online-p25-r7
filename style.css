@@ -1541,3 +1541,50 @@ html, body {
   .match-preview-stars small { font-size:6px; }
   .match-pitch-preview { min-height:150px; }
 }
+
+
+/* P27 Lot 13 — bibliothèque centrale de cartes joueurs */
+.player-library-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:11px; }
+.player-library-overview > div { display:grid; gap:4px; padding:10px 12px; border:1px solid rgba(221,239,226,.12); border-radius:8px; background:linear-gradient(135deg,rgba(24,54,37,.8),rgba(8,24,16,.9)); }
+.player-library-overview b { color:#e2c77b; font-size:clamp(18px,2.1vw,25px); font-variant-numeric:tabular-nums; }
+.player-library-overview span { color:#9eb2a4; font-size:7px; font-weight:900; letter-spacing:.65px; }
+.player-library-toolbar { display:grid; grid-template-columns:minmax(150px,1.6fr) repeat(4,minmax(100px,1fr)); gap:8px; align-items:end; padding:10px; margin-bottom:9px; border:1px solid rgba(221,239,226,.12); border-radius:9px; background:rgba(5,19,12,.9); }
+.player-library-toolbar label { display:grid; min-width:0; gap:5px; color:#9eb2a4; font-size:7px; font-weight:900; letter-spacing:.65px; }
+.player-library-toolbar input,.player-library-toolbar select { width:100%; min-width:0; min-height:35px; padding:0 8px; font-size:9px; }
+.player-library-resultline,.player-library-footer { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:7px 2px; color:#9eb2a4; font-size:8px; font-weight:850; }
+.player-library-resultline span:first-child { color:#e2c77b; }
+.player-library-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.player-library-card { min-width:0; padding:11px; border:1px solid rgba(221,239,226,.13); border-radius:10px; background:linear-gradient(145deg,rgba(19,43,30,.96),rgba(6,19,13,.98)); box-shadow:0 6px 17px rgba(0,0,0,.12); }
+.player-card-top { display:flex; align-items:center; gap:7px; padding-bottom:8px; border-bottom:1px solid rgba(221,239,226,.1); }
+.player-card-number { color:#a1b5a7; font-size:8px; font-weight:900; }
+.player-card-role { padding:3px 6px; border-radius:4px; background:rgba(255,255,255,.06); color:#b7c9bc; font-size:7px; font-weight:850; }
+.player-card-rating { margin-left:auto; color:#e5cc80; font-size:21px; font-variant-numeric:tabular-nums; }
+.player-card-identity { display:flex; align-items:center; gap:9px; min-width:0; padding:10px 0 7px; }
+.player-card-monogram { display:grid; place-items:center; flex:0 0 37px; width:37px; height:37px; border:1px solid rgba(224,196,119,.3); border-radius:9px; background:linear-gradient(145deg,#294b37,#122a1d); color:#e4d18e; font-size:12px; font-weight:950; }
+.player-card-identity > div { min-width:0; }
+.player-card-identity h3 { overflow:hidden; margin:0; color:#f0f5f1; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.player-card-identity p { overflow:hidden; margin:4px 0 0; color:#8fa596; font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
+.player-card-meta { display:flex; flex-wrap:wrap; gap:5px 10px; color:#9eb2a4; font-size:7px; }
+.player-card-attributes { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:4px; margin:9px 0; }
+.player-card-attributes span { display:grid; gap:3px; justify-items:center; padding:5px 2px; border-radius:5px; background:rgba(0,0,0,.18); }
+.player-card-attributes small { color:#819889; font-size:6px; font-weight:900; }
+.player-card-attributes b { color:#dce9df; font-size:9px; }
+.player-card-details { border-top:1px solid rgba(221,239,226,.1); padding-top:7px; }
+.player-card-details summary { color:#d4c17f; cursor:pointer; font-size:7px; font-weight:900; letter-spacing:.5px; }
+.player-card-details > div { display:grid; gap:4px; padding-top:7px; color:#a4b8aa; font-size:8px; }
+.player-library-footer { justify-content:center; flex-wrap:wrap; }
+.player-library-footer .small-action { min-height:32px; }
+@media (orientation:landscape) and (max-width:900px) { .player-library-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (orientation:landscape) and (max-width:760px) {
+  .player-library-toolbar { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .player-library-toolbar label:first-child { grid-column:span 2; }
+  .player-library-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+  .player-library-card { padding:8px; }
+  .player-card-attributes { gap:2px; }
+}
+@media (orientation:landscape) and (max-height:460px) {
+  .player-library-overview > div { padding:7px 9px; }
+  .player-library-card { padding:8px; }
+  .player-card-identity { padding:6px 0 4px; }
+  .player-card-attributes { margin:5px 0; }
+}
