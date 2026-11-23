@@ -53,7 +53,7 @@ test('P27: les feuilles de résultats restent rétrocompatibles sans identité d
   assert.deepEqual(result.teams, { blue: null, red: null });
 });
 
-test('P27: la création de match utilise le club de carrière et affiche les noms archivés', async () => {
+test('P27: la création de match utilise l’affiche sélectionnée et affiche les noms archivés', async () => {
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /const homeClub = career\.clubId \? clubs\.getClub\(career\.clubId\) : null/);
   assert.match(main, /const clubMatch = homeClub && awayClub \? \{ blueClubId: homeClub\.id, redClubId: awayClub\.id \} : \{\}/);

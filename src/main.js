@@ -286,10 +286,11 @@ async function createOnlineRoom() {
   const status = document.getElementById('online-status');
   if (status) status.textContent = 'Création du salon…';
   try {
-    const homeClub = career.clubId ? clubs.getClub(career.clubId) : null;
-    const awayCandidates = clubs.listClubs().filter(club => club.control === 'ai' && club.id !== homeClub?.id);
-    const awayClub = awayCandidates.length ? awayCandidates[Math.floor(Math.random() * awayCandidates.length)] : null;
-    const clubMatch = homeClub && awayClub ? { blueClubId: homeClub.id, redClubId: awayClub.id } : {};
+    const homeClub = clubs.getClub(selectedMatchup.home);
+    const awayClub = clubs.getClub(selectedMatchup.away);
+    const clubMatch = homeClub && awayClub && homeClub.id !== awayClub.id
+      ? { blueClubId: homeClub.id, redClubId: awayClub.id }
+      : {};
     const room = await onlineClient.createRoom({ name: `${profileStore.profile.identity.displayName} · Match`, durationMinutes: preferences.duration, ...clubMatch });
     const id = room.id;
     const field = document.getElementById('online-room-id'); if (field) field.value = id;
