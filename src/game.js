@@ -23,7 +23,7 @@ export class Game {
     this.weather = new WeatherManager(this.sceneMgr);
     this.ball = new Ball(this.sceneMgr.scene);
     this.physics = new PhysicsEngine();
-    this.cam = new BroadcastCamera(this.sceneMgr.camera, callbacks.cameraMode || 'broadcast');
+    this.cam = new BroadcastCamera(this.sceneMgr.camera, callbacks.cameraMode || 'player');
     this.cam.setZoom(callbacks.cameraZoom ?? 55);
     this.ai = new TeamAI();
     this.controls = new ControlsManager();
@@ -110,7 +110,7 @@ export class Game {
       },
       onWeather: (w) => this.weather.setWeather(w),
       onQuality: (q) => this.sceneMgr.setQuality(q),
-      onCameraMode: (mode) => { if (this.cam.setMode(mode)) { callbacks.onCameraMode?.(mode); this.ui.setStatus(`CAMÉRA : ${{touchline:'LIGNE DE TOUCHE',broadcast:'DIFFUSION TV',close:'RAPPROCHÉE',tactical:'TACTIQUE'}[mode]}`); } },
+      onCameraMode: (mode) => { if (this.cam.setMode(mode)) { callbacks.onCameraMode?.(mode); this.ui.setStatus(`CAMÉRA : ${{player:'IMMERSION JOUEUR',touchline:'LIGNE DE TOUCHE',broadcast:'DIFFUSION TV',close:'RAPPROCHÉE',tactical:'TACTIQUE'}[mode]}`); } },
       onCameraZoom: (value) => { const zoom = this.cam.setZoom(value); callbacks.onCameraZoom?.(zoom); this.ui.setStatus(`ZOOM CAMÉRA : ${zoom}%`); },
       getCameraMode: () => this.cam.mode,
       getCameraZoom: () => this.cam.zoom,

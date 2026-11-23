@@ -218,3 +218,14 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter un panneau de détails extensible par carte et des indicateurs de volume réels.
 - Limite : les joueurs libres, humains en ligne, jeunes de centre, transférables, prêtables, favoris et récemment consultés nécessitent des registres dédiés ; ils ne sont pas présentés comme s'ils existaient déjà.
 - Validation automatisée : en attente du workflow GitHub Actions.
+
+
+### Lot 14 — caméra personnelle RP adaptée au poste (intégré)
+- [x] Ajouter un mode « Immersion joueur » distinct des caméras de retransmission, tactique et latérale.
+- [x] Ancrer la caméra sur le footballeur humain contrôlé : position arrière/épaule, orientation liée à son corps et suivi amorti.
+- [x] Adapter hauteur, distance, champ de vision et anticipation selon les rôles gardien, défenseur, milieu et attaquant.
+- [x] Limiter l'influence du ballon à une aide de regard lorsque celui-ci se trouve dans le champ avant du joueur ; aucun recentrage omniscient lorsque le ballon est derrière lui.
+- [x] Conserver les caméras de retransmission et le zoom réglable ; faire de la caméra personnelle le réglage initial des nouveaux profils.
+- [x] Ajouter des tests unitaires sur les profils de poste, l'ancrage au joueur, le champ de vision directionnel et le zoom.
+- Validation GitHub Actions : en attente sur le commit de ce lot.
+- Limite : les profils de poste correspondent actuellement aux quatre familles de rôles existantes (GK/DEF/MID/FWD). Les rôles fins (latéral, défenseur central, sentinelle, relayeur, ailier, avant-centre) et la perception périphérique avec indices directionnels seront affinés dans les lots suivants. Essai visuel et ergonomique Android requis.

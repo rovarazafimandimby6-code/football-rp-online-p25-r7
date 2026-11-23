@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { rolePresentation } from './role-presentation.js';
+import { resolvePlayerCameraPose } from './player-camera.js';
 
 /** Caméra de retransmission : suit le ballon avec anticipation et conserve
  * une marge de lecture autour de l'action, y compris sur les écrans étroits. */
@@ -18,7 +19,9 @@ export class BroadcastCamera {
     this.camera.lookAt(this.lookTarget);
     this.lastFocus = new THREE.Vector3();
     this.initialized = false;
-    this.zoom = 55; // P25 : cadrage de référence Diffusion TV
+    this.desiredCamPos = new THREE.Vector3();
+    this.desiredLookTarget = new THREE.Vector3();
+    this.zoom = 55; // P27 : zoom partagé entre les vues TV et personnelle
   }
 
   setZoom(value) {
@@ -36,6 +39,10 @@ export class BroadcastCamera {
   }
 
   update(ball, activePlayer, dt) {
+    if (this.mode === 'player') {
+      this.updatePlayerCamera(ball, activePlayer, dt);
+      return;
+    }
     const preset = CAMERA_PRESETS[this.mode];
     const role = rolePresentation(activePlayer?.role);
     const aspect = this.camera.aspect || 1.7;
@@ -70,6 +77,31 @@ export class BroadcastCamera {
     this.lookTarget.y += (0.45 - this.lookTarget.y) * smooth;
     this.lookTarget.z += (focusZ - this.lookTarget.z) * smooth;
 
+    this.camera.position.copy(this.camPos);
+    this.camera.lookAt(this.lookTarget);
+    this.initialized = true;
+  }
+
+  /** Caméra personnelle : elle reste ancrée au footballeur, jamais au ballon seul. */
+  updatePlayerCamera(ball, activePlayer, dt) {
+    if (!activePlayer?.pos) return;
+    const pose = resolvePlayerCameraPose(activePlayer, ball, { zoom: this.zoom, aspect: this.camera.aspect || 1.7 });
+    if (Math.abs(this.camera.fov - pose.fov) > 0.01) {
+      this.camera.fov = pose.fov;
+      this.camera.updateProjectionMatrix();
+    }
+    this.desiredCamPos.set(pose.x, pose.y, pose.z);
+    this.desiredLookTarget.set(pose.targetX, pose.targetY, pose.targetZ);
+    const frameDelta = Number.isFinite(dt) ? THREE.MathUtils.clamp(dt, 0, 0.05) : 0;
+    const smooth = 1 - Math.exp(-5.4 * frameDelta);
+    if (!this.initialized) {
+      this.camPos.copy(this.desiredCamPos);
+      this.lookTarget.copy(this.desiredLookTarget);
+      this.initialized = true;
+    } else {
+      this.camPos.lerp(this.desiredCamPos, smooth);
+      this.lookTarget.lerp(this.desiredLookTarget, smooth);
+    }
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.lookTarget);
   }
