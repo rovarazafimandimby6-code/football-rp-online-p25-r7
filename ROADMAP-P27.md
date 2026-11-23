@@ -413,3 +413,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des tests d'inscription, de modification et de transfert.
 - Limite : règles locales de numérotation d'effectif ; pas de synchronisation cloud ni d'authentification Google.
 
+
+### Lot 35 — présence garantie du footballeur personnel dans le match de carrière (intégré)
+- [x] Transmettre l'identifiant stable du footballeur de carrière au moteur de match.
+- [x] Réserver un slot du onze au joueur personnel même si sa note est inférieure aux joueurs IA.
+- [x] Choisir en priorité un slot correspondant à son poste ; utiliser le slot de repli de la formation si le poste n'existe pas.
+- [x] Contrôler directement le bon avatar à partir de son identifiant, et non seulement du premier joueur correspondant au poste.
+- [x] Préserver la sélection par note des équipes qui ne possèdent pas de joueur prioritaire.
+- [x] Ajouter des tests de présence, poste, numéro et sélection compétitive de repli.
+- Limite : garantit la présence dans le onze du club passé au match ; la sélection du club adverse ou d'une équipe hors club reste inchangée.
+

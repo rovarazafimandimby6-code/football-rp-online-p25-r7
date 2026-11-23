@@ -37,11 +37,12 @@ export class Game {
     this.onExitMatch = callbacks.onExitMatch || null;
 
     const rosterConfigs = [
-      ...createTeamRoster('blue', '2-2', callbacks.homeRoster),
+      ...createTeamRoster('blue', '2-2', callbacks.homeRoster, callbacks.careerPlayerId),
       ...createTeamRoster('red', '2-2', callbacks.awayRoster)
     ];
     const requestedRole = ['GK', 'DEF', 'MID', 'FWD'].includes(callbacks.playerRole) ? callbacks.playerRole : 'FWD';
-    const controlledConfig = rosterConfigs.find((cfg) => cfg.team === 'blue' && cfg.role === requestedRole)
+    const controlledConfig = rosterConfigs.find((cfg) => cfg.team === 'blue' && cfg.id === callbacks.careerPlayerId)
+      || rosterConfigs.find((cfg) => cfg.team === 'blue' && cfg.role === requestedRole)
       || rosterConfigs.find((cfg) => cfg.team === 'blue' && cfg.slotIndex === 4)
       || rosterConfigs.find((cfg) => cfg.team === 'blue');
     this.players = rosterConfigs.map((cfg) => {
@@ -63,7 +64,8 @@ export class Game {
       this.sceneMgr.scene.add(p.visual.root);
     }
 
-    this.activePlayer = selectRolePlayer(this.players, callbacks.playerRole);
+    this.activePlayer = this.players.find(player => player.team === 'blue' && player.id === callbacks.careerPlayerId)
+      || selectRolePlayer(this.players, callbacks.playerRole);
     if (callbacks.playerName) this.activePlayer.name = String(callbacks.playerName).slice(0, 20);
     if (Number.isInteger(callbacks.playerNumber) && callbacks.playerNumber >= 1 && callbacks.playerNumber <= 99) this.activePlayer.setNumber(callbacks.playerNumber);
     this.activePlayer.isControlled = true;

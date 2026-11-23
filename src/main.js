@@ -455,6 +455,7 @@ async function startMatch(online = null) {
       ? { primary: club.colors[0], secondary: club.colors[1], accent: club.colors[2] }
       : null;
     game = new Game(container, {
+      careerPlayerId: 'career-player',
       playerRole: profileStore.profile.identity.role,
       playerName: profileStore.profile.identity.displayName,
       playerNumber: profileStore.profile.identity.number,
