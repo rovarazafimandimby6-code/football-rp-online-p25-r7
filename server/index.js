@@ -4,9 +4,23 @@ import { JsonResultStore } from './result-store.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
+import { JsonAccountStore } from './account-store.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory) });
+const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
+const accountStore = new JsonAccountStore(accountDirectory);
+const accountAttempts = new Map();
+function allowAccountAttempt(ip) {
+  const now = Date.now();
+  const key = String(ip || 'unknown').slice(0, 96);
+  const current = accountAttempts.get(key);
+  if (!current || now - current.startedAt >= 15 * 60_000) { accountAttempts.set(key, { startedAt: now, count: 1 }); return true; }
+  if (current.count >= 8) return false;
+  current.count++;
+  return true;
+}
+function bearer(req) { return req.headers.authorization?.replace(/^Bearer\\s+/i, '') || ''; }
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json' };
 const MAX_BODY = 8 * 1024;
@@ -30,6 +44,21 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { ok: true, service: 'football-rp-online-match-server', protocol: 1 });
   try {
     if (req.method === 'GET' && url.pathname === '/api/rooms') return json(res, 200, { rooms: manager.list() });
+    if (req.method === 'POST' && (url.pathname === '/api/accounts/register' || url.pathname === '/api/accounts/login')) {
+      if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'RATE_LIMIT' });
+      const body = await readBody(req);
+      if (url.pathname.endsWith('/register')) return json(res, 201, accountStore.register(body));
+      const session = accountStore.login(body);
+      return session ? json(res, 200, session) : json(res, 401, { error: 'INVALID_CREDENTIALS' });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/accounts/me') {
+      const account = accountStore.resolve(bearer(req));
+      return account ? json(res, 200, { account }) : json(res, 401, { error: 'SESSION_EXPIRED' });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/accounts/logout') {
+      accountStore.revoke(bearer(req));
+      return json(res, 200, { loggedOut: true });
+    }
     if (req.method === 'GET' && url.pathname === '/api/results') {
       const rawLimit = url.searchParams.get('limit');
       const rawOffset = url.searchParams.get('offset');
@@ -96,7 +125,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 404, { error: 'NOT_FOUND' });
   } catch (error) {
     const code = error.message || 'INTERNAL_ERROR';
-    const status = code === 'ROOM_NOT_FOUND' ? 404 : (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED') ? 401 : code === 'BODY_TOO_LARGE' ? 413 : code === 'INVALID_JSON' || code.startsWith('INVALID_') || code === 'STALE_INPUT' || code === 'RATE_LIMIT' ? 400 : 409;
+    const status = code === 'ROOM_NOT_FOUND' ? 404 : (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED' || code === 'INVALID_CREDENTIALS') ? 401 : code === 'RATE_LIMIT' ? 429 : code === 'USERNAME_TAKEN' ? 409 : code === 'BODY_TOO_LARGE' ? 413 : code === 'INVALID_JSON' || code.startsWith('INVALID_') || code === 'STALE_INPUT' ? 400 : 409;
     return json(res, status, { error: code });
   }
 });

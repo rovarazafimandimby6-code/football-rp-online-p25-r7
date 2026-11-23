@@ -378,3 +378,15 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des tests de reprise après interruption et de double application.
 - [ ] Vérifier la récupération après fermeture forcée et redémarrage sur Android.
 - Limite : cela fiabilise la reprise locale sur un appareil ; ce n'est pas une synchronisation de compte entre appareils. Une authentification persistante et une autorité serveur sur la carrière restent nécessaires avant toute synchronisation multi-appareils.
+
+
+### Lot 31 — identité persistante et sessions de compte (socle serveur)
+- [x] Créer un registre de comptes persistant séparé des jetons temporaires de salon.
+- [x] Hacher les mots de passe avec scrypt et un sel aléatoire individuel.
+- [x] Stocker uniquement les empreintes SHA-256 des jetons de session, jamais les jetons en clair côté serveur.
+- [x] Ajouter inscription, connexion, consultation de session et révocation de session.
+- [x] Ajouter une limitation initiale des tentatives d'inscription/connexion par adresse IP.
+- [x] Ajouter un client de compte distinct du client de match et des tests de redémarrage/expiration/révocation.
+- [ ] Ajouter une interface de compte dans le jeu et lier explicitement une carrière à un compte authentifié.
+- [ ] Ajouter validation d'origine/HTTPS, politique de récupération de compte et tests multi-processus avant déploiement public.
+- Limite : cette étape crée l'identité et les sessions persistantes ; elle ne synchronise pas encore les données de carrière entre appareils.
