@@ -92,6 +92,19 @@ export class CareerManager {
     return { ok: true, paid, periods, nextPaymentAt: new Date(paidThrough + 7 * 86400000).toISOString() };
   }
 
+  getSalaryStatus(at = Date.now()) {
+    const now = timestamp(at);
+    const contract = this.contract;
+    if (now === null || !contract || contract.status !== 'active') return null;
+    const signed = timestamp(contract.signedAt);
+    const expiry = timestamp(contract.expiresAt);
+    const lastPaid = timestamp(contract.lastSalaryPaidAt) ?? signed;
+    if (signed === null || expiry === null || lastPaid === null || expiry <= now) return null;
+    const nextPayment = lastPaid + 7 * 86400000;
+    if (nextPayment > expiry) return { salary: nonNegativeInt(contract.salary), nextPaymentAt: null, daysUntilPayment: null, expiresAt: new Date(expiry).toISOString(), paymentBeforeExpiry: false };
+    return { salary: nonNegativeInt(contract.salary), nextPaymentAt: new Date(nextPayment).toISOString(), daysUntilPayment: Math.max(0, Math.ceil((nextPayment - now) / 86400000)), expiresAt: new Date(expiry).toISOString(), paymentBeforeExpiry: true };
+  }
+
   refreshOfferStatuses(at = Date.now()) {
     const now = timestamp(at);
     if (now === null) return { ok: false, reason: 'invalid-date', updated: 0 };

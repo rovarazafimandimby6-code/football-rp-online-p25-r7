@@ -360,3 +360,11 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter les versements au journal de carrière.
 - [x] Couvrir les échéances, la restauration et l'expiration par tests.
 - [ ] Vérifier le cycle de paie sur Android après plusieurs jours simulés.
+
+
+### Lot 29 — visibilité des échéances salariales (intégré)
+- [x] Exposer la prochaine échéance à partir de la dernière période déjà réglée.
+- [x] Afficher la date estimée du prochain salaire et le délai restant dans la fiche du contrat.
+- [x] Ne pas annoncer de versement hebdomadaire qui tomberait après l'expiration du contrat.
+- [x] Garder cette consultation sans effet de bord : elle ne crédite pas le portefeuille.
+- [x] Ajouter des tests sur la veille de l'échéance, le jour d'échéance et les contrats trop courts.

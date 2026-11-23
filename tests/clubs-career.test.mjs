@@ -208,3 +208,27 @@ test('salaire : le renouvellement règle les périodes acquises avant de reparti
   assert.equal(career.contract.lastSalaryPaidAt, '2031-01-15T00:00:00.000Z');
   assert.equal(career.processSalary('2031-01-22T00:00:00Z').paid, 150);
 });
+
+
+test('contrats: expose la prochaine échéance salariale sans modifier le portefeuille', () => {
+  const career = new CareerManager();
+  const signedAt = '2030-01-01T12:00:00.000Z';
+  career.signContract({ clubId: 'club-a', salary: 75, durationDays: 30, signedAt });
+  const beforeDue = career.getSalaryStatus('2030-01-07T11:59:59.000Z');
+  assert.equal(beforeDue.salary, 75);
+  assert.equal(beforeDue.nextPaymentAt, '2030-01-08T12:00:00.000Z');
+  assert.equal(beforeDue.daysUntilPayment, 1);
+  assert.equal(career.wallet, 500);
+  const atDue = career.getSalaryStatus('2030-01-08T12:00:00.000Z');
+  assert.equal(atDue.daysUntilPayment, 0);
+  assert.equal(career.wallet, 500);
+});
+
+test('contrats: aucune échéance salariale n’est annoncée après la fin du contrat', () => {
+  const career = new CareerManager();
+  career.signContract({ clubId: 'club-a', salary: 90, durationDays: 5, signedAt: '2030-01-01T00:00:00.000Z' });
+  const status = career.getSalaryStatus('2030-01-02T00:00:00.000Z');
+  assert.equal(status.paymentBeforeExpiry, false);
+  assert.equal(status.nextPaymentAt, null);
+  assert.equal(status.daysUntilPayment, null);
+});
