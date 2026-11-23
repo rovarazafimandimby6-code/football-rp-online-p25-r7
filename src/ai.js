@@ -111,6 +111,14 @@ export function getSupportTarget(player, owner, players, attackDir = 1) {
   return { x: best.x, z: best.z };
 }
 
+
+/** Une demande humaine ne valorise que les lignes déjà jugées acceptables. */
+export function scorePassOptionWithRequest(passer, mate, opponents, attackDir = 1, requestedReceiver = null) {
+  const baseScore = scorePassOption(passer, mate, opponents, attackDir);
+  if (!Number.isFinite(baseScore)) return baseScore;
+  return baseScore + (mate === requestedReceiver && baseScore > -0.25 ? 1.65 : 0);
+}
+
 const FORMATIONS = {
   '2-2': [
     { role: 'GK', x: -25.2, z: 0 },
@@ -263,7 +271,7 @@ export class TeamAI {
       const teammates = players.filter((other) => other.team === p.team && other !== p);
       const requestedReceiver = actions.requestedReceiver?.team === p.team ? actions.requestedReceiver : null;
       const passOptions = teammates
-        .map((mate) => ({ mate, score: scorePassOption(p, mate, opponents, attackDir) + (mate === requestedReceiver ? 1.65 : 0) }))
+        .map((mate) => ({ mate, score: scorePassOptionWithRequest(p, mate, opponents, attackDir, requestedReceiver) }))
         .filter((option) => Number.isFinite(option.score))
         .sort((a, b) => b.score - a.score);
       const bestPass = passOptions[0];

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scorePassOption } from '../src/ai.js';
+import { scorePassOption, scorePassOptionWithRequest } from '../src/ai.js';
 
 const player = (team, x, z, specialty = 'balanced') => ({ team, pos: { x, z }, specialty, attributes: { passing: 65, vision: 65, control: 65 } });
 
@@ -22,4 +22,18 @@ test('P27 appel de balle : un partenaire appelé reste soumis aux limites de dis
   const passer = player('blue', 0, 0);
   assert.equal(scorePassOption(passer, player('blue', 40, 0), [], 1), -Infinity);
   assert.equal(scorePassOption(passer, passer, [], 1), -Infinity);
+});
+
+test('P27 appel de balle : le joueur appelé est favorisé uniquement parmi les lignes déjà acceptables', () => {
+  const passer = player('blue', 0, 0);
+  const called = player('blue', 8, 0, 'runner');
+  const other = player('blue', 6, 5);
+  const baseCalled = scorePassOption(passer, called, [], 1);
+  const baseOther = scorePassOption(passer, other, [], 1);
+  assert.ok(scorePassOptionWithRequest(passer, called, [], 1, called) > baseCalled);
+  assert.equal(scorePassOptionWithRequest(passer, other, [], 1, called), baseOther);
+  const unsafeOpponents = [{ pos: { x: 4, z: 0 } }, { pos: { x: 5, z: 0.1 } }, { pos: { x: 6, z: -0.1 } }];
+  const unsafeBase = scorePassOption(passer, called, unsafeOpponents, 1);
+  assert.ok(unsafeBase <= -0.25);
+  assert.equal(scorePassOptionWithRequest(passer, called, unsafeOpponents, 1, called), unsafeBase);
 });
