@@ -354,14 +354,20 @@ test('P25 R13 : la reconnexion restaure le même avatar et reprend la séquence 
   assert.equal(manager.submitInput(room.id, joined.token, { x: 0, z: 1, sequence: 2 }).accepted, true);
 });
 
-test('P25 R13 : une session déconnectée au-delà du délai de grâce ne peut pas être restaurée', () => {
+test('P27 : une session déconnectée au-delà du délai de grâce garde son avatar IA et peut reprendre avant la fin du match', () => {
   let now = 30_000;
   const manager = new RoomManager({ now: () => now, disconnectGraceMs: 1_000 });
   const room = manager.create();
   const joined = manager.join(room.id);
+  const player = manager.rooms.get(room.id).players.get(joined.playerId);
   manager.leave(room.id, joined.token);
   now += 1_001;
-  assert.throws(() => manager.reconnect(room.id, joined.token), /SESSION_EXPIRED|UNAUTHORIZED/);
+  assert.equal(player.aiControlled, true);
+  assert.equal(manager.get(room.id).players.some(p => p.id === joined.playerId), true);
+  const resumed = manager.reconnect(room.id, joined.token);
+  assert.equal(resumed.reconnected, true);
+  assert.equal(player.aiControlled, false);
+  assert.equal(player.connected, true);
 });
 
 test('P25 R13 : le client restaure la séquence et utilise la route dédiée de reconnexion', async () => {
