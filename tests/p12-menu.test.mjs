@@ -113,6 +113,7 @@ test('P27 UI: les pages secondaires disposent d’un panneau interne navigable e
 
 
 test('P27 UI: le centre avant-match compare les clubs et leurs meilleurs joueurs', () => {
+  const css = cssText();
   assert.match(main, /match-centre/);
   assert.match(main, /home-match-rating/);
   assert.match(main, /away-match-rating/);
