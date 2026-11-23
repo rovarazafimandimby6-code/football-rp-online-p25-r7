@@ -28,10 +28,12 @@ test('P23 interface clubs: fiche mobile affiche note, potentiel, âge et nationa
 });
 
 test('P23 interface match: la présentation avant coup d’envoi affiche les dix titulaires issus des clubs', () => {
-  assert.match(main, /import \{ createTeamRoster \} from '\.\/ai\.js'/);
-  assert.match(main, /homeLineup = createTeamRoster/);
-  assert.match(main, /awayLineup = createTeamRoster/);
+  assert.match(main, /import \{ createMatchSquad \} from '\.\/match-squad\.js'/);
+  assert.match(main, /homeSquad = createMatchSquad/);
+  assert.match(main, /awaySquad = createMatchSquad/);
   assert.match(main, /pre-match-player-list/);
+  assert.match(main, /REMPLAÇANTS/);
+  assert.match(main, /squad\.substitutes/);
   assert.match(main, /player\.rating/);
   assert.match(main, /pre-match-lineups/);
 });

@@ -6,7 +6,6 @@ import { PlayerSeasonStats } from './player-season-stats.js';
 import { resolveOnlinePlayerPerformance } from './online-career-sync.js';
 import { renderClubCrest } from './club-identity.js';
 import { Player } from './player.js';
-import { createTeamRoster } from './ai.js';
 import { createMatchSquad } from './match-squad.js';
 import { OnlineMatchClient } from './online-client.js';
 import * as THREE from 'three';
