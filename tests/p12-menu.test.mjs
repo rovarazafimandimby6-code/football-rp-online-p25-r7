@@ -91,3 +91,22 @@ test('P27 UI match: panneaux de pause et statistiques sont bornés au viewport p
   assert.match(css, /\.overlay-card \{[\s\S]*?max-height: calc\(100dvh - 24px\)/);
   assert.match(css, /@media \(orientation: portrait\)[\s\S]*?#board, #pause, #minimap/);
 });
+
+
+test('P27 UI: découverte des clubs propose recherche, filtres et tris réels', () => {
+  assert.match(main, /id="club-search"/);
+  assert.match(main, /id="club-division-filter"/);
+  assert.match(main, /id="club-country-filter"/);
+  assert.match(main, /id="club-sort"/);
+  assert.match(main, /data-club-card/);
+  assert.match(main, /filterClubDiscovery/);
+  assert.match(main, /appendChild\(card\)/);
+});
+
+test('P27 UI: les pages secondaires disposent d’un panneau interne navigable et cohérent', () => {
+  const css = cssText();
+  assert.match(css, /#menu-content \{[\s\S]*?overflow-y: auto/);
+  assert.match(css, /\.club-card \{[\s\S]*?grid-template-columns/);
+  assert.match(css, /\.club-discovery-toolbar \{[\s\S]*?grid-template-columns/);
+  assert.match(css, /\.roster-table thead \{[\s\S]*?position:sticky/);
+});

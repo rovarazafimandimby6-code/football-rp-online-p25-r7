@@ -187,3 +187,14 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Aligner le libellé du menu de pause et des réglages caméra sur P27.
 - Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
 - Limite : le style et les attributs d'accessibilité sont testés par inspection automatisée ; la lisibilité réelle, la précision tactile et le rendu FPS doivent être contrôlés sur Android.
+
+
+### Lot 11 — système visuel unifié et centre de découverte des clubs (intégré)
+- [x] Créer des tokens visuels partagés pour les panneaux, bordures, textes, accents et états de focus.
+- [x] Corriger le conteneur central : les pages longues ne sont plus tronquées ; elles disposent d'un défilement interne maîtrisé sans faire défiler le shell complet.
+- [x] Recomposer les cartes clubs en fiches compactes avec écusson, ville, stade, niveau, réputation et aperçu d'effectif.
+- [x] Ajouter recherche par nom/ville/stade, filtres par division et pays, tri par niveau, nom, taille d'effectif et réputation.
+- [x] Ajouter un compteur dynamique et masquer les divisions sans résultat.
+- [x] Améliorer la lisibilité des tableaux d'effectifs avec en-tête fixe et panneau défilant.
+- Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
+- Limite : l'interface des clubs est désormais exploratoire et filtrable ; les interactions avancées sur les cartes joueurs et les écrans de préparation de match restent à approfondir.
