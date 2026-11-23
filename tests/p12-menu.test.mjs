@@ -139,3 +139,19 @@ test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, fil
   assert.match(css, /\.player-library-grid \{/);
   assert.match(css, /\.player-card-attributes \{/);
 });
+
+
+test('P27 mobile fullscreen: menu and match expose a touch fullscreen control', () => {
+  assert.ok(html.includes('id="menu-fullscreen"'));
+  assert.ok(html.includes('id="match-fullscreen"'));
+  assert.ok(main.includes("requestFullscreen({ navigationUI: 'hide' })"));
+  assert.ok(main.includes("screen.orientation.lock('landscape')"));
+  assert.ok(main.includes("addEventListener('fullscreenchange'"));
+});
+
+test('P27 mobile fullscreen: game and menu fill the dynamic viewport', () => {
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('height: 100dvh'));
+  assert.ok(css.includes('#main-menu:fullscreen, #game-shell:fullscreen'));
+  assert.ok(css.includes('overscroll-behavior: none'));
+});

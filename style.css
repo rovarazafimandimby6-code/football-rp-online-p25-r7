@@ -16,7 +16,9 @@ html, body {
   margin: 0;
   width: 100%;
   height: 100%;
+  min-height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #10271d;
   color: #fff;
   font-family: Inter, system-ui, -apple-system, Arial, sans-serif;
@@ -25,9 +27,13 @@ html, body {
 
 #game-shell {
   position: relative;
+  position: fixed;
+  inset: 0;
   width: 100vw;
+  height: 100vh;
   height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #173b27;
 }
 
@@ -1616,3 +1622,17 @@ html, body {
 #player-guidance[data-phase="defend"] { color: #ffb4aa; border-color: rgba(255, 180, 170, .22); }
 #player-guidance[data-phase="loose"] { color: #b9d8ff; border-color: rgba(185, 216, 255, .22); }
 @media(max-height:420px) { #player-guidance { bottom: calc(31px + env(safe-area-inset-bottom)); padding: 3px 7px; } }
+
+/* P27 mobile fullscreen */
+#main-menu { height:100vh; height:100dvh; min-height:100svh; }
+.menu-topbar-actions { display:flex; align-items:center; gap:12px; }
+.fullscreen-toggle { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:34px; padding:0 11px; border:1px solid rgba(208,245,220,.28); border-radius:9px; background:rgba(7,22,15,.78); color:#eaf8ee; font-size:11px; font-weight:900; cursor:pointer; touch-action:manipulation; }
+.fullscreen-toggle:active { background:rgba(84,166,111,.35); transform:scale(.97); }
+.fullscreen-toggle[aria-pressed="true"] { border-color:rgba(154,240,189,.65); color:#b9f5cc; }
+#match-top-actions { position:absolute; z-index:6; top:calc(9px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); display:flex; align-items:center; gap:6px; }
+#match-top-actions #pause { position:static; }
+#match-fullscreen { width:38px; height:38px; padding:0; font-size:20px; background:var(--glass); border-color:rgba(255,255,255,.3); backdrop-filter:blur(8px); }
+#main-menu:fullscreen, #game-shell:fullscreen { width:100vw; height:100vh; height:100dvh; min-height:100svh; max-height:none; }
+#game-shell:fullscreen { position:fixed; inset:0; }
+@media (max-width:760px) and (orientation:landscape) { .menu-topbar { padding-inline:10px; } .menu-topbar-actions { gap:6px; } .menu-status { display:none; } #match-top-actions { top:calc(5px + env(safe-area-inset-top)); right:calc(6px + env(safe-area-inset-right)); gap:5px; } #match-fullscreen, #match-top-actions #pause { width:32px; height:32px; } }
+@media (orientation:landscape) and (max-height:460px) { .fullscreen-toggle { min-height:30px; padding-inline:8px; } }

@@ -249,3 +249,14 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Conserver les critères de qualité de ligne de passe, d'espace, de rôle et d'attributs : l'appel ne force jamais une passe dangereuse.
 - Validation GitHub Actions : réussie, 264/264 tests, contrôle syntaxique réussi (run 45219577113).
 - Limite : le premier comportement s'applique aux coéquipiers IA contrôlés par la simulation locale ; la propagation explicite des appels dans le protocole de match en ligne reste à concevoir pour respecter l'autorité serveur.
+
+
+### Lot 17 — affichage plein écran mobile et occupation de toute la dalle (intégré)
+- [x] Ajouter une commande plein écran accessible depuis le menu et le match, activée par geste utilisateur pour respecter les navigateurs mobiles.
+- [x] Demander la dissimulation de l'interface navigateur avec navigationUI=hide lorsque le navigateur le permet.
+- [x] Tenter le verrouillage paysage après l'entrée en plein écran, sans bloquer les appareils/navigateurs qui ne le prennent pas en charge.
+- [x] Utiliser la hauteur dynamique du viewport et empêcher le défilement/overscroll du document pendant le jeu.
+- [x] Garder le terrain WebGL bord à bord et les commandes accessibles dans les limites de la dalle.
+- [x] Ajouter des tests de présence et de comportement du mode plein écran.
+- Validation GitHub Actions : en attente sur le commit de ce lot.
+- Limite : la disparition des barres système dépend du navigateur et de son mode plein écran ; certains navigateurs iOS ne proposent pas la même API. Le test final doit être effectué sur Android en ouvrant le site dans Chrome puis en activant le plein écran.
