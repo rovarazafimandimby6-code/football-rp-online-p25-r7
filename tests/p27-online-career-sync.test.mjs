@@ -15,7 +15,8 @@ test('P27 carrière en ligne : extrait uniquement le joueur humain du rapport se
   assert.equal(result.cleanSheet, true);
   assert.equal(result.stats.goals, 1);
   assert.equal(result.stats.assists, 1);
-  assert.equal(result.stats.completedPasses, 8);
+  assert.equal(result.stats.passes, 8);
+  assert.equal(Object.hasOwn(result.stats, 'completedPasses'), false);
 });
 
 test('P27 carrière en ligne : détermine correctement défaite, nul et clean sheet selon le camp', () => {
