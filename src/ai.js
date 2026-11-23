@@ -4,6 +4,15 @@ const PITCH = Object.freeze({ HALF_L: 28, HALF_W: 17, GOAL_W: 6.6 });
 import { specialtyForSlot } from './player-specialties.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const ratingOf = (player, key, fallback = 50) => clamp(Number(player?.attributes?.[key] ?? fallback) || fallback, 1, 99);
+
+/** Qualité d'exécution pondérée par les attributs, sans rendre l'action infaillible. */
+export function decisionAttributeFactor(player, primary, secondary = null) {
+  const main = ratingOf(player, primary);
+  const support = secondary ? ratingOf(player, secondary) : main;
+  const quality = main * 0.72 + support * 0.28;
+  return clamp(0.72 + quality / 100 * 0.56, 0.78, 1.28);
+}
 
 /** Score une option de passe selon progression, espace disponible et ligne de passe. */
 export function scorePassOption(passer, mate, opponents, attackDir = 1) {
@@ -27,7 +36,9 @@ export function scorePassOption(passer, mate, opponents, attackDir = 1) {
   const roleBonus = mate.specialty === 'playmaker' ? 0.45
     : mate.specialty === 'runner' && forward > 0.35 ? 0.65
       : mate.specialty === 'finisher' && forward > 0.15 ? 0.35 : 0;
-  return forward * 2.1 + space + roleBonus - distance * 0.045 - laneRisk * 1.7;
+  const execution = (decisionAttributeFactor(passer, 'passing', 'vision') - 1) * 1.45;
+  const reception = (ratingOf(mate, 'control') - 50) * 0.006;
+  return forward * 2.1 + space + roleBonus + execution + reception - distance * 0.045 - laneRisk * 1.7;
 }
 
 /**
@@ -224,7 +235,8 @@ export class TeamAI {
         .sort((a, b) => b.score - a.score);
       const bestPass = passOptions[0];
       const distToGoal = Math.hypot(oppGoalX - p.pos.x, -p.pos.z);
-      const shootBias = p.specialty === 'finisher' ? 3.0 : p.specialty === 'playmaker' ? 1.35 : 2.0;
+      const shootBias = (p.specialty === 'finisher' ? 3.0 : p.specialty === 'playmaker' ? 1.35 : 2.0)
+        * decisionAttributeFactor(p, 'shooting', 'composure');
       if (distToGoal < (p.specialty === 'finisher' ? 19 : 16.5) && p.decisionTimer <= 0 && Math.random() < dt * shootBias) {
         p.decisionTimer = 0.55 + Math.random() * 0.35;
         actions.aiShoot(p);
@@ -236,7 +248,8 @@ export class TeamAI {
       );
       const passBias = p.specialty === 'playmaker' ? 1.05 : p.specialty === 'runner' ? 0.32 : 0.55;
       const usefulPass = bestPass && bestPass.score > -0.25;
-      const passChance = p.specialty === 'playmaker' ? 3.8 : passBias * 3.0;
+      const passChance = (p.specialty === 'playmaker' ? 3.8 : passBias * 3.0)
+        * decisionAttributeFactor(p, 'passing', 'vision');
       if (p.decisionTimer <= 0 && usefulPass && ((pressed && Math.random() < dt * passChance) || Math.random() < dt * passBias)) {
         p.decisionTimer = 0.5 + Math.random() * 0.35;
         actions.aiPass(p, bestPass.mate);

@@ -125,3 +125,13 @@ Périmètre : ce lot améliore l'IA locale de match. La simulation en ligne rest
 - Validation GitHub Actions : run [P27 validation](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45161152708), **230/230 tests réussis**, contrôle de syntaxe réussi.
 
 Périmètre : les appels concernent les joueurs IA locaux et les soutiens autour d'un porteur humain ou IA. La simulation en ligne autoritaire côté serveur reste distincte.
+
+### Lot 5 — décisions offensives pondérées par les attributs (intégré)
+- [x] Pondérer l'évaluation des lignes de passe par la qualité de passe et la vision du porteur.
+- [x] Tenir compte du contrôle du receveur dans la valeur d'une option de passe.
+- [x] Ajuster la propension à tirer selon la finition et le sang-froid, et la propension à passer selon la passe et la vision.
+- [x] Borner les facteurs d'attributs pour conserver des décisions imparfaites et éviter les probabilités extrêmes.
+- [x] Ajouter des tests comparatifs entre profils faibles et élevés et vérifier les bornes des facteurs.
+- Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
+
+Périmètre : ce lot modifie la prise de décision de l'IA locale. Il ne modifie ni le contrôle des joueurs humains ni l'autorité de simulation des salons en ligne.

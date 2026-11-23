@@ -101,3 +101,25 @@ test('P27: le meneur se rend disponible derrière le porteur et le défenseur de
   assert.ok(coverTarget.x < carrier.pos.x, 'le joueur de couverture ne doit pas dépasser le porteur');
   assert.ok(Math.abs(coverTarget.z - cover.homePos.z) < 2, 'le joueur de couverture conserve son couloir');
 });
+
+test('P27: les attributs de passe et de vision influencent la qualité des options sans garantir la réussite', () => {
+  const receiver = player('receiver', 'blue', 10, 1, 'runner');
+  const opponents = [player('marker', 'red', 5, 8)];
+  const novice = player('novice', 'blue', 0, 0);
+  const playmaker = player('playmaker', 'blue', 0, 0, 'playmaker');
+  novice.attributes = { passing: 25, vision: 25 };
+  playmaker.attributes = { passing: 92, vision: 94 };
+  assert.ok(scorePassOption(playmaker, receiver, opponents) > scorePassOption(novice, receiver, opponents),
+    'un passeur avec une meilleure vision et qualité de passe évalue mieux la même solution');
+});
+
+test('P27: la qualité de décision offensive reste bornée pour les attributs extrêmes', async () => {
+  const { decisionAttributeFactor } = await import('../src/ai.js');
+  const weak = player('weak', 'blue', 0, 0);
+  const elite = player('elite', 'blue', 0, 0);
+  weak.attributes = { shooting: 1, composure: 1 };
+  elite.attributes = { shooting: 99, composure: 99 };
+  assert.ok(decisionAttributeFactor(weak, 'shooting', 'composure') >= 0.78);
+  assert.ok(decisionAttributeFactor(elite, 'shooting', 'composure') <= 1.28);
+  assert.ok(decisionAttributeFactor(elite, 'shooting', 'composure') > decisionAttributeFactor(weak, 'shooting', 'composure'));
+});
