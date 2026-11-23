@@ -97,7 +97,7 @@ export class UIManager {
     this.overlayAction.addEventListener('click', () => cb.onOverlayAction(), this.listenerOptions);
     this.overlay.addEventListener('click', (event) => {
       const action = event.target.closest('[data-pause-action]')?.dataset.pauseAction;
-      if (action) this.handlePauseAction(action);
+      if (action) this.handlePauseAction(action, event.target.closest('[data-pause-action]'));
     }, this.listenerOptions);
   }
 
@@ -108,6 +108,26 @@ export class UIManager {
     this.statusEl.classList.add('show');
     window.clearTimeout(this.statusTimer);
     this.statusTimer = window.setTimeout(() => this.statusEl.classList.remove('show'), 2300);
+  }
+
+  replacePlayer(previous, next) {
+    const oldLabel = this.playerLabels.get(previous.id);
+    oldLabel?.remove();
+    this.playerLabels.delete(previous.id);
+    const oldDot = this.mmDots.get(previous.id);
+    oldDot?.remove();
+    this.mmDots.delete(previous.id);
+
+    const label = document.createElement('div');
+    label.className = `p-label ${next.team}`;
+    label.textContent = `${next.number ? `#${next.number} ` : ''}${next.name}`;
+    this.labelsLayer.appendChild(label);
+    this.playerLabels.set(next.id, label);
+
+    const dot = document.createElement('span');
+    dot.className = `mm-dot ${next.team}`;
+    this.minimapEl.appendChild(dot);
+    this.mmDots.set(next.id, dot);
   }
 
   updateHUD(match, activePlayer, fps, ball = null) {
@@ -243,7 +263,7 @@ export class UIManager {
       const score = this.pauseMatch ? `${this.pauseMatch.blueScore} – ${this.pauseMatch.redScore}` : '0 – 0';
       const homeName = document.getElementById('blue-name')?.textContent || 'Antananarivo FC';
       const awayName = document.getElementById('red-name')?.textContent || 'Toamasina United';
-      this.pauseActionsEl.innerHTML = `<div class="pause-score"><div>${renderClubCrest({id:'antananarivo-fc',name:homeName,size:44,compact:true})}<b>${homeName}</b></div><strong>${score}</strong><div>${renderClubCrest({id:'toamasina-united',name:awayName,size:44,compact:true})}<b>${awayName}</b></div></div><div class="pause-menu-grid">${button('resume','▶  REPRENDRE','primary')}${button('stats','▥  STATISTIQUES')}${button('player','◉  MON JOUEUR')}${button('events','☷  ÉVÉNEMENTS')}${button('settings','⚙  PARAMÈTRES')}${button('quit','↩  QUITTER LE MATCH','danger')}</div>`;
+      this.pauseActionsEl.innerHTML = `<div class="pause-score"><div>${renderClubCrest({id:'antananarivo-fc',name:homeName,size:44,compact:true})}<b>${homeName}</b></div><strong>${score}</strong><div>${renderClubCrest({id:'toamasina-united',name:awayName,size:44,compact:true})}<b>${awayName}</b></div></div><div class="pause-menu-grid">${button('resume','▶  REPRENDRE','primary')}${button('stats','▥  STATISTIQUES')}${button('player','◉  MON JOUEUR')}${button('substitutions','⇄  REMPLACEMENTS')}${button('events','☷  ÉVÉNEMENTS')}${button('settings','⚙  PARAMÈTRES')}${button('quit','↩  QUITTER LE MATCH','danger')}</div>`;
       this.overlayText.textContent = 'Score, performances et réglages de la rencontre.';
       return;
     }
@@ -256,6 +276,14 @@ export class UIManager {
       this.overlayText.textContent = `${name} · N°${p?.number ?? 10} · Endurance ${stamina}%
 Cette fiche décrit uniquement le footballeur contrôlé par vous.`;
       this.pauseActionsEl.innerHTML = back;
+    } else if (section === 'substitutions') {
+      const data = this.callbacks.getSubstitutionOptions?.() || { pairs: [], used: 0, limit: 3 };
+      const safe = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+      const role = { GK:'Gardien', DEF:'Défenseur', MID:'Milieu', FWD:'Attaquant' };
+      const pairs = data.pairs || [];
+      this.overlayTitle.textContent = 'Remplacements';
+      this.overlayText.textContent = `Remplacements utilisés : ${data.used}/${data.limit}. Votre joueur de carrière reste toujours sur le terrain. Les remplaçants doivent occuper le même poste.`;
+      this.pauseActionsEl.innerHTML = `${pairs.length ? pairs.map(({outgoing,incoming}) => button('substitute', `${safe(outgoing.name)} #${safe(outgoing.number)} → ${safe(incoming.name)} #${safe(incoming.number)} · ${safe(role[outgoing.role] || outgoing.role)}`)).join('') : '<p class="pause-empty">Aucun remplacement disponible pour le moment.</p>'}${back}`;
     } else if (section === 'events') {
       const events = (this.pauseMatch?.events || []).slice().reverse().slice(0, 8);
       const names = { goal:'BUT', 'second-half-start':'COUP D’ENVOI', foul:'FAUTE', yellow_card:'CARTON JAUNE', red_card:'CARTON ROUGE', substitution:'REMPLACEMENT' };
@@ -288,7 +316,7 @@ Cette fiche décrit uniquement le footballeur contrôlé par vous.`;
     }
   }
 
-  handlePauseAction(action) {
+  handlePauseAction(action, button = null) {
     if (action === 'resume') { this.callbacks.onOverlayAction(); return; }
     if (action === 'stats') {
       this.renderStats(this.pauseMatch);
@@ -297,6 +325,13 @@ Cette fiche décrit uniquement le footballeur contrôlé par vous.`;
       return;
     }
     if (action === 'back') { this.renderPauseActions('home'); return; }
+    if (action === 'substitutions') { this.renderPauseActions('substitutions'); return; }
+    if (action === 'substitute') {
+      const result = this.callbacks.onSubstitute?.(button?.dataset.outId, button?.dataset.inId);
+      if (result?.ok) { this.renderPauseActions('home'); this.setStatus(result.message); }
+      else this.setStatus(result?.message || 'Remplacement impossible.');
+      return;
+    }
     if (['player','events','settings','quit'].includes(action)) { this.renderPauseActions(action); return; }
     if (action === 'apply-settings') {
       const quality = document.getElementById('pause-quality')?.value || 'auto';

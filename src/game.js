@@ -10,6 +10,8 @@ import { Ball } from './ball.js';
 import { PhysicsEngine } from './physics.js';
 import { BroadcastCamera } from './camera.js';
 import { TeamAI, createTeamRoster } from './ai.js';
+import { createMatchSquad } from './match-squad.js';
+import { validateSubstitution } from './substitution-manager.js';
 import { ControlsManager } from './controls.js';
 import { MatchState } from './match.js';
 import { UIManager } from './ui.js';
@@ -60,6 +62,12 @@ export class Game {
         } : {})
       });
     });
+    const startingIds = new Set(this.players.filter(player => player.team === 'blue').map(player => player.id));
+    this.benchPlayers = createMatchSquad('blue', '2-2', callbacks.homeRoster, callbacks.careerPlayerId)
+      .substitutes.filter(player => player.id !== null && player.id !== undefined && !startingIds.has(player.id));
+    this.substitutionsUsed = { blue: 0, red: 0 };
+    this.substitutionLimit = 3;
+
     for (const p of this.players) {
       this.sceneMgr.scene.add(p.visual.root);
     }
@@ -118,6 +126,8 @@ export class Game {
       getCameraMode: () => this.cam.mode,
       getCameraZoom: () => this.cam.zoom,
       onOverlayAction: () => this.handleOverlayAction(),
+      getSubstitutionOptions: () => this.getSubstitutionOptions(),
+      onSubstitute: (outgoingId, incomingId) => this.applySubstitution(outgoingId, incomingId),
       onExitMatch: () => callbacks.onExitMatch?.()
     });
 
@@ -183,6 +193,80 @@ export class Game {
     for (const p of this.players) p.isControlled = false;
     player.isControlled = true;
     this.activePlayer = player;
+  }
+
+  getSubstitutionOptions() {
+    if (this.onlineBridge || this.match.phase !== 'paused' || this.substitutionsUsed.blue >= this.substitutionLimit) {
+      return { pairs: [], used: this.substitutionsUsed.blue, limit: this.substitutionLimit };
+    }
+    const outgoing = this.players.filter(player => player.team === 'blue' && !player.isControlled);
+    const pairs = outgoing.flatMap(player => this.benchPlayers
+      .filter(candidate => candidate.role === player.role)
+      .map(candidate => ({ outgoing: player, incoming: candidate })));
+    return { pairs, used: this.substitutionsUsed.blue, limit: this.substitutionLimit };
+  }
+
+  applySubstitution(outgoingId, incomingId) {
+    const outgoing = this.players.find(player => player.id === outgoingId);
+    const incomingIndex = this.benchPlayers.findIndex(player => player.id === incomingId);
+    const incoming = incomingIndex >= 0 ? this.benchPlayers[incomingIndex] : null;
+    const validation = validateSubstitution({
+      phase: this.match.phase,
+      online: Boolean(this.onlineBridge),
+      outgoing,
+      incoming,
+      activePlayer: this.activePlayer,
+      used: this.substitutionsUsed.blue,
+      limit: this.substitutionLimit
+    });
+    if (!validation.ok) return validation;
+
+    const replacement = new Player({
+      id: incoming.id,
+      team: 'blue',
+      number: incoming.number,
+      name: incoming.name,
+      role: outgoing.role,
+      specialty: incoming.specialty || incoming.archetype || 'balanced',
+      slotIndex: outgoing.slotIndex,
+      homePos: { ...outgoing.homePos },
+      attributes: incoming.attributes || {
+        pace: incoming.rating ?? 50, shooting: incoming.rating ?? 50,
+        passing: incoming.rating ?? 50, defense: incoming.rating ?? 50,
+        stamina: incoming.rating ?? 50, control: incoming.rating ?? 50
+      },
+      preferredFoot: incoming.preferredFoot || null,
+      appearance: incoming.appearance || null
+    });
+    replacement.pos = { ...outgoing.pos };
+    replacement.vel = { x: 0, z: 0 };
+    replacement.facing = outgoing.facing;
+
+    const playerIndex = this.players.indexOf(outgoing);
+    if (playerIndex < 0) {
+      replacement.visual.dispose();
+      return { ok: false, code: 'outgoing-not-on-pitch', message: 'Joueur sortant introuvable.' };
+    }
+    this.sceneMgr.scene.remove(outgoing.visual.root);
+    outgoing.visual.dispose();
+    this.sceneMgr.scene.add(replacement.visual.root);
+    this.players[playerIndex] = replacement;
+    this.ui.replacePlayer(outgoing, replacement);
+
+    if (this.ball.owner === outgoing) this.ball.owner = replacement;
+    if (this.ball.lastTouchPlayer === outgoing) this.ball.lastTouchPlayer = replacement;
+
+    this.benchPlayers.splice(incomingIndex, 1);
+    const attributes = { ...outgoing.attributes };
+    const averageRating = Math.round(Object.values(attributes).reduce((sum, value) => sum + value, 0) / Math.max(1, Object.keys(attributes).length));
+    this.benchPlayers.push({
+      id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number,
+      attributes, rating: averageRating, specialty: outgoing.specialty,
+      preferredFoot: outgoing.preferredFoot
+    });
+    this.substitutionsUsed.blue += 1;
+    this.match.recordEvent('substitution', 'blue', `${outgoing.name} → ${replacement.name}`);
+    return { ok: true, code: 'substitution-complete', message: `Remplacement : ${outgoing.name} sort, ${replacement.name} entre.` };
   }
 
 

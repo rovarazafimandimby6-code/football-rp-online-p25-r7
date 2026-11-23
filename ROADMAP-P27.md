@@ -433,3 +433,15 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Présenter les remplaçants et le volume d'effectif dans le centre avant-match, pour les deux clubs.
 - [x] Couvrir les effectifs incomplets, les identifiants dupliqués, l'absence de banc et la priorité du joueur de carrière par tests.
 - Limite : les réservistes sont identifiés et affichés avant le match ; leur entrée effective en jeu, les changements tactiques et la gestion de fatigue restent à connecter au moteur de match dans les lots suivants.
+
+
+### Lot 37 — remplacements locaux pendant le match (intégré)
+- [x] Conserver sur le banc les joueurs réels non retenus dans le onze de départ.
+- [x] Ajouter un écran « Remplacements » au menu pause, avec les changements compatibles par poste.
+- [x] Autoriser jusqu'à trois remplacements locaux par équipe bleue et par match.
+- [x] Interdire le remplacement du footballeur personnel contrôlé.
+- [x] Remplacer proprement l'objet joueur, le modèle 3D, les étiquettes et le point de mini-carte.
+- [x] Préserver le poste, le slot tactique et la position de l'équipe ; transférer la possession si le joueur sortant a le ballon.
+- [x] Enregistrer les changements dans les événements du match et remettre le joueur sortant sur le banc.
+- [x] Bloquer les changements hors pause et en match en ligne (protocole serveur non encore étendu).
+- Limite : l'interface de remplacement est locale. Les remplacements automatiques de l'IA adverse et la synchronisation des changements en ligne restent à développer.
