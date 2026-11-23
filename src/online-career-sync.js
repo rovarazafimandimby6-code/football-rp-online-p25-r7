@@ -11,7 +11,5 @@ export function resolveOnlinePlayerPerformance(report, playerId) {
   const blue = safeStat(report.score.blue), red = safeStat(report.score.red);
   const outcome = blue === red ? 'draw' : (player.team === (blue > red ? 'blue' : 'red') ? 'win' : 'loss');
   const stats = Object.fromEntries(['goals', 'assists', 'shots', 'passes', 'tackles', 'interceptions'].map(field => [field, safeStat(player.stats?.[field])]));
-  // The server counts accepted pass actions; these are the completed passes in its report.
-  stats.completedPasses = stats.passes;
   return { playerId, team: player.team, result: outcome, cleanSheet: (player.team === 'blue' ? red : blue) === 0, stats };
 }

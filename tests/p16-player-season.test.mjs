@@ -28,3 +28,10 @@ test('P16 : les statistiques du personnage sont transmises en fin de match et af
  assert.match(game,/if \(shooter\.isControlled\) this\.playerMatchStats\.shots\+\+/);
  assert.match(main,/seasonStats\.recordMatch\(/); assert.match(main,/Statistiques personnelles/);
 });
+
+test('P27 : une précision de passe inconnue reste neutre au lieu d'être considérée comme nulle',()=>{
+ const unknown = calculateMatchRating({ passes: 10 }, 'draw');
+ const measured = calculateMatchRating({ passes: 10, completedPasses: 6 }, 'draw');
+ assert.ok(unknown > measured);
+ assert.equal(unknown, calculateMatchRating({ passes: 0 }, 'draw'));
+});

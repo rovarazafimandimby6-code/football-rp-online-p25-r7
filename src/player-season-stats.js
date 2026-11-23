@@ -7,7 +7,8 @@ export function calculateMatchRating(stats = {}, result = 'draw') {
   const goals = count(stats.goals), assists = count(stats.assists);
   const shots = count(stats.shots), passes = count(stats.passes);
   const tackles = count(stats.tackles), interceptions = count(stats.interceptions);
-  const accuracy = passes ? Math.min(1, count(stats.completedPasses) / passes) : 0.65;
+  const hasCompletionData = stats.completedPasses !== undefined && stats.completedPasses !== null && Number.isFinite(Number(stats.completedPasses));
+  const accuracy = passes && hasCompletionData ? Math.min(1, count(stats.completedPasses) / passes) : 0.65;
   let rating = 6 + goals * 0.8 + assists * 0.5 + Math.min(1, shots * 0.12)
     + Math.min(1, tackles * 0.12) + Math.min(1, interceptions * 0.12) + accuracy * 0.6;
   if (result === 'win') rating += 0.35;
