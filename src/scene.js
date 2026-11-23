@@ -70,7 +70,14 @@ export class SceneManager {
     this.setQuality('auto');
 
     this._onResize = () => this.resize();
-    window.addEventListener('resize', this._onResize);
+    window.addEventListener('resize', this._onResize, { passive: true });
+    window.addEventListener('orientationchange', this._onResize, { passive: true });
+    this._visualViewport = window.visualViewport || null;
+    this._visualViewport?.addEventListener('resize', this._onResize, { passive: true });
+    this._resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(this._onResize)
+      : null;
+    this._resizeObserver?.observe(this.container);
   }
 
   setQuality(level = 'auto') {
@@ -91,11 +98,15 @@ export class SceneManager {
   }
 
   resize() {
-    const w = this.container.clientWidth || window.innerWidth;
-    const h = this.container.clientHeight || window.innerHeight;
+    if (!this.renderer || !this.camera || !this.container) return;
+    const bounds = this.container.getBoundingClientRect?.();
+    const w = Math.round(bounds?.width || this.container.clientWidth || window.innerWidth);
+    const h = Math.round(bounds?.height || this.container.clientHeight || window.innerHeight);
+    // Ignore transient zero-size layouts while the menu and match shell switch visibility.
+    if (w <= 0 || h <= 0) return;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h);
+    this.renderer.setSize(w, h, false);
   }
 
   render() {
@@ -105,6 +116,10 @@ export class SceneManager {
 
   dispose() {
     window.removeEventListener('resize', this._onResize);
+    window.removeEventListener('orientationchange', this._onResize);
+    this._visualViewport?.removeEventListener('resize', this._onResize);
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = null;
     if (!this.renderer) return;
     this.renderer.domElement.removeEventListener('webglcontextlost', this._onContextLost);
     this.renderer.domElement.removeEventListener('webglcontextrestored', this._onContextRestored);

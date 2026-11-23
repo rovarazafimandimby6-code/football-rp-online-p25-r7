@@ -1636,3 +1636,51 @@ html, body {
 #game-shell:fullscreen { position:fixed; inset:0; }
 @media (max-width:760px) and (orientation:landscape) { .menu-topbar { padding-inline:10px; } .menu-topbar-actions { gap:6px; } .menu-status { display:none; } #match-top-actions { top:calc(5px + env(safe-area-inset-top)); right:calc(6px + env(safe-area-inset-right)); gap:5px; } #match-fullscreen, #match-top-actions #pause { width:32px; height:32px; } }
 @media (orientation:landscape) and (max-height:460px) { .fullscreen-toggle { min-height:30px; padding-inline:8px; } }
+
+
+/* P27 Lot 18 — viewport mobile réel, redimensionnement canvas et HUD paysage compact */
+#game-shell,
+#webgl-container {
+  min-width: 0;
+  min-height: 0;
+}
+#webgl-container canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+@media (orientation: landscape) and (max-height: 420px) {
+  #board {
+    top: calc(4px + env(safe-area-inset-top));
+    padding: 3px 7px;
+    gap: 6px;
+  }
+  #match-top-actions {
+    top: calc(4px + env(safe-area-inset-top));
+    right: calc(5px + env(safe-area-inset-right));
+  }
+  #match-fullscreen,
+  #match-top-actions #pause {
+    width: 30px;
+    height: 30px;
+  }
+  #action-buttons {
+    bottom: max(7px, env(safe-area-inset-bottom));
+    height: min(188px, calc(100dvh - 20px - env(safe-area-inset-bottom)));
+    max-height: none;
+  }
+  #stick-base {
+    top: 62%;
+    width: clamp(76px, 16vw, 98px);
+    height: clamp(76px, 16vw, 98px);
+  }
+  #stamina {
+    bottom: calc(5px + env(safe-area-inset-bottom));
+  }
+  #player-guidance {
+    bottom: calc(29px + env(safe-area-inset-bottom));
+    max-width: 30vw;
+    padding: 3px 6px;
+  }
+}

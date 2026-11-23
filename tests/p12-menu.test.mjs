@@ -155,3 +155,25 @@ test('P27 mobile fullscreen: game and menu fill the dynamic viewport', () => {
   assert.ok(css.includes('#main-menu:fullscreen, #game-shell:fullscreen'));
   assert.ok(css.includes('overscroll-behavior: none'));
 });
+
+
+test('P27 viewport: le canvas suit les dimensions réelles du conteneur et du viewport mobile', () => {
+  const scene = readFileSync(new URL('../src/scene.js', import.meta.url), 'utf8');
+  const css = cssText();
+  assert.match(scene, /new ResizeObserver\(this\._onResize\)/);
+  assert.match(scene, /observe\(this\.container\)/);
+  assert.match(scene, /visualViewport\?\.addEventListener\('resize'/);
+  assert.match(scene, /orientationchange/);
+  assert.match(scene, /getBoundingClientRect\?\.\(\)/);
+  assert.match(scene, /setSize\(w, h, false\)/);
+  assert.match(scene, /_resizeObserver\?\.disconnect\(\)/);
+  assert.match(css, /#webgl-container canvas \{[\s\S]*?position: absolute;[\s\S]*?inset: 0/);
+});
+
+test('P27 viewport: HUD et commandes restent compacts sur les petits écrans paysage', () => {
+  const css = cssText();
+  assert.match(css, /@media \(orientation: landscape\) and \(max-height: 420px\)/);
+  assert.match(css, /#action-buttons \{[\s\S]*?height: min\(188px, calc\(100dvh/);
+  assert.match(css, /#stick-base \{[\s\S]*?top: 62%/);
+  assert.match(css, /#player-guidance \{[\s\S]*?max-width: 30vw/);
+});

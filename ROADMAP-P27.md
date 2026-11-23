@@ -260,3 +260,12 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des tests de présence et de comportement du mode plein écran.
 - Validation GitHub Actions : en attente sur le commit de ce lot.
 - Limite : la disparition des barres système dépend du navigateur et de son mode plein écran ; certains navigateurs iOS ne proposent pas la même API. Le test final doit être effectué sur Android en ouvrant le site dans Chrome puis en activant le plein écran.
+
+
+### Lot 18 — synchronisation du viewport et HUD paysage compact (intégré)
+- [x] Observer les dimensions réelles du conteneur WebGL avec `ResizeObserver`, y compris quand le shell de match devient visible.
+- [x] Recalculer la projection et la taille du canvas lors des changements de taille, de l'orientation et du viewport visuel mobile.
+- [x] Nettoyer les observateurs et écouteurs au démontage du moteur pour éviter les fuites lors des redémarrages.
+- [x] Ignorer les mesures transitoires nulles pendant les changements d'écran.
+- [x] Adapter le HUD et les commandes tactiles aux téléphones paysage de faible hauteur, en conservant des cibles tactiles utilisables.
+- [ ] Vérifier le plein écran, le cadrage et les zones tactiles sur un véritable appareil Android ; les tests automatisés ne remplacent pas cet essai.
