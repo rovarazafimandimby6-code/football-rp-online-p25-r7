@@ -85,10 +85,10 @@
 - [x] Résoudre les clubs à partir du catalogue fictif officiel du jeu côté serveur ; les noms et couleurs ne sont jamais acceptés librement depuis le client.
 - [x] Associer les identités bleu/rouge aux états publics des salons.
 - [x] Archiver les identités des clubs dans les résultats finalisés, tout en conservant la lecture des anciens résultats sans métadonnées.
-- [x] Lorsqu'une carrière possède un club, créer le match avec ce club et un adversaire IA distinct.
+- [x] Transmettre au serveur l'affiche domicile/extérieur réellement sélectionnée dans l'écran de préparation du match.
 - [x] Afficher les noms des clubs dans la feuille de match.
 - [x] Corriger un défaut découvert par les tests : un salon vide était supprimé dès le premier tick car `Array.every()` retourne vrai sur une liste vide. Les salons vides restent désormais joignables jusqu'à leur TTL.
 - [x] Ajouter des tests de validation des identifiants, d'archivage, de compatibilité, d'affichage et de conservation des salons vides.
-- Validation GitHub Actions : run [#4 — P27 validation](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45159385332), **225/225 tests réussis**, contrôle de syntaxe réussi.
+- Validation GitHub Actions : run [P27 validation](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45159608964), **225/225 tests réussis**, contrôle de syntaxe réussi.
 
-Limite assumée : les clubs ne sont associés automatiquement au match que si le profil de carrière possède déjà un club. Les salons créés sans club de carrière restent neutres ; aucune affiliation fictive n'est attribuée au joueur.
+Limite assumée : les salons créés sans affiche de clubs valide restent neutres ; aucune affiliation fictive n'est attribuée au joueur.
