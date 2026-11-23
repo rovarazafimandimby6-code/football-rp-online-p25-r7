@@ -7,7 +7,7 @@ function fixture() {
   const ball = { pos:{set(x,y,z){this.x=x;this.y=y;this.z=z;}}, vel:{set(x,y,z){this.x=x;this.y=y;this.z=z;}}, syncVisual(){} };
   const sent = [];
   const client = { sendInput: async input => { sent.push(input); }, pollState: async () => ({ state:null, events:[], eventCursor:0 }) };
-  const controls = { getMoveVector:()=>({x:0.6,z:-0.8}), isSprinting:()=>true, consumePass:()=>null, consumeShoot:()=>null, consumePress:()=>false, consumeLob:()=>false };
+  const controls = { getMoveVector:()=>({x:0.6,z:-0.8}), isSprinting:()=>true, consumePass:()=>null, consumeShoot:()=>null, consumePress:()=>false, consumeLob:()=>false, consumeCallForPass:()=>false };
   return { players, ball, sent, client, controls };
 }
 
@@ -82,4 +82,16 @@ test('P25 R13 : le pont suspend les inputs pendant le backoff après une panne r
   assert.equal(await bridge.sendControls(1100), false);
   assert.equal(attempts, 1);
   assert.equal(errors.length, 1);
+});
+
+
+test('P27 appel de balle en ligne : le pont transmet une demande tactile sans la transformer en passe', async () => {
+  const f = fixture();
+  f.controls.consumeCallForPass = () => true;
+  const bridge = new OnlineMatchBridge({ ...f, now:()=>1000 });
+  bridge.bindJoin({ playerId:'human-1' });
+  bridge.applyState({ sequence:0, phase:'playing', players:[], ball:{ownerId:'bot-1'} });
+  assert.equal(await bridge.sendControls(1000), true);
+  assert.equal(f.sent[0].callForPass, true);
+  assert.equal(f.sent[0].action, null);
 });

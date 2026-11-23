@@ -115,10 +115,11 @@ export class OnlineMatchBridge {
     const shoot = this.controls.consumeShoot?.();
     const press = this.controls.consumePress?.();
     const lob = this.controls.consumeLob?.();
+    const callForPass = this.controls.consumeCallForPass?.() === true;
     if (this.lastState?.ball?.ownerId === this.localServerId) action = shoot ? 'shoot' : (pass || lob) ? 'pass' : null;
     else action = shoot || lob ? 'tackle' : press ? 'tackle' : null;
     try {
-      await this.client.sendInput({ x: move.x, z: move.z, sprint: this.controls.isSprinting?.() === true, action });
+      await this.client.sendInput({ x: move.x, z: move.z, sprint: this.controls.isSprinting?.() === true, action, callForPass });
       return true;
     } catch (error) {
       this.pollErrorCount = Math.min(8, this.pollErrorCount + 1);

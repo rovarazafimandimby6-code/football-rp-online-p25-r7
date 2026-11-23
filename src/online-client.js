@@ -47,9 +47,9 @@ export class OnlineMatchClient {
     this.persistSession();
     return result;
   }
-  async sendInput({ x = 0, z = 0, sprint = false, action = null } = {}) {
+  async sendInput({ x = 0, z = 0, sprint = false, action = null, callForPass = false } = {}) {
     if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
-    const result = await this.request(`/api/rooms/${this.roomId}/input`, { method: 'POST', auth: true, body: { x, z, sprint, ...(action ? { action } : {}), sequence: ++this.sequence } });
+    const result = await this.request(`/api/rooms/${this.roomId}/input`, { method: 'POST', auth: true, body: { x, z, sprint, ...(action ? { action } : {}), ...(callForPass === true ? { callForPass: true } : {}), sequence: ++this.sequence } });
     this.persistSession();
     return result;
   }

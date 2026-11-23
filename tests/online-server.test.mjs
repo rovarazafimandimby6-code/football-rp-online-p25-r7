@@ -467,3 +467,41 @@ test('P25 R17 : le résultat reste indisponible avant la fin réglementaire', ()
   manager.join(room.id);
   assert.throws(() => manager.getResult(room.id), /RESULT_NOT_READY/);
 });
+
+
+test('P27 appel de balle en ligne : un bot sert le coéquipier humain demandeur si la ligne est libre', () => {
+  let now = 50_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create();
+  const joined = manager.join(room.id, { displayName: 'Appelant' });
+  const internal = manager.rooms.get(room.id);
+  const human = internal.players.get(joined.playerId);
+  const carrier = [...internal.players.values()].find(p => p.isBot && p.team === human.team && p.role !== 'GK');
+  assert.ok(carrier);
+  carrier.x = 0; carrier.z = 0; carrier.lastActionAt = 0;
+  human.x = 8; human.z = 0;
+  for (const opponent of internal.players.values()) if (opponent.team !== human.team) { opponent.x = -20; opponent.z = 14; }
+  internal.ball.ownerId = carrier.id;
+  internal.ball.x = carrier.x; internal.ball.y = 0.36; internal.ball.z = carrier.z;
+  const request = manager.submitInput(room.id, joined.token, { x: 0, z: 0, sequence: 1, callForPass: true });
+  assert.equal(request.accepted, true);
+  assert.equal(internal.events.some(event => event.type === 'call-for-pass' && event.playerId === human.id), true);
+  manager.updateBots(internal);
+  assert.equal(internal.ball.ownerId, null, 'le bot a exécuté une passe');
+  assert.ok(internal.ball.vx > 0, 'la passe vise le partenaire humain situé devant');
+  assert.equal(internal.ball.lastTouchTeam, human.team);
+});
+
+test('P27 appel de balle en ligne : le serveur borne les demandes répétées', () => {
+  let now = 60_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create();
+  const joined = manager.join(room.id);
+  const internal = manager.rooms.get(room.id);
+  manager.submitInput(room.id, joined.token, { x: 0, z: 0, sequence: 1, callForPass: true });
+  const until = internal.players.get(joined.playerId).callForPassUntil;
+  now += 300;
+  manager.submitInput(room.id, joined.token, { x: 0, z: 0, sequence: 2, callForPass: true });
+  assert.equal(internal.players.get(joined.playerId).callForPassUntil, until);
+  assert.equal(internal.events.filter(event => event.type === 'call-for-pass').length, 1);
+});

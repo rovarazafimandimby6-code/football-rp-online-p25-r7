@@ -56,7 +56,7 @@ export class RoomManager {
       team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
       z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
       role: ['GK','DEF','MID','FWD'].includes(role) ? role : 'FWD', isBot: false,
-      input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0,
+      input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0, lastCallForPassAt: -Infinity, callForPassUntil: 0,
       connected: true, lastSeen: this.now(), disconnectedAt: null,
       stats: { passes: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
     };
@@ -97,6 +97,7 @@ export class RoomManager {
       const opponents = [...room.players.values()].filter(p => p.team !== bot.team && p.connected);
       const owner = ball.ownerId ? room.players.get(ball.ownerId) : null;
       const nearestTeammate = [bot, ...teammates].sort((a,b) => Math.hypot(a.x-ball.x,a.z-ball.z)-Math.hypot(b.x-ball.x,b.z-ball.z))[0];
+      const now = this.now();
       let targetX = ball.x, targetZ = ball.z;
       const attackDir = room.attackDirection[bot.team] || (bot.team === 'blue' ? 1 : -1);
       if (bot.role === 'GK') {
@@ -114,9 +115,26 @@ export class RoomManager {
           const forwardMate = teammates
             .filter(mate => (mate.x - bot.x) * attackDir > 2)
             .sort((a, b) => Math.hypot(a.x - bot.x, a.z - bot.z) - Math.hypot(b.x - bot.x, b.z - bot.z))[0];
+          const requestedMate = teammates
+            .filter(mate => !mate.isBot && Number.isFinite(mate.callForPassUntil) && mate.callForPassUntil >= now)
+            .filter(mate => { const d = Math.hypot(mate.x - bot.x, mate.z - bot.z); return d >= 2.5 && d <= 22; })
+            .sort((a, b) => Math.hypot(a.x - bot.x, a.z - bot.z) - Math.hypot(b.x - bot.x, b.z - bot.z))
+            .find(mate => {
+              const dx = mate.x - bot.x, dz = mate.z - bot.z;
+              const lengthSq = dx * dx + dz * dz;
+              return !opponents.some(opponent => {
+                const t = clamp(((opponent.x - bot.x) * dx + (opponent.z - bot.z) * dz) / lengthSq, 0, 1);
+                const nearestX = bot.x + dx * t, nearestZ = bot.z + dz * t;
+                return Math.hypot(opponent.x - nearestX, opponent.z - nearestZ) < 1.65;
+              });
+            });
           if (goalDistance < 16 && Math.abs(bot.z) < 8) {
             bot.facing = Math.atan2(goalX - bot.x, -bot.z);
             if (applyPlayerAction(room, bot, 'shoot', this.now())) { bot.stats.shots++; }
+          } else if (requestedMate) {
+            // La demande humaine influence la décision, mais une ligne bouchée n'est jamais forcée.
+            bot.facing = Math.atan2(requestedMate.x - bot.x, requestedMate.z - bot.z);
+            if (applyPlayerAction(room, bot, 'pass', now)) { bot.stats.passes++; }
           } else if (pressured && forwardMate) {
             bot.facing = Math.atan2(forwardMate.x - bot.x, forwardMate.z - bot.z);
             if (applyPlayerAction(room, bot, 'pass', this.now())) { bot.stats.passes++; }
@@ -181,8 +199,14 @@ export class RoomManager {
     player.input = { x: clamp(x / Math.max(1, magnitude), -1, 1), z: clamp(z / Math.max(1, magnitude), -1, 1), sprint: payload.sprint === true };
     if (magnitude > 0.1) player.facing = Math.atan2(player.input.x, player.input.z);
     player.lastInputSequence = sequence;
-    player.lastSeen = this.now();
-    room.updatedAt = this.now();
+    const inputAt = this.now();
+    if (payload.callForPass === true && inputAt - (player.lastCallForPassAt ?? -Infinity) >= 1_200) {
+      player.lastCallForPassAt = inputAt;
+      player.callForPassUntil = inputAt + 1_600;
+      room.events.push({ type: 'call-for-pass', team: player.team, playerId: player.id, at: room.elapsedMs });
+    }
+    player.lastSeen = inputAt;
+    room.updatedAt = inputAt;
     const action = ['pass', 'shoot', 'tackle'].includes(payload.action) ? payload.action : null;
     const actionAccepted = action ? applyPlayerAction(room, player, action, this.now()) : false;
     if (actionAccepted) {

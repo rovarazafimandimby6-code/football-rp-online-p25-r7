@@ -278,3 +278,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Adapter très légèrement le recul aux écrans paysage très larges et préserver le facteur de sécurité sur les écrans étroits.
 - [x] Ajouter des tests de distance, de champ et de cohérence du zoom pour les quatre rôles.
 - [ ] Valider visuellement le compromis lisibilité/vision du jeu sur Android lors de la phase de test finale.
+
+
+### Lot 20 — appel de balle relié au multijoueur autoritaire (intégré)
+- [x] Transmettre l'appel de balle depuis les commandes tactiles au pont réseau sans le confondre avec une passe ou un tacle.
+- [x] Valider et temporiser la demande côté serveur, sans accepter de commande de déplacement supplémentaire.
+- [x] Faire réagir les coéquipiers bots à une demande humaine lorsqu'ils sont porteurs.
+- [x] Vérifier la distance, la disponibilité de la cible et la sécurité de la ligne de passe avant de servir.
+- [x] Préserver la priorité d'une occasion de tir franche et la logique de passe habituelle en l'absence de demande.
+- [x] Ajouter des tests réseau et serveur sur la transmission, la réponse IA et l'anti-spam.
+- [ ] Vérifier le comportement avec deux vrais appareils connectés au même salon lors des essais finaux.
