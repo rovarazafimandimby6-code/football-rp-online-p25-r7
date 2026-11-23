@@ -229,6 +229,7 @@ export class RoomManager {
       for (const p of room.players.values()) {
         if (!p.isBot && p.connected && now - p.lastSeen > this.disconnectGraceMs) {
           p.connected = false; p.disconnectedAt = now; p.input = { x: 0, z: 0, sprint: false };
+          p.callForPassUntil = 0;
           if (room.ball.ownerId === p.id) room.ball.ownerId = null;
         }
       }
@@ -365,6 +366,7 @@ export class RoomManager {
   leave(roomId, token) {
     const { room, player } = this.authenticate(roomId, token);
     player.connected = false; player.disconnectedAt = this.now(); player.input = { x: 0, z: 0, sprint: false };
+    player.callForPassUntil = 0;
     room.updatedAt = this.now();
     return true;
   }

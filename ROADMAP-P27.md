@@ -288,3 +288,12 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Préserver la priorité d'une occasion de tir franche et la logique de passe habituelle en l'absence de demande.
 - [x] Ajouter des tests réseau et serveur sur la transmission, la réponse IA et l'anti-spam.
 - [ ] Vérifier le comportement avec deux vrais appareils connectés au même salon lors des essais finaux.
+
+
+### Lot 21 — fiabilité du cycle de vie des appels de balle en ligne (intégré)
+- [x] Invalider immédiatement une demande active lorsqu'un joueur quitte le salon.
+- [x] Invalider également la demande lors d'une déconnexion détectée par expiration du heartbeat.
+- [x] Vérifier qu'une demande expirée ne déclenche aucune passe différée.
+- [x] Vérifier qu'un adversaire placé sur la ligne bloque la passe vers le demandeur.
+- [x] Ajouter un test de non-régression sur la sortie du salon pendant une demande active.
+- [ ] Vérifier ces scénarios avec deux appareils Android connectés lors des essais finaux.

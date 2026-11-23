@@ -505,3 +505,56 @@ test('P27 appel de balle en ligne : le serveur borne les demandes répétées', 
   assert.equal(internal.players.get(joined.playerId).callForPassUntil, until);
   assert.equal(internal.events.filter(event => event.type === 'call-for-pass').length, 1);
 });
+
+
+test('P27 appel de balle en ligne : une demande expirée ne déclenche plus de passe', () => {
+  let now = 70_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create();
+  const joined = manager.join(room.id);
+  const internal = manager.rooms.get(room.id);
+  const human = internal.players.get(joined.playerId);
+  const carrier = [...internal.players.values()].find(p => p.isBot && p.team === human.team && p.role !== 'GK');
+  carrier.x = 0; carrier.z = 0; carrier.lastActionAt = 0;
+  human.x = 8; human.z = 0;
+  for (const opponent of internal.players.values()) if (opponent.team !== human.team) { opponent.x = -20; opponent.z = 14; }
+  internal.ball.ownerId = carrier.id;
+  internal.ball.x = 0; internal.ball.y = 0.36; internal.ball.z = 0;
+  manager.submitInput(room.id, joined.token, { x: 0, z: 0, sequence: 1, callForPass: true });
+  now += 1_601;
+  manager.updateBots(internal);
+  assert.equal(internal.ball.ownerId, carrier.id, 'le bot conserve le ballon après expiration de la demande');
+});
+
+test('P27 appel de balle en ligne : une ligne bloquée ne force pas la passe au demandeur', () => {
+  let now = 80_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create();
+  const joined = manager.join(room.id);
+  const internal = manager.rooms.get(room.id);
+  const human = internal.players.get(joined.playerId);
+  const carrier = [...internal.players.values()].find(p => p.isBot && p.team === human.team && p.role !== 'GK');
+  carrier.x = 0; carrier.z = 0; carrier.lastActionAt = 0;
+  human.x = 8; human.z = 0;
+  const blocker = [...internal.players.values()].find(p => p.team !== human.team);
+  blocker.x = 4; blocker.z = 0;
+  for (const opponent of internal.players.values()) if (opponent.team !== human.team && opponent.id !== blocker.id) { opponent.x = -20; opponent.z = 14; }
+  internal.ball.ownerId = carrier.id;
+  internal.ball.x = 0; internal.ball.y = 0.36; internal.ball.z = 0;
+  manager.submitInput(room.id, joined.token, { x: 0, z: 0, sequence: 1, callForPass: true });
+  manager.updateBots(internal);
+  assert.equal(internal.ball.ownerId, carrier.id, 'la passe vers le demandeur est refusée si un adversaire coupe la ligne');
+});
+
+test('P27 appel de balle en ligne : quitter le salon invalide immédiatement la demande active', () => {
+  let now = 90_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create();
+  const joined = manager.join(room.id);
+  const internal = manager.rooms.get(room.id);
+  const human = internal.players.get(joined.playerId);
+  manager.submitInput(room.id, joined.token, { x: 0, z: 0, sequence: 1, callForPass: true });
+  assert.ok(human.callForPassUntil > now);
+  manager.leave(room.id, joined.token);
+  assert.equal(human.callForPassUntil, 0);
+});
