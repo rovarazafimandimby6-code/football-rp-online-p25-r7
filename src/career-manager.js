@@ -16,7 +16,7 @@ const normalizeCareerState = state => {
     && timestamp(state.contract.expiresAt) !== null && ['active','expired','terminated'].includes(state.contract.status)
     ? { ...state.contract, clubId: idOf(state.contract.clubId), salary: nonNegativeInt(state.contract.salary), status: state.contract.status } : null;
   const offers = Array.isArray(state.offers) ? state.offers.filter(item => item && typeof item === 'object' && idOf(item.id) && idOf(item.fromClubId) && ['pending','accepted','rejected','expired','cancelled'].includes(item.status)).map(item => ({ ...item, id: idOf(item.id), fromClubId: idOf(item.fromClubId), salary: nonNegativeInt(item.salary), fee: nonNegativeInt(item.fee) })) : [];
-  return { wallet: nonNegativeInt(state.wallet, 500), clubId: state.clubId ? idOf(state.clubId) : null, contract, offers, history: Array.isArray(state.history) ? state.history.filter(item => item && typeof item === 'object').slice(-200) : [], nextOfferNumber: Math.max(1, nonNegativeInt(state.nextOfferNumber, 1)) };
+  return { wallet: nonNegativeInt(state.wallet, 500), clubId: state.clubId ? idOf(state.clubId) : null, contract, offers, history: Array.isArray(state.history) ? state.history.filter(item => item && typeof item === 'object').slice(-200) : [], processedMatchIds: Array.isArray(state.processedMatchIds) ? [...new Set(state.processedMatchIds.filter(id => typeof id === 'string' && id.trim()).map(id => id.slice(0, 64)))].slice(-2000) : [], nextOfferNumber: Math.max(1, nonNegativeInt(state.nextOfferNumber, 1)) };
 };
 
 export class CareerManager {
