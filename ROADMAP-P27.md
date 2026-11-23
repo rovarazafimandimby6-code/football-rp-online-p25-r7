@@ -135,3 +135,13 @@ Périmètre : les appels concernent les joueurs IA locaux et les soutiens autour
 - Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
 
 Périmètre : ce lot modifie la prise de décision de l'IA locale. Il ne modifie ni le contrôle des joueurs humains ni l'autorité de simulation des salons en ligne.
+
+### Lot 6 — accélération, freinage et changements d'appui visuels (intégré)
+- [x] Étendre le profil de foulée avec une réponse bornée à l'accélération et au freinage.
+- [x] Calculer la variation de vitesse visuelle sans modifier la vélocité ni les collisions du joueur.
+- [x] Ajouter une inclinaison de changement de direction amortie et bornée.
+- [x] Conserver les paramètres historiques de marche/course lorsque les nouvelles entrées sont nulles.
+- [x] Ajouter des tests unitaires sur accélération, freinage, virage, fatigue et compatibilité.
+- Validation automatisée : en attente du workflow GitHub Actions sur le commit consolidé.
+
+Périmètre : amélioration procédurale du rig Three.js existant ; aucun modèle externe ni coût géométrique supplémentaire. La vérification visuelle sur appareil Android reste nécessaire.

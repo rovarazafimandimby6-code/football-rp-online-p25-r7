@@ -408,6 +408,7 @@ export class Player {
     this.diveDir = 0;
     this.tackleTimer = 0;
     this.stridePhase = Math.random() * Math.PI * 2;
+    this.previousVisualSpeed = 0;
 
     this.visual = createPlayerVisual({
       team,
@@ -443,6 +444,8 @@ export class Player {
     v.ring.visible = this.isControlled;
 
     const speed = Math.hypot(this.vel.x, this.vel.z);
+    const acceleration = dt > 0.001 ? THREE.MathUtils.clamp((speed - this.previousVisualSpeed) / dt, -20, 20) : 0;
+    this.previousVisualSpeed = speed;
     if (this.animState === 'control' || (speed > 0.6 && this.isControlled)) {
       this.dribblePhase = (this.dribblePhase + dt * (3.2 + Math.min(speed, 9) * 0.22)) % (Math.PI * 2);
     }
@@ -481,7 +484,8 @@ export class Player {
       v.rightArm.shoulder.rotation.z = -0.14;
       v.headGroup.rotation.z = Math.sin(now * 0.0013 + this.number) * 0.025;
     } else if (state === 'walk' || state === 'run') {
-      const gait = gaitProfile(speed, this.stamina, this.vel.x);
+      const turnRate = dt > 0.001 ? THREE.MathUtils.clamp(angleDelta / dt, -8, 8) : 0;
+      const gait = gaitProfile(speed, this.stamina, this.vel.x, acceleration, turnRate);
       const isRun = gait.running;
       this.stridePhase += dt * gait.strideRate;
       const amp = gait.strideAmplitude;
@@ -489,10 +493,10 @@ export class Player {
       const c = Math.cos(this.stridePhase);
 
       v.body.position.y = 0.92 + Math.abs(c) * (isRun ? 0.08 : 0.03);
-      v.body.rotation.x = gait.bodyLean;
+      v.body.rotation.x = gait.bodyLean + gait.accelerationLean;
       // Inclinaison latérale discrète selon le déplacement, sans ajouter de géométrie.
       const lateral = gait.lateralLean;
-      v.body.rotation.z = -lateral;
+      v.body.rotation.z = -lateral - gait.turnLean;
 
       v.leftLeg.hip.rotation.x = -s * amp;
       v.rightLeg.hip.rotation.x = s * amp;
