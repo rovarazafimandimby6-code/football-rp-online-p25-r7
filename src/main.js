@@ -2,6 +2,7 @@ import { ClubManager } from './club-manager.js';
 import { PlayerProfileStore } from './player-profile.js';
 import { CareerManager } from './career-manager.js';
 import { PlayerSeasonStats } from './player-season-stats.js';
+import { resolveOnlinePlayerPerformance } from './online-career-sync.js';
 import { renderClubCrest } from './club-identity.js';
 import { Player } from './player.js';
 import { createTeamRoster } from './ai.js';

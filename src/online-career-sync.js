@@ -1,5 +1,3 @@
-import { PlayerSeasonStats } from './player-season-stats.js';
-
 const safeStat = value => Number.isFinite(Number(value)) ? Math.max(0, Math.min(1_000_000, Math.floor(Number(value)))) : 0;
 
 /**
