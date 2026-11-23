@@ -126,6 +126,7 @@ test('P27 UI: le centre avant-match compare les clubs et leurs meilleurs joueurs
 
 
 test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, filtres, tri et chargement progressif', () => {
+  const css = cssText();
   assert.match(html, /data-page="players"/);
   assert.match(main, /page === 'players'/);
   assert.match(main, /data-library-card/);
