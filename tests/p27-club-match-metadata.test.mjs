@@ -55,8 +55,8 @@ test('P27: les feuilles de résultats restent rétrocompatibles sans identité d
 
 test('P27: la création de match utilise l’affiche sélectionnée et affiche les noms archivés', async () => {
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
-  assert.match(main, /const homeClub = career\.clubId \? clubs\.getClub\(career\.clubId\) : null/);
-  assert.match(main, /const clubMatch = homeClub && awayClub \? \{ blueClubId: homeClub\.id, redClubId: awayClub\.id \} : \{\}/);
+  assert.match(main, /const homeClub = clubs\.getClub\(selectedMatchup\.home\)/);
+  assert.match(main, /blueClubId: homeClub\.id, redClubId: awayClub\.id/);
   assert.match(main, /result\.teams\?\.\[key\]\?\.name/);
   assert.match(main, /result\.teams\?\.\[player\.team\]\?\.name/);
 });
