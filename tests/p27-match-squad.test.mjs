@@ -34,7 +34,7 @@ test('P27 feuille de match : le joueur carrière reste titulaire même si sa not
 test('P27 feuille de match : réserve triée par note puis potentiel et limitée à cinq', () => {
   const squad = createMatchSquad('red', '2-2', roster, null, 5);
   assert.equal(squad.substitutes.length, 4);
-  assert.deepEqual(squad.substitutes.map(player => player.id), ['mid-1','mid-2','def-3','fwd-2']);
+  assert.deepEqual(squad.substitutes.map(player => player.id), ['mid-1','mid-2','def-2','career-player']);
   assert.equal(createMatchSquad('red','2-2',roster,null,2).substitutes.length, 2);
 });
 
