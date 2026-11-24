@@ -5,7 +5,8 @@ const validScore = value => Number.isSafeInteger(value) && value >= 0 && value <
 /** Read-only consistency audit across the persistent P27 world stores. */
 export function auditP27World({
   clubs = [], competitionClubs = [], transferState = null, systemTransferState = null, financeAccounts = [], financeJournal = null, competitionState = null, resultArchive = [],
-  expectedClubCount = 156, playerCareerState = null
+  expectedClubCount = 156, playerCareerState = null, accountState = null,
+  profileState = null, progressionState = null
 } = {}) {
   const errors = [], warnings = [];
   const catalogue = asList(clubs);
@@ -155,6 +156,68 @@ export function auditP27World({
   }
   if (asList(financeAccounts).length && asList(financeAccounts).length !== catalogue.length)
     warnings.push({ code:'FINANCE_ACCOUNT_CATALOGUE_SIZE_MISMATCH', expected:catalogue.length, actual:asList(financeAccounts).length });
+
+  const accounts = Array.isArray(accountState?.accounts) ? accountState.accounts : [];
+  const accountIds = new Set();
+  const usernames = new Set();
+  for (const account of accounts) {
+    if (!safeText(account?.id) || accountIds.has(account.id))
+      errors.push({ code:'ACCOUNT_ID_INVALID_OR_DUPLICATE', accountId:account?.id || null });
+    if (safeText(account?.id)) accountIds.add(account.id);
+    const username = typeof account?.username === 'string' ? account.username.toLowerCase() : '';
+    if (!username || usernames.has(username))
+      errors.push({ code:'ACCOUNT_USERNAME_INVALID_OR_DUPLICATE', accountId:account?.id || null });
+    if (username) usernames.add(username);
+    if (typeof account?.passwordHash !== 'string' || !/^[a-f0-9]{128}$/i.test(account.passwordHash) ||
+        typeof account?.passwordSalt !== 'string' || !/^[a-f0-9]{32}$/i.test(account.passwordSalt))
+      errors.push({ code:'ACCOUNT_PASSWORD_CREDENTIAL_INVALID', accountId:account?.id || null });
+  }
+  const accountSessions = Array.isArray(accountState?.sessions) ? accountState.sessions : [];
+  const sessionHashes = new Set();
+  for (const session of accountSessions) {
+    if (!safeText(session?.tokenHash) || !/^[a-f0-9]{64}$/i.test(session.tokenHash) ||
+        sessionHashes.has(session.tokenHash) || !accountIds.has(session.accountId) ||
+        !Number.isFinite(session.expiresAt))
+      errors.push({ code:'ACCOUNT_SESSION_INVALID_OR_ORPHANED', accountId:session?.accountId || null });
+    if (safeText(session?.tokenHash)) sessionHashes.add(session.tokenHash);
+  }
+
+  const profileRows = Array.isArray(profileState?.profiles) ? profileState.profiles : [];
+  const profileAccounts = new Set();
+  for (const row of profileRows) {
+    if (!safeText(row?.accountId) || profileAccounts.has(row.accountId))
+      errors.push({ code:'PLAYER_PROFILE_ACCOUNT_INVALID_OR_DUPLICATE', accountId:row?.accountId || null });
+    if (safeText(row?.accountId)) profileAccounts.add(row.accountId);
+    if (Array.isArray(accountState?.accounts) && !accountIds.has(row?.accountId))
+      errors.push({ code:'PLAYER_PROFILE_ACCOUNT_UNKNOWN', accountId:row?.accountId || null });
+    if (!row?.profile || row.profile.schemaVersion !== 1 ||
+        !safeText(row.profile.identity?.displayName) ||
+        !['GK','DEF','MID','FWD'].includes(row.profile.identity?.role) ||
+        !Number.isInteger(row.profile.identity?.number) || row.profile.identity.number < 1 || row.profile.identity.number > 99)
+      errors.push({ code:'PLAYER_PROFILE_SCHEMA_INVALID', accountId:row?.accountId || null });
+  }
+
+  const progressionRows = Array.isArray(progressionState?.players) ? progressionState.players : [];
+  const progressionAccounts = new Set();
+  for (const row of progressionRows) {
+    const p = row?.progression;
+    if (!safeText(row?.accountId) || progressionAccounts.has(row.accountId))
+      errors.push({ code:'PLAYER_PROGRESSION_ACCOUNT_INVALID_OR_DUPLICATE', accountId:row?.accountId || null });
+    if (safeText(row?.accountId)) progressionAccounts.add(row.accountId);
+    if (Array.isArray(accountState?.accounts) && !accountIds.has(row?.accountId))
+      errors.push({ code:'PLAYER_PROGRESSION_ACCOUNT_UNKNOWN', accountId:row?.accountId || null });
+    const attributes = p?.attributes;
+    const attributeKeys = ['pace','shooting','passing','defense','stamina','control'];
+    if (!p || !Number.isInteger(p.level) || p.level < 1 || p.level > 99 ||
+        !Number.isSafeInteger(p.experience) || p.experience < 0 ||
+        !Number.isSafeInteger(p.coins) || p.coins < 0 ||
+        !Number.isSafeInteger(p.trainingPoints) || p.trainingPoints < 0 ||
+        !attributes || attributeKeys.some(key => !Number.isInteger(attributes[key]) || attributes[key] < 1 || attributes[key] > 99) ||
+        !Array.isArray(p.processedMatchIds) ||
+        new Set(p.processedMatchIds).size !== p.processedMatchIds.length ||
+        p.processedMatchIds.some(id => !safeText(id)))
+      errors.push({ code:'PLAYER_PROGRESSION_STATE_INVALID', accountId:row?.accountId || null });
+  }
 
   const careers = Array.isArray(transferState?.careers) ? transferState.careers : [];
   const accountIds = new Set();
@@ -683,6 +746,7 @@ export function auditP27World({
       clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,
       freeAgents:freeAgentArchive.size, duplicateFreeAgentSnapshots,
       pendingSystemTransfers, completedSystemTransfers,
+      accounts:accountIds.size, accountSessions:accountSessions.length, playerProfiles:profileRows.length, progressionPlayers:progressionRows.length,
       careers:careers.length, playerCareers:auditedPlayerCareers, pendingRosterSync, completedRosterSync, financeAccounts:asList(financeAccounts).length,
       financeEntries, financeBalanceTotal, pendingTransferSettlements, pendingPlayerWages, seasons:seasons.length, fixtures, completedFixtures, archivedResults:asList(resultArchive).length
     }
