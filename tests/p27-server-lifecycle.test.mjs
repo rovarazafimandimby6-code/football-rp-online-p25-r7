@@ -35,6 +35,23 @@ test('P27 serveur : readiness contrôle les secrets et stockages, puis SIGTERM f
     const ready = await readiness.json();
     assert.equal(ready.status, 'ready');
     assert.equal(ready.storage.length, 11);
+    assert.equal(server.maxHeaderSize, 16 * 1024);
+    assert.equal(server.headersTimeout, 15_000);
+    assert.equal(server.requestTimeout, 30_000);
+    assert.equal(server.keepAliveTimeout, 5_000);
+    assert.equal(server.maxRequestsPerSocket, 1_000);
+
+    const oversized = await fetch(`${base}/api/rooms`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'x'.repeat(9_000) })
+    });
+    assert.equal(oversized.status, 413);
+    assert.equal((await oversized.json()).error, 'BODY_TOO_LARGE');
+    const malformed = await fetch(`${base}/api/rooms`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{invalid-json'
+    });
+    assert.equal(malformed.status, 400);
+    assert.equal((await malformed.json()).error, 'INVALID_JSON');
 
     process.env.P27_ADMIN_TOKEN = 'too-short';
     const missingSecret = await fetch(`${base}/readyz`);
