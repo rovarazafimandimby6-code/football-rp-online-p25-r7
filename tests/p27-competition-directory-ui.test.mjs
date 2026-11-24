@@ -43,3 +43,11 @@ test('P27 compétitions UI : indique les formats distincts selon la division',()
  assert.match(main,/ALLER SIMPLE/);
  assert.match(main,/competition\.matchFormat/);
 });
+
+test('P27 compétitions UI : affiche le résultat du contrôle structurel de la Coupe',()=>{
+ assert.match(main,/snapshot\.cupAudit/);
+ assert.match(main,/TABLEAU CONTRÔLÉ/);
+ assert.match(main,/ANOMALIE DU TABLEAU/);
+ assert.match(main,/completedFixtures/);
+ assert.match(main,/Vainqueur :/);
+});
