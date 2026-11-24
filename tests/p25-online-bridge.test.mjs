@@ -135,6 +135,7 @@ test('P27 rotations synchronisées : le contrôle unique suit le joueur qui chan
     }
   });
   bridge.bindJoin({ playerId: 'human-1' });
+  const originalHumanAvatar = f.players.find(player => player.team === 'blue' && player.slotIndex === 0);
   bridge.applyState({ sequence: 1, phase: 'playing', players: [
     {id:'human-1',team:'blue',slot:0,x:0,z:0,vx:0,vz:0,facing:0,isOnPitch:true},
     {id:'reserve-1',team:'blue',slot:5,x:1,z:1,vx:0,vz:0,facing:0,isOnPitch:false}
