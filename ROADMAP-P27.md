@@ -1156,7 +1156,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 129 : rapprocher l'historique des clubs observés dans les matchs avec les apparitions par club, sans déduire de transfert à partir d'une simple apparition.
 - [x] Lot 130 : contrôler la chronologie et la continuité des événements de transfert fournis par le registre mercato ; signaler séparément un écart avec le club courant.
 - [x] Lot 131 : ajouter des scénarios de rechargement multi-saisons, de falsification statistique, de doublon et de rupture de chaîne de transferts.
-- [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
+- [x] Validation CI complète : lots 128–131, workflows 45470711109, 45470717721 et 45470740048.
 - Limite : cet audit vérifie les historiques et événements déjà persistés ; il ne crée pas de statistiques de match ni de mouvements absents des sources.
 
 
@@ -1166,7 +1166,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 134 : recalculer une borne minimale des statistiques cumulées depuis les matchs conservés, sans confondre historique plafonné et total de carrière.
 - [x] Lot 135 : vérifier l'ordre chronologique et la continuité des mouvements de club, y compris début et retour de prêt.
 - [x] Lot 136 : ajouter un scénario d'intégration qui recharge réellement les stores carrière et mercato avant l'audit transversal.
-- [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
+- [x] Validation CI complète : lots 132–136, workflow 45471803740.
 - Limite : les statistiques globales ne sont pas reconstruites à partir des seuls matchs conservés si l'historique est plafonné ; le contrôle compare uniquement les bornes vérifiables.
 
 
@@ -1175,7 +1175,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 138 : vérifier l'identité du joueur et le type d'action (upsert/libération) entre l'événement métier et la commande de synchronisation.
 - [x] Lot 139 : vérifier les clubs source et cible lorsqu'ils sont présents dans l'événement, avec test après rechargement d'une commande terminée.
 - [x] Lot 140 : tester la persistance des échecs, du nombre de tentatives et la clôture idempotente après plusieurs redémarrages.
-- [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
+- [x] Validation CI complète : lots 137–140, workflows 45472127833, 45472187723 et 45472250635.
 - Limite : l'audit ne suppose pas que l'effet externe d'une commande est distribué atomiquement ; il contrôle la trace métier, la commande persistée et son état de reprise.
 
 
@@ -1184,5 +1184,5 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 142 : tester l'expiration du contrat parent avant le terme du prêt et la libération depuis le club emprunteur.
 - [x] Lot 143 : simuler une panne du stockage d'effectif au moment du retour de prêt, puis reprendre la commande après redémarrage des deux stockages.
 - [x] Lot 144 : tester un cycle transfert → prêt → retour avec rechargement persistant et unicité finale de l'inscription.
-- [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
+- [x] Validation CI complète : lots 141–144, workflow 45474115302 — 710 tests réussis, 0 échec.
 - Limite : ces tests valident le replay de l'outbox entre les deux stores ; ils ne prétendent pas fournir une transaction distribuée atomique.
