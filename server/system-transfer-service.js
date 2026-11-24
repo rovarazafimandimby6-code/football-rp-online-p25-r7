@@ -167,7 +167,7 @@ export class P27SystemTransferService {
           if (buyer.id === seller.id || !divisionRank.has(buyer.division) ||
               Math.abs(divisionRank.get(buyer.division)-divisionRank.get(seller.division)) > 1 ||
               buyer.roster.length >= buyer.capacity) continue;
-          const buyerRoleCount = buyer.roster.filter(item => (item.role || 'OTHER') === role).length;
+          const buyerRoleCount = buyer.roster.filter(item => item.playerType === 'system' && (item.role || 'OTHER') === role).length;
           if (buyerRoleCount >= 2) continue;
           const rating = Number.isFinite(player.rating) ? Math.max(1,Math.min(99,Math.round(player.rating))) : 1;
           const fee = Math.max(500,Math.round(rating*rating*1.5));
