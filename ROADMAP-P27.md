@@ -665,3 +665,10 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Annuler les changements mémoire en cas d'échec de persistance, sans créer de compte fantôme ni révoquer un jeton non enregistré.
 - [x] Conserver uniquement les empreintes des jetons en stockage et le hachage salé des mots de passe.
 - [x] Ajouter des tests de panne disque sur inscription, connexion et révocation.
+
+
+### Lot 63 — transactions atomiques du mercato et des contrats (intégré)
+- [x] Exécuter signatures, offres, acceptations, refus, renouvellements, résiliations et actualisations sur une copie de l'état.
+- [x] Annuler ensemble le changement de club, le contrat, les événements et les budgets des deux clubs si l'écriture échoue.
+- [x] Garder l'offre en attente après un échec d'acceptation afin de permettre une nouvelle tentative sûre.
+- [x] Ajouter des tests de panne disque, de restauration des budgets et de reprise du transfert.
