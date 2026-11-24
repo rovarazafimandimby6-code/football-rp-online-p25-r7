@@ -6,6 +6,7 @@ import path from 'node:path';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { JsonClubRosterStorage } from '../server/club-roster-storage.js';
 import { P27ClubWorldService } from '../server/club-world-service.js';
+import { JsonClubFinanceService } from '../server/club-finance-service.js';
 
 function memoryStorage() {
   const values = new Map();
@@ -75,4 +76,32 @@ test('P27 monde persistant : rejette dates invalides et budgets configurés inva
   });
   assert.equal(world.tick().reason,'invalid-time');
   assert.deepEqual(world.weeklyWageBudgets,{});
+});
+
+
+test('P27 monde persistant : la paie réelle règle le contrat expiré sans facturer les recrues à leur arrivée',()=>{
+  const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-world-finance-integration-'));
+  try {
+    const start=Date.UTC(2027,0,1);
+    let now=start;
+    const clubManager=new ClubManager();
+    const club=clubManager.clubs.get('antananarivo-fc');
+    const departing=club.roster[0];
+    club.roster=[departing];
+    club.releasedPlayers=[];
+    assert.equal(clubManager.setSystemPlayerContractTerm(club.id,departing.id,{signedAt:start,durationWeeks:1}).ok,true);
+    const weeklyWage=departing.contract.weeklyWage;
+    const financeService=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+    const world=new P27ClubWorldService({clubManager,financeService,now:()=>now});
+    now=start+14*86400000;
+    const result=world.tick();
+    assert.equal(result.ok,true);
+    assert.equal(result.finance.systemWages.posted,1);
+    assert.equal(result.finance.systemWages.unpaid,0);
+    assert.equal(financeService.store.getAccount(club.id).totalExpenses,weeklyWage);
+    assert.equal(club.roster.length,club.initialRosterSize);
+    assert.ok(club.roster.every(player=>player.contract.signedAt===new Date(now).toISOString()));
+    assert.equal(world.tick().finance.systemWages.posted,0);
+    assert.equal(financeService.store.getAccount(club.id).totalExpenses,weeklyWage);
+  } finally { rmSync(directory,{recursive:true,force:true}); }
 });
