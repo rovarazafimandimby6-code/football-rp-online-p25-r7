@@ -8,6 +8,8 @@ import { JsonAccountStore } from './account-store.js';
 import { JsonCareerStore } from './career-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
+import { JsonClubFinanceService } from './club-finance-service.js';
+import { DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/league-structure.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
@@ -17,6 +19,8 @@ const competitionDirectory = process.env.COMPETITIONS_DIR || path.join(path.dirn
 const competitionStore = new JsonCompetitionStore(competitionDirectory);
 const transferDirectory = process.env.TRANSFERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'transfers');
 const transferStore = new JsonTransferStore(transferDirectory);
+const financeDirectory = process.env.FINANCES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'finances');
+const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs: DEFAULT_CLUBS, transferStore });
 const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
@@ -186,9 +190,16 @@ const server = http.createServer(async (req, res) => {
 });
 
 const tick = setInterval(() => manager.tick(0.05), 50);
+const financeTick = setInterval(() => {
+  try { clubFinance.settleScheduledItems(); }
+  catch (error) { process.stderr.write(`P27 club finance settlement failed: ${error.message}\\n`); }
+}, 60 * 60 * 1000);
+financeTick.unref();
+try { clubFinance.settleScheduledItems(); }
+catch (error) { process.stderr.write(`P27 club finance startup settlement failed: ${error.message}\\n`); }
 tick.unref();
 const port = Math.max(1, Math.min(65535, Number(process.env.PORT) || 8080));
 if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
   server.listen(port, '0.0.0.0', () => process.stdout.write(`Football RP Online match server listening on ${port}\n`));
 }
-export { server, manager };
+export { server, manager, clubFinance };
