@@ -39,3 +39,40 @@ test('P27 transition de saison : conserve les 156 clubs et les quotas après rec
     rmSync(directory,{recursive:true,force:true});
   }
 });
+
+
+test('P27 renouvellement pluri-saisons : conserve 156 clubs et les capacités de chaque groupe sur trois saisons', () => {
+  const directory=mkdtempSync(path.join(tmpdir(),'p27-multi-season-'));
+  try {
+    const store=new JsonCompetitionStore(directory,{seasonId:'2026-27',now:()=>1000});
+    const expectedDivisions={D1:16,D2:20,D3:24,D4:32,D5:64};
+    const expectedConferences={D4:{A:16,B:16},D5:{A:16,B:16,C:16,D:16}};
+    for(let year=2027;year<=2029;year++){
+      for(const competition of store.activeSeason.competitions) if(competition.type==='league'||competition.type==='cup') competition.status='completed';
+      finishPromotionPlayoffs(store);
+      const preview=store.previewSeasonMovements();
+      assert.equal(preview.ok,true,JSON.stringify(preview));
+      assert.equal(preview.promotions,20);
+      assert.equal(preview.relegations,20);
+      const nextId=`${year}-${String(year+1).slice(-2)}`;
+      const result=store.finalizeSeason({nextSeasonId:nextId,movements:preview.movements,completedAt:year*1000});
+      assert.equal(result.ok,true,JSON.stringify(result));
+      const clubs=[...store.clubs.values()];
+      assert.equal(clubs.length,156);
+      assert.equal(new Set(clubs.map(club=>club.id)).size,156);
+      const counts=Object.fromEntries(Object.keys(expectedDivisions).map(division=>[division,clubs.filter(club=>club.division===division).length]));
+      assert.deepEqual(counts,expectedDivisions);
+      for(const division of ['D4','D5']){
+        const groups=Object.fromEntries(Object.keys(expectedConferences[division]).map(conference=>[conference,clubs.filter(club=>club.division===division&&club.conference===conference).length]));
+        assert.deepEqual(groups,expectedConferences[division]);
+      }
+      const restored=new JsonCompetitionStore(directory,{seasonId:'unused',now:()=>year*1000+1});
+      assert.equal(restored.clubs.size,156);
+      assert.equal(restored.snapshot().scheduleAudit.ok,true,JSON.stringify(restored.snapshot().scheduleAudit.errors));
+      assert.equal(restored.snapshot().cupAudit.ok,true,JSON.stringify(restored.snapshot().cupAudit));
+    }
+    assert.equal(store.seasonHistory().filter(season=>season.status==='completed').length,3);
+  } finally {
+    rmSync(directory,{recursive:true,force:true});
+  }
+});
