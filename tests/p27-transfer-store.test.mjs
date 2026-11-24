@@ -12,3 +12,24 @@ test('P27 contrats : salaires hebdomadaires payes et expiration',()=>{const f=se
 test('P27 prêts : prêt accepté, contrat parent conservé et retour automatique après redémarrage',()=>{const f=setup('2027-01-15T12:00:00.000Z');try{const signed=f.store.signContract('account-loan-1',{clubId:'antananarivo-fc',salary:1200,durationDays:180});assert.equal(signed.ok,true);const offer=f.store.requestLoanOffer('account-loan-1',{toClubId:'toamasina-united',durationDays:30});assert.equal(offer.ok,true);const accepted=f.store.acceptLoanOffer('account-loan-1',offer.offer.id);assert.equal(accepted.ok,true);assert.equal(accepted.career.clubId,'toamasina-united');assert.equal(accepted.career.contract.loan.parentClubId,'antananarivo-fc');assert.equal(accepted.career.contract.loan.status,'active');const restored=new JsonTransferStore(f.directory,{now:()=>f.now});f.setNow('2027-02-15T12:00:00.000Z');const returned=restored.getCareer('account-loan-1');assert.equal(returned.clubId,'antananarivo-fc');assert.equal(returned.contract.loan,undefined);assert.equal(returned.loanHistory.at(-1).type,'return');assert.ok(restored.pendingRosterSync().some(item=>item.action==='upsert'&&item.clubId==='antananarivo-fc'&&item.previousClubId==='toamasina-united'));assert.deepEqual(restored.getPlayerHistory(returned.playerId).map(item=>item.type),['signing','loan','loan-return']);}finally{f.cleanup();}});
 test('P27 prêts : expiration du contrat parent avant la fin du prêt libère le joueur',()=>{const f=setup('2027-01-15T12:00:00.000Z');try{f.store.signContract('account-loan-2',{clubId:'antananarivo-fc',salary:900,durationDays:15});const offer=f.store.requestLoanOffer('account-loan-2',{toClubId:'toamasina-united',durationDays:30});assert.equal(offer.ok,true);assert.equal(f.store.acceptLoanOffer('account-loan-2',offer.offer.id).ok,true);f.setNow('2027-02-05T12:00:00.000Z');const expired=f.store.getCareer('account-loan-2');assert.equal(expired.contract.status,'expired');assert.equal(expired.clubId,null);assert.ok(f.store.pendingRosterSync().some(item=>item.action==='release'&&item.previousClubId==='toamasina-united'));}finally{f.cleanup();}});
 test('P27 prêts : refuse un prêt sans contrat actif, hors fenêtre ou vers le même club',()=>{const f=setup('2026-11-24T12:00:00.000Z');try{assert.equal(f.store.requestLoanOffer('account-loan-3',{toClubId:'toamasina-united'}).reason,'invalid-club');f.store.signContract('account-loan-3',{clubId:'antananarivo-fc',salary:900,durationDays:90});assert.equal(f.store.requestLoanOffer('account-loan-3',{toClubId:'toamasina-united'}).reason,'window-closed');f.setNow('2027-01-15T12:00:00.000Z');assert.equal(f.store.requestLoanOffer('account-loan-3',{toClubId:'antananarivo-fc'}).reason,'same-club');assert.equal(f.store.requestLoanOffer('account-loan-3',{toClubId:'toamasina-united',durationDays:2}).reason,'invalid-loan-duration');}finally{f.cleanup();}});
+
+
+test('P27 outbox : les échecs, tentatives et clôtures idempotentes survivent au redémarrage',()=>{
+ const f=setup();
+ try {
+  const signed=f.store.signContract('account-outbox-retry',{clubId:'antananarivo-fc',salary:1100,durationDays:180});
+  assert.equal(signed.ok,true);
+  const command=f.store.pendingRosterSync()[0];
+  assert.equal(f.store.failRosterSync(command.id,new Error('temporary roster write failure')).ok,true);
+  let restored=new JsonTransferStore(f.directory,{now:()=>f.now});
+  assert.equal(restored.pendingRosterSync()[0].attempts,1);
+  assert.equal(restored.pendingRosterSync()[0].lastError,'temporary roster write failure');
+  assert.equal(restored.failRosterSync(command.id,'second failure').ok,true);
+  restored=new JsonTransferStore(f.directory,{now:()=>f.now});
+  assert.equal(restored.pendingRosterSync()[0].attempts,2);
+  assert.equal(restored.completeRosterSync(command.id).ok,true);
+  restored=new JsonTransferStore(f.directory,{now:()=>f.now});
+  assert.equal(restored.pendingRosterSync().length,0);
+  assert.equal(restored.completeRosterSync(command.id).alreadyCompleted,true);
+ } finally { f.cleanup(); }
+});
