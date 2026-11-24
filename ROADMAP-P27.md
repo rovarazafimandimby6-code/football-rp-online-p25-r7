@@ -1240,3 +1240,10 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Validation GitHub Actions : [run 45482046537](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45482046537), **732/732 tests réussis**, préflight et contrôle syntaxique réussis.
 - Gain attendu : pour un tick où plusieurs salons atteignent leur échéance, une seule sérialisation/écriture du fichier commun au lieu d'une écriture par salon. Aucun chiffre de débit ou de capacité en production n'est revendiqué sans benchmark sur l'hébergeur cible.
 - Limite : les checkpoints restent un fichier JSON partagé et une seule instance serveur ; cette optimisation ne fournit ni verrouillage multi-processus, ni réplication, ni garantie de volume durable.
+### Lots 165–168 — bornes HTTP et robustesse des requêtes
+- [x] Lot 165 : limiter la taille des en-têtes HTTP à 16 Kio.
+- [x] Lot 166 : fixer explicitement `headersTimeout` à 15 s, `requestTimeout` à 30 s, `keepAliveTimeout` à 5 s et `maxRequestsPerSocket` à 1 000 pour éviter les connexions lentes ou persistantes sans borne applicative.
+- [x] Lot 167 : ajouter des tests HTTP d'intégration pour les corps JSON dépassant 8 Kio (413) et les JSON malformés (400), sans toucher aux routes métier.
+- [x] Lot 168 : vérifier les limites effectives du serveur dans le test de cycle de vie.
+- [x] Validation GitHub Actions : [run 45482354545](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45482354545), **732/732 tests réussis**, préflight et syntaxe réussis.
+- Limite : ces délais bornent les connexions HTTP du serveur Node ; les délais du proxy inverse et de l'hébergeur doivent être alignés lors du déploiement.
