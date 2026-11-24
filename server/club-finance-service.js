@@ -47,21 +47,35 @@ export class JsonClubFinanceService {
 
 
   loadPayrollSchedule() {
+    let parsed;
     try {
-      const parsed = JSON.parse(readFileSync(this.payrollFile, 'utf8'));
-      if (parsed?.version !== 1 || !parsed.clubs || typeof parsed.clubs !== 'object') throw new Error('invalid');
-      const valid = {};
-      for (const [clubId, at] of Object.entries(parsed.clubs)) {
-        if (this.clubs.has(clubId) && Number.isSafeInteger(at) && at >= 0) valid[clubId] = at;
-      }
-      for (const clubId of this.clubs.keys()) if (!Number.isSafeInteger(valid[clubId])) valid[clubId] = this.now();
-      return valid;
+      parsed = JSON.parse(readFileSync(this.payrollFile, 'utf8'));
     } catch (error) {
-      if (error.code !== 'ENOENT') process.stderr.write('P27 payroll schedule unreadable; initializing new schedule\\n');
+      if (error.code !== 'ENOENT') throw new Error('PAYROLL_SCHEDULE_CORRUPT');
       const initial = Object.fromEntries([...this.clubs.keys()].map(id => [id, this.now()]));
-      this.persistPayrollSchedule(initial);
+      if (!this.persistPayrollSchedule(initial)) throw new Error('PAYROLL_SCHEDULE_INITIALIZATION_FAILED');
       return initial;
     }
+    if (parsed?.version !== 1 || !parsed.clubs || typeof parsed.clubs !== 'object' || Array.isArray(parsed.clubs)) {
+      throw new Error('PAYROLL_SCHEDULE_CORRUPT');
+    }
+    const valid = {};
+    for (const [clubId, at] of Object.entries(parsed.clubs)) {
+      if (this.clubs.has(clubId) && Number.isSafeInteger(at) && at >= 0) valid[clubId] = at;
+    }
+    let changed = false;
+    for (const clubId of this.clubs.keys()) {
+      if (!Number.isSafeInteger(valid[clubId])) { valid[clubId] = this.now(); changed = true; }
+    }
+    if (changed && !this.persistPayrollSchedule(valid)) throw new Error('PAYROLL_SCHEDULE_MIGRATION_FAILED');
+    return valid;
+  }
+
+  advancePayrollSchedule(clubId, nextAt) {
+    const next = { ...this.payrollSchedule, [clubId]: nextAt };
+    if (!this.persistPayrollSchedule(next)) return false;
+    this.payrollSchedule = next;
+    return true;
   }
 
   persistPayrollSchedule(schedule = this.payrollSchedule) {
@@ -126,8 +140,7 @@ export class JsonClubFinanceService {
         }
       }
       if (!entries.length) {
-        this.payrollSchedule[club.id] = last + periods * WEEK;
-        if (!this.persistPayrollSchedule()) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
+        if (!this.advancePayrollSchedule(club.id, last + periods * WEEK)) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
         continue;
       }
       const result = this.store.postBatch(club.id, entries);
@@ -136,8 +149,9 @@ export class JsonClubFinanceService {
         clubs.push({ clubId: club.id, ok: false, reason: result.reason, dueEntries: entries.length, periods });
         continue;
       }
-      this.payrollSchedule[club.id] = last + periods * WEEK;
-      if (!this.persistPayrollSchedule()) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
+      // The ledger uses deterministic entry IDs. If the schedule write fails,
+      // a retry safely deduplicates the already-posted wages before advancing it.
+      if (!this.advancePayrollSchedule(club.id, last + periods * WEEK)) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
       posted += result.posted || 0;
       clubs.push({ clubId: club.id, ok: true, posted: result.posted || 0, periods });
     }
