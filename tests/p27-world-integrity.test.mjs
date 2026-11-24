@@ -153,7 +153,7 @@ test('P27 lot 99 : accepte la chaîne de deux transferts IA et vérifie uniqueme
  player.contract={status:'active',clubId:'club-b',playerId:'player-a',previousClubId:'club-a',transferredAt:'2028-01-02T00:00:00.000Z'};
  input.clubs[1].roster.push(player);
  input.systemTransferState={version:1,transfers:[
-  {id:'ai-chain-first',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',fee:500,createdAt:1000,status:'completed'},
+  {id:'ai-chain-first',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',fee:500,createdAt:1000,status:'completed',attempts:0,lastError:null,completedAt:1500},
   {id:'ai-chain-second',playerId:'player-a',fromClubId:'club-b',toClubId:'club-a',fee:600,createdAt:2000,status:'pending'}
  ]};
  const result=auditP27World(input);
