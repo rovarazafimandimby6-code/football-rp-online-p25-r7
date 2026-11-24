@@ -118,9 +118,34 @@ export class JsonCompetitionStore {
     catch(error){ if(error.code==='ENOENT') return null; throw new Error('COMPETITION_STORE_CORRUPT'); }
   }
   persist() {
+    if (this._transactionDepth) { this._transactionDirty = true; return true; }
     const temp=`${this.file}.${process.pid}.${randomUUID()}.tmp`;
     try { writeFileSync(temp,JSON.stringify(this.state),{mode:0o600}); renameSync(temp,this.file); }
     catch(error){ try{unlinkSync(temp);}catch{} throw error; }
+    return true;
+  }
+  transaction(mutator) {
+    if (this._transactionDepth) return mutator();
+    const previousState = this.state;
+    const previousClubs = this.clubs;
+    this.state = clone(previousState);
+    this.clubs = new Map([...previousClubs].map(([id, club]) => [id, clone(club)]));
+    this._transactionDepth = 1;
+    this._transactionDirty = false;
+    try {
+      const result = mutator();
+      const dirty = this._transactionDirty;
+      this._transactionDepth = 0;
+      this._transactionDirty = false;
+      if (dirty) this.persist();
+      return result;
+    } catch (error) {
+      this.state = previousState;
+      this.clubs = previousClubs;
+      this._transactionDepth = 0;
+      this._transactionDirty = false;
+      throw error;
+    }
   }
   migrateActiveSeasonCalendars() {
     const season=this.state.seasons.find(item=>item.status==='active');
@@ -162,7 +187,8 @@ export class JsonCompetitionStore {
     for(const competition of this.activeSeason.competitions){ const fixture=competition.fixtures.find(item=>item.id===id); if(fixture) return clone({...fixture,competitionName:competition.name}); }
     return null;
   }
-  recordFixtureResult(fixtureId,{roomId,homeGoals,awayGoals,finalizedAt=this.now()}={}) {
+  recordFixtureResult(fixtureId, input = {}) { return this.transaction(() => this._recordFixtureResult(fixtureId, input)); }
+  _recordFixtureResult(fixtureId,{roomId,homeGoals,awayGoals,finalizedAt=this.now()}={}) {
     const id=clean(fixtureId,96), room=clean(roomId,64), home=scoreValue(homeGoals), away=scoreValue(awayGoals);
     if(!id||!room||home===null||away===null||!Number.isFinite(finalizedAt)) return {ok:false,reason:'invalid-result'};
     for(const competition of this.activeSeason.competitions){
@@ -199,7 +225,8 @@ export class JsonCompetitionStore {
     if(next){if(!next.homeClubId) next.homeClubId=winnerId; else if(!next.awayClubId) next.awayClubId=winnerId; if(next.homeClubId&&next.awayClubId) next.status='scheduled';}
     if(fixture.round===8){competition.status='completed';competition.championClubId=winnerId;const club=this.clubs.get(winnerId);if(club&&!this.activeSeason.trophies.some(item=>item.competitionId===competition.id))this.activeSeason.trophies.push({id:`${competition.id}-champion`,competitionId:competition.id,competitionName:competition.name,clubId:winnerId,clubName:club.name,awardedAt:fixture.result.finalizedAt});}
   }
-  ensurePromotionPlayoffs() {
+  ensurePromotionPlayoffs() { return this.transaction(() => this._ensurePromotionPlayoffs()); }
+  _ensurePromotionPlayoffs() {
     const season=this.activeSeason;
     let changed=false;
     for(const [division,conference] of REQUIRED_PROMOTION_PLAYOFFS) {
@@ -221,7 +248,8 @@ export class JsonCompetitionStore {
     const preview=calculateSeasonMovements({competitions:season.competitions,clubs:[...this.clubs.values()]});
     return {...preview,seasonId:season.id,seasonStatus:season.status};
   }
-  finalizeSeason({ nextSeasonId, movements = [], completedAt = this.now() } = {}) {
+  finalizeSeason(input = {}) { return this.transaction(() => this._finalizeSeason(input)); }
+  _finalizeSeason({ nextSeasonId, movements = [], completedAt = this.now() } = {}) {
     const current = this.activeSeason;
     const nextId = clean(nextSeasonId, 48);
     if (!Array.isArray(movements)) return { ok:false, reason:'invalid-movement-list' };
