@@ -148,7 +148,11 @@ test('P27 saisons : applique la prévision validée et archive les détails de c
   assert.equal(result.movements,40);
   const archived=f.store.seasonHistory()[0].movements;
   assert.equal(archived.length,40);
-  assert.ok(archived.every(item=>item.clubName&&item.fromDivision&&item.toDivision&&item.type&&Number.isSafeInteger(item.finalPosition)&&item.competitionId));
+  assert.ok(archived.every(item=>item.clubName&&item.fromDivision&&item.toDivision&&item.type&&Number.isSafeInteger(item.finalPosition)&&item.competitionId&&['direct','playoff'].includes(item.qualificationStage)));
+  const archivedPlayoff= f.store.seasonHistory()[0].competitions.find(item=>item.type==='promotion-playoff');
+  assert.ok(archivedPlayoff);
+  assert.ok(archivedPlayoff.results.some(item=>item.stage==='semi-final'));
+  assert.ok(archivedPlayoff.results.some(item=>item.stage==='final'));
   const promotions=archived.filter(item=>item.type==='promotion');
   const relegations=archived.filter(item=>item.type==='relegation');
   assert.equal(promotions.length,20);
