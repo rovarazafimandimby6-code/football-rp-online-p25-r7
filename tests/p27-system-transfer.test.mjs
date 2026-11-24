@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { ClubManager } from '../src/club-manager.js';
 import { P27SystemTransferService } from '../server/system-transfer-service.js';
+import { JsonClubFinanceService } from '../server/club-finance-service.js';
 
 const clubs = [
   { id:'club-a', name:'Club A', division:'D2', capacity:12, budget:100000, colors:['#111111','#222222','#333333'] },
@@ -46,6 +47,22 @@ test('P27 lot 85 : transfert IA déplace le joueur et règle le club acheteur ve
   assert.equal([...f.journal.values()][0].toClubId,'club-a');
   assert.equal(service.transfer(request).alreadyCompleted,true);
   assert.equal(f.journal.size,1);
+ } finally {f.cleanup();}
+});
+
+test('P27 lot 85 : débite réellement le club acheteur et crédite le club vendeur dans le grand livre',()=>{
+ const f=setup();
+ try {
+  const finance=new JsonClubFinanceService(f.directory,{clubs:[...f.manager.clubs.values()],now:()=>Date.now()});
+  const buyerBefore=finance.store.balance('club-b');
+  const sellerBefore=finance.store.balance('club-a');
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:finance});
+  const result=service.transfer({id:'ai-transfer-real-ledger',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:3200});
+  assert.equal(result.ok,true);
+  assert.equal(finance.store.balance('club-b'),buyerBefore-3200);
+  assert.equal(finance.store.balance('club-a'),sellerBefore+3200);
+  assert.equal(finance.store.getAccount('club-b').totalExpenses,3200);
+  assert.equal(finance.store.getAccount('club-a').totalIncome,3200);
  } finally {f.cleanup();}
 });
 
