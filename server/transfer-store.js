@@ -30,7 +30,12 @@ export class JsonTransferStore {
  club(id){return this.state.clubs.find(x=>x.id===clean(id,48))||null;}
  addEvent(row,event){const e={id:randomUUID(),playerId:row.playerId,type:event.type,at:this.now(),...event};delete e.accountId;row.history.push(e);row.history=row.history.slice(-200);this.state.events.push(e);this.state.events=this.state.events.slice(-10000);return e;}
  queueRosterSync(row,{action,clubId=null,previousClubId=null,reason='contract-change'}={}){
-  const event=this.addEvent(row,{type:'roster-sync-request',action,clubId,previousClubId,reason});
+  const eventTypes={'contract-signing':'signing','contract-transfer':'transfer','contract-renewal':'renewal','contract-termination':'contract-termination','contract-expired':'contract-expired'};
+  const eventType=eventTypes[reason]||'signing';
+  const event=this.addEvent(row,{
+   type:eventType,clubId:clubId||previousClubId||null,fromClubId:previousClubId||null,toClubId:clubId||null,
+   salary:row.contract?.salary??null,expiresAt:row.contract?.expiresAt??null,reason
+  });
   this.state.rosterSync.push({id:'roster-'+event.id,playerId:row.playerId,action,clubId,previousClubId,contract:row.contract?{...row.contract}:null,playerName:'Joueur humain',reason,status:'pending',attempts:0,createdAt:new Date(this.now()).toISOString(),lastError:null});
   this.state.rosterSync=this.state.rosterSync.slice(-10000);
  }
