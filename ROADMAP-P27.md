@@ -831,3 +831,13 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Simuler l'arrêt du serveur avant l'application d'une commande d'inscription, puis reconstruire les deux stockages et reprendre la commande.
 - [x] Simuler l'arrêt après sauvegarde de l'effectif mais avant checkpoint outbox, reconstruire les deux stockages et vérifier l'idempotence de la reprise.
 - [x] Valider la CI consolidée : 635/635 tests réussis, 0 échec ; contrôle syntaxique JavaScript réussi (run `45445615266`, commit testé `4b4f85d36607ed2a8afbad297b34da92bb42a341`).
+
+
+### Lots 74 à 76 — cohérence contrats, effectifs et paie humaine (intégration en validation)
+- [x] Étendre l'audit monde pour comparer, lorsqu'un joueur humain est inscrit avec un contrat actif, l'identifiant joueur, le club, le salaire hebdomadaire et l'échéance avec le contrat autoritaire de sa carrière.
+- [x] Ajouter un scénario positif et des corruptions contrôlées de salaire et d'échéance pour l'audit des contrats.
+- [x] Vérifier qu'un renouvellement met à jour le salaire et l'échéance de l'effectif après reprise des deux stockages.
+- [x] Vérifier qu'une résiliation dont la commande outbox est encore en attente libère le joueur après redémarrage complet.
+- [x] Vérifier qu'une échéance de salaire antérieure à un transfert reste imputée à l'ancien club et que l'échéance suivante est imputée au nouveau club.
+- [ ] Valider la suite CI complète sur le commit consolidé et contrôler les journaux de workflow.
+- Limite : la paie humaine conserve son modèle actuel d'événements de carrière et de réconciliation idempotente ; les budgets du mercato et les soldes des grands livres comptables restent séparés. La saga carrière/effectif est rejouable, mais n'est pas une transaction ACID distribuée.
