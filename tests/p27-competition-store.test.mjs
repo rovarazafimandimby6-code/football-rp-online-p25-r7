@@ -233,7 +233,7 @@ test('P27 coupe : expose un audit structurel valide du tableau complet de 156 cl
 }finally{f.cleanup();}});
 test('P27 coupe : détecte un club engagé deux fois dans le tableau initial',()=>{const f=setup();try{
  const cup=f.store.activeSeason.competitions.find(item=>item.type==='cup');
- cup.fixtures.find(item=>item.round===1).homeClubId=cup.fixtures.find(item=>item.round===1).awayClubId;
+ cup.fixtures.find(item=>item.round===1).homeClubId=cup.fixtures.filter(item=>item.round===1)[1].homeClubId;
  const audit=f.store.snapshot().cupAudit;
  assert.equal(audit.ok,false);
  assert.equal(audit.reason,'invalid-cup-preliminary-entrants');
