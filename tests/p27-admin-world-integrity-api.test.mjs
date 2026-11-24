@@ -32,6 +32,16 @@ test('P27 API admin : inclut les carrières individuelles persistées dans l’a
   writeFileSync(path.join(root, 'careers', 'careers.json'), JSON.stringify({
     version:1, careers:[], playerCareers:[career, { ...career }]
   }));
+  writeFileSync(path.join(root, 'profiles', 'player-profiles.json'), JSON.stringify({
+    version:1, profiles:[{ accountId:'missing-account', profile:{ schemaVersion:1, identity:{ displayName:'Orphelin', role:'MID', number:8 } } }]
+  }));
+  writeFileSync(path.join(root, 'progression', 'progression.json'), JSON.stringify({
+    version:1, players:[{ accountId:'missing-account', progression:{
+      level:1, experience:0, coins:250, trainingPoints:0,
+      attributes:{ pace:55, shooting:50, passing:50, defense:45, stamina:55, control:50 },
+      processedMatchIds:[]
+    }}]
+  }));
   const { server } = await import('../server/index.js');
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -57,6 +67,8 @@ test('P27 API admin : inclut les carrières individuelles persistées dans l’a
       item.code === 'PLAYER_CAREER_ID_INVALID_OR_DUPLICATE' &&
       item.playerId === 'duplicate-player-career'
     ), JSON.stringify(audit.errors));
+    assert.ok(audit.errors.some(item => item.code === 'PLAYER_PROFILE_ACCOUNT_UNKNOWN' && item.accountId === 'missing-account'), JSON.stringify(audit.errors));
+    assert.ok(audit.errors.some(item => item.code === 'PLAYER_PROGRESSION_ACCOUNT_UNKNOWN' && item.accountId === 'missing-account'), JSON.stringify(audit.errors));
   } finally {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     for (const key of [...Object.keys(directories), 'P27_ADMIN_TOKEN']) delete process.env[key];
