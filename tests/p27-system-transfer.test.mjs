@@ -165,6 +165,31 @@ test('P27 lot 97 : reprend les trois checkpoints financiers d’un transfert IA 
  }
 });
 
+test('P27 lot 101 : conserve l’historique et reprend un joueur après deux transferts successifs et redémarrage',()=>{
+ const f=setup();
+ try {
+  const finance=new JsonClubFinanceService(f.directory,{clubs:[...f.manager.clubs.values()]});
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:finance});
+  const firstRequest={id:'ai-chain-restart-first',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:1000};
+  const first=service.transfer(firstRequest);
+  assert.equal(first.ok,true);
+  const secondRequest={id:'ai-chain-restart-second',fromClubId:'club-b',toClubId:'club-a',playerId:'system-player-1',fee:1500};
+  const second=service.transfer(secondRequest);
+  assert.equal(second.ok,true);
+  const restarted=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:finance});
+  assert.equal(restarted.state.transfers.length,2);
+  assert.equal(restarted.state.transfers[0].status,'completed');
+  assert.equal(restarted.state.transfers[1].status,'completed');
+  assert.equal(restarted.transfer(firstRequest).alreadyCompleted,true);
+  assert.equal(restarted.transfer(secondRequest).alreadyCompleted,true);
+  assert.equal(f.manager.getClub('club-a').roster.filter(p=>p.id==='system-player-1').length,1);
+  assert.equal(f.manager.getClub('club-b').roster.some(p=>p.id==='system-player-1'),false);
+  assert.equal(finance.transferJournal.transfers.length,2);
+  assert.equal(finance.store.getAccount('club-b').entries.filter(e=>e.id==='transfer-fee-out-ai-chain-restart-first').length,1);
+  assert.equal(finance.store.getAccount('club-a').entries.filter(e=>e.id==='transfer-fee-in-ai-chain-restart-first').length,1);
+ } finally {f.cleanup();}
+});
+
 function marketFixture(directory) {
  const player={id:'system-market-forward',name:'Forward',playerType:'system',role:'FWD',rating:70,number:9,contract:{status:'active',clubId:'market-seller',playerId:'system-market-forward',expiresAt:'2028-12-31T00:00:00.000Z'}};
  const seller={id:'market-seller',division:'D2',rating:60,capacity:12,roster:[player,{id:'s2',playerType:'system',role:'FWD',rating:55,contract:{status:'active',clubId:'market-seller',expiresAt:'2028-12-31T00:00:00.000Z'}},{id:'s3',playerType:'system',role:'FWD',rating:54,contract:{status:'active',clubId:'market-seller',expiresAt:'2028-12-31T00:00:00.000Z'}}]};
