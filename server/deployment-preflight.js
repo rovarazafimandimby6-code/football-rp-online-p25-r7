@@ -1,5 +1,6 @@
 import { mkdir, open, unlink } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { isAdminTokenConfigured } from './admin-auth.js';
 
@@ -41,7 +42,7 @@ export async function runP27DeploymentPreflight({ env = process.env, root = proc
   return { ok: errors.length === 0, errors, checked };
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = await runP27DeploymentPreflight();
   for (const item of result.checked) process.stdout.write(`${item.variable}: ${item.writable ? 'writable' : 'FAILED'}\\n`);
   for (const error of result.errors) process.stderr.write(`${error}\\n`);
