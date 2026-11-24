@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { auditP27World } from '../server/world-integrity-audit.js';
+import { DEFAULT_CLUBS } from '../src/club-manager.js';
 import { syncClubAssignments } from '../server/club-assignment-sync.js';
 
 const cleanWorld=()=>({
@@ -582,22 +583,15 @@ test('P27 intégrité mercato : compte les joueurs libres uniques et signale les
 });
 
 
-test('P27 intégrité catalogue complet : contrôle les 156 clubs et les conférences A/B puis A/B/C/D',()=>{
- const clubs=[];
- for (const [division,count] of [['D1',16],['D2',20],['D3',24]]) {
-  for (let i=0;i<count;i++) clubs.push({id:`${division.toLowerCase()}-${i}`,division,conference:null,capacity:12,roster:[]});
- }
- for (const conference of ['A','B']) {
-  for (let i=0;i<16;i++) clubs.push({id:`d4-${conference.toLowerCase()}-${i}`,division:'D4',conference,capacity:12,roster:[]});
- }
- for (const conference of ['A','B','C','D']) {
-  for (let i=0;i<16;i++) clubs.push({id:`d5-${conference.toLowerCase()}-${i}`,division:'D5',conference,capacity:12,roster:[]});
- }
+test('P27 intégrité catalogue complet : vérifie les quotas de la source réelle des 156 clubs',()=>{
+ const clubs=DEFAULT_CLUBS.map(club=>({
+  id:club.id,division:club.division,conference:club.conference ?? null,capacity:club.capacity,roster:[]
+ }));
  assert.equal(clubs.length,156);
  const result=auditP27World({clubs});
  assert.equal(result.ok,true,JSON.stringify(result.errors));
- const invalid=structuredClone(clubs);
- invalid.find(club=>club.id==='d4-a-0').conference='C';
+ const invalid=clubs.map(club=>({...club}));
+ invalid.find(club=>club.division==='D4'&&club.conference==='A').conference='C';
  const rejected=auditP27World({clubs:invalid});
  assert.ok(rejected.errors.some(item=>item.code==='CLUB_CONFERENCE_INVALID'));
  assert.ok(rejected.errors.some(item=>item.code==='DIVISION_CONFERENCE_CLUB_COUNT_INVALID'));
