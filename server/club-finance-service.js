@@ -184,13 +184,52 @@ export class JsonClubFinanceService {
     return { ok: unpaid === 0, posted, unpaid, clubs };
   }
 
+  syncRecordedTransferFees() {
+    const events = this.transferStore?.state?.events;
+    if (!Array.isArray(events)) return { ok: true, posted: 0, unpaid: 0, transfers: [] };
+    let posted = 0, unpaid = 0;
+    const transfers = [];
+    for (const event of events) {
+      if (event?.type !== 'transfer' || !event.id) continue;
+      const fee = safeAmount(event.fee);
+      const fromClubId = event.fromClubId;
+      const toClubId = event.toClubId;
+      if (fee === null || fee === 0 || !this.clubs.has(fromClubId) || !this.clubs.has(toClubId) || fromClubId === toClubId) continue;
+      const debit = this.store.post(fromClubId, {
+        id: `transfer-fee-out-${event.id}`, category: 'transfer-expense', amount: fee,
+        direction: 'expense', description: 'Indemnité de transfert versée', createdAt: Number.isSafeInteger(event.at) ? event.at : this.now(),
+        referenceId: event.id
+      });
+      if (!debit.ok) {
+        unpaid++;
+        transfers.push({ eventId: event.id, ok: false, reason: debit.reason, stage: 'debit', fromClubId, toClubId, fee });
+        continue;
+      }
+      const credit = this.store.post(toClubId, {
+        id: `transfer-fee-in-${event.id}`, category: 'transfer-income', amount: fee,
+        direction: 'income', description: 'Indemnité de transfert reçue', createdAt: Number.isSafeInteger(event.at) ? event.at : this.now(),
+        referenceId: event.id
+      });
+      if (!credit.ok) {
+        unpaid++;
+        transfers.push({ eventId: event.id, ok: false, reason: credit.reason, stage: 'credit', fromClubId, toClubId, fee });
+        continue;
+      }
+      posted += (debit.posted || 0) + (credit.posted || 0);
+      transfers.push({ eventId: event.id, ok: true, fromClubId, toClubId, fee });
+    }
+    return { ok: unpaid === 0, posted, unpaid, transfers };
+  }
+
   settleScheduledItems(now = this.now()) {
     if (!Number.isSafeInteger(now) || now < 0) return { ok: false, reason: 'invalid-time' };
     const systemWages = this.settleSystemPayroll(now);
     const wages = this.syncRecordedPlayerWages();
+    const transferFees = this.syncRecordedTransferFees();
     const sponsors = [], loans = [], failures = [];
     if (!systemWages.ok || systemWages.unpaid) failures.push({ category: 'system-wages', unpaid: systemWages.unpaid, reason: systemWages.reason || 'payment-failed' });
     if (!wages.ok || wages.unpaid) failures.push({ category: 'player-wages', unpaid: wages.unpaid, reason: 'payment-failed' });
+    if (!transferFees.ok || transferFees.unpaid) failures.push({ category: 'transfer-fees', unpaid: transferFees.unpaid, reason: 'payment-failed' });
     for (const account of this.store.listAccounts()) {
       const sponsor = this.store.settleSponsorPayments(account.clubId, now);
       if (sponsor.ok && sponsor.paid) sponsors.push({ clubId: account.clubId, paid: sponsor.paid, amount: sponsor.amount });
@@ -207,7 +246,7 @@ export class JsonClubFinanceService {
         failures.push(failure);
       }
     }
-    return { ok: failures.length === 0, at: now, systemWages, wages, sponsors, loans, failures };
+    return { ok: failures.length === 0, at: now, systemWages, wages, transferFees, sponsors, loans, failures };
   }
 
   getClubFinance(clubId, { weeklyMaintenance = 0 } = {}) {
