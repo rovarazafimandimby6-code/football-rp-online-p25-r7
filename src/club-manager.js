@@ -136,6 +136,7 @@ export class ClubManager {
         reputation: Number.isFinite(Number(input.reputation)) ? Math.max(1, Math.min(100, Math.round(Number(input.reputation)))) : 40,
         budget: Number.isFinite(Number(input.budget)) ? Math.max(0, Math.min(1_000_000_000, Math.floor(Number(input.budget)))) : 250000,
         colors: Array.isArray(input.colors) && input.colors.length >= 3 ? input.colors.slice(0,3).map(c => /^#[0-9a-f]{6}$/i.test(c) ? c : '#245b48') : ['#1769aa','#092e55','#f3d36a'],
+        kitDesign: ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'].includes(input.kitDesign) ? input.kitDesign : 'central',
         capacity: Number.isFinite(capacity) ? Math.max(1, Math.min(12, Math.floor(capacity))) : 12,
         initialRosterSize: Number.isFinite(Number(input.initialRosterSize)) ? Math.max(1, Math.min(12, Math.floor(Number(input.initialRosterSize)))) : (Number.isFinite(capacity) ? Math.max(1, Math.min(12, Math.floor(capacity))) : 12),
         characteristics: input.characteristics && typeof input.characteristics === 'object'

@@ -100,7 +100,7 @@ function nationalityPlan(club, count, random) {
     if (eligible.length) return shuffled(Array.from({ length: count }, (_, index) => eligible[index % eligible.length]), random);
   }
   const internationalCodes = Object.keys(NATIONAL_POOLS).filter(code => code !== homeCode);
-  const localShare = homeCode === 'MG' ? 0.72 : 0.35;
+  const localShare = homeCode === 'MG' ? 0.67 : 0.35;
   const localCount = Math.max(1, Math.min(count - 2, Math.round(count * localShare)));
   const internationalCount = count - localCount;
   const internationalPlan = Array.from({ length: internationalCount }, (_, index) => internationalCodes[index % internationalCodes.length]);
@@ -116,8 +116,8 @@ function createUniqueName(code, random, usedNames, index, clubId) {
     const key = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (!FORBIDDEN_REAL_NAMES.has(key) && !usedNames.has(key)) { usedNames.add(key); return name; }
   }
-  const fallback = `${pick(pool.names, random)} ${pick(pool.surnames, random)} ${String(clubId).slice(0,3).toUpperCase()}${index + 1}`;
-  usedNames.add(fallback.toLowerCase());
+  const fallback = `${pick(pool.names, random)} ${pick(pool.surnames, random)} ${String(clubId).replace(/[^a-z0-9]/gi,'').slice(-6).toUpperCase()}${index + 1}`;
+  usedNames.add(fallback.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase());
   return fallback;
 }
 
@@ -125,7 +125,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set() } = 
   const count = Math.max(1, Math.min(30, Math.floor(Number(size) || 12)));
   const random = randomFor(hashSeed(`fpro-p23:${club.id}:roster-v2`));
   const nationalities = nationalityPlan(club, count, random);
-  const ages = shuffled(AGE_PROFILE, random);
+  const ages = [18,30,19,28,21,32,...shuffled([22,23,24,25,26,27], random)];
   while (ages.length < count) ages.push(18 + Math.floor(random() * 16));
   const roster = [];
   for (let index = 0; index < count; index++) {
