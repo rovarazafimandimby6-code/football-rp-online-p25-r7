@@ -607,6 +607,10 @@ test('P27 intégrité monde : rapproche les carrières individuelles avec contra
  const input=cleanWorld();
  input.transferState.careers[0].playerId='human-player-a';
  input.transferState.careers[0].contract.playerId='human-player-a';
+ input.clubs[0].roster.push({id:'human-player-a',playerType:'human',number:10,contract:{
+  status:'active',clubId:'club-a',playerId:'human-player-a',salary:100,
+  signedAt:'2026-01-01T00:00:00.000Z',expiresAt:'2027-01-01T00:00:00.000Z'
+ }});
  input.playerCareerState={playerCareers:[{
   playerId:'human-player-a',
   totals:{matches:1,minutesPlayedMs:90000,wins:1,draws:0,losses:0,goals:1,assists:0,shots:2,passes:8,completedPasses:7,tackles:0,interceptions:0,saves:0},
