@@ -296,6 +296,22 @@ export class ClubManager {
     this.saveSeason(); return { ok: true, rosterSize: club.roster.length, number: normalized.number };
   }
 
+  canAcceptHuman(clubId, playerId) {
+    const target = this.clubs.get(safeId(clubId));
+    const id = safeId(playerId);
+    if (!target) return { ok:false, reason:'club-not-found' };
+    if (!id || !id.startsWith('human-')) return { ok:false, reason:'invalid-human-player-id' };
+    const memberships = [...this.clubs.values()].flatMap(club => club.roster.filter(player => player.id === id).map(player => ({ club, player })));
+    if (memberships.length > 1) return { ok:false, reason:'duplicate-human-membership' };
+    if (memberships.length && memberships[0].player.playerType !== 'human') return { ok:false, reason:'player-id-owned-by-system' };
+    if (memberships.length && memberships[0].club === target) return { ok:true, alreadyRegistered:true };
+    if (target.humanAdmission === 'system-only') return { ok:false, reason:'human-admission-closed' };
+    if (target.roster.length >= target.capacity) return { ok:false, reason:'roster-full' };
+    if (target.roster.filter(player => player.playerType === 'human').length >= 7) return { ok:false, reason:'human-player-limit' };
+    if (!availableShirtNumber(target, 1, id)) return { ok:false, reason:'shirt-numbers-full' };
+    return { ok:true, alreadyRegistered:false };
+  }
+
   syncHumanCareer({ playerId, clubId = null, previousClubId = null, contract = null, name = 'Joueur humain', reason = 'contract-change' } = {}) {
     const id = safeId(playerId);
     if (!id || !id.startsWith('human-')) return { ok:false, reason:'invalid-human-player-id' };
