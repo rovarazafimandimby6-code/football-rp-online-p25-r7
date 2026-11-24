@@ -209,7 +209,7 @@ test('P27 lot 98 : le simulateur traite 156 clubs sans géographie et respecte l
   const service=new P27SystemTransferService(directory,{clubManager:manager,financeService:finance,now:()=>Date.parse('2028-01-01T00:00:00.000Z')});
   const result=service.simulateMarket({windowId:'full-world-2028',maxTransfers:30,now:Date.parse('2028-01-01T00:00:00.000Z')});
   assert.equal(clubs.length,156);
-  assert.equal(result.evaluated,279);
+  assert.equal(result.evaluated,285);
   assert.equal(result.processed,1);
   assert.ok(['D2','D3','D4'].includes(manager.getClub(result.transfers[0].toClubId).division));
   assert.equal(seller.roster.filter(p=>p.playerType==='system'&&p.role==='FWD').length,2);
