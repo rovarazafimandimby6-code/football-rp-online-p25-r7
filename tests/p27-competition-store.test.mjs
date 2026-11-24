@@ -17,7 +17,8 @@ test('P27 saisons : refuse de clôturer une saison incomplète',()=>{const f=set
 test('P27 saisons : archive les trophées et ouvre une saison suivante avec des quotas conservés',()=>{const f=setup();try{
   const season=f.store.activeSeason;
   for(const competition of season.competitions){competition.status='completed';if(competition.type==='league')competition.championClubId=competition.standings[0].id;else competition.championClubId=competition.members[0].id;}
-  season.trophies.push({id:'test-trophy',competitionId:'test-season-league-D1',competitionName:'Premier League',clubId:season.competitions.find(c=>c.id==='test-season-league-D1').championClubId,clubName:'Champion test',awardedAt:900});
+  const archivedFixture=season.competitions.find(c=>c.id==='test-season-league-D1').fixtures[0];archivedFixture.status='completed';archivedFixture.result={home:3,away:2,finalizedAt:850};archivedFixture.roomId='archived-room';
+    season.trophies.push({id:'test-trophy',competitionId:'test-season-league-D1',competitionName:'Premier League',clubId:season.competitions.find(c=>c.id==='test-season-league-D1').championClubId,clubName:'Champion test',awardedAt:900});
   const d1=season.competitions.find(c=>c.id==='test-season-league-D1').members[0].id;
   const d2=season.competitions.find(c=>c.id==='test-season-league-D2').members[0].id;
   const result=f.store.finalizeSeason({nextSeasonId:'2027-28',completedAt:2000,movements:[{clubId:d1,toDivision:'D2'},{clubId:d2,toDivision:'D1'}]});
@@ -26,7 +27,7 @@ test('P27 saisons : archive les trophées et ouvre une saison suivante avec des 
   const next=f.store.snapshot().competitions;
   assert.equal(next.find(c=>c.id==='2027-28-league-D1').members.length,16);
   assert.equal(next.find(c=>c.id==='2027-28-league-D2').members.length,20);
-  const history=f.store.seasonHistory();assert.equal(history.length,2);assert.equal(history[0].status,'completed');assert.equal(history[0].trophies.length,1);assert.equal(history[0].movements.length,2);
+  const history=f.store.seasonHistory();assert.equal(history.length,2);assert.equal(history[0].status,'completed');assert.equal(history[0].trophies.length,1);assert.equal(history[0].movements.length,2);const archivedLeague=history[0].competitions.find(c=>c.id==='test-season-league-D1');assert.equal(archivedLeague.finalStandings.length,16);assert.equal(archivedLeague.results.length,1);assert.equal(archivedLeague.results[0].result.home,3);
   const restored=new JsonCompetitionStore(f.directory,{seasonId:'ignored'});assert.equal(restored.activeSeason.id,'2027-28');assert.equal(restored.seasonHistory()[0].trophies.length,1);assert.equal(restored.clubs.get(d1).division,'D2');assert.equal(restored.clubs.get(d2).division,'D1');
 }finally{f.cleanup();}});
 test('P27 saisons : rejette les mouvements qui cassent les divisions ou les conférences',()=>{const f=setup();try{

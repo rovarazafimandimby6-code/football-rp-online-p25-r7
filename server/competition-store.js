@@ -199,7 +199,12 @@ export class JsonCompetitionStore {
         status:competition.status, championClubId:competition.championClubId || null,
         championClubName:competition.type === 'league'
           ? competition.standings?.find(row => row.id === competition.championClubId)?.name || null
-          : this.clubs.get(competition.championClubId)?.name || null
+          : this.clubs.get(competition.championClubId)?.name || null,
+        finalStandings:clone(competition.standings || []),
+        results:(competition.fixtures || []).filter(fixture => fixture.status === 'completed').map(fixture => ({
+          fixtureId:fixture.id, round:fixture.round, homeClubId:fixture.homeClubId,
+          awayClubId:fixture.awayClubId, result:clone(fixture.result), roomId:fixture.roomId
+        }))
       })),
       trophies:clone(season.trophies || []),
       movements:clone(season.movements || [])

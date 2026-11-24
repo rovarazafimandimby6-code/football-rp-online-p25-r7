@@ -531,3 +531,5 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - Limite : le nombre de promus/relégués et les critères de classement des barrages restent à décider ; aucune promotion automatique n'est appliquée.
 
 - Correctif de persistance : les affectations de division et de conférence sont sauvegardées dans le catalogue et restaurées au redémarrage pour que les saisons successives conservent les mouvements précédents.
+
+- Extension de l'archive : conserver pour chaque compétition le classement final complet et les résultats de toutes les rencontres terminées, en plus du champion et du trophée.
