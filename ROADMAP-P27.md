@@ -871,7 +871,6 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Exposer la simulation par route administrateur authentifiée `POST /api/admin/system-transfers/simulate`.
 - [ ] Valider l'ensemble en CI et compléter les scénarios de panne entre chaque checkpoint du journal comptable.
 
-- [ ] Ajouter une simulation de marché déterministe et des tests de reprise.
 
 #### Lot 86 — prêts humains persistants (intégré, CI validée)
 - [x] Ajouter des offres de prêt avec fenêtre de mercato, durée bornée et expiration de l'offre.
