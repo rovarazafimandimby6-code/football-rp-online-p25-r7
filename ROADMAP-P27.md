@@ -1158,3 +1158,13 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 131 : ajouter des scénarios de rechargement multi-saisons, de falsification statistique, de doublon et de rupture de chaîne de transferts.
 - [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
 - Limite : cet audit vérifie les historiques et événements déjà persistés ; il ne crée pas de statistiques de match ni de mouvements absents des sources.
+
+
+### Lots 132 à 136 — audit transversal carrières, contrats et mouvements
+- [x] Lot 132 : intégrer au contrôle d'intégrité du monde les carrières individuelles persistées et leurs identifiants de joueur.
+- [x] Lot 133 : rapprocher les contrats actifs, les identifiants joueur/club et les prêts avec les carrières individuelles.
+- [x] Lot 134 : recalculer une borne minimale des statistiques cumulées depuis les matchs conservés, sans confondre historique plafonné et total de carrière.
+- [x] Lot 135 : vérifier l'ordre chronologique et la continuité des mouvements de club, y compris début et retour de prêt.
+- [x] Lot 136 : ajouter un scénario d'intégration qui recharge réellement les stores carrière et mercato avant l'audit transversal.
+- [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
+- Limite : les statistiques globales ne sont pas reconstruites à partir des seuls matchs conservés si l'historique est plafonné ; le contrôle compare uniquement les bornes vérifiables.
