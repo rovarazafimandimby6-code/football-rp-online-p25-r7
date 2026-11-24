@@ -721,7 +721,10 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Recalculer les statistiques (matchs, victoires, nuls, défaites, buts, points) à partir des rencontres terminées et comparer chaque ligne du classement.
 - [x] Refuser les scores de championnat supérieurs à 99 buts dans l’audit du calendrier.
 - [x] Ajouter des tests qui détectent un classement altéré et un score hors limites.
-- [ ] Renforcer les contrôles de cohérence entre les calendriers, les rencontres officielles et les archives de résultats.
+- [x] Rapprocher les archives officielles des fixtures terminées : identifiant de rencontre, compétition, salle, score et état final.
+- [x] Détecter les archives dupliquées, les références de fixture inconnues et les divergences de score entre archive et compétition.
+- [x] Exposer ces contrôles dans l’audit administrateur `/api/admin/world-integrity`.
+- [ ] Ajouter une réparation contrôlée des archives manquantes, sans reconstruire ni inventer de résultats.
 
 ### Lot 68 — cohérence des saisons et des affectations de clubs (en cours)
 - [x] Synchroniser au démarrage les divisions et conférences du gestionnaire d’effectifs depuis les affectations officielles du stockage des compétitions.
