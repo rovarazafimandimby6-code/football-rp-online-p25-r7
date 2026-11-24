@@ -179,6 +179,44 @@ test('P27 lot 85 : simulation du mercato IA déterministe, fondée sur les besoi
  } finally {rmSync(a,{recursive:true,force:true});rmSync(b,{recursive:true,force:true});rmSync(c,{recursive:true,force:true});}
 });
 
+test('P27 lot 98 : le simulateur traite 156 clubs sans géographie et respecte les divisions adjacentes',()=>{
+ const directory=mkdtempSync(path.join(os.tmpdir(),'p27-market-156-'));
+ try {
+  const clubs=[];
+  for(let i=0;i<156;i++){
+   const division=['D1','D2','D3','D4','D5'][Math.floor(i/32)];
+   clubs.push({id:`club-${String(i).padStart(3,'0')}`,division,rating:55+(i%30),capacity:12,roster:[]});
+  }
+  const seller=clubs[64];
+  seller.division='D3';
+  for(let i=0;i<3;i++) seller.roster.push({
+   id:`market-156-player-${i}`,playerType:'system',role:'FWD',rating:60+i,
+   contract:{status:'active',clubId:seller.id,playerId:`market-156-player-${i}`,expiresAt:'2028-12-31T00:00:00.000Z'}
+  });
+  const manager={
+   clubs:new Map(clubs.map(club=>[club.id,club])),
+   listClubs(){return [...this.clubs.values()];},
+   getClub(id){return this.clubs.get(id)||null;},
+   transferPlayer(fromId,toId,playerId){
+    const from=this.getClub(fromId),to=this.getClub(toId),index=from.roster.findIndex(p=>p.id===playerId);
+    if(index<0||to.roster.length>=to.capacity)return {ok:false,reason:'invalid'};
+    const [player]=from.roster.splice(index,1);
+    to.roster.push({...player,number:9,contract:{...player.contract,clubId:to.id,previousClubId:from.id,transferredAt:'2028-01-01T00:00:00.000Z'}});
+    return {ok:true};
+   }
+  };
+  const finance={store:{balance:()=>1_000_000},journalTransferFee:()=>({ok:true})};
+  const service=new P27SystemTransferService(directory,{clubManager:manager,financeService:finance,now:()=>Date.parse('2028-01-01T00:00:00.000Z')});
+  const result=service.simulateMarket({windowId:'full-world-2028',maxTransfers:30,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  assert.equal(clubs.length,156);
+  assert.equal(result.evaluated,279);
+  assert.equal(result.processed,1);
+  assert.ok(['D2','D3','D4'].includes(manager.getClub(result.transfers[0].toClubId).division));
+  assert.equal(seller.roster.filter(p=>p.playerType==='system'&&p.role==='FWD').length,2);
+  assert.equal(result.transfers[0].id.startsWith('ai-market-full-world-2028-'),true);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
 test('P27 lot 96 : les joueurs humains ne masquent pas le besoin de joueurs IA au même poste',()=>{
  const directory=mkdtempSync(path.join(os.tmpdir(),'p27-market-human-demand-'));
  try {
