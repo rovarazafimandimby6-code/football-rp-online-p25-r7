@@ -72,6 +72,12 @@ test('P27 renouvellement pluri-saisons : conserve 156 clubs et les capacités de
       assert.equal(restored.snapshot().cupAudit.ok,true,JSON.stringify(restored.snapshot().cupAudit));
     }
     assert.equal(store.seasonHistory().filter(season=>season.status==='completed').length,3);
+    const archiveAudit=store.snapshot().archiveAudit;
+    assert.equal(archiveAudit.ok,true,JSON.stringify(archiveAudit));
+    const history=store.seasonHistory().filter(season=>season.status==='completed');
+    assert.deepEqual(history.map(season=>season.movements.length),[40,40,40]);
+    assert.equal(store.clubHistoricalRecords().reduce((sum,record)=>sum+record.promotions,0),60);
+    assert.equal(store.clubHistoricalRecords().reduce((sum,record)=>sum+record.relegations,0),60);
   } finally {
     rmSync(directory,{recursive:true,force:true});
   }
@@ -126,5 +132,20 @@ test('P27 archives de saison : contrôle une chronologie unique et refuse une tr
   assert.equal(restored.snapshot().timelineAudit.ok,true);
   restored.state.seasons[0].id=restored.state.seasons[1].id;
   assert.equal(restored.snapshot().timelineAudit.reason,'season-id-invalid-or-duplicate');
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
+
+test('P27 audit des archives : refuse un trophée attribué au mauvais champion',()=>{
+ const directory=mkdtempSync(path.join(tmpdir(),'p27-archive-awards-'));
+ try {
+  const store=new JsonCompetitionStore(directory,{seasonId:'2026-27',now:()=>1000});
+  const league=store.activeSeason.competitions.find(item=>item.type==='league');
+  league.status='completed';
+  league.championClubId=league.standings[0].id;
+  store.activeSeason.trophies.push({id:'award-test',competitionId:league.id,clubId:league.standings[1].id,awardedAt:1000});
+  store.activeSeason.status='completed';
+  store.activeSeason.completedAt=2000;
+  assert.equal(store.snapshot().archiveAudit.reason,'archive-trophy-champion-mismatch');
  } finally {rmSync(directory,{recursive:true,force:true});}
 });
