@@ -723,8 +723,15 @@ test("P27 demande d'entrée depuis le banc : mise en file puis rotation serveur 
   requester.controlMode = 'bench';
   const promotedReserve = [...internal.players.values()].find(player => player.team === requester.team && player.isBot && player.isOnPitch === false);
   promotedReserve.isOnPitch = true;
-  const activeHuman = [...internal.players.values()].find(player => player.team === requester.team && player.id !== requester.id && !player.isBot && player.connected);
-  if (activeHuman) activeHuman.isOnPitch = true;
+  const activeHuman = {
+    id: 'connected-human-teammate', team: requester.team, slot: 50, role: 'MID',
+    isBot: false, connected: true, aiControlled: false, isOnPitch: true,
+    x: 0, z: 0, facing: 0, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
+    input: { x: 0, z: 0, sprint: false }, stats: {}
+  };
+  const displacedBot = [...internal.players.values()].find(player => player.team === requester.team && player.isBot && player.isOnPitch !== false);
+  displacedBot.isOnPitch = false;
+  internal.players.set(activeHuman.id, activeHuman);
   const activeBotsBefore = [...internal.players.values()].filter(player => player.team === requester.team && player.isBot && player.isOnPitch !== false);
   const queued = manager.requestEntry(room.id, joined.token);
   assert.equal(queued.queued, true);
