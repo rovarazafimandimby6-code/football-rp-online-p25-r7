@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from '
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
-const clean = (value, max, fallback = '') => String(value ?? fallback).replace(/[<>\\u0000-\\u001f]/g, '').trim().slice(0, max) || fallback;
+const clean = (value, max, fallback = '') => String(value ?? fallback).replace(/[<>]/g, '').split('').filter(character => character.charCodeAt(0) >= 32).join('').trim().slice(0, max) || fallback;
 const oneOf = (value, values, fallback) => values.includes(value) ? value : fallback;
 
 function normalize(input = {}) {
@@ -51,7 +51,8 @@ export class JsonPlayerProfileStore {
     catch (error) { try { unlinkSync(temporary); } catch {} throw error; }
   }
   get(accountId) {
-    const row = this.state.profiles.find(item => item.accountId === String(accountId));
+    const id = clean(accountId, 64);
+    const row = this.state.profiles.find(item => item.accountId === id);
     return row ? structuredClone(row.profile) : null;
   }
   save(accountId, input) {
