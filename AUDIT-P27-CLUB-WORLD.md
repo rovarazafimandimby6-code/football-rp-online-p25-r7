@@ -2,8 +2,8 @@
 
 Date de vérification : 24 novembre 2026  
 Branche : `p27-dev`  
-Commit audité : `67383b24ab5a818766c28c98da27da711a459550`  
-Workflow de référence : [GitHub Actions 45411343846](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45404323312)
+Commit audité : `bd93730349e1d5083e24f30bf46bfbe9e1db6bfc`  
+Workflow de référence : [GitHub Actions 45411900793](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45404323312)
 
 ## Résultat de l'audit
 
@@ -79,10 +79,10 @@ Le moteur conserve les résultats et archives des barrages, vérifie les listes 
 
 ## Validation CI
 
-- **537 tests réussis**
+- **539 tests réussis**
 - **0 échec**
 - Contrôle de syntaxe JavaScript exécuté avec succès
-- Le workflow CI du commit audité est vert : [45411343846](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45411343846)
+- Le workflow CI du commit audité est vert : [45411900793](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45411900793)
 
 ## Vérification restante
 
