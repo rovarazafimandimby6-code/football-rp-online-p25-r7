@@ -1019,7 +1019,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 
 
 ### Lot 106 — audit de la pyramide officielle des 156 clubs
-- [x] Contrôler la répartition nationale : D1 16, D2 16, D3 16, D4 32 et D5 64.
+- [x] Contrôler la répartition nationale réelle : D1 16, D2 20, D3 24, D4 32 et D5 64.
 - [x] Contrôler D4 Challenger League : 16 clubs en conférence A et 16 en B.
 - [x] Contrôler D5 Regional League : 16 clubs dans chacune des conférences A, B, C et D.
 - [x] Interdire les conférences en D1–D3 et les identifiants hors nomenclature en D4–D5.
