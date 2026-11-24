@@ -169,7 +169,7 @@ test('P27 salons persistés : le flush rapporte un échec de stockage sans masqu
     const manager = new RoomManager({ roomStore });
     const room = manager.create();
     manager.join(room.id, { displayName: 'Joueur' });
-    roomStore.save = () => { throw new Error('DISK_UNAVAILABLE'); };
+    roomStore.saveMany = () => { throw new Error('DISK_UNAVAILABLE'); };
     const report = manager.persistAllRooms();
     assert.equal(report.saved, 0);
     assert.deepEqual(report.failed, [{ roomId: room.id, reason: 'DISK_UNAVAILABLE' }]);
