@@ -578,3 +578,4 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Vérifier le refus d'un jeton invalide et d'un remplaçant appartenant à l'équipe adverse.
 - [x] Conserver les règles existantes de disponibilité, de temps de retour et d'authentification sans les réécrire.
 - Limite : ces tests valident le moteur de rotation serveur existant ; l'interface spectateur du banc et les commandes tactiles dynamiques restent à réaliser et à vérifier sur Android.
+- Validation GitHub Actions sur le commit `d456f66adb8ca8c6d26da03b3620bfef2fa0a478` : 553/553 tests réussis, 0 échec ; contrôle syntaxique JavaScript réussi.
