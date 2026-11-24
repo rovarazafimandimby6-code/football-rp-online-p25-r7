@@ -75,12 +75,12 @@ test('calendrier: refuse les identifiants vides, présences et scores invalides'
 });
 
 test('clubs: les vues retournées ne permettent pas de modifier le roster interne', () => {
-  const clubs = new ClubManager();
-  clubs.addPlayer('antananarivo-fc', { id: 'p1', name: 'Test' });
-  const view = clubs.getClub('antananarivo-fc');
+  const clubs = new ClubManager([{ id: 'view-test', name: 'View Test', capacity: 12 }], null, 'view-test-p27');
+  clubs.addPlayer('view-test', { id: 'p1', name: 'Test' });
+  const view = clubs.getClub('view-test');
   const player = view.roster.find(item => item.id === 'p1');
   player.name = 'Altéré';
-  assert.equal(clubs.getClub('antananarivo-fc').roster.find(item => item.id === 'p1').name, 'Test');
+  assert.equal(clubs.getClub('view-test').roster.find(item => item.id === 'p1').name, 'Test');
 });
 
 test('mercato: identifiants uniques après rejet et dates invalides refusées', () => {
@@ -101,9 +101,12 @@ test('carrière: résultats invalides ne créent pas de récompense', () => {
 });
 
 test('clubs: un joueur ne peut pas être inscrit dans deux clubs', () => {
-  const clubs = new ClubManager();
-  assert.equal(clubs.addPlayer('antananarivo-fc', { id: 'unique-player' }).ok, true);
-  assert.equal(clubs.addPlayer('mahajanga-city', { id: 'unique-player' }).reason, 'already-registered');
+  const clubs = new ClubManager([
+    { id: 'unique-a', name: 'Unique A', capacity: 12 },
+    { id: 'unique-b', name: 'Unique B', capacity: 12 }
+  ], null, 'unique-player-test-p27');
+  assert.equal(clubs.addPlayer('unique-a', { id: 'unique-player' }).ok, true);
+  assert.equal(clubs.addPlayer('unique-b', { id: 'unique-player' }).reason, 'already-registered');
 });
 
 test('contrats: renouvellement met à jour le salaire et prolonge la durée', () => {
