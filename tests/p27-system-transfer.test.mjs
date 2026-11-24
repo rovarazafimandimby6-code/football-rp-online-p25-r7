@@ -339,15 +339,17 @@ test('P27 lot 103 : signale explicitement l’échec du checkpoint de reprise sa
   const persist=service.persist.bind(service);
   let writes=0;
   service.persist=next=>{writes++;return writes===1?persist(next):false;};
-  const result=service.transfer({id:'ai-fail-checkpoint-103',fromClubId:'club-a',toClubId:'system-player-1',playerId:'system-player-1',fee:1200});
+  const result=service.transfer({id:'ai-fail-checkpoint-103',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:1200});
   assert.equal(result.ok,false);
-  assert.equal(result.reason,'invalid-clubs');
+  assert.equal(result.reason,'outbox-persistence-failed');
+  assert.equal(result.pending,true);
+  assert.equal(writes,2);
+  assert.equal(service.state.transfers[0].attempts,0);
   service.persist=persist;
-  const pending=service.transfer({id:'ai-fail-checkpoint-103b',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:1200});
-  assert.equal(pending.ok,false);
-  assert.equal(pending.reason,'ledger-temporary-failure');
-  assert.equal(pending.pending,true);
-  assert.equal(pending.transfer.attempts,1);
+  f.setFailFinance(false);
+  const replay=service.processPending();
+  assert.equal(replay.ok,true);
+  assert.equal(replay.processed,1);
  } finally {f.cleanup();}
 });
 
