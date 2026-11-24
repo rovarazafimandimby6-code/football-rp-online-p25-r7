@@ -774,3 +774,12 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 
 ## Décision de clôture — phase 1
 La validation automatisée de la phase 1 est consolidée. Les contrôles d'intégrité, les transactions locales par stockage, la réconciliation financière rejouable, les audits de calendrier/résultats et les transitions pluri-saisons sont couverts par la suite de tests. Les sujets explicitement listés comme limites ne sont pas déclarés terminés : ils exigent soit une décision économique produit, soit une évolution de coordination multi-stockages, soit des vérifications d'exploitation/appareil réel.
+
+
+### Lot 69 — audit croisé du journal financier et des événements mercato (intégré)
+- [x] Comparer chaque événement de transfert accepté au journal financier durable.
+- [x] Vérifier les checkpoints débit/crédit avec les écritures réellement présentes dans les comptes concernés.
+- [x] Détecter les événements non journalisés, les règlements incomplets et les checkpoints incohérents sans bloquer artificiellement les transferts légitimes en attente.
+- [x] Appliquer le même contrôle aux salaires humains enregistrés dans le journal.
+- [x] Exposer les compteurs de règlements en attente dans l'audit monde administrateur.
+- [ ] Exécuter et valider la CI consolidée après intégration.
