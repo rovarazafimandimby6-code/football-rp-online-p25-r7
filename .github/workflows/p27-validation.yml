@@ -17,6 +17,10 @@ jobs:
           node-version: 22
       - name: Run automated tests
         run: npm test
+      - name: Validate deployment preflight command
+        env:
+          P27_ADMIN_TOKEN: p27-ci-only-dummy-secret-not-for-production-0123456789
+        run: npm run preflight
       - name: Check JavaScript syntax
         shell: bash
         run: |
