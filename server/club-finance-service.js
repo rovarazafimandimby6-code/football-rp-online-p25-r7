@@ -86,28 +86,49 @@ export class JsonClubFinanceService {
       const last = this.payrollSchedule[club.id];
       const periods = Math.max(0, Math.floor((now - last) / WEEK));
       if (!periods) continue;
-      const contracts = (club.roster || []).filter(player =>
-        player?.playerType === 'system' && player.contract?.status === 'active' &&
-        player.contract.clubId === club.id && player.contract.playerId === player.id
-      );
-      if (!contracts.length) {
+      // Released system players remain eligible only for payroll periods that fell
+      // on or before their departure/contract expiry. This preserves arrears without
+      // creating wages for time spent outside the club.
+      const rosterPlayers = (club.roster || []).map(player => ({ player, releasedAt: null }));
+      const releasedPlayers = (club.releasedPlayers || []).map(item => ({
+        player: item?.player, releasedAt: Date.parse(item?.releasedAt)
+      }));
+      const contracts = [...rosterPlayers, ...releasedPlayers]
+        .filter(({ player }) => player?.playerType === 'system' &&
+          ['active', 'expired'].includes(player.contract?.status) &&
+          player.contract.type === 'system-roster' &&
+          player.contract.clubId === club.id && player.contract.playerId === player.id)
+        .map(({ player, releasedAt }) => {
+          const signedAt = Date.parse(player.contract.signedAt);
+          const expiresAt = Date.parse(player.contract.expiresAt);
+          const endAt = Number.isFinite(releasedAt)
+            ? (Number.isFinite(expiresAt) ? Math.min(releasedAt, expiresAt) : releasedAt)
+            : (Number.isFinite(expiresAt) ? expiresAt : Number.POSITIVE_INFINITY);
+          return { player, signedAt: Number.isFinite(signedAt) ? signedAt : Number.NEGATIVE_INFINITY, endAt };
+        });
+      const entries = [];
+      const uniqueEntries = new Set();
+      for (let period = 1; period <= periods; period++) {
+        const dueAt = last + period * WEEK;
+        for (const { player, signedAt, endAt } of contracts) {
+          if (dueAt < signedAt || dueAt > endAt) continue;
+          const contract = player.contract;
+          const wage = safeAmount(contract.weeklyWage ?? contract.salary);
+          if (wage === null || wage === 0) continue;
+          const id = `system-wage-${contract.id}-${dueAt}`;
+          if (uniqueEntries.has(id)) continue;
+          uniqueEntries.add(id);
+          entries.push({
+            id, category: 'wages', amount: wage, direction: 'expense',
+            description: `Salaire hebdomadaire : ${player.name || player.id}`,
+            createdAt: dueAt, referenceId: contract.id
+          });
+        }
+      }
+      if (!entries.length) {
         this.payrollSchedule[club.id] = last + periods * WEEK;
         if (!this.persistPayrollSchedule()) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
         continue;
-      }
-      const entries = [];
-      for (let period = 1; period <= periods; period++) {
-        const dueAt = last + period * WEEK;
-        for (const player of contracts) {
-          const wage = safeAmount(player.contract.weeklyWage ?? player.contract.salary);
-          if (wage === null || wage === 0) continue;
-          entries.push({
-            id: `system-wage-${player.contract.id}-${dueAt}`,
-            category: 'wages', amount: wage, direction: 'expense',
-            description: `Salaire hebdomadaire : ${player.name || player.id}`,
-            createdAt: dueAt, referenceId: player.contract.id
-          });
-        }
       }
       if (!entries.length) {
         this.payrollSchedule[club.id] = last + periods * WEEK;

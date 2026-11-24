@@ -386,3 +386,18 @@ test('P27 effectifs : les identifiants des joueurs recrutés ne réutilisent pas
  assert.equal(result.recruited.length,1);
  assert.notEqual(result.recruited[0].playerId,departed.id);
 });
+
+
+test('P27 effectifs : le départ manuel archive le joueur système et son contrat pour la paie',()=>{
+ const manager=new ClubManager();
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster.find(item=>item.playerType==='system');
+ assert.ok(player);
+ assert.equal(manager.removePlayer(club.id,player.id),true);
+ const updated=manager.getClub(club.id);
+ const released=updated.releasedPlayers.find(item=>item.player.id===player.id);
+ assert.ok(released);
+ assert.equal(released.reason,'player-departed');
+ assert.equal(released.player.contract.id,player.contract.id);
+ assert.ok(Number.isFinite(Date.parse(released.releasedAt)));
+});

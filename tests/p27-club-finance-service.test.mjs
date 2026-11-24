@@ -129,3 +129,50 @@ test('P27 paie système : le calendrier de paie survit au redémarrage',()=>{
   assert.equal(restarted.store.getAccount(club.id).totalExpenses,75);
  } finally {rmSync(directory,{recursive:true,force:true});}
 });
+
+
+test('P27 paie système : règle les échéances acquises avant le départ ou la fin du contrat',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'departed-payroll-club',budget:1000,roster:[],releasedPlayers:[{
+  releasedAt:new Date(start+10*86400000).toISOString(),reason:'contract-expired',
+  player:{id:'departed-player',name:'Joueur Parti',playerType:'system',contract:{
+   id:'departed-contract',clubId:'departed-payroll-club',playerId:'departed-player',
+   type:'system-roster',status:'expired',weeklyWage:100,salary:100,
+   signedAt:new Date(start).toISOString(),expiresAt:new Date(start+10*86400000).toISOString()
+  }}
+ }]};
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-departed-payroll-'));
+ try {
+  const service=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+  now=start+14*86400000;
+  const first=service.settleSystemPayroll(now);
+  assert.equal(first.posted,1);
+  assert.equal(first.unpaid,0);
+  assert.equal(service.store.getAccount(club.id).totalExpenses,100);
+  now=start+21*86400000;
+  const later=service.settleSystemPayroll(now);
+  assert.equal(later.posted,0);
+  assert.equal(service.store.getAccount(club.id).totalExpenses,100);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
+test('P27 paie système : les arriérés d’un joueur parti restent payables après redémarrage',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'departed-restart-club',budget:1000,roster:[],releasedPlayers:[{
+  releasedAt:new Date(start+8*86400000).toISOString(),reason:'player-departed',
+  player:{id:'departed-restart-player',name:'Joueur Historique',playerType:'system',contract:{
+   id:'departed-restart-contract',clubId:'departed-restart-club',playerId:'departed-restart-player',
+   type:'system-roster',status:'active',weeklyWage:80,salary:80,
+   signedAt:new Date(start).toISOString()
+  }}
+ }]};
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-departed-payroll-restart-'));
+ try {
+  const first=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+  now=start+14*86400000;
+  assert.equal(first.settleSystemPayroll(now).posted,2);
+  const restarted=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+  assert.equal(restarted.settleSystemPayroll(now).posted,0);
+  assert.equal(restarted.store.getAccount(club.id).totalExpenses,160);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
