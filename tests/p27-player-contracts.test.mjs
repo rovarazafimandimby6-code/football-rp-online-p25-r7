@@ -51,3 +51,28 @@ test('P27 joueurs libres : refuse les identifiants inconnus et les carrières hu
  assert.equal(manager.removePlayer(source.id,human.id),true);
  assert.equal(manager.signFreeAgent(target.id,human.id).reason,'human-career-managed');
 });
+
+test('P27 contrats IA : mémorise un refus sportif, libère le joueur à échéance et recrute un remplaçant',()=>{
+ const values=new Map();
+ const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+ const key='p27-ai-renewal-decline';
+ const manager=new ClubManager(undefined,storage,key);
+ const club=manager.getClub('antananarivo-fc');
+ const original=club.roster[0];
+ const declined=manager.updatePlayer(club.id,{...original,age:35,rating:Math.max(1,club.rating-20),loyalty:{clubLoyalty:10,transferWillingness:90,departurePolicy:'ambitious'}});
+ assert.equal(declined.ok,true);
+ const signedAt=Date.UTC(2027,0,1);
+ assert.equal(manager.setSystemPlayerContractTerm(club.id,original.id,{signedAt,durationWeeks:4}).ok,true);
+ const decision=manager.processSystemContractRenewals({now:signedAt+1,weeklyWageBudgets:{[club.id]:1000000}});
+ assert.ok(decision.declined.some(item=>item.playerId===original.id&&item.reason==='sporting-policy-declined'));
+ const restored=new ClubManager(undefined,storage,key);
+ const persisted=restored.getClub(club.id).roster.find(item=>item.id===original.id);
+ assert.equal(persisted.contract.renewalDecision,'declined');
+ assert.equal(persisted.contract.renewalDeclineReason,'sporting-policy-declined');
+ const expired=restored.expireSystemPlayerContracts({now:signedAt+28*24*60*60*1000});
+ assert.ok(expired.expired.some(item=>item.playerId===original.id));
+ assert.equal(restored.getClub(club.id).releasedPlayers.at(-1).reason,'contract-not-renewed');
+ const recruited=restored.replenishSystemRosterVacancies({clubIds:[club.id],now:signedAt+28*24*60*60*1000});
+ assert.equal(recruited.recruited.length,1);
+ assert.equal(restored.getClub(club.id).roster.length,12);
+});
