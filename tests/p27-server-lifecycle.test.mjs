@@ -1,0 +1,56 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+test('P27 serveur : readiness contrôle les secrets et stockages, puis SIGTERM flush les salons actifs', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'p27-server-lifecycle-'));
+  const envPaths = {
+    RESULTS_DIR:'results',
+    CAREERS_DIR:'careers',
+    PLAYER_PROGRESSION_DIR:'progression',
+    PLAYER_PROFILES_DIR:'profiles',
+    COMPETITIONS_DIR:'competitions',
+    TRANSFERS_DIR:'transfers',
+    FINANCES_DIR:'finances',
+    CLUB_ROSTERS_DIR:'rosters',
+    SYSTEM_TRANSFERS_DIR:'system-transfers',
+    ROOMS_DIR:'rooms',
+    ACCOUNTS_DIR:'accounts',
+  };
+  const original = Object.fromEntries([...Object.keys(envPaths), 'P27_ADMIN_TOKEN'].map(key => [key, process.env[key]]));
+  let server, shutdownP27Server, manager;
+  try {
+    for (const [key, directory] of Object.entries(envPaths)) process.env[key] = path.join(root, directory);
+    process.env.P27_ADMIN_TOKEN = 'p27-lifecycle-test-secret-0123456789abcdef';
+    ({ server, shutdownP27Server, manager } = await import('../server/index.js'));
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const health = await fetch(`${base}/health`);
+    assert.equal(health.status, 200);
+    assert.equal((await health.json()).status, 'live');
+    const readiness = await fetch(`${base}/readyz`);
+    assert.equal(readiness.status, 200);
+    const ready = await readiness.json();
+    assert.equal(ready.status, 'ready');
+    assert.equal(ready.storage.length, 11);
+
+    const room = manager.create({ name: 'Arrêt propre' });
+    manager.join(room.id, { displayName: 'Joueur de test' });
+    const report = await shutdownP27Server();
+    assert.deepEqual(report, { saved: 1, failed: [] });
+    assert.equal(server.listening, false);
+    const persisted = JSON.parse(readFileSync(path.join(root, 'rooms', 'active-rooms.json'), 'utf8'));
+    assert.equal(persisted.rooms.length, 1);
+    assert.equal(persisted.rooms[0].id, room.id);
+    assert.equal(persisted.rooms[0].phase, 'playing');
+  } finally {
+    if (server?.listening && shutdownP27Server) await shutdownP27Server();
+    for (const [key, value] of Object.entries(original)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
