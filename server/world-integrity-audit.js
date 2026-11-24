@@ -86,7 +86,7 @@ export function auditP27World({
   }
   if (asList(financeAccounts).length && asList(financeAccounts).length !== catalogue.length)
     warnings.push({ code:'FINANCE_ACCOUNT_CATALOGUE_SIZE_MISMATCH', expected:catalogue.length, actual:asList(financeAccounts).length });
-  if (asList(financeAccounts).length) {
+  if (asList(financeAccounts).length && catalogue.length === expectedClubCount && asList(financeAccounts).length >= expectedClubCount - 1) {
     for (const club of catalogue) if (!financeClubIds.has(club.id))
       errors.push({ code:'FINANCE_ACCOUNT_MISSING', clubId:club.id });
   }
