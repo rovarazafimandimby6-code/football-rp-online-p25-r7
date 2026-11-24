@@ -379,7 +379,7 @@ export class RoomManager {
     });
     room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
     if (this.careerStore) {
-      for (const player of players) {
+      for (const player of performance.players) {
         const livePlayer = room.players.get(player.playerId);
         if (!player.careerPlayerId || player.minutesPlayedMs < 15_000) continue;
         const outcome = blue === red ? 'draw' : (player.team === (blue > red ? 'blue' : 'red') ? 'win' : 'loss');
@@ -391,8 +391,10 @@ export class RoomManager {
           rating: player.rating, minutesPlayedMs: player.minutesPlayedMs,
           playerOfMatch: performance.awards.playerOfMatch?.playerId === player.playerId,
           cleanSheet: (player.team === 'blue' ? red : blue) === 0,
-          stats: player.stats
-        });
+          stats: player.stats, name: player.name, clubName: teamName
+        };
+        this.careerStore.recordPlayerMatch(player.careerPlayerId, careerInput);
+        if (livePlayer?.accountId && !player.isBot) this.careerStore.recordMatch(livePlayer.accountId, careerInput);
       }
     }
     this.resultStore?.save(room.result);
