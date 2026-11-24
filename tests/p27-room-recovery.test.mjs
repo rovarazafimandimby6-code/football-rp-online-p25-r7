@@ -96,3 +96,33 @@ test('P27 salons persistés : les identifiants de joueurs dupliqués invalident 
     assert.throws(() => new RoomManager({ roomStore: store }), /ROOM_STORE_CORRUPT/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('P27 salons persistés : le tick serveur produit automatiquement un checkpoint périodique', () => {
+  const directory = temporaryDirectory('p27-room-periodic-');
+  try {
+    let now = 1_000;
+    const roomStore = new JsonRoomStore(directory);
+    const first = new RoomManager({ now: () => now, roomStore });
+    const created = first.create();
+    first.join(created.id, { displayName: 'Joueur périodique' });
+    now = 2_250;
+    first.tick(0.05);
+    const saved = roomStore.readAll().find(room => room.id === created.id);
+    assert.ok(saved);
+    assert.equal(saved.phase, 'playing');
+    assert.equal(saved.elapsedMs, 1_250);
+    const restarted = new RoomManager({ now: () => now, roomStore: new JsonRoomStore(directory) });
+    assert.equal(restarted.get(created.id).elapsedMs, 1_250);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('P27 salons persistés : le plafond de salons refuse une nouvelle sauvegarde sans évincer un match', () => {
+  const directory = temporaryDirectory('p27-room-capacity-');
+  try {
+    const store = new JsonRoomStore(directory, { maxRooms: 1 });
+    const snapshot = id => ({ id, phase: 'lobby', elapsedMs: 0, updatedAt: 1, score: { blue: 0, red: 0 }, players: [] });
+    store.save(snapshot('room-one'));
+    assert.throws(() => store.save(snapshot('room-two')), /ROOM_STORE_CAPACITY_EXCEEDED/);
+    assert.deepEqual(store.readAll().map(room => room.id), ['room-one']);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
