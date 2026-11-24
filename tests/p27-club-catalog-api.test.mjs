@@ -54,3 +54,11 @@ test('P27 catalogue public : reflète les affectations de division de la saison 
 });
 
 test('P27 identity of club management is public without exposing manager identifiers',()=>{ for(const club of listPublicClubs({limit:100}).clubs){ assert.ok(['human','system'].includes(club.managementType)); assert.equal(Object.hasOwn(club,'managerId'),false); } });
+
+
+test('P27 catalogue public : trie les conférences avec les identifiants A/B/C/D approuvés',()=>{
+ const d4=listPublicClubs({division:'D4',limit:100}).clubs;
+ const d5=listPublicClubs({division:'D5',limit:100}).clubs;
+ assert.deepEqual([...new Set(d4.map(club=>club.conference))],['A','B']);
+ assert.deepEqual([...new Set(d5.map(club=>club.conference))],['A','B','C','D']);
+});
