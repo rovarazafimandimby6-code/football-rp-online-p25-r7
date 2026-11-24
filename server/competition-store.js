@@ -205,6 +205,8 @@ export class JsonCompetitionStore {
     for(const [division,conference] of REQUIRED_PROMOTION_PLAYOFFS) {
       const league=season.competitions.find(item=>item.type==='league'&&item.division===division&&(item.conference||null)===conference);
       if(!league||league.status!=='completed')continue;
+      const expectedCount=conference?16:({D2:20,D3:24}[division]);
+      if(!Array.isArray(league.standings)||league.standings.length!==expectedCount)continue;
       const existing=season.competitions.find(item=>item.type==='promotion-playoff'&&item.division===division&&(item.conference||null)===conference);
       if(existing)continue;
       season.competitions.push(createPromotionPlayoff({seasonId:season.id,division,conference,standings:league.standings}));
