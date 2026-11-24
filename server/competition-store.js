@@ -482,6 +482,63 @@ export class JsonCompetitionStore {
     }
     return { ok:true, clubs:records.length, completedSeasons:completedSeasonIds.size };
   }
+  competitionHistoricalRecords() {
+    const records = [];
+    for (const season of this.state.seasons) {
+      for (const competition of season.competitions || []) {
+        const clubs = new Map();
+        const addClub = id => {
+          if (!id || !this.clubs.has(id)) return null;
+          if (!clubs.has(id)) clubs.set(id, {
+            clubId:id, clubName:competition.members?.find(item=>item.id===id)?.name
+              || competition.standings?.find(item=>item.id===id)?.name || this.clubs.get(id).name,
+            matches:0,wins:0,draws:0,losses:0,goalsFor:0,goalsAgainst:0
+          });
+          return clubs.get(id);
+        };
+        for (const member of competition.members || []) addClub(member.id);
+        for (const row of competition.standings || []) addClub(row.id);
+        let completedFixtures = 0;
+        for (const fixture of competition.fixtures || []) {
+          if (fixture.status !== 'completed' || !fixture.result) continue;
+          const home=addClub(fixture.homeClubId), away=addClub(fixture.awayClubId);
+          if (!home || !away || !Number.isSafeInteger(fixture.result.home) ||
+              !Number.isSafeInteger(fixture.result.away) || fixture.result.home < 0 || fixture.result.away < 0) continue;
+          const hg=fixture.result.home, ag=fixture.result.away;
+          completedFixtures++; home.matches++; away.matches++;
+          home.goalsFor+=hg; home.goalsAgainst+=ag; away.goalsFor+=ag; away.goalsAgainst+=hg;
+          if(hg>ag){home.wins++;away.losses++;}
+          else if(ag>hg){away.wins++;home.losses++;}
+          else{home.draws++;away.draws++;}
+        }
+        records.push({
+          seasonId:season.id, competitionId:competition.id, competitionType:competition.type,
+          completedFixtures, clubs:[...clubs.values()].sort((a,b)=>a.clubId.localeCompare(b.clubId))
+        });
+      }
+    }
+    return records;
+  }
+  auditCompetitionHistoricalRecords(records = this.competitionHistoricalRecords()) {
+    const expected=this.competitionHistoricalRecords();
+    if(!Array.isArray(records)||records.length!==expected.length)
+      return {ok:false,reason:'historical-competition-count-mismatch',expected:expected.length,actual:records?.length??null};
+    const key=item=>`${item?.seasonId}|${item?.competitionId}`;
+    const actualByKey=new Map();
+    for(const item of records){
+      const id=key(item);
+      if(!item?.seasonId||!item?.competitionId||actualByKey.has(id))
+        return {ok:false,reason:'historical-competition-identity-invalid',competitionId:item?.competitionId||null};
+      actualByKey.set(id,item);
+    }
+    for(const source of expected){
+      const actual=actualByKey.get(key(source));
+      if(!actual||actual.competitionType!==source.competitionType||actual.completedFixtures!==source.completedFixtures||
+        JSON.stringify(actual.clubs)!==JSON.stringify(source.clubs))
+        return {ok:false,reason:'historical-competition-stat-mismatch',seasonId:source.seasonId,competitionId:source.competitionId};
+    }
+    return {ok:true,competitions:records.length,completedFixtures:records.reduce((sum,item)=>sum+item.completedFixtures,0)};
+  }
   headToHead(clubAId, clubBId) {
     const a = clean(clubAId, 80), b = clean(clubBId, 80);
     if (!a || !b || a === b || !this.clubs.has(a) || !this.clubs.has(b)) return null;
@@ -511,6 +568,7 @@ export class JsonCompetitionStore {
     const timelineAudit = auditSeasonTimeline(this.state);
     const archiveAudit = auditSeasonArchives(this.state);
     const historicalAudit = this.auditHistoricalRecords();
-    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit,cupAudit,timelineAudit,archiveAudit,historicalAudit};
+    const competitionHistoryAudit = this.auditCompetitionHistoricalRecords();
+    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit,cupAudit,timelineAudit,archiveAudit,historicalAudit,competitionHistoryAudit};
   }
 }
