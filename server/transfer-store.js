@@ -36,7 +36,7 @@ export class JsonTransferStore {
    type:eventType,clubId:clubId||previousClubId||null,fromClubId:previousClubId||null,toClubId:clubId||null,
    salary:row.contract?.salary??null,fee:amount(fee),expiresAt:row.contract?.expiresAt??null,reason
   });
-  this.state.rosterSync.push({id:'roster-'+event.id,playerId:row.playerId,action,clubId,previousClubId,contract:row.contract?{...row.contract}:null,playerName:'Joueur humain',reason,status:'pending',attempts:0,createdAt:new Date(this.now()).toISOString(),lastError:null});
+  this.state.rosterSync.push({id:'roster-'+event.id,eventId:event.id,playerId:row.playerId,action,clubId,previousClubId,contract:row.contract?{...row.contract}:null,playerName:'Joueur humain',reason,status:'pending',attempts:0,createdAt:new Date(this.now()).toISOString(),lastError:null});
   this.state.rosterSync=this.state.rosterSync.slice(-10000);
  }
  pendingRosterSync(){return this.state.rosterSync.filter(item=>item.status==='pending').map(item=>structuredClone(item));}
