@@ -438,6 +438,42 @@ export class ClubManager {
     return { ok:true, expired };
   }
 
+  replenishSystemRosterVacancies({ clubIds = null } = {}) {
+    const selected = Array.isArray(clubIds) ? new Set(clubIds.map(safeId)) : null;
+    const usedNames = new Set([...this.clubs.values()].flatMap(item => item.roster.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase())));
+    const usedIds = new Set([...this.clubs.values()].flatMap(item => item.roster.map(player => player.id)));
+    const recruited = [];
+    for (const club of this.clubs.values()) {
+      if (selected && !selected.has(club.id)) continue;
+      const targetSize = Math.min(club.capacity, Math.max(0, Number(club.initialRosterSize) || club.capacity));
+      const vacancies = Math.max(0, targetSize - club.roster.length);
+      if (!vacancies) continue;
+      const candidates = generateClubRoster({ ...club, recruitmentProfile:club.recruitmentProfile }, { size:vacancies, usedNames });
+      for (let index = 0; index < candidates.length; index++) {
+        const candidate = candidates[index];
+        let serial = Math.max(1, club.releasedPlayers.length + club.roster.length + index + 1);
+        let id = '';
+        do {
+          id = safeId(`${club.id.slice(0,20)}-recruit-${serial}`);
+          serial++;
+        } while (!id || usedIds.has(id));
+        candidate.id = id;
+        candidate.number = availableShirtNumber(club, candidate.number);
+        candidate.contract = createSystemPlayerContract({ clubId:club.id, playerId:id, division:club.division, rating:candidate.rating });
+        candidate.playerType = 'system';
+        candidate.controlStatus = 'system';
+        candidate.appearance = candidate.appearance ? { ...candidate.appearance, kitColors:candidate.appearance.kitColors ? { ...candidate.appearance.kitColors } : null } : null;
+        if (!candidate.number) continue;
+        club.roster.push(candidate);
+        usedIds.add(id);
+        usedNames.add(candidate.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase());
+        recruited.push({ clubId:club.id, playerId:id, role:candidate.role, rating:candidate.rating });
+      }
+    }
+    if (recruited.length) this.saveSeason();
+    return { ok:true, recruited, clubsUpdated:[...new Set(recruited.map(item=>item.clubId))] };
+  }
+
   reviewSystemPlayerContract(clubId, playerId, { now = Date.now() } = {}) {
     const club = this.clubs.get(safeId(clubId));
     const player = club?.roster.find(item => item.id === safeId(playerId));

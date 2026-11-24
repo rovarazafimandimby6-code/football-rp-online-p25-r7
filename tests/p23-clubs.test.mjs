@@ -347,3 +347,42 @@ test('P27 contrats : renouvellement autonome ne devine jamais la trésorerie man
  assert.equal(result.renewed.length,0);
  assert.ok(result.declined.some(item=>item.reason==='budget-not-provided'));
 });
+
+
+test('P27 effectifs : le recrutement système comble les places libérées sans dépasser la cible',()=>{
+ const storage=memoryStorage();
+ const manager=new ClubManager(undefined,storage,'p27-roster-replenishment');
+ const club=manager.getClub('antananarivo-fc');
+ const original=club.roster.length;
+ const released=club.roster.slice(0,2);
+ for(const player of released) manager.expireSystemPlayerContracts({now:Date.now()+1000*60*60*24*365*10});
+ // Les contrats sans échéance restent actifs : retirer deux joueurs système pour simuler deux départs validés.
+ for(const player of released) manager.removePlayer(club.id,player.id);
+ const before=manager.getClub(club.id).roster.length;
+ const result=manager.replenishSystemRosterVacancies({clubIds:[club.id]});
+ const after=manager.getClub(club.id);
+ assert.equal(result.ok,true);
+ assert.equal(result.recruited.length,original-before);
+ assert.equal(after.roster.length,original);
+ assert.ok(after.roster.every(player=>player.playerType==='system' || player.playerType==='human'));
+ assert.ok(after.roster.filter(player=>player.playerType==='human').length<=7);
+ assert.equal(new Set(after.roster.map(player=>player.id)).size,after.roster.length);
+ assert.ok(result.recruited.every(item=>after.roster.some(player=>player.id===item.playerId && player.contract?.clubId===club.id)));
+ const restored=new ClubManager(undefined,storage,'p27-roster-replenishment');
+ assert.equal(restored.getClub(club.id).roster.length,original);
+});
+test('P27 effectifs : le recrutement ne dépasse jamais la capacité et ignore les clubs sans vacance',()=>{
+ const manager=new ClubManager();
+ const club=manager.getClub('antananarivo-fc');
+ assert.equal(manager.replenishSystemRosterVacancies({clubIds:[club.id]}).recruited.length,0);
+ assert.equal(manager.getClub(club.id).roster.length,club.capacity);
+});
+test('P27 effectifs : les identifiants des joueurs recrutés ne réutilisent pas ceux des joueurs libérés',()=>{
+ const manager=new ClubManager();
+ const club=manager.getClub('antananarivo-fc');
+ const departed=club.roster[0];
+ manager.removePlayer(club.id,departed.id);
+ const result=manager.replenishSystemRosterVacancies({clubIds:[club.id]});
+ assert.equal(result.recruited.length,1);
+ assert.notEqual(result.recruited[0].playerId,departed.id);
+});
