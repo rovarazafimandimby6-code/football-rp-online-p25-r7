@@ -23,6 +23,7 @@ function setup() {
   const transferStore=new JsonTransferStore(directory,{clubs,now:()=>now});
   return {
     directory,clubs,storage,clubManager,transferStore,
+    get now(){return now;},
     setNow(value){now=value;},
     cleanup(){rmSync(directory,{recursive:true,force:true});}
   };
