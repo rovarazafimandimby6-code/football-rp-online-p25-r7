@@ -18,6 +18,21 @@ test('P27 progression serveur : récompense calculée et persistée une seule fo
  }finally{f.cleanup();}
 });
 
+test('P27 progression serveur : une panne disque annule la récompense en mémoire et autorise une nouvelle tentative',()=>{
+ const f=fixture();try{
+  const before=f.store.get('account-retry');
+  const persist=f.store.persist.bind(f.store);
+  f.store.persist=()=>{throw new Error('DISK_FULL');};
+  assert.throws(()=>f.store.grantMatchReward('account-retry',{matchId:'match-retry',result:'win',minutesPlayedMs:180000,rating:8}),/DISK_FULL/);
+  assert.deepEqual(f.store.get('account-retry'),before);
+  assert.deepEqual(new JsonProgressionStore(f.directory).get('account-retry'),before);
+  f.store.persist=persist;
+  const retry=f.store.grantMatchReward('account-retry',{matchId:'match-retry',result:'win',minutesPlayedMs:180000,rating:8});
+  assert.equal(retry.duplicate,false);
+  assert.deepEqual(new JsonProgressionStore(f.directory).get('account-retry'),retry.progression);
+ }finally{f.cleanup();}
+});
+
 test('P27 progression serveur : comptes séparés et résultat nul/récompenses cohérentes',()=>{
  const f=fixture();try{
   const draw=f.store.grantMatchReward('account-a',{matchId:'draw-1',result:'draw',minutesPlayedMs:60000,rating:6});
@@ -49,5 +64,21 @@ test('P27 entraînement serveur : pratique encadrée et plafond de 99',()=>{
   const row=f.store.row('account-practice');row.progression.attributes.pace=99;
   const capped=f.store.train('account-practice','pace',1);
   assert.equal(capped.ok,false);assert.equal(capped.reason,'ATTRIBUTE_CAP');
+ }finally{f.cleanup();}
+});
+
+test('P27 entraînement serveur : une panne disque annule les changements de progression',()=>{
+ const f=fixture();try{
+  f.store.grantMatchReward('account-train-retry',{matchId:'reward-training',result:'win',minutesPlayedMs:300000,rating:10});
+  const before=f.store.get('account-train-retry');
+  const persist=f.store.persist.bind(f.store);
+  f.store.persist=()=>{throw new Error('DISK_FULL');};
+  assert.throws(()=>f.store.practice('account-train-retry','control',1),/DISK_FULL/);
+  assert.deepEqual(f.store.get('account-train-retry'),before);
+  assert.deepEqual(new JsonProgressionStore(f.directory).get('account-train-retry'),before);
+  f.store.persist=persist;
+  const retry=f.store.practice('account-train-retry','control',1);
+  assert.equal(retry.ok,true);
+  assert.deepEqual(new JsonProgressionStore(f.directory).get('account-train-retry'),retry.progression);
  }finally{f.cleanup();}
 });
