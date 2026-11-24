@@ -2,8 +2,8 @@
 
 Date de vérification : 24 novembre 2026  
 Branche : `p27-dev`  
-Commit code audité : à mettre à jour après validation CI du test de parcours complet de Coupe.  
-Workflow de référence : à mettre à jour après validation CI du test de parcours complet de Coupe.
+Commit code audité : `9a4790148f5480e5b21669ff37d349bd49367d60`  
+Workflow de référence : [GitHub Actions 45404323312](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45404323312)
 
 ## Résultat de l'audit
 
@@ -56,8 +56,10 @@ Le catalogue public expose également `managementType` (`human` ou `system`) san
 
 ## Validation CI
 
-- Le dernier run de référence avant l'ajout du test de parcours complet est vert : [45403947610](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45403947610).
-- Le nombre final de tests et le run associé seront renseignés après le contrôle CI du présent commit.
+- **531 tests réussis**
+- **0 échec**
+- Contrôle de syntaxe JavaScript exécuté avec succès
+- Le workflow CI du commit audité est vert : [45404323312](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45404323312)
 
 ## Décisions qui restent à approuver
 
