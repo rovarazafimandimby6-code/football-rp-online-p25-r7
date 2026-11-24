@@ -7,7 +7,7 @@ const cleanWorld=()=>({
   clubs:[{id:'club-a',division:'D1',conference:null,capacity:2,roster:[
     {id:'player-a',number:1,playerType:'system',contract:{status:'active',clubId:'club-a',playerId:'player-a'}}
   ]},{id:'club-b',division:'D1',conference:null,capacity:2,roster:[]}],
-  transferState:{careers:[{accountId:'account-a',clubId:'club-a',contract:{status:'active',clubId:'club-a'}}]},
+  transferState:{careers:[{accountId:'account-a',clubId:'club-a',contract:{status:'active',clubId:'club-a',salary:100,signedAt:'2026-01-01T00:00:00.000Z',expiresAt:'2027-01-01T00:00:00.000Z'}}]},
   financeAccounts:[{clubId:'club-a',openingBalance:100,balance:90,entries:[
     {id:'wage-1',amount:10,direction:'expense'}
   ]}],
@@ -114,4 +114,43 @@ test('P27 clubs : refuse les identifiants dupliqués dans les affectations offic
  assert.equal(result.ok,false);
  assert.equal(result.reason,'assignment-catalogue-mismatch');
  assert.equal(club.division,'D2');
+});
+
+
+test('P27 intégrité monde : contrôle les budgets et identités du catalogue mercato',()=>{
+ const input=cleanWorld();
+ input.transferState.clubs=[
+  {id:'club-a',budget:100000},
+  {id:'club-a',budget:-1},
+  {id:'unknown-club',budget:100}
+ ];
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('TRANSFER_CLUB_ID_INVALID_OR_DUPLICATE'));
+ assert.ok(codes.includes('TRANSFER_CLUB_UNKNOWN'));
+ assert.ok(codes.includes('TRANSFER_CLUB_BUDGET_INVALID'));
+ assert.ok(result.warnings.some(item=>item.code==='TRANSFER_CLUB_CATALOGUE_SIZE_MISMATCH'));
+});
+
+test('P27 intégrité monde : détecte contrats actifs invalides et comptes financiers dupliqués',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].contract.salary=-1;
+ input.transferState.careers[0].contract.expiresAt='2025-01-01T00:00:00.000Z';
+ input.financeAccounts.push({...input.financeAccounts[0]});
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('CAREER_CONTRACT_SALARY_INVALID'));
+ assert.ok(codes.includes('CAREER_CONTRACT_DATES_INVALID'));
+ assert.ok(codes.includes('FINANCE_ACCOUNT_DUPLICATE'));
+});
+
+test('P27 intégrité monde : refuse les identifiants de saison et de compétition dupliqués',()=>{
+ const input=cleanWorld();
+ const season=structuredClone(input.competitionState.seasons[0]);
+ season.competitions[0].id='league-a';
+ input.competitionState.seasons.push(season);
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('SEASON_ID_INVALID_OR_DUPLICATE'));
+ assert.ok(codes.includes('COMPETITION_ID_INVALID_OR_DUPLICATE'));
 });
