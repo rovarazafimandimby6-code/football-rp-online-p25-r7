@@ -8,9 +8,9 @@ const normalizeLabel = value => String(value ?? '').normalize('NFD').replace(/[\
 const validHex = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
 
 /**
- * Strict audit of the persistent 156-club world. This validates source data,
- * competition placement, club identity, visual identity and roster invariants.
- * It never fills missing data or guesses an unknown geographic conference.
+ * Strict audit of the persistent 156-club world. Source catalogue entries may
+ * omit runtime-only roster and kit fields: ClubManager seeds rosters and uses
+ * the documented "central" kit fallback. Invalid supplied values still fail.
  */
 export function auditClubCatalog(clubs = []) {
   const list = Array.isArray(clubs) ? clubs : [];
@@ -77,10 +77,11 @@ export function auditClubCatalog(clubs = []) {
     } else quality.budgeted++;
 
     const colors = Array.isArray(club.colors) ? club.colors : [];
+    const effectiveKitDesign = club.kitDesign ?? 'central';
     if (colors.length !== 3 || !colors.every(validHex) || new Set(colors.map(value=>value.toLowerCase())).size !== 3) {
       addIssue(issues, 'error', 'invalid-club-color-palette', { clubId:id });
-    } else if (!KIT_DESIGNS.has(club.kitDesign)) {
-      addIssue(issues, 'error', 'invalid-club-kit-design', { clubId:id, kitDesign:club.kitDesign ?? null });
+    } else if (!KIT_DESIGNS.has(effectiveKitDesign)) {
+      addIssue(issues, 'error', 'invalid-club-kit-design', { clubId:id, kitDesign:effectiveKitDesign });
     } else quality.visualIdentities++;
 
     if (division === 'D4' || division === 'D5') {
@@ -94,15 +95,24 @@ export function auditClubCatalog(clubs = []) {
     }
 
     const capacity = Number(club.capacity);
-    const roster = Array.isArray(club.roster) ? club.roster : [];
+    const rosterProvided = Array.isArray(club.roster);
+    const roster = rosterProvided ? club.roster : [];
     if (!Number.isInteger(capacity) || capacity < 1 || capacity > 12) {
       addIssue(issues, 'error', 'invalid-roster-capacity', { clubId:id, capacity });
     }
-    if (roster.length > capacity || roster.length > 12) {
-      addIssue(issues, 'error', 'roster-over-capacity', { clubId:id, rosterSize:roster.length, capacity });
+    if (rosterProvided) {
+      if (roster.length > capacity || roster.length > 12) {
+        addIssue(issues, 'error', 'roster-over-capacity', { clubId:id, rosterSize:roster.length, capacity });
+      }
+      if (roster.length < 8) addIssue(issues, 'error', 'roster-under-minimum', { clubId:id, rosterSize:roster.length, minimum:8 });
+      else quality.rostered++;
+    } else {
+      const targetSize = Number(club.initialRosterSize ?? capacity);
+      if (!Number.isInteger(targetSize) || targetSize < 8 || targetSize > capacity) {
+        addIssue(issues, 'error', 'invalid-initial-roster-target', { clubId:id, targetSize, capacity });
+      } else quality.rostered++;
     }
-    if (roster.length < 8) addIssue(issues, 'error', 'roster-under-minimum', { clubId:id, rosterSize:roster.length, minimum:8 });
-    else quality.rostered++;
+
     const humanPlayers = roster.filter(player => player?.playerType === 'human');
     if (humanPlayers.length > 7) addIssue(issues, 'error', 'human-player-limit-exceeded', { clubId:id, humanPlayers:humanPlayers.length, maximum:7 });
     const shirtNumbers = new Set();
@@ -147,19 +157,13 @@ export function auditClubCatalog(clubs = []) {
 
   for (const division of LEAGUE_DIVISIONS) {
     const actual = divisionCounts[division.id];
-    if (actual !== division.targetClubs) {
-      addIssue(issues, 'warning', 'division-count-incomplete', { division:division.id, expected:division.targetClubs, actual });
-    }
-    if (systemOnlyCounts[division.id] < 1) {
-      addIssue(issues, 'warning', 'system-only-club-missing', { division:division.id });
-    }
+    if (actual !== division.targetClubs) addIssue(issues, 'warning', 'division-count-incomplete', { division:division.id, expected:division.targetClubs, actual });
+    if (systemOnlyCounts[division.id] < 1) addIssue(issues, 'warning', 'system-only-club-missing', { division:division.id });
   }
 
   for (const division of ['D4','D5']) {
     for (const [conference, actual] of Object.entries(conferenceCounts[division])) {
-      if (actual !== 16) {
-        addIssue(issues, 'warning', 'conference-count-incomplete', { division, conference, expected:16, actual });
-      }
+      if (actual !== 16) addIssue(issues, 'warning', 'conference-count-incomplete', { division, conference, expected:16, actual });
     }
   }
 
@@ -170,14 +174,11 @@ export function auditClubCatalog(clubs = []) {
     totalClubs: list.length,
     expectedTotal: TOTAL_LEAGUE_CLUBS,
     divisionCounts: Object.freeze(divisionCounts),
-    conferenceCounts: Object.freeze({
-      D4:Object.freeze({ ...conferenceCounts.D4 }),
-      D5:Object.freeze({ ...conferenceCounts.D5 })
-    }),
+    conferenceCounts: Object.freeze({ D4:Object.freeze({ ...conferenceCounts.D4 }), D5:Object.freeze({ ...conferenceCounts.D5 }) }),
     systemOnlyCounts: Object.freeze(systemOnlyCounts),
     quality:Object.freeze({ ...quality }),
-    errors: Object.freeze(errors),
-    warnings: Object.freeze(warnings),
-    issues: Object.freeze(issues)
+    errors:Object.freeze(errors),
+    warnings:Object.freeze(warnings),
+    issues:Object.freeze(issues)
   });
 }

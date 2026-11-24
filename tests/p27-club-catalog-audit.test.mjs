@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_CLUBS } from '../src/club-manager.js';
+import { DEFAULT_CLUBS, ClubManager } from '../src/club-manager.js';
 import { P27_EXPANSION_CLUBS, P27_EXPANSION_COUNTS } from '../src/p27-club-expansion.js';
 import { auditClubCatalog } from '../src/club-catalog-validation.js';
 
@@ -23,7 +23,7 @@ test('P27 audit catalogue : contrôle les 156 identités, localisations et équi
 });
 
 test('P27 audit catalogue : détecte doublons d’identité et incohérences de données', () => {
-  const clubs = DEFAULT_CLUBS.map(club => ({ ...club, location:club.location ? { ...club.location } : null, colors:[...club.colors], roster:club.roster.map(player=>({ ...player })) }));
+  const clubs = new ClubManager().listClubs();
   clubs[1].name = clubs[0].name;
   clubs[1].stadium = clubs[0].stadium;
   clubs[1].colors[0] = 'rouge';
