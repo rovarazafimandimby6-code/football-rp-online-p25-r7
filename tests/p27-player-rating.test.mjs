@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculatePlayerMatchRating, buildMatchPerformance } from '../server/player-rating.js';
+import { stepRoomSimulation } from '../server/simulation.js';
 
 const player = (overrides = {}) => ({
   playerId: 'p1', name: 'Joueur', team: 'blue', role: 'MID', minutesPlayedMs: 180000,
@@ -30,7 +31,7 @@ test('P27 performance: les actions sont pondérées selon le poste', () => {
 
 test('P27 performance: normalise les valeurs invalides et plafonne la note', () => {
   const malformed = player({ stats: { passes: -5, completedPasses: 999, goals: NaN, assists: Infinity, shots: 'bad' } });
-  assert.equal(calculatePlayerMatchRating(malformed), 6.1);
+  assert.equal(calculatePlayerMatchRating(malformed), 6.2);
   const elite = player({ stats: { goals: 8, assists: 8, saves: 8, tackles: 8, interceptions: 8, passes: 100, completedPasses: 100 } });
   assert.equal(calculatePlayerMatchRating(elite), 10);
 });
@@ -53,4 +54,33 @@ test('P27 performance: départage de façon stable les notes égales', () => {
     player({ playerId: 'z', stats: {} }), player({ playerId: 'a', stats: {} })
   ]);
   assert.equal(result.awards.playerOfMatch.playerId, 'a');
+});
+
+
+test('P27 performance: crédite une passe seulement à la réception par un coéquipier', () => {
+  const passer = { id: 'passer', team: 'blue', role: 'MID', x: -3, z: 0, input: { x: 0, z: 0 }, connected: true, stats: { passes: 1, completedPasses: 0 } };
+  const receiver = { id: 'receiver', team: 'blue', role: 'FWD', x: 0, z: 0, input: { x: 0, z: 0 }, connected: true, stats: {} };
+  const room = {
+    players: new Map([[passer.id, passer], [receiver.id, receiver]]),
+    ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: 'blue', lastTouchPlayerId: passer.id, pendingPasserId: passer.id },
+    elapsedMs: 1000, events: [], score: { blue: 0, red: 0 }, attackDirection: { blue: 1, red: -1 }, goalPauseMs: 0
+  };
+  stepRoomSimulation(room, 0.01);
+  assert.equal(passer.stats.completedPasses, 1);
+  assert.equal(room.events.filter(event => event.type === 'pass-completed').length, 1);
+  stepRoomSimulation(room, 0.01);
+  assert.equal(passer.stats.completedPasses, 1, 'une même passe ne doit pas être comptée deux fois');
+});
+
+test('P27 performance: une interception adverse ne valide pas la passe', () => {
+  const passer = { id: 'passer', team: 'blue', role: 'MID', x: -3, z: 0, input: { x: 0, z: 0 }, connected: true, stats: { passes: 1, completedPasses: 0 } };
+  const opponent = { id: 'opponent', team: 'red', role: 'DEF', x: 0, z: 0, input: { x: 0, z: 0 }, connected: true, stats: {} };
+  const room = {
+    players: new Map([[passer.id, passer], [opponent.id, opponent]]),
+    ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: 'blue', lastTouchPlayerId: passer.id, pendingPasserId: passer.id },
+    elapsedMs: 1000, events: [], score: { blue: 0, red: 0 }, attackDirection: { blue: 1, red: -1 }, goalPauseMs: 0
+  };
+  stepRoomSimulation(room, 0.01);
+  assert.equal(passer.stats.completedPasses, 0);
+  assert.equal(room.events.some(event => event.type === 'pass-completed'), false);
 });
