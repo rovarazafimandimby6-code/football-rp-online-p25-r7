@@ -67,7 +67,28 @@ export function auditLeagueSchedule(competition) {
     if(expectedLegs===2 ? homeCounts.get(id)!==awayCounts.get(id) : Math.abs(homeCounts.get(id)-awayCounts.get(id))>1)
       return fail('unbalanced-home-away-count',{clubId:id,home:homeCounts.get(id),away:awayCounts.get(id)});
   }
-  return {ok:true,division:competition.division,conference:competition.conference||null,matchFormat:format,legs:expectedLegs,clubs:expected,rounds:expectedRounds,fixtures:fixtures.length,appearancesPerClub:expectedRounds};
+  const standings=Array.isArray(competition.standings)?competition.standings:[];
+  if(standings.length!==expected||new Set(standings.map(row=>row?.id)).size!==expected||standings.some(row=>!ids.has(row.id)))
+    return fail('invalid-league-standings-members',{expected,actual:standings.length});
+  const calculated=new Map([...ids].map(id=>[id,{played:0,wins:0,draws:0,losses:0,goalsFor:0,goalsAgainst:0,points:0}]));
+  for(const fixture of fixtures) {
+    if(fixture.status!=='completed')continue;
+    const home=calculated.get(fixture.homeClubId),away=calculated.get(fixture.awayClubId);
+    const hg=fixture.result.home,ag=fixture.result.away;
+    if(hg>99||ag>99)return fail('completed-fixture-result-invalid',{fixtureId:fixture.id});
+    home.played++;away.played++;home.goalsFor+=hg;home.goalsAgainst+=ag;away.goalsFor+=ag;away.goalsAgainst+=hg;
+    if(hg>ag){home.wins++;home.points+=3;away.losses++;}
+    else if(ag>hg){away.wins++;away.points+=3;home.losses++;}
+    else{home.draws++;away.draws++;home.points++;away.points++;}
+  }
+  for(const row of standings) {
+    const expectedStats=calculated.get(row.id);
+    for(const key of ['played','wins','draws','losses','goalsFor','goalsAgainst','points']) {
+      if(!Number.isSafeInteger(row[key])||row[key]<0||row[key]!==expectedStats[key])
+        return fail('league-standings-fixture-mismatch',{clubId:row.id,field:key,expected:expectedStats[key],actual:row[key]});
+    }
+  }
+  return {ok:true,division:competition.division,conference:competition.conference||null,matchFormat:format,legs:expectedLegs,clubs:expected,rounds:expectedRounds,fixtures:fixtures.length,completedFixtures:fixtures.filter(item=>item.status==='completed').length,appearancesPerClub:expectedRounds};
 }
 
 export function auditLeagueSchedules(competitions=[]) {
