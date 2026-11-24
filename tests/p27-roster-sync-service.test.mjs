@@ -148,3 +148,19 @@ test('P27 effectif : le précontrôle refuse un effectif plein avant création d
   assert.deepEqual(f.clubManager.canAcceptHuman('club-a','human-overflow'),{ok:false,reason:'roster-full'});
  }finally{f.cleanup();}
 });
+
+test('P27 saga effectif : refuse un checkpoint qui retourne un échec sans marquer la commande comme traitée',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-roster-false-checkpoint',{clubId:'club-a',salary:500,durationDays:365});
+  f.transferStore.completeRosterSync=()=>({ok:false,reason:'checkpoint-not-found'});
+  const first=processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  assert.equal(first.ok,false);
+  assert.equal(first.pending,1);
+  assert.equal(first.processed.length,0);
+  assert.equal(f.transferStore.pendingRosterSync()[0].attempts,1);
+  f.transferStore.completeRosterSync=()=>({ok:true});
+  const retry=processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  assert.equal(retry.ok,true);
+  assert.equal(f.clubManager.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
+ }finally{f.cleanup();}
+});
