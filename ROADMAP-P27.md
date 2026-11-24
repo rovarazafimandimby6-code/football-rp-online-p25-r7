@@ -579,3 +579,27 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Conserver les règles existantes de disponibilité, de temps de retour et d'authentification sans les réécrire.
 - Limite : ces tests valident le moteur de rotation serveur existant ; l'interface spectateur du banc et les commandes tactiles dynamiques restent à réaliser et à vérifier sur Android.
 - Validation GitHub Actions sur le commit `d456f66adb8ca8c6d26da03b3620bfef2fa0a478` : 553/553 tests réussis, 0 échec ; contrôle syntaxique JavaScript réussi.
+
+
+### Lot 52 — progression compétitive autoritaire côté serveur (intégré)
+- [x] Ajouter un stockage de progression indexé par compte, séparé du profil cosmétique.
+- [x] Calculer les récompenses XP/crédits à partir du résultat final du serveur, du temps de jeu et de la note calculée.
+- [x] Créditer uniquement les joueurs humains authentifiés ayant joué au moins 15 secondes.
+- [x] Rendre le crédit idempotent par identifiant de match et persistant après redémarrage.
+- [x] Ne jamais accepter un niveau, un solde ou une récompense librement soumis par le client.
+- [x] Conserver le résultat final en attente tant que la progression n'a pas été enregistrée ; les nouvelles tentatives restent idempotentes.
+- Limite : les récompenses concernent les matchs en ligne finalisés par ce serveur ; les anciennes progressions locales ne sont pas automatiquement converties en soldes officiels.
+
+### Lot 53 — entraînement et amélioration des attributs côté serveur (intégré)
+- [x] Déplacer les actions d'entraînement encadré et de pratique vers le stockage serveur.
+- [x] Contrôler les ressources, les coûts, les plafonds d'attributs et les identifiants d'attribut côté serveur.
+- [x] Refuser les actions non autorisées et les demandes de modification arbitraire de progression.
+- [x] Exposer des routes authentifiées de lecture et d'action ; les réponses retournent le nouvel état officiel.
+- Limite : le client local conserve encore ses anciens outils d'entraînement hors ligne ; l'interface de migration et de bascule complète vers le mode connecté reste à finaliser.
+
+### Lot 54 — tableau de bord de progression officielle (intégré)
+- [x] Ajouter au compte le niveau, l'expérience, les crédits et les points d'entraînement serveur.
+- [x] Afficher les six attributs officiels avec leur plafond de 99.
+- [x] Charger l'état depuis la route authentifiée ; ne pas afficher les valeurs locales comme progression compétitive officielle.
+- [x] Couvrir les récompenses, la persistance, les actions d'entraînement et la protection API par des tests.
+- Limite : le tableau de bord est en lecture ; les contrôles tactiles d'entraînement connectés et la transition guidée depuis les sauvegardes locales restent à intégrer.
