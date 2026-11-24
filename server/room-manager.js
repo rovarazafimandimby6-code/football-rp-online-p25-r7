@@ -375,7 +375,7 @@ export class RoomManager {
     }));
     const performance = buildMatchPerformance(players);
     const blue = room.score.blue, red = room.score.red;
-    room.result = Object.freeze({
+    const finalizedResult = Object.freeze({
       roomId: room.id, phase: 'fulltime', score: Object.freeze({ blue, red }),
       teams: Object.freeze(cloneMatchTeams(room.teams)),
       outcome: blue === red ? 'draw' : blue > red ? 'blue' : 'red',
@@ -387,12 +387,14 @@ export class RoomManager {
         red: Object.freeze({ passes: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.passes,0), completedPasses: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.completedPasses,0), shots: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.interceptions,0) }),
       }),
     });
-    room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
+    let committedResult = finalizedResult;
     if (room.competitionFixtureId) {
-      const competitionResult = this.competitionStore?.recordFixtureResult(room.competitionFixtureId, { roomId: room.id, homeGoals: blue, awayGoals: red, finalizedAt: room.result.finalizedAt });
-      if (!competitionResult?.ok) throw new Error(competitionResult?.reason || 'COMPETITION_RESULT_REJECTED');
-      room.result = Object.freeze({ ...room.result, competition: { fixtureId: room.competitionFixtureId, result: competitionResult.fixture.result } });
+      const competitionResult = this.competitionStore?.recordFixtureResult(room.competitionFixtureId, { roomId: room.id, homeGoals: blue, awayGoals: red, finalizedAt: finalizedResult.finalizedAt });
+      if (!competitionResult?.ok || !competitionResult.fixture?.result) throw new Error(competitionResult?.reason || 'COMPETITION_RESULT_REJECTED');
+      committedResult = Object.freeze({ ...finalizedResult, competition: { fixtureId: room.competitionFixtureId, result: competitionResult.fixture.result } });
     }
+    room.result = committedResult;
+    room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
     if (this.careerStore) {
       for (const player of performance.players) {
         const livePlayer = room.players.get(player.playerId);
