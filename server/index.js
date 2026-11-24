@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import { JsonResultStore } from './result-store.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -425,8 +425,12 @@ const server = http.createServer(async (req, res) => {
       const target = path.resolve(APP_ROOT, relative);
       if (target !== APP_ROOT && !target.startsWith(APP_ROOT + path.sep)) return json(res, 403, { error: 'FORBIDDEN' });
       try {
-        const content = await readFile(target);
-        res.writeHead(200, { 'content-type': MIME[path.extname(target).toLowerCase()] || 'application/octet-stream', 'x-content-type-options': 'nosniff', 'cache-control': path.extname(target) === '.html' ? 'no-cache' : 'public, max-age=3600' });
+        // Lexical traversal checks do not stop a public symlink from pointing outside APP_ROOT.
+        const resolvedTarget = await realpath(target);
+        if (resolvedTarget !== APP_ROOT && !resolvedTarget.startsWith(APP_ROOT + path.sep))
+          return json(res, 403, { error:'FORBIDDEN' });
+        const content = await readFile(resolvedTarget);
+        res.writeHead(200, { 'content-type': MIME[path.extname(resolvedTarget).toLowerCase()] || 'application/octet-stream', 'x-content-type-options': 'nosniff', 'cache-control': path.extname(resolvedTarget) === '.html' ? 'no-cache' : 'public, max-age=3600' });
         return res.end(content);
       } catch { return json(res, 404, { error: 'NOT_FOUND' }); }
     }
