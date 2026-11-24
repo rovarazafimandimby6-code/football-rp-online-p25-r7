@@ -9,13 +9,16 @@ function fillTeams(manager, roomId) {
   return joined;
 }
 
-test('P24 : les bots complètent les deux équipes et permettent de lancer le match dès le premier humain', () => {
+test('P27 : les bots complètent un vrai 5 contre 5 et lancent le match dès le premier humain', () => {
   const manager = new RoomManager();
   const room = manager.create();
   const first = manager.join(room.id, { displayName: 'Humain 1' });
   assert.equal(first.state.phase, 'playing');
-  assert.deepEqual(first.state.counts, { blue: 3, red: 3 });
-  assert.equal(first.state.players.filter(p => p.isBot).length, 5);
+  assert.deepEqual(first.state.counts, { blue: 5, red: 5 });
+  assert.equal(first.state.players.filter(p => p.isBot).length, 9);
+  assert.equal(first.state.players.filter(p => p.team === 'blue').length, 5);
+  assert.equal(first.state.players.filter(p => p.team === 'red').length, 5);
+  assert.deepEqual(first.state.players.filter(p => p.team === 'blue').map(p => p.role).sort(), ['DEF','FWD','FWD','GK','MID'].sort());
   assert.equal(first.state.players.filter(p => !p.isBot).length, 1);
 });
 
@@ -59,6 +62,35 @@ test('serveur multijoueur : rejette les entrées anciennes et non numériques', 
   manager.submitInput(room.id, token, { x: 0.5, z: 0, sequence: 2 });
   assert.throws(() => manager.submitInput(room.id, token, { x: 0, z: 1, sequence: 2 }), /STALE_INPUT/);
   assert.throws(() => manager.submitInput(room.id, token, { x: 'NaN', z: 0, sequence: 3 }), /INVALID_INPUT/);
+});
+
+test('P27 : le temps de jeu individuel s’accumule uniquement pendant les phases jouées et figure au résultat', () => {
+  let now = 10_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create({ durationMinutes: 3 });
+  const joined = manager.join(room.id, { displayName: 'Temps de jeu' });
+  for (let i = 0; i < 4; i++) { now += 250; manager.tick(0.05); }
+  const state = manager.get(room.id);
+  const player = state.players.find(candidate => candidate.id === joined.playerId);
+  assert.equal(player.matchTimePlayedMs, 1_000);
+  assert.equal(player.isOnPitch, true);
+  const internal = manager.rooms.get(room.id);
+  const resultPlayers = manager.finalizeResult({ ...internal, phase: 'fulltime', result: null, score: { blue: 0, red: 0 } }).players;
+  assert.equal(resultPlayers.find(candidate => candidate.playerId === joined.playerId).minutesPlayedMs, 1_000);
+});
+
+test('P27 : le 5 contre 5 conserve cinq avatars actifs par équipe après une déconnexion', () => {
+  let now = 20_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 100 });
+  const room = manager.create();
+  const joined = manager.join(room.id);
+  now += 150;
+  manager.tick(0.05);
+  const state = manager.get(room.id);
+  assert.deepEqual(state.counts, { blue: 5, red: 5 });
+  const disconnected = state.players.find(player => player.id === joined.playerId);
+  assert.equal(disconnected.aiControlled, true);
+  assert.equal(disconnected.isOnPitch, true);
 });
 
 test('serveur multijoueur : limite les équipes à cinq joueurs', () => {

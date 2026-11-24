@@ -57,6 +57,7 @@ export class RoomManager {
       team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
       z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
       role: ['GK','DEF','MID','FWD'].includes(role) ? role : 'FWD', isBot: false,
+      isOnPitch: true, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
       input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0, lastCallForPassAt: -Infinity, callForPassUntil: 0,
       connected: true, controlMode: 'human', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
       stats: { passes: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
@@ -72,7 +73,7 @@ export class RoomManager {
     if (room.phase === 'fulltime') return;
     for (const team of ['blue', 'red']) {
       let count = [...room.players.values()].filter(p => p.team === team && (p.connected || p.aiControlled)).length;
-      while (count < 3 && room.players.size < 10) {
+      while (count < 5 && room.players.size < 10) {
         const usedSlots = new Set([...room.players.values()].filter(p => p.team === team).map(p => p.slot));
         const slot = [0,1,2,3,4].find(value => !usedSlots.has(value)) ?? count;
         const id = `bot-${team}-${randomBytes(5).toString('hex')}`;
@@ -80,7 +81,8 @@ export class RoomManager {
           id, token: null, name: `${team === 'blue' ? 'Académie bleue' : 'Académie rouge'} ${slot + 1}`,
           team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
           z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
-          role: slot === 0 ? 'GK' : slot === 1 ? 'DEF' : 'MID', isBot: true,
+          role: ['GK', 'DEF', 'MID', 'FWD', 'FWD'][slot] || 'MID', isBot: true,
+          isOnPitch: true, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
           input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0,
           connected: true, controlMode: 'ai', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
           stats: { passes: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
@@ -278,6 +280,14 @@ export class RoomManager {
       if (room.phase !== 'playing') { room.lastTickAt = now; continue; }
       const elapsedSinceTick = Math.max(0, Math.min(0.25, (now - room.lastTickAt) / 1000));
       room.lastTickAt = now;
+      // Temps de jeu individuel : seules les périodes réellement jouées sont comptées.
+      // La mi-temps est traitée plus haut et n'entre donc pas dans ce cumul.
+      const playedDeltaMs = elapsedSinceTick * 1000;
+      if (playedDeltaMs > 0) {
+        for (const player of room.players.values()) {
+          if (player.isOnPitch !== false) player.matchTimePlayedMs = Math.max(0, Number(player.matchTimePlayedMs) || 0) + playedDeltaMs;
+        }
+      }
       room.elapsedMs = Math.max(0, now - room.startedAt);
       const maxMs = room.durationMinutes * 60_000;
       const halfMs = maxMs / 2;
@@ -328,7 +338,7 @@ export class RoomManager {
     if (room.result) return room.result;
     const players = [...room.players.values()].map(player => ({
       playerId: player.id, name: player.name, team: player.team, role: player.role,
-      isBot: player.isBot === true,
+      isBot: player.isBot === true, minutesPlayedMs: Math.round(Number(player.matchTimePlayedMs) || 0),
       stats: { passes: player.stats?.passes || 0, shots: player.stats?.shots || 0, tackles: player.stats?.tackles || 0, goals: player.stats?.goals || 0, assists: player.stats?.assists || 0, saves: player.stats?.saves || 0, interceptions: player.stats?.interceptions || 0 },
     }));
     const blue = room.score.blue, red = room.score.red;

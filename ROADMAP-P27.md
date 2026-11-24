@@ -459,6 +459,15 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [ ] Vérifier les changements IA, la fatigue et le banc sur Android en conditions de match ; la CI ne remplace pas l'essai réel.
 
 
+### Lot 41 — effectif actif 5 contre 5 et temps de jeu individuel (intégré)
+- [x] Compléter chaque équipe à cinq joueurs actifs côté serveur, sans démarrer un match en 3 contre 3.
+- [x] Répartir les postes IA de base sur les cinq slots (gardien, défenseur, milieu et deux attaquants).
+- [x] Conserver cinq avatars actifs par équipe lorsqu'un humain est déconnecté et que son avatar passe sous contrôle IA.
+- [x] Cumuler le temps de jeu de chaque joueur pendant les périodes jouées, sans compter la mi-temps.
+- [x] Inclure le cumul individuel en millisecondes dans le rapport final du match.
+- [x] Ajouter des tests sur le 5 contre 5, la déconnexion et le temps de jeu.
+- Limite : ce lot ne crée pas encore les réservistes 2–5 ni les rotations en ligne ; le banc et les changements restent la prochaine intégration serveur.
+
 ### Lot 40 bis — niveau réellement moyen de l'IA de remplacement (en cours de validation)
 - [x] Réduire le déplacement du même avatar contrôlé par l'IA à une allure modérée, sans sprint automatique.
 - [x] Introduire une petite dérive de déplacement pour éviter une conduite robotique parfaite.
