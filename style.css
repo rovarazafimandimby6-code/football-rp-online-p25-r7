@@ -1691,3 +1691,18 @@ html, body {
     padding: 3px 6px;
   }
 }
+
+
+/* P27 — carrière : forme récente et historique de performances */
+.career-form{margin:18px 0;padding:16px;border:1px solid rgba(255,255,255,.09);border-radius:16px;background:rgba(9,19,15,.58)}
+.career-form .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.career-form .panel-heading h3{margin:4px 0 0;font-size:16px}
+.career-form .panel-heading> b{font-size:20px;white-space:nowrap}
+.career-form .panel-heading> b small{display:block;font-size:9px;letter-spacing:.1em;opacity:.65;text-align:right}
+.form-strip{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.form-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:48px;height:52px;border-radius:11px;background:rgba(255,255,255,.07);font-weight:900}
+.form-chip small{font-size:10px;opacity:.75}
+.form-chip.win{border:1px solid rgba(75,205,130,.55);color:#8be0ac}
+.form-chip.draw{border:1px solid rgba(235,190,83,.5);color:#f0cf7b}
+.form-chip.loss{border:1px solid rgba(238,105,105,.5);color:#f29b9b}
+.history-list>div{gap:8px}

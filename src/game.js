@@ -382,7 +382,7 @@ export class Game {
     const result = this.match.getResult();
     if (!result) return false;
     this.matchResultReported = true;
-    this.onMatchEnd?.({ ...result, stats: structuredClone(this.match.stats), playerStats: { ...this.playerMatchStats, cleanSheet: result.redScore === 0 } });
+    this.onMatchEnd?.({ ...result, stats: structuredClone(this.match.stats), playerStats: { ...this.playerMatchStats, cleanSheet: result.redScore === 0, minutesPlayedMs: Math.round(Math.max(0, this.match.elapsedMatchTime) * 1000) } });
     return true;
   }
 

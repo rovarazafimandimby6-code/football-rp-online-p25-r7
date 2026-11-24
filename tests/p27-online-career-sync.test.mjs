@@ -16,7 +16,10 @@ test('P27 carrière en ligne : extrait uniquement le joueur humain du rapport se
   assert.equal(result.stats.goals, 1);
   assert.equal(result.stats.assists, 1);
   assert.equal(result.stats.passes, 8);
-  assert.equal(Object.hasOwn(result.stats, 'completedPasses'), false);
+  assert.equal(result.stats.completedPasses, 0);
+  assert.equal(result.role, 'MID');
+  assert.equal(result.minutesPlayedMs, 0);
+  assert.equal(result.stats.completedPasses, 0);
 });
 
 test('P27 carrière en ligne : détermine correctement défaite, nul et clean sheet selon le camp', () => {
@@ -42,4 +45,18 @@ test('P27 carrière en ligne : borne les statistiques invalides du rapport', () 
   assert.equal(result.stats.goals, 0);
   assert.equal(result.stats.passes, 3);
   assert.equal(result.stats.shots, 0);
+});
+
+
+test('P27 carrière en ligne : conserve note, temps de jeu, poste, distinction et adversaire', () => {
+  const full = report({
+    teams: { blue: { name: 'Tana FC' }, red: { name: 'Toamasina United' } },
+    awards: { playerOfMatch: { playerId: 'human-1' } },
+    players: [{ playerId: 'human-1', team: 'blue', role: 'FWD', isBot: false, rating: 8.6, minutesPlayedMs: 245000,
+      stats: { goals: 2, assists: 1, passes: 12, completedPasses: 10, saves: 0 } }]
+  });
+  const result = resolveOnlinePlayerPerformance(full, 'human-1');
+  assert.equal(result.rating, 8.6); assert.equal(result.minutesPlayedMs, 245000);
+  assert.equal(result.role, 'FWD'); assert.equal(result.playerOfMatch, true);
+  assert.equal(result.opponent, 'Toamasina United'); assert.equal(result.stats.completedPasses, 10);
 });
