@@ -35,3 +35,12 @@ test('P27 catalogue UI : les badges de conférence restent lisibles sur mobile',
   assert.match(css,/\.club-conference-tag/);
   assert.match(css,/@media\(max-width:560px\)\{\.club-card-kickers/);
 });
+
+test('P27 club identity UI: uses the approved red/system and green/human management vocabulary',()=>{
+  assert.match(main,/club-control-indicator/);
+  assert.match(main,/CLUB DIRIGÉ PAR LE SYSTÈME/);
+  assert.match(main,/CLUB DIRIGÉ PAR UN JOUEUR/);
+  assert.equal(main.includes('IA'),false);
+  assert.doesNotMatch(main,/intelligence artificielle/);
+  assert.match(css,/\.club-control-indicator\.human i/);
+});

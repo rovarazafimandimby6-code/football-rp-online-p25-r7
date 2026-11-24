@@ -20,6 +20,7 @@ function publicClub(club) {
     rating:club.rating,
     reputation:club.reputation,
     humanAdmission:club.humanAdmission,
+    managementType:club.managerId ? 'human' : 'system',
     colors:Object.freeze([...(club.colors || [])]),
     kitDesign:club.kitDesign || 'central',
     stadium:club.stadium

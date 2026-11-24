@@ -8,6 +8,7 @@ test('P27 catalogue public : expose les 156 clubs sans effectifs privés', () =>
   assert.equal(result.total,156);
   assert.equal(result.clubs.length,100);
   assert.ok(result.clubs.every(club=>!Object.hasOwn(club,'roster')&&!Object.hasOwn(club,'managerId')));
+  assert.ok(result.clubs.every(club=>['human','system'].includes(club.managementType)));
   const all=listPublicClubs({limit:100,offset:100});
   assert.equal(all.clubs.length,56);
   assert.equal(new Set([...result.clubs,...all.clubs].map(club=>club.id)).size,156);
@@ -51,3 +52,5 @@ test('P27 catalogue public : reflète les affectations de division de la saison 
   assert.equal(current.conference,'Nord');
   assert.equal(listPublicClubs({clubs,division:'D4',conference:'Nord'}).clubs.some(club=>club.id===target.id),true);
 });
+
+test('P27 identity of club management is public without exposing manager identifiers',()=>{ for(const club of listPublicClubs({limit:100}).clubs){ assert.ok(['human','system'].includes(club.managementType)); assert.equal(Object.hasOwn(club,'managerId'),false); } });
