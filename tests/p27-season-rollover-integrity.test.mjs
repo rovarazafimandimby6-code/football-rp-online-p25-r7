@@ -5,11 +5,20 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { JsonCompetitionStore } from '../server/competition-store.js';
 
-test('P27 transition de saison : conserve les 156 clubs et les quotas régionaux après rechargement', () => {
+const finishPromotionPlayoffs=store=>{
+  store.previewSeasonMovements();
+  for(const round of [1,2]){
+    const fixtures=store.activeSeason.competitions.filter(item=>item.type==='promotion-playoff').flatMap(item=>item.fixtures.filter(fixture=>fixture.round===round&&fixture.status==='scheduled'));
+    for(const fixture of fixtures) assert.equal(store.recordFixtureResult(fixture.id,{roomId:'rollover-'+fixture.id,homeGoals:2,awayGoals:1}).ok,true);
+  }
+};
+
+test('P27 transition de saison : conserve les 156 clubs et les quotas après rechargement', () => {
   const directory=mkdtempSync(path.join(tmpdir(),'p27-rollover-audit-'));
   try {
     const store=new JsonCompetitionStore(directory,{seasonId:'2026-27',now:()=>1000});
     for(const competition of store.activeSeason.competitions) competition.status='completed';
+    finishPromotionPlayoffs(store);
     const preview=store.previewSeasonMovements();
     assert.equal(preview.ok,true,JSON.stringify(preview));
     const finalized=store.finalizeSeason({nextSeasonId:'2027-28',movements:preview.movements,completedAt:2000});
