@@ -6,11 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
 import { JsonCareerStore } from './career-store.js';
+import { JsonCompetitionStore } from './competition-store.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
 const careerStore = new JsonCareerStore(careerDirectory);
-const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore });
+const competitionDirectory = process.env.COMPETITIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'competitions');
+const competitionStore = new JsonCompetitionStore(competitionDirectory);
+const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const accountAttempts = new Map();
@@ -50,6 +53,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { ok: true, service: 'football-rp-online-match-server', protocol: 1 });
   try {
     if (req.method === 'GET' && url.pathname === '/api/rooms') return json(res, 200, { rooms: manager.list() });
+    if (req.method === 'GET' && url.pathname === '/api/competitions') return json(res, 200, competitionStore.snapshot());
     if (req.method === 'POST' && (url.pathname === '/api/accounts/register' || url.pathname === '/api/accounts/login')) {
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'RATE_LIMIT' });
       const body = await readBody(req);
@@ -85,7 +89,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/rooms') {
       const body = await readBody(req);
-      return json(res, 201, manager.create({ name: body.name, durationMinutes: body.durationMinutes, blueClubId: body.blueClubId, redClubId: body.redClubId }));
+      return json(res, 201, manager.create({ name: body.name, durationMinutes: body.durationMinutes, blueClubId: body.blueClubId, redClubId: body.redClubId, competitionFixtureId: body.competitionFixtureId }));
     }
     const joinMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})\/join$/);
     if (req.method === 'POST' && joinMatch) {
@@ -153,7 +157,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 404, { error: 'NOT_FOUND' });
   } catch (error) {
     const code = error.message || 'INTERNAL_ERROR';
-    const status = code === 'ROOM_NOT_FOUND' ? 404 : (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED' || code === 'INVALID_CREDENTIALS') ? 401 : code === 'RATE_LIMIT' ? 429 : code === 'USERNAME_TAKEN' ? 409 : code === 'BODY_TOO_LARGE' ? 413 : code === 'INVALID_JSON' || code.startsWith('INVALID_') || code === 'STALE_INPUT' ? 400 : 409;
+    const status = code === 'ROOM_NOT_FOUND' || code === 'COMPETITION_FIXTURE_NOT_FOUND' ? 404 : code === 'COMPETITION_FIXTURE_NOT_READY' || code === 'COMPETITION_FIXTURE_MISMATCH' ? 409 : (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED' || code === 'INVALID_CREDENTIALS') ? 401 : code === 'RATE_LIMIT' ? 429 : code === 'USERNAME_TAKEN' ? 409 : code === 'BODY_TOO_LARGE' ? 413 : code === 'INVALID_JSON' || code.startsWith('INVALID_') || code === 'STALE_INPUT' ? 400 : 409;
     return json(res, status, { error: code });
   }
 });

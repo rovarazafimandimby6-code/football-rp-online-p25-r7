@@ -9,23 +9,31 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Authoritative in-memory 5v5 room manager. One input stream controls one avatar. */
 export class RoomManager {
-  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, careerStore = null } = {}) {
+  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, careerStore = null, competitionStore = null } = {}) {
     this.now = now;
     this.roomTtlMs = roomTtlMs;
     this.disconnectGraceMs = disconnectGraceMs;
     this.resultStore = resultStore;
     this.careerStore = careerStore;
+    this.competitionStore = competitionStore;
     this.rooms = new Map();
   }
 
-  create({ name = 'Match rapide', durationMinutes = 5, blueClubId = null, redClubId = null } = {}) {
+  create({ name = 'Match rapide', durationMinutes = 5, blueClubId = null, redClubId = null, competitionFixtureId = null } = {}) {
     const blueClub = resolveMatchClub(blueClubId);
     const redClub = resolveMatchClub(redClubId);
     if (Boolean(blueClub) !== Boolean(redClub)) throw new Error('INVALID_CLUB_MATCHUP');
     if (blueClub && redClub && blueClub.id === redClub.id) throw new Error('INVALID_CLUB_MATCHUP');
+    let competitionFixture = null;
+    if (competitionFixtureId) {
+      competitionFixture = this.competitionStore?.getFixture(competitionFixtureId);
+      if (!competitionFixture) throw new Error('COMPETITION_FIXTURE_NOT_FOUND');
+      if (competitionFixture.status !== 'scheduled') throw new Error('COMPETITION_FIXTURE_NOT_READY');
+      if (!blueClub || blueClub.id !== competitionFixture.homeClubId || redClub.id !== competitionFixture.awayClubId) throw new Error('COMPETITION_FIXTURE_MISMATCH');
+    }
     const roomId = randomBytes(6).toString('hex');
     const room = {
-      id: roomId, name: String(name).trim().slice(0, 36) || 'Match rapide',
+      id: roomId, name: String(name).trim().slice(0, 36) || 'Match rapide', competitionFixtureId: competitionFixture?.id || null,
       durationMinutes: durationMinutes === 3 ? 3 : 5,
       phase: 'lobby', createdAt: this.now(), updatedAt: this.now(),
       startedAt: null, elapsedMs: 0, sequence: 0, players: new Map(),
@@ -380,6 +388,11 @@ export class RoomManager {
       }),
     });
     room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
+    if (room.competitionFixtureId) {
+      const competitionResult = this.competitionStore?.recordFixtureResult(room.competitionFixtureId, { roomId: room.id, homeGoals: blue, awayGoals: red, finalizedAt: room.result.finalizedAt });
+      if (!competitionResult?.ok) throw new Error(competitionResult?.reason || 'COMPETITION_RESULT_REJECTED');
+      room.result = Object.freeze({ ...room.result, competition: { fixtureId: room.competitionFixtureId, result: competitionResult.fixture.result } });
+    }
     if (this.careerStore) {
       for (const player of performance.players) {
         const livePlayer = room.players.get(player.playerId);
