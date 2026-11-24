@@ -224,6 +224,8 @@ export class JsonCompetitionStore {
     const nextId = clean(nextSeasonId, 48);
     if (!Array.isArray(movements)) return { ok:false, reason:'invalid-movement-list' };
     if (!nextId || !Number.isFinite(completedAt)) return { ok:false, reason:'invalid-season-transition' };
+    this.ensurePromotionPlayoffs();
+    if(current.competitions.some(competition=>competition.status!=='completed'))return {ok:false,reason:'season-competitions-incomplete'};
     const approved=this.previewSeasonMovements();
     if(!approved.ok)return {ok:false,reason:'season-movements-not-ready',details:approved.reason};
     const expectedMoves=new Map(approved.movements.map(item=>[item.clubId,item]));
