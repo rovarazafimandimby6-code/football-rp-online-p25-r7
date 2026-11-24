@@ -146,3 +146,32 @@ test('P27 salons persistés : un checkpoint ancien est supprimé si le résultat
     assert.deepEqual(roomStore.readAll(), []);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('P27 salons persistés : le flush de fermeture sauvegarde tous les salons actifs et ignore les salons terminés', () => {
+  const directory = temporaryDirectory('p27-room-shutdown-flush-');
+  try {
+    const roomStore = new JsonRoomStore(directory);
+    const manager = new RoomManager({ roomStore });
+    const first = manager.create({ name: 'Salon un' });
+    manager.join(first.id, { displayName: 'Joueur un' });
+    const second = manager.create({ name: 'Salon deux' });
+    manager.join(second.id, { displayName: 'Joueur deux' });
+    const report = manager.persistAllRooms();
+    assert.deepEqual(report, { saved: 2, failed: [] });
+    assert.deepEqual(roomStore.readAll().map(room => room.id).sort(), [first.id, second.id].sort());
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('P27 salons persistés : le flush rapporte un échec de stockage sans masquer le salon concerné', () => {
+  const directory = temporaryDirectory('p27-room-shutdown-failure-');
+  try {
+    const roomStore = new JsonRoomStore(directory);
+    const manager = new RoomManager({ roomStore });
+    const room = manager.create();
+    manager.join(room.id, { displayName: 'Joueur' });
+    roomStore.save = () => { throw new Error('DISK_UNAVAILABLE'); };
+    const report = manager.persistAllRooms();
+    assert.equal(report.saved, 0);
+    assert.deepEqual(report.failed, [{ roomId: room.id, reason: 'DISK_UNAVAILABLE' }]);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
