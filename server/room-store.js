@@ -39,12 +39,14 @@ export class JsonRoomStore {
         !Number.isSafeInteger(snapshot.score.blue) || snapshot.score.blue < 0 ||
         !Number.isSafeInteger(snapshot.score.red) || snapshot.score.red < 0 ||
         !Number.isFinite(snapshot.elapsedMs) || snapshot.elapsedMs < 0) throw new Error('INVALID_ROOM_CHECKPOINT');
-    const rooms = this.readAll().filter(room => room.id !== snapshot.id);
+    const existing = this.readAll();
+    if (!existing.some(room => room.id === snapshot.id) && existing.length >= this.maxRooms) throw new Error('ROOM_STORE_CAPACITY_EXCEEDED');
+    const rooms = existing.filter(room => room.id !== snapshot.id);
     rooms.push(JSON.parse(JSON.stringify(snapshot)));
     rooms.sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
     const temporary = `${this.file}.${process.pid}.${randomUUID()}.tmp`;
     try {
-      writeFileSync(temporary, JSON.stringify({ version: 1, rooms: rooms.slice(0, this.maxRooms) }), { mode: 0o600 });
+      writeFileSync(temporary, JSON.stringify({ version: 1, rooms }), { mode: 0o600 });
       renameSync(temporary, this.file);
     } catch (error) {
       try { unlinkSync(temporary); } catch {}
