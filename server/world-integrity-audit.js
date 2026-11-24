@@ -349,6 +349,31 @@ export function auditP27World({
   let pendingSystemTransfers = 0, completedSystemTransfers = 0;
   if (systemTransferState && (systemTransferState.version !== 1 || !Array.isArray(systemTransferState.transfers)))
     errors.push({ code:'SYSTEM_TRANSFER_OUTBOX_SCHEMA_INVALID' });
+  const transfersByPlayer = new Map();
+  for (const [index, record] of systemTransfers.entries()) {
+    if (safeText(record?.playerId)) {
+      if (!transfersByPlayer.has(record.playerId)) transfersByPlayer.set(record.playerId, []);
+      transfersByPlayer.get(record.playerId).push({ record, index });
+    }
+  }
+  const latestTransferByPlayer = new Map();
+  for (const [playerId, entries] of transfersByPlayer) {
+    entries.sort((a,b) => a.record.createdAt - b.record.createdAt || a.index - b.index);
+    latestTransferByPlayer.set(playerId, entries[entries.length - 1]?.record || null);
+    for (let index=0; index<entries.length; index++) {
+      const current = entries[index].record;
+      const next = entries[index+1]?.record;
+      if (!next) continue;
+      if (current.status !== 'completed' || next.fromClubId !== current.toClubId ||
+          next.createdAt < current.createdAt) {
+        errors.push({ code:'SYSTEM_TRANSFER_CHAIN_INVALID', eventId:current.id || null,
+          nextEventId:next.id || null, playerId });
+      }
+    }
+    const pending = entries.filter(item => item.record.status === 'pending');
+    if (pending.length > 1)
+      errors.push({ code:'SYSTEM_TRANSFER_PLAYER_MULTIPLE_PENDING', playerId, count:pending.length });
+  }
   for (const record of systemTransfers) {
     if (!safeText(record?.id) || systemTransferIds.has(record.id)) {
       errors.push({ code:'SYSTEM_TRANSFER_OUTBOX_ID_INVALID_OR_DUPLICATE', eventId:record?.id || null });
@@ -368,18 +393,19 @@ export function auditP27World({
       const membership = memberships[0];
       if (membership.player?.playerType !== 'system')
         errors.push({ code:'SYSTEM_TRANSFER_PLAYER_TYPE_INVALID', eventId:record.id, playerId:record.playerId });
-      if (record.status === 'completed' && membership.clubId !== record.toClubId)
+      const latest = latestTransferByPlayer.get(record.playerId) === record;
+      if (latest && record.status === 'completed' && membership.clubId !== record.toClubId)
         errors.push({ code:'SYSTEM_TRANSFER_COMPLETED_ROSTER_MISMATCH', eventId:record.id, playerId:record.playerId });
-      if (record.status === 'completed' && membership.clubId === record.toClubId) {
+      if (latest && record.status === 'completed' && membership.clubId === record.toClubId) {
         const contract = membership.player?.contract;
         if (contract?.status !== 'active' || contract.clubId !== record.toClubId ||
             contract.playerId !== record.playerId || contract.previousClubId !== record.fromClubId ||
             !Number.isFinite(Date.parse(contract.transferredAt || '')))
           errors.push({ code:'SYSTEM_TRANSFER_CONTRACT_LINK_MISMATCH', eventId:record.id, playerId:record.playerId });
       }
-      if (record.status === 'pending' && ![record.fromClubId,record.toClubId].includes(membership.clubId))
+      if (latest && record.status === 'pending' && ![record.fromClubId,record.toClubId].includes(membership.clubId))
         errors.push({ code:'SYSTEM_TRANSFER_PENDING_ROSTER_MISMATCH', eventId:record.id, playerId:record.playerId });
-      if (record.status === 'pending' && membership.clubId === record.toClubId) {
+      if (latest && record.status === 'pending' && membership.clubId === record.toClubId) {
         const contract = membership.player?.contract;
         if (contract?.clubId !== record.toClubId || contract?.previousClubId !== record.fromClubId ||
             !Number.isFinite(Date.parse(contract.transferredAt || '')))
