@@ -175,3 +175,48 @@ test('P27 salons persistés : le flush rapporte un échec de stockage sans masqu
     assert.deepEqual(report.failed, [{ roomId: room.id, reason: 'DISK_UNAVAILABLE' }]);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+
+test('P27 salons persistés : un tick regroupe les checkpoints de plusieurs matchs en une seule écriture', () => {
+  const directory = temporaryDirectory('p27-room-batch-');
+  try {
+    let now = 1_000;
+    const roomStore = new JsonRoomStore(directory);
+    const manager = new RoomManager({ now: () => now, roomStore });
+    const first = manager.create({ name: 'Match batch 1' });
+    manager.join(first.id, { displayName: 'Joueur 1' });
+    const second = manager.create({ name: 'Match batch 2' });
+    manager.join(second.id, { displayName: 'Joueur 2' });
+    let writes = 0;
+    const saveMany = roomStore.saveMany.bind(roomStore);
+    roomStore.saveMany = snapshots => { writes++; return saveMany(snapshots); };
+    now += 1_250;
+    manager.tick(0.05);
+    assert.equal(writes, 1);
+    assert.equal(roomStore.readAll().length, 2);
+    assert.ok(roomStore.readAll().every(room => room.phase === 'playing'));
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('P27 salons persistés : un lot invalide ne modifie aucun checkpoint existant', () => {
+  const directory = temporaryDirectory('p27-room-batch-invalid-');
+  try {
+    const store = new JsonRoomStore(directory);
+    const valid = { id: 'room-kept', phase: 'lobby', elapsedMs: 0, updatedAt: 1, score: { blue: 0, red: 0 }, players: [] };
+    store.save(valid);
+    const invalid = { ...valid, id: 'room-invalid', score: { blue: -1, red: 0 } };
+    assert.throws(() => store.saveMany([valid, invalid]), /INVALID_ROOM_CHECKPOINT/);
+    assert.deepEqual(store.readAll().map(room => room.id), ['room-kept']);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('P27 salons persistés : saveMany respecte le plafond global sans écriture partielle', () => {
+  const directory = temporaryDirectory('p27-room-batch-capacity-');
+  try {
+    const store = new JsonRoomStore(directory, { maxRooms: 2 });
+    const snapshot = id => ({ id, phase: 'lobby', elapsedMs: 0, updatedAt: 1, score: { blue: 0, red: 0 }, players: [] });
+    store.save(snapshot('room-one'));
+    assert.throws(() => store.saveMany([snapshot('room-two'), snapshot('room-three')]), /ROOM_STORE_CAPACITY_EXCEEDED/);
+    assert.deepEqual(store.readAll().map(room => room.id), ['room-one']);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
