@@ -112,7 +112,7 @@ async function readBody(req) {
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new Error('INVALID_JSON'); }
 }
 
-const server = http.createServer(async (req, res) => {
+const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) => {
   const url = new URL(req.url || '/', 'http://localhost');
   if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { ok: true, status: 'live', service: 'football-rp-online-match-server', protocol: 1 });
   if (req.method === 'GET' && url.pathname === '/readyz') {
@@ -454,6 +454,10 @@ const server = http.createServer(async (req, res) => {
     return json(res, status, { error: code });
   }
 });
+server.headersTimeout = 15_000;
+server.requestTimeout = 30_000;
+server.keepAliveTimeout = 5_000;
+server.maxRequestsPerSocket = 1_000;
 
 const tick = setInterval(() => manager.tick(0.05), 50);
 const assignmentSyncTick = setInterval(() => {
