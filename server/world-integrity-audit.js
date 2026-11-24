@@ -86,10 +86,6 @@ export function auditP27World({
   }
   if (asList(financeAccounts).length && asList(financeAccounts).length !== catalogue.length)
     warnings.push({ code:'FINANCE_ACCOUNT_CATALOGUE_SIZE_MISMATCH', expected:catalogue.length, actual:asList(financeAccounts).length });
-  if (asList(financeAccounts).length && catalogue.length === expectedClubCount && asList(financeAccounts).length >= expectedClubCount - 1) {
-    for (const club of catalogue) if (!financeClubIds.has(club.id))
-      errors.push({ code:'FINANCE_ACCOUNT_MISSING', clubId:club.id });
-  }
 
   const careers = Array.isArray(transferState?.careers) ? transferState.careers : [];
   const accountIds = new Set();
@@ -144,6 +140,10 @@ export function auditP27World({
     if (!Number.isSafeInteger(balance) || balance < 0 || balance !== account.balance) {
       errors.push({ code:'FINANCE_BALANCE_MISMATCH', clubId:account.clubId, calculated:balance, stored:account.balance });
     } else financeBalanceTotal += balance;
+  }
+  if (asList(financeAccounts).length && catalogue.length === expectedClubCount && asList(financeAccounts).length >= expectedClubCount - 1) {
+    for (const club of catalogue) if (!financeClubIds.has(club.id))
+      errors.push({ code:'FINANCE_ACCOUNT_MISSING', clubId:club.id });
   }
 
   const transferEvents = Array.isArray(transferState?.events) ? transferState.events : [];
