@@ -12,6 +12,12 @@ export function auditLeagueSchedule(competition) {
   if(members.length!==expected||new Set(members.map(item=>item.id)).size!==expected)
     return fail('invalid-league-members',{expected,actual:members.length});
   const ids=new Set(members.map(item=>item.id));
+  for(const member of members) {
+    if(member.division!==undefined && member.division!==competition.division)
+      return fail('member-division-mismatch',{clubId:member.id,expected:competition.division,actual:member.division});
+    if(member.conference!==undefined && (member.conference||null)!==(competition.conference||null))
+      return fail('member-conference-mismatch',{clubId:member.id,expected:competition.conference||null,actual:member.conference||null});
+  }
   const fixtures=Array.isArray(competition.fixtures)?competition.fixtures:[];
   const expectedMatches=expected*(expected-1)/2;
   if(fixtures.length!==expectedMatches)

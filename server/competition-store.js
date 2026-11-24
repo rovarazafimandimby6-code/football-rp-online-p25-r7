@@ -15,7 +15,7 @@ function createSeason(seasonId, clubs, now) {
   for (const group of getCompetitionGroups()) {
     const members = clubs
       .filter(club => club.division === group.division && (!group.conference || conferenceForClub(club) === group.conference))
-      .map(club => ({ id: club.id, name: club.name }));
+      .map(club => ({ id: club.id, name: club.name, division: club.division, conference: conferenceForClub(club) || null }));
     const fixtures = [];
     const rotation = members.map(member => member.id);
     const scheduled = rotation.length % 2 ? [...rotation, null] : [...rotation];
