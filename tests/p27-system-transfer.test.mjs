@@ -372,8 +372,8 @@ test('P27 lot 105 : réconcilie les soldes nets après deux transferts successif
   const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:finance});
   assert.equal(service.transfer({id:'net-ledger-105-a',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:1000}).ok,true);
   assert.equal(service.transfer({id:'net-ledger-105-b',fromClubId:'club-b',toClubId:'club-a',playerId:'system-player-1',fee:1500}).ok,true);
-  assert.equal(finance.store.balance('club-a'),a0+500);
-  assert.equal(finance.store.balance('club-b'),b0-500);
+  assert.equal(finance.store.balance('club-a'),a0-500);
+  assert.equal(finance.store.balance('club-b'),b0+500);
   assert.equal(finance.store.getAccount('club-a').entries.filter(e=>e.id==='transfer-fee-in-net-ledger-105-a').length,1);
   assert.equal(finance.store.getAccount('club-b').entries.filter(e=>e.id==='transfer-fee-out-net-ledger-105-a').length,1);
   assert.equal(finance.store.getAccount('club-b').entries.filter(e=>e.id==='transfer-fee-in-net-ledger-105-b').length,1);
