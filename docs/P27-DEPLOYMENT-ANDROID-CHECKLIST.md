@@ -49,7 +49,7 @@ Les workflows GitHub Actions exécutent aussi les tests et `node --check` sur le
 
 Effectuer ces essais sur le téléphone cible, dans Chrome ou le navigateur prévu, après déploiement sur un environnement de test HTTPS.
 
-1. Ouvrir l'accueil et vérifier l'absence d'erreur de chargement ; appeler `/health` et vérifier `ok: true`.
+1. Ouvrir l'accueil et vérifier l'absence d'erreur de chargement ; appeler `/health` (liveness du processus) et vérifier `status: live`, puis `/readyz` et vérifier HTTP 200, `status: ready` et les 11 stockages inscriptibles. `/readyz` répond 503 si le secret manque ou si un stockage n'est pas accessible ; sa réponse ne contient jamais le secret.
 2. Créer un compte avec un identifiant de test, se déconnecter, se reconnecter, puis vérifier que la session révoquée ne donne plus accès aux routes protégées.
 3. Modifier le profil (nom, numéro, poste et apparence), actualiser la page puis vérifier la persistance.
 4. Vérifier la progression initiale, terminer un match, vérifier que la récompense n'est accordée qu'une fois, puis tester entraînement et pratique sans dépasser les plafonds.
@@ -79,3 +79,12 @@ Avant un déploiement :
 Après redémarrage, vérifier qu'un match actif revient avec le même identifiant, le score, les positions, les statistiques et le chronomètre du dernier checkpoint. Les joueurs humains sont temporairement contrôlés par l'IA et doivent pouvoir se reconnecter avec leur jeton. Le temps d'indisponibilité du serveur est suspendu ; les actions intervenues depuis le dernier checkpoint (fenêtre nominale d'environ une seconde) peuvent être rejouées. Un JSON de checkpoint corrompu doit bloquer explicitement le démarrage plutôt que créer des salons vides.
 
 Les checkpoints locaux ne constituent ni une réplication multi-instance ni une transaction distribuée. Ne pas lancer plusieurs instances serveur partageant ce fichier sans mécanisme de verrouillage/coordination dédié.
+
+
+## 6. Arrêt propre et disponibilité
+
+- `GET /health` est un contrôle de vie (liveness) : il indique seulement que le processus HTTP répond.
+- `GET /readyz` est un contrôle de disponibilité (readiness) : il vérifie `P27_ADMIN_TOKEN` et l'écriture réelle dans les 11 répertoires de stockage. Il renvoie 200 si tout est prêt, sinon 503 avec les noms des contrôles en échec, sans chemin ni valeur secrète.
+- À la réception de `SIGTERM` ou `SIGINT`, le serveur cesse d'accepter de nouvelles requêtes, attend la fermeture HTTP, sauvegarde les checkpoints des salons encore actifs et arrête ses minuteries. Si une sauvegarde échoue, le processus termine avec un code d'erreur plutôt que de signaler un arrêt propre.
+- L'hébergeur doit laisser un délai d'arrêt supérieur au temps nécessaire à la fermeture HTTP et à l'écriture des checkpoints. Le mécanisme ne protège pas d'un arrêt brutal `SIGKILL`, d'une coupure électrique ou d'une perte du volume ; les checkpoints périodiques restent nécessaires.
+- Les sondes de plateforme doivent utiliser `/health` pour redémarrer un processus bloqué et `/readyz` pour éviter d'envoyer du trafic vers un processus dont la configuration ou les stockages ne sont pas prêts.
