@@ -989,3 +989,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Vérifier que les deux commandes restent terminées et rejouables sans double mouvement.
 - [x] Contrôler la présence unique des écritures financières déterministes.
 - [ ] Valider en CI et compléter l'audit croisé de la chaîne sur un monde réel de 156 clubs.
+
+
+### Lot 102 — validation stricte du cycle de vie de l'outbox IA
+- [x] Vérifier au chargement les compteurs de tentatives, les erreurs mémorisées et les horodatages optionnels.
+- [x] Exiger une date de clôture valide pour toute commande déclarée terminée.
+- [x] Étendre l'audit monde aux métadonnées de reprise et de clôture.
+- [x] Préserver la lecture d'anciens snapshots d'audit où les compteurs de tentative n'étaient pas exposés.
+- [x] Ajouter des tests négatifs sur les tentatives invalides et les clôtures sans date.
+- [ ] Valider la CI complète et vérifier les snapshots historiques réels avant toute migration de stockage.
