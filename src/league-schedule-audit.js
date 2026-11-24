@@ -30,6 +30,10 @@ export function auditLeagueSchedule(competition) {
   for(const fixture of fixtures) {
     if(!fixture?.id||fixtureIds.has(fixture.id)) return fail('duplicate-fixture-id',{fixtureId:fixture?.id||null});
     fixtureIds.add(fixture.id);
+    if(fixture.competitionId&&fixture.competitionId!==competition.id) return fail('fixture-competition-link-mismatch',{fixtureId:fixture.id,expected:competition.id,actual:fixture.competitionId});
+    if(!['scheduled','completed'].includes(fixture.status)) return fail('invalid-league-fixture-status',{fixtureId:fixture.id,status:fixture.status});
+    if(fixture.status==='scheduled'&&fixture.result) return fail('scheduled-fixture-has-result',{fixtureId:fixture.id});
+    if(fixture.status==='completed'&&(!fixture.result||!Number.isSafeInteger(fixture.result.home)||!Number.isSafeInteger(fixture.result.away)||fixture.result.home<0||fixture.result.away<0)) return fail('completed-fixture-result-invalid',{fixtureId:fixture.id});
     const home=fixture.homeClubId,away=fixture.awayClubId;
     if(!ids.has(home)||!ids.has(away)||home===away) return fail('invalid-fixture-participants',{fixtureId:fixture.id});
     const leg=fixture.leg??1;
