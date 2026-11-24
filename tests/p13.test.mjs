@@ -46,8 +46,8 @@ test('P13: calendrier aller simple crée une rencontre unique par paire de clubs
       }
     }
   }
-  assert.equal(count, 24);
-  assert.equal(clubs.fixtures.length, 24);
+  assert.equal(count, 3098);
+  assert.equal(clubs.fixtures.length, 3098);
   const firstDivision = clubs.listDivisions()[0].clubs;
   assert.equal(clubs.createFixture({ id: 'p13-D1-0-1', homeClubId: firstDivision[0].id, awayClubId: firstDivision[1].id, scheduledAt: new Date().toISOString() }).reason, 'duplicate-fixture');
 });

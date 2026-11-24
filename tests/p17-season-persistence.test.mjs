@@ -25,7 +25,7 @@ test('P17 : calendrier, résultats et classement survivent au rechargement', () 
 test('P17 : état local corrompu ou fixtures invalides ne bloquent pas le gestionnaire', () => {
   const storage = { getItem: () => '{bad json', setItem: () => {} };
   const manager = new ClubManager(undefined, storage, 'broken-season');
-  assert.equal(manager.listClubs().length, 16);
+  assert.equal(manager.listClubs().length, 156);
   assert.equal(manager.fixtures.length, 0);
 });
 

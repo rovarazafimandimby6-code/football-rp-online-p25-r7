@@ -351,12 +351,15 @@ test('P27 clubs: un club réservé au système ne reste jamais marqué comme dis
 test('P27 catalogue: l’audit identifie les divisions, conférences et réservations manquantes sans inventer de clubs', async () => {
   const { auditClubCatalog } = await import('../src/club-catalog-validation.js');
   const audit = auditClubCatalog(new ClubManager().listClubs());
-  assert.equal(audit.totalClubs, 16);
+  assert.equal(audit.totalClubs, 156);
   assert.equal(audit.expectedTotal, 156);
-  assert.equal(audit.complete, false);
-  assert.equal(audit.divisionCounts.D4, 0);
-  assert.ok(audit.warnings.some(issue => issue.code === 'division-count-incomplete' && issue.division === 'D4'));
-  assert.ok(audit.warnings.some(issue => issue.code === 'system-only-club-missing' && issue.division === 'D4'));
+  assert.equal(audit.complete, true);
+  assert.deepEqual(audit.divisionCounts, { D1:16, D2:20, D3:24, D4:32, D5:64 });
+  assert.deepEqual(audit.conferenceCounts.D4, { Nord:16, Sud:16 });
+  assert.deepEqual(audit.conferenceCounts.D5, { Nord:16, Sud:16, Est:16, Ouest:16 });
+  assert.ok(Object.values(audit.systemOnlyCounts).every(count => count >= 1));
+  assert.equal(audit.errors.length, 0);
+  assert.equal(audit.warnings.length, 0);
 });
 
 test('P27 catalogue: l’audit détecte les effectifs faibles et les conflits de club réservé', async () => {
