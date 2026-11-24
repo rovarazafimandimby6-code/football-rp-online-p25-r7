@@ -694,7 +694,10 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Ajouter des tests ciblés sur un monde cohérent et plusieurs corruptions de données.
 - [x] Refuser les synchronisations d’affectations si le catalogue officiel est incomplet ou contient des identifiants dupliqués.
 - [x] Contrôler les identifiants et budgets du catalogue mercato, les contrats actifs (salaire et dates), les comptes financiers dupliqués et les identifiants de saison/compétition.
-- [ ] Étendre l’audit aux invariants détaillés des mouvements et relations entre les trois catalogues de clubs.
+- [x] Comparer les 156 affectations officielles du catalogue compétitions avec le catalogue des effectifs (division et conférence).
+- [x] Détecter les clubs absents ou surnuméraires dans le catalogue persistant du mercato.
+- [x] Signaler les écarts de cardinalité du grand livre par rapport au catalogue des clubs.
+- [ ] Auditer les budgets croisés et les soldes économiques attendus entre les trois domaines sans confondre budget de mercato et trésorerie comptable.
 
 ### Lot 65 — fiabilité des transactions multi-stockages (en cours)
 - [x] Rendre atomiques en une seule sauvegarde les écritures de revenus sponsors et leurs compteurs d’échéances.
