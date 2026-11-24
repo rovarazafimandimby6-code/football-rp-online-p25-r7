@@ -56,7 +56,7 @@ export class RoomManager {
       name: String(displayName).replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 20) || 'Joueur',
       team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
       z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
-      role: ['GK','DEF','MID','FWD'].includes(role) ? role : 'FWD', isBot: false,
+      role: reserve && role === 'FWD' ? reserve.role : (['GK','DEF','MID','FWD'].includes(role) ? role : 'FWD'), isBot: false,
       isOnPitch: true, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
       input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0, lastCallForPassAt: -Infinity, callForPassUntil: 0,
       connected: true, controlMode: 'human', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,

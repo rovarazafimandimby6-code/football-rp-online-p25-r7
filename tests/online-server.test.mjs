@@ -184,8 +184,8 @@ test('P24 : les arrivées humaines remplacent les bots sans dépasser cinq joueu
   for (let i = 2; i <= 8; i++) manager.join(room.id, { displayName: `Humain ${i}` });
   const state = manager.get(room.id);
   assert.equal(state.players.filter(p => !p.isBot).length, 8);
-  assert.ok(state.counts.blue <= 5 && state.counts.red <= 5);
-  assert.equal(state.players.filter(p => p.isBot).length, 0);
+  assert.deepEqual(state.counts, { blue: 5, red: 5 });
+  assert.equal(state.players.filter(p => p.isBot).length, 2);
   assert.ok(first.token);
 });
 
@@ -645,6 +645,6 @@ test('P27 déconnexion : une prise en charge IA ne compte pas comme un nouveau b
   manager.leave(room.id, joined.token);
   manager.ensureBotCoverage(internal);
   const teamPlayers = [...internal.players.values()].filter(player => player.team === internal.players.get(joined.playerId).team);
-  assert.equal(teamPlayers.length, 3);
+  assert.equal(teamPlayers.length, 5);
   assert.equal(teamPlayers.filter(player => player.aiControlled).length, 1);
 });
