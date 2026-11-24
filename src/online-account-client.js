@@ -61,6 +61,16 @@ export class OnlineAccountClient {
     return this.account;
   }
 
+  async getProfile() {
+    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    return this.request('/api/profile', { auth: true });
+  }
+
+  async saveProfile(profile) {
+    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    return this.request('/api/profile', { method: 'PUT', auth: true, body: { profile } });
+  }
+
   async logout() {
     if (!this.token) return false;
     try { await this.request('/api/accounts/logout', { method: 'POST', auth: true }); }
