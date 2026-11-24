@@ -4,7 +4,7 @@ const validScore = value => Number.isSafeInteger(value) && value >= 0 && value <
 
 /** Read-only consistency audit across the persistent P27 world stores. */
 export function auditP27World({
-  clubs = [], competitionClubs = [], transferState = null, financeAccounts = [], competitionState = null, resultArchive = [],
+  clubs = [], competitionClubs = [], transferState = null, financeAccounts = [], financeJournal = null, competitionState = null, resultArchive = [],
   expectedClubCount = 156
 } = {}) {
   const errors = [], warnings = [];
@@ -153,6 +153,81 @@ export function auditP27World({
       if (!Number.isSafeInteger(event.fee) || event.fee < 0) errors.push({ code:'TRANSFER_EVENT_FEE_INVALID', eventId:event.id });
     }
   }
+  const financeEntryById = new Map();
+  for (const account of asList(financeAccounts)) {
+    for (const entry of Array.isArray(account.entries) ? account.entries : []) {
+      if (safeText(entry?.id)) financeEntryById.set(entry.id, { account, entry });
+    }
+  }
+  const transferJournal = financeJournal && typeof financeJournal === 'object' ? financeJournal : null;
+  const journalTransfers = Array.isArray(transferJournal?.transfers) ? transferJournal.transfers : [];
+  const journalTransferIds = new Set();
+  let pendingTransferSettlements = 0;
+  for (const record of journalTransfers) {
+    if (!safeText(record?.id) || journalTransferIds.has(record.id)) {
+      errors.push({ code:'TRANSFER_FINANCE_JOURNAL_ID_INVALID_OR_DUPLICATE', eventId:record?.id || null });
+      continue;
+    }
+    journalTransferIds.add(record.id);
+    const event = transferEvents.find(item => item?.id === record.id && item.type === 'transfer');
+    if (event && (record.fromClubId !== event.fromClubId || record.toClubId !== event.toClubId || record.fee !== event.fee))
+      errors.push({ code:'TRANSFER_FINANCE_JOURNAL_EVENT_MISMATCH', eventId:record.id });
+    if (!Number.isSafeInteger(record.fee) || record.fee <= 0 ||
+        !clubById.has(record.fromClubId) || !clubById.has(record.toClubId) ||
+        record.fromClubId === record.toClubId ||
+        typeof record.debitPosted !== 'boolean' || typeof record.creditPosted !== 'boolean' ||
+        !['pending','completed'].includes(record.status)) {
+      errors.push({ code:'TRANSFER_FINANCE_JOURNAL_RECORD_INVALID', eventId:record.id });
+      continue;
+    }
+    const debit = financeEntryById.get(`transfer-fee-out-${record.id}`);
+    const credit = financeEntryById.get(`transfer-fee-in-${record.id}`);
+    if (record.debitPosted && (!debit || debit.account.clubId !== record.fromClubId ||
+        debit.entry.direction !== 'expense' || debit.entry.category !== 'transfer-expense' || debit.entry.amount !== record.fee))
+      errors.push({ code:'TRANSFER_FINANCE_DEBIT_CHECKPOINT_MISMATCH', eventId:record.id });
+    if (record.creditPosted && (!credit || credit.account.clubId !== record.toClubId ||
+        credit.entry.direction !== 'income' || credit.entry.category !== 'transfer-income' || credit.entry.amount !== record.fee))
+      errors.push({ code:'TRANSFER_FINANCE_CREDIT_CHECKPOINT_MISMATCH', eventId:record.id });
+    if (record.status === 'completed' && (!record.debitPosted || !record.creditPosted))
+      errors.push({ code:'TRANSFER_FINANCE_COMPLETION_INVALID', eventId:record.id });
+    if (record.status !== 'completed' || !record.debitPosted || !record.creditPosted) pendingTransferSettlements++;
+  }
+  if (transferJournal) for (const event of transferEvents) {
+    if (event?.type !== 'transfer' || !Number.isSafeInteger(event.fee) || event.fee <= 0) continue;
+    if (!journalTransferIds.has(event.id)) {
+      pendingTransferSettlements++;
+      warnings.push({ code:'TRANSFER_FINANCE_JOURNAL_MISSING', eventId:event.id });
+    }
+  }
+  const journalPlayerWages = Array.isArray(transferJournal?.playerWages) ? transferJournal.playerWages : [];
+  const journalWageIds = new Set();
+  let pendingPlayerWages = 0;
+  for (const record of journalPlayerWages) {
+    if (!safeText(record?.id) || journalWageIds.has(record.id)) {
+      errors.push({ code:'PLAYER_WAGE_JOURNAL_ID_INVALID_OR_DUPLICATE', eventId:record?.id || null });
+      continue;
+    }
+    journalWageIds.add(record.id);
+    const event = transferEvents.find(item => item?.id === record.id && item.type === 'salary-payment');
+    if (event && (record.clubId !== event.clubId || record.amount !== event.amount))
+      errors.push({ code:'PLAYER_WAGE_JOURNAL_EVENT_MISMATCH', eventId:record.id });
+    if (!clubById.has(record.clubId) || !Number.isSafeInteger(record.amount) || record.amount <= 0 ||
+        typeof record.posted !== 'boolean')
+      errors.push({ code:'PLAYER_WAGE_JOURNAL_RECORD_INVALID', eventId:record.id });
+    const expense = financeEntryById.get(`player-wage-${record.id}`);
+    if (record.posted && (!expense || expense.account.clubId !== record.clubId ||
+        expense.entry.direction !== 'expense' || expense.entry.category !== 'wages' || expense.entry.amount !== record.amount))
+      errors.push({ code:'PLAYER_WAGE_CHECKPOINT_MISMATCH', eventId:record.id });
+    if (!record.posted) pendingPlayerWages++;
+  }
+  if (transferJournal) for (const event of transferEvents) {
+    if (event?.type !== 'salary-payment' || !Number.isSafeInteger(event.amount) || event.amount <= 0) continue;
+    if (!journalWageIds.has(event.id)) {
+      pendingPlayerWages++;
+      warnings.push({ code:'PLAYER_WAGE_JOURNAL_MISSING', eventId:event.id });
+    }
+  }
+
   const seasons = Array.isArray(competitionState?.seasons) ? competitionState.seasons : [];
   const seasonIds = new Set();
   for (const season of seasons) {
@@ -237,7 +312,7 @@ export function auditP27World({
     counts:{
       clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,
       careers:careers.length, financeAccounts:asList(financeAccounts).length,
-      financeEntries, financeBalanceTotal, seasons:seasons.length, fixtures, completedFixtures, archivedResults:asList(resultArchive).length
+      financeEntries, financeBalanceTotal, pendingTransferSettlements, pendingPlayerWages, seasons:seasons.length, fixtures, completedFixtures, archivedResults:asList(resultArchive).length
     }
   };
 }
