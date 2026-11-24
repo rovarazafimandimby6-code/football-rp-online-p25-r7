@@ -36,6 +36,14 @@ test('P27 audit profils : les 156 clubs ont leurs caractéristiques, stratégie,
   assert.deepEqual(audit.counts, { characteristics:156, strategic:156, recruitment:156, lore:156 });
 });
 
+test('P27 identité visuelle : les 156 clubs ont des combinaisons de couleurs et motifs distinctes', () => {
+  const clubs = new ClubManager().listClubs();
+  const fingerprints = clubs.map(club=>JSON.stringify([club.colors.map(color=>color.toLowerCase()),club.kitDesign]));
+  assert.equal(new Set(fingerprints).size, 156);
+  const audit = auditClubCatalog(clubs);
+  assert.equal(audit.errors.some(issue=>issue.code==='duplicate-club-kit-identity'), false);
+});
+
 test('P27 audit catalogue : détecte doublons d’identité et incohérences de données', () => {
   const clubs = new ClubManager().listClubs();
   clubs[1].name = clubs[0].name;
