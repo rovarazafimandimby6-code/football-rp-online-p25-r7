@@ -63,8 +63,23 @@ const CITY_GEOGRAPHY = Object.freeze({
   'tsiroanomandidy': GEO(null,'Ouest'), 'miarinarivo': GEO(null,'Ouest'),
   'arivonimamo': GEO(null,'Ouest'), 'ankazobe': GEO(null,'Ouest'),
   'maevatanana': GEO(null,'Ouest'), 'kandreho': GEO(null,'Ouest'),
-  // Clubs internationaux conservés dans les conférences définies à leur création.
-  'nairobi': GEO(null,'Est')
+  // Clubs internationaux : D4 utilise une répartition Nord/Sud cohérente avec l'hémisphère.
+  'glasgow': GEO('Nord',null), 'liverpool': GEO('Nord',null), 'bristol': GEO('Nord',null),
+  'leeds': GEO('Nord',null), 'birmingham': GEO('Nord',null), 'cardiff': GEO('Nord',null),
+  'dublin': GEO('Nord',null), 'edimbourg': GEO('Nord',null), 'lyon': GEO('Nord',null),
+  'marseille': GEO('Nord',null), 'bordeaux': GEO('Nord',null), 'lille': GEO('Nord',null),
+  'nantes': GEO('Nord',null), 'toulouse': GEO('Nord',null), 'nice': GEO('Nord',null),
+  'strasbourg': GEO('Nord',null), 'naples': GEO('Nord',null), 'turin': GEO('Nord',null),
+  'bologne': GEO('Nord',null), 'florence': GEO('Nord',null), 'seville': GEO('Nord',null),
+  'bilbao': GEO('Nord',null), 'malaga': GEO('Nord',null), 'saragosse': GEO('Nord',null),
+  'porto': GEO('Nord',null), 'braga': GEO('Nord',null), 'coimbra': GEO('Nord',null),
+  'faro': GEO('Nord',null), 'dakar': GEO('Nord',null), 'saint louis': GEO('Nord',null),
+  'thies': GEO('Nord',null), 'kaolack': GEO('Nord',null), 'lagos': GEO('Nord',null),
+  'abuja': GEO('Nord',null), 'kano': GEO('Nord',null), 'ibadan': GEO('Nord',null),
+  'yokohama': GEO('Nord',null), 'nagoya': GEO('Nord',null), 'kobe': GEO('Nord',null),
+  'fukuoka': GEO('Nord',null), 'sao paulo': GEO('Sud',null), 'salvador': GEO('Sud',null),
+  'recife': GEO('Sud',null), 'curitiba': GEO('Sud',null), 'nairobi': GEO('Sud','Est'),
+  'mombasa': GEO('Sud',null), 'kisumu': GEO('Sud',null), 'nakuru': GEO('Sud',null)
 });
 
 function normalizeCityName(value) {

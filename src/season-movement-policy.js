@@ -62,6 +62,7 @@ export function calculateSeasonMovements({ competitions = [], clubs = [], policy
   }
 
   const movements = [];
+  const d4RelegationAssignments = { Nord:0, Sud:0 };
   const add = (row, fromDivision, fromConference, toDivision, toConference, type, position, competition) => {
     movements.push({
       clubId:row.id, clubName:row.name, fromDivision, fromConference:fromConference||null,
