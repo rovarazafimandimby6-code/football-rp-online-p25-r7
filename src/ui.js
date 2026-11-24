@@ -483,6 +483,7 @@ Cette fiche décrit uniquement le footballeur contrôlé par vous.`;
 
   dispose() {
     this.benchStatusEl?.remove();
+    this.cameraToggleButton?.remove();
     this.abortController.abort();
     window.clearTimeout(this.statusTimer);
     this.pauseActionsEl?.remove();
