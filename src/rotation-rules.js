@@ -48,7 +48,8 @@ export function validateRotation({ phase, elapsedMatchSeconds, outgoing, incomin
     || !teamPlayers.some(player => player?.id === incoming.id))) {
     return fail('player-not-in-match-sheet', 'Les deux joueurs doivent figurer sur la feuille de match.');
   }
-  const lastExit = Number(incoming.lastSubstitutedOutAt);
+  const hasPreviousExit = incoming.lastSubstitutedOutAt !== null && incoming.lastSubstitutedOutAt !== undefined;
+  const lastExit = hasPreviousExit ? Number(incoming.lastSubstitutedOutAt) : NaN;
   if (Number.isFinite(lastExit)) {
     const elapsedSinceExit = elapsedMatchSeconds - lastExit;
     if (elapsedSinceExit < ROTATION_RULES_V1.returnCooldownMatchSeconds) {

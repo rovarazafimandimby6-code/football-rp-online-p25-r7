@@ -25,6 +25,16 @@ test('P27 rotation V1 : refuse les doublons et les joueurs sans identifiant', ()
   assert.equal(validateMatchSheet({ starters: valid.starters, substitutes: [{}, ...valid.substitutes.slice(1)] }).code, 'invalid-player');
 });
 
+test('P27 rotation V1 : un remplaçant qui n’a jamais joué peut entrer dès le début', () => {
+  const result = validateRotation({
+    phase: 'halftime',
+    elapsedMatchSeconds: 0,
+    outgoing: { id: 'starter', team: 'blue' },
+    incoming: { id: 'reserve', team: 'blue', lastSubstitutedOutAt: null },
+  });
+  assert.equal(result.ok, true);
+});
+
 test('P27 rotation V1 : changements illimités aux arrêts de jeu, sans contrainte de poste', () => {
   const outgoing = { id: 's1', team: 'blue', role: 'DEF' };
   const incoming = { id: 'b1', team: 'blue', role: 'FWD' };
