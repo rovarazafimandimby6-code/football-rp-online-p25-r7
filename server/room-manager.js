@@ -602,7 +602,7 @@ export class RoomManager {
       id: room.id, name: room.name, durationMinutes: room.durationMinutes,
       phase: room.phase, period: room.period, halftimeRemainingMs: room.phase === 'halftime' && room.halftimeUntil ? Math.max(0, room.halftimeUntil - this.now()) : 0, attackDirection: { ...room.attackDirection }, elapsedMs: room.elapsedMs, durationMs: room.durationMinutes * 60_000, sequence: room.sequence,
       virtualClock: `${String(Math.floor(Math.min(5400, room.elapsedMs / (room.durationMinutes * 60_000) * 5400) / 60)).padStart(2,'0')}:${String(Math.floor(Math.min(5400, room.elapsedMs / (room.durationMinutes * 60_000) * 5400) % 60)).padStart(2,'0')}`,
-      score: { ...room.score }, teams: cloneMatchTeams(room.teams), counts: this.teamCounts(room),
+      score: { ...room.score }, teams: cloneMatchTeams(room.teams), counts: this.teamCounts(room), rotationAvailable: room.phase === 'halftime' || (room.phase === 'playing' && room.goalPauseMs > 0),
       players, rotationRequests: (room.rotationRequests || []).map(request => ({ ...request })), benchCounts: { blue: players.filter(p => p.team === 'blue' && p.isOnPitch === false).length, red: players.filter(p => p.team === 'red' && p.isOnPitch === false).length }, ball: { ...room.ball }, result: room.result, events: room.events.slice(-40), eventCursor: room.nextEventId - 1,
     };
   }
