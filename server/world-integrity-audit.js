@@ -45,15 +45,21 @@ export function auditP27World({
 
   const careers = Array.isArray(transferState?.careers) ? transferState.careers : [];
   const accountIds = new Set();
+  const careerPlayerIds = new Set();
   for (const career of careers) {
     if (!safeText(career?.accountId)) { errors.push({ code:'CAREER_ACCOUNT_ID_MISSING' }); continue; }
     if (accountIds.has(career.accountId)) errors.push({ code:'CAREER_ACCOUNT_DUPLICATE', accountId:career.accountId });
     accountIds.add(career.accountId);
+    if (career.playerId) {
+      if (careerPlayerIds.has(career.playerId)) errors.push({ code:'CAREER_PLAYER_DUPLICATE', playerId:career.playerId });
+      careerPlayerIds.add(career.playerId);
+    }
     const active = career.contract?.status === 'active';
     if (active && (!career.clubId || career.clubId !== career.contract.clubId)) {
       errors.push({ code:'CAREER_CONTRACT_LINK_MISMATCH', accountId:career.accountId, clubId:career.clubId, contractClubId:career.contract.clubId });
     }
     if (active && !clubById.has(career.clubId)) errors.push({ code:'CAREER_REFERENCES_UNKNOWN_CLUB', accountId:career.accountId, clubId:career.clubId });
+    if (active && career.contract.playerId && career.playerId && career.contract.playerId !== career.playerId) errors.push({ code:'CAREER_CONTRACT_PLAYER_MISMATCH', accountId:career.accountId, playerId:career.playerId, contractPlayerId:career.contract.playerId });
   }
 
   let financeBalanceTotal = 0, financeEntries = 0;
@@ -80,6 +86,17 @@ export function auditP27World({
     } else financeBalanceTotal += balance;
   }
 
+  const transferEvents = Array.isArray(transferState?.events) ? transferState.events : [];
+  const transferEventIds = new Set();
+  for (const event of transferEvents) {
+    if (!safeText(event?.id) || transferEventIds.has(event.id)) errors.push({ code:'TRANSFER_EVENT_ID_INVALID_OR_DUPLICATE', eventId:event?.id || null });
+    transferEventIds.add(event?.id);
+    if (event?.type === 'transfer') {
+      if (!clubById.has(event.fromClubId) || !clubById.has(event.toClubId) || event.fromClubId === event.toClubId)
+        errors.push({ code:'TRANSFER_EVENT_CLUB_LINK_INVALID', eventId:event.id, fromClubId:event.fromClubId || null, toClubId:event.toClubId || null });
+      if (!Number.isSafeInteger(event.fee) || event.fee < 0) errors.push({ code:'TRANSFER_EVENT_FEE_INVALID', eventId:event.id });
+    }
+  }
   const seasons = Array.isArray(competitionState?.seasons) ? competitionState.seasons : [];
   const activeSeasons = seasons.filter(season => season?.status === 'active');
   if (seasons.length && activeSeasons.length !== 1) errors.push({ code:'ACTIVE_SEASON_COUNT_INVALID', count:activeSeasons.length });
@@ -97,6 +114,8 @@ export function auditP27World({
         fixtures++;
         if (!safeText(fixture?.id) || fixtureIds.has(fixture.id)) errors.push({ code:'FIXTURE_ID_INVALID_OR_DUPLICATE', seasonId:season.id, fixtureId:fixture?.id || null });
         fixtureIds.add(fixture?.id);
+        if (fixture.competitionId && fixture.competitionId !== competition.id) errors.push({ code:'FIXTURE_COMPETITION_LINK_MISMATCH', seasonId:season.id, competitionId:competition.id, fixtureId:fixture.id });
+        if (fixture.homeClubId && fixture.homeClubId === fixture.awayClubId) errors.push({ code:'FIXTURE_SELF_PLAY_INVALID', seasonId:season.id, competitionId:competition.id, fixtureId:fixture.id });
         if (fixture.status === 'completed') {
           completedFixtures++;
           if (!validScore(fixture.result?.home) || !validScore(fixture.result?.away) ||
