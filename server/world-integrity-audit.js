@@ -47,8 +47,8 @@ export function auditP27World({
   const freeAgentArchive = new Map();
   for (const club of catalogue) {
     for (const entry of Array.isArray(club.releasedPlayers) ? club.releasedPlayers : []) {
-      const playerId = safeText(entry?.player?.id);
-      if (!playerId || entry.reason === 'transferred' || rosterIds.has(playerId)) continue;
+      const playerId = entry?.player?.id;
+      if (!safeText(playerId) || entry.reason === 'transferred' || rosterIds.has(playerId)) continue;
       if (!freeAgentArchive.has(playerId)) freeAgentArchive.set(playerId, []);
       freeAgentArchive.get(playerId).push({ clubId:club.id, releasedAt:entry.releasedAt || null });
     }
