@@ -1,6 +1,6 @@
 import { generateClubRoster } from './club-roster.js';
 import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './league-structure.js';
-import { generateClubCharacteristics } from './club-profile.js';
+import { generateClubCharacteristics, generateClubRecruitmentProfile, balanceClubRosterQuality } from './club-profile.js';
 
 const safeId = value => String(value ?? '').trim().slice(0, 48);
 const safeCount = value => Number.isFinite(Number(value)) && Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 5 ? Number(value) : null;
@@ -8,7 +8,7 @@ const cleanText = (value, fallback, max = 48) => String(value ?? fallback).repla
 const PLAYER_ATTRIBUTE_KEYS = ['pace','shooting','passing','defense','stamina','control'];
 const normalizePlayerAttributes = (attributes, fallback = 50) => Object.fromEntries(PLAYER_ATTRIBUTE_KEYS.map(key => [key, Number.isFinite(Number(attributes?.[key])) ? Math.max(1, Math.min(99, Math.round(Number(attributes[key])))) : Math.max(1, Math.min(99, Math.round(fallback)))]));
 const clonePlayer = player => ({ ...player, attributes: player.attributes ? { ...player.attributes } : null, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
-const cloneClub = club => ({ ...club, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, roster: club.roster.map(clonePlayer) });
+const cloneClub = club => ({ ...club, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, recruitmentProfile: club.recruitmentProfile ? { ...club.recruitmentProfile, nationalityCodes: [...(club.recruitmentProfile.nationalityCodes || [])] } : null, roster: club.roster.map(clonePlayer) });
 
 const normalizeRosterPlayer = (player, club, index = 0) => {
   const rating = Number(player?.rating);
@@ -104,9 +104,16 @@ export class ClubManager {
         characteristics: input.characteristics && typeof input.characteristics === 'object'
           ? Object.fromEntries(['popularity','attractiveness','infrastructure','management'].map(key => [key, Math.max(1, Math.min(100, Math.round(Number(input.characteristics[key]) || 50)))]))
           : generateClubCharacteristics({ ...input, division: normalizeDivision(input.division) }),
+        humanAdmission: ['open','system-only'].includes(input.humanAdmission) ? input.humanAdmission : null,
+        recruitmentProfile: null,
         roster: [], managerId: null, points: 0, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0
       };
-      normalized.roster = seedDefaultRosters ? generateClubRoster(normalized, { size: Math.min(12, normalized.capacity), usedNames: globallyUsedNames }) : [];
+      normalized.recruitmentProfile = generateClubRecruitmentProfile({ ...input, id, division: normalized.division, countryCode: normalized.countryCode, humanAdmission: normalized.humanAdmission });
+      normalized.humanAdmission = normalized.recruitmentProfile.humanAdmission;
+      normalized.roster = seedDefaultRosters ? balanceClubRosterQuality(
+        generateClubRoster({ ...normalized, recruitmentProfile: normalized.recruitmentProfile }, { size: Math.min(12, normalized.capacity), usedNames: globallyUsedNames }),
+        normalized
+      ) : [];
       this.clubs.set(id, normalized);
     }
     // D4 is absent from the starter 16-club catalogue. As soon as D4 clubs are
@@ -125,6 +132,21 @@ export class ClubManager {
           reserved
         );
       }
+    }
+    // D4 is absent from the starter 16-club catalogue. Reserve one as soon as
+    // that division is populated, unless an authored D4 reserve already exists.
+    const d4Clubs = [...this.clubs.values()].filter(item => item.division === 'D4').sort((a,b) => a.id.localeCompare(b.id));
+    if (d4Clubs.length && !d4Clubs.some(item => item.humanAdmission === 'system-only')) {
+      const reserved = d4Clubs[0];
+      reserved.humanAdmission = 'system-only';
+      reserved.recruitmentProfile = generateClubRecruitmentProfile({
+        id: reserved.id, division: reserved.division, countryCode: reserved.countryCode,
+        humanAdmission: 'system-only', recruitmentProfile: { mode:'continent', continent:'Africa' }
+      });
+      if (seedDefaultRosters) reserved.roster = balanceClubRosterQuality(
+        generateClubRoster({ ...reserved, recruitmentProfile: reserved.recruitmentProfile }, { size: Math.min(12, reserved.capacity), usedNames: globallyUsedNames }),
+        reserved
+      );
     }
     this.fixtures = [];
     this.loadSeason();
@@ -183,7 +205,7 @@ export class ClubManager {
   takeOver(clubId, userId) {
     const club = this.clubs.get(safeId(clubId)); const manager = safeId(userId);
     if (!club || !manager) return { ok: false, reason: 'invalid-request' };
-    if (club.control !== 'open' || club.managerId) return { ok: false, reason: 'club-not-available' };
+    if (club.control !== 'open' || club.humanAdmission === 'system-only' || club.managerId) return { ok: false, reason: 'club-not-available' };
     if ([...this.clubs.values()].some(other => other.managerId === manager)) return { ok: false, reason: 'manager-already-has-club' };
     club.control = 'player'; club.managerId = manager; this.saveSeason();
     return { ok: true, club: this.getClub(club.id) };
