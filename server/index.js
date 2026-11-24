@@ -124,7 +124,10 @@ const server = http.createServer(async (req, res) => {
         financeJournal:clubFinance.transferJournal,
         competitionState:competitionStore.state,
         resultArchive:resultStore.readAll(),
-        playerCareerState:careerStore.state
+        playerCareerState:careerStore.state,
+        accountState:accountStore.state,
+        profileState:playerProfileStore.state,
+        progressionState:progressionStore.state
       });
       return json(res, audit.ok ? 200 : 409, audit);
     }
