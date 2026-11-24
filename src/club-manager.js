@@ -40,7 +40,7 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     contract: player?.playerType !== 'human'
       ? {
           ...createSystemPlayerContract({ clubId: club.id, playerId: safeId(player?.id), division: club.division, rating: safeRating }),
-          ...(player?.contract && typeof player.contract === 'object' ? Object.fromEntries(['reviewCount','reviewedAt','signedAt','durationWeeks','expiresAt','transferredAt','previousClubId'].filter(key => player.contract[key] !== undefined).map(key => [key,player.contract[key]])) : {})
+          ...(player?.contract && typeof player.contract === 'object' ? Object.fromEntries(['reviewCount','reviewedAt','signedAt','durationWeeks','expiresAt','transferredAt','previousClubId','renewalCount','renewedAt','termHistory'].filter(key => player.contract[key] !== undefined).map(key => [key,player.contract[key]])) : {})
         }
       : player?.contract && typeof player.contract === 'object' && player.contract.status === 'active' &&
         Number.isSafeInteger(Number(player.contract.weeklyWage ?? player.contract.salary)) &&
