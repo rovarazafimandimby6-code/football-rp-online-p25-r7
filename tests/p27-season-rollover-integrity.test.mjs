@@ -76,3 +76,29 @@ test('P27 renouvellement pluri-saisons : conserve 156 clubs et les capacités de
     rmSync(directory,{recursive:true,force:true});
   }
 });
+
+
+test('P27 transition de saison : restaure intégralement clubs et archives si la persistance finale échoue',()=>{
+ const directory=mkdtempSync(path.join(tmpdir(),'p27-rollover-rollback-'));
+ try {
+  const store=new JsonCompetitionStore(directory,{seasonId:'2026-27',now:()=>1000});
+  for(const competition of store.activeSeason.competitions) competition.status='completed';
+  finishPromotionPlayoffs(store);
+  const preview=store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  const beforeAssignments=[...store.clubs.values()].map(club=>({id:club.id,division:club.division,conference:club.conference}));
+  const originalPersist=store.persist.bind(store);
+  store.persist=()=>{throw new Error('simulated-disk-failure');};
+  assert.throws(()=>store.finalizeSeason({nextSeasonId:'2027-28',movements:preview.movements,completedAt:2000}),/simulated-disk-failure/);
+  store.persist=originalPersist;
+  assert.equal(store.seasonHistory().length,1);
+  assert.equal(store.activeSeason.id,'2026-27');
+  assert.equal(store.activeSeason.status,'active');
+  assert.deepEqual([...store.clubs.values()].map(club=>({id:club.id,division:club.division,conference:club.conference})),beforeAssignments);
+  const restored=new JsonCompetitionStore(directory,{seasonId:'ignored',now:()=>3000});
+  assert.equal(restored.seasonHistory().length,1);
+  assert.equal(restored.activeSeason.id,'2026-27');
+ } finally {
+  rmSync(directory,{recursive:true,force:true});
+ }
+});
