@@ -110,8 +110,10 @@ function marketFixture(directory) {
  const player={id:'system-market-forward',name:'Forward',playerType:'system',role:'FWD',rating:70,number:9,contract:{status:'active',clubId:'market-seller',playerId:'system-market-forward',expiresAt:'2028-12-31T00:00:00.000Z'}};
  const seller={id:'market-seller',division:'D2',rating:60,capacity:12,roster:[player,{id:'s2',playerType:'system',role:'FWD',rating:55,contract:{status:'active',clubId:'market-seller',expiresAt:'2028-12-31T00:00:00.000Z'}},{id:'s3',playerType:'system',role:'FWD',rating:54,contract:{status:'active',clubId:'market-seller',expiresAt:'2028-12-31T00:00:00.000Z'}}]};
  const buyer={id:'market-buyer',division:'D2',rating:75,capacity:12,roster:[]};
+ const buyer2={id:'market-buyer-2',division:'D2',rating:70,capacity:12,roster:[]};
+ const buyer3={id:'market-buyer-3',division:'D3',rating:65,capacity:12,roster:[]};
  const manager={
-  clubs:new Map([[seller.id,seller],[buyer.id,buyer]]),
+  clubs:new Map([[seller.id,seller],[buyer.id,buyer],[buyer2.id,buyer2],[buyer3.id,buyer3]]),
   getClub(id){return this.clubs.get(id)||null;},
   listClubs(){return [...this.clubs.values()];},
   transferPlayer(fromId,toId,playerId){
@@ -139,6 +141,19 @@ test('P27 lot 85 : simulation du mercato IA déterministe, fondée sur les besoi
   assert.equal(first.transfers[0].fee,second.transfers[0].fee);
   assert.equal(marketFixture(c).simulateMarket({windowId:'x',maxTransfers:0}).reason,'invalid-market-window');
  } finally {rmSync(a,{recursive:true,force:true});rmSync(b,{recursive:true,force:true});rmSync(c,{recursive:true,force:true});}
+});
+
+test('P27 lot 94 : une vague de mercato ne vide jamais le poste du vendeur sous deux joueurs IA',()=>{
+ const directory=mkdtempSync(path.join(os.tmpdir(),'p27-market-depth-batch-'));
+ try {
+  const service=marketFixture(directory);
+  const result=service.simulateMarket({windowId:'depth-batch-2028',maxTransfers:5,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  const seller=service.clubManager.getClub('market-seller');
+  const remaining=seller.roster.filter(player=>player.playerType==='system' && player.role==='FWD').length;
+  assert.ok(result.evaluated>1);
+  assert.equal(result.processed,1);
+  assert.equal(remaining,2);
+ } finally {rmSync(directory,{recursive:true,force:true});}
 });
 
 test('P27 lot 85 : respecte l’horloge explicite de la fenêtre lors du contrôle du contrat',()=>{
