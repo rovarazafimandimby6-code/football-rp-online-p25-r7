@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateSystemWeeklyWage, createSystemPlayerContract } from '../src/p27-player-contracts.js';
 import { ClubManager } from '../src/club-manager.js';
+import { auditP27World } from '../server/world-integrity-audit.js';
 
 test('P27 contrats joueurs : barème salarial déterministe et progressif par division',()=>{
   assert.equal(calculateSystemWeeklyWage({division:'D1',rating:75}),1200);
@@ -75,4 +76,28 @@ test('P27 contrats IA : mémorise un refus sportif, libère le joueur à échéa
  const recruited=restored.replenishSystemRosterVacancies({clubIds:[club.id],now:signedAt+28*24*60*60*1000});
  assert.equal(recruited.recruited.length,1);
  assert.equal(restored.getClub(club.id).roster.length,12);
+});
+
+test('P27 contrats IA : recrutement d’un joueur libre persiste après redémarrage et reste intègre',()=>{
+ const values=new Map();
+ const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+ const key='p27-free-agent-restart-audit';
+ const manager=new ClubManager(undefined,storage,key);
+ const source=manager.getClub('antananarivo-fc');
+ const target=manager.getClub('toamasina-united');
+ const player=source.roster.find(item=>item.playerType==='system');
+ assert.ok(player);
+ assert.equal(manager.removePlayer(source.id,player.id),true);
+ const now=Date.UTC(2027,5,1);
+ const signed=manager.signFreeAgent(target.id,player.id,{now});
+ assert.equal(signed.ok,true);
+ const restored=new ClubManager(undefined,storage,key);
+ const current=restored.getClub(target.id).roster.find(item=>item.id===player.id);
+ assert.equal(current.contract.status,'active');
+ assert.equal(current.contract.clubId,target.id);
+ assert.equal(current.contract.playerId,player.id);
+ assert.equal(current.contract.previousClubId,source.id);
+ const audit=auditP27World({clubs:restored.listClubs(),expectedClubCount:0});
+ assert.equal(audit.errors.length,0,JSON.stringify(audit.errors));
+ assert.equal(audit.warnings.some(item=>item.code==='FREE_AGENT_ARCHIVE_DUPLICATE_SNAPSHOTS'),false);
 });
