@@ -168,6 +168,25 @@ export function auditP27World({
       careerPlayerIds.add(career.playerId);
     }
     const active = career.contract?.status === 'active';
+    const careerEvents = Array.isArray(career.history) ? career.history : [];
+    let previousMovement = null;
+    let previousEventAt = -Infinity;
+    for (const event of careerEvents) {
+      const at = typeof event?.at === 'number' ? event.at : Date.parse(event?.at || '');
+      if (!Number.isFinite(at) || at < previousEventAt)
+        errors.push({ code:'CAREER_EVENT_CHRONOLOGY_INVALID', accountId:career.accountId, eventId:event?.id || null });
+      else previousEventAt = at;
+      if (['transfer','loan','loan-return'].includes(event?.type)) {
+        if (!safeText(event.fromClubId) || !safeText(event.toClubId) ||
+            event.fromClubId === event.toClubId || !clubById.has(event.fromClubId) || !clubById.has(event.toClubId)) {
+          errors.push({ code:'CAREER_MOVEMENT_EVENT_INVALID', accountId:career.accountId, eventId:event?.id || null });
+        }
+        if (previousMovement && previousMovement.toClubId !== event.fromClubId)
+          errors.push({ code:'CAREER_MOVEMENT_CHAIN_BROKEN', accountId:career.accountId, eventId:event?.id || null,
+            expectedFromClubId:previousMovement.toClubId, actualFromClubId:event.fromClubId || null });
+        previousMovement = event;
+      }
+    }
     if (career.playerId) {
       const memberships = rosterPlayersById.get(career.playerId) || [];
       if (active && memberships.length === 0) {
@@ -519,25 +538,33 @@ export function auditP27World({
       errors.push({ code:'PLAYER_CAREER_TOTALS_INVALID', playerId:playerCareer.playerId });
     }
     const matchIds = new Set();
+    const retained = { matches:0, wins:0, draws:0, losses:0, minutesPlayedMs:0,
+      goals:0, assists:0, shots:0, passes:0, completedPasses:0, tackles:0, interceptions:0, saves:0 };
     for (const match of matches) {
       if (!safeText(match?.matchId) || matchIds.has(match.matchId)) {
         errors.push({ code:'PLAYER_CAREER_MATCH_ID_INVALID_OR_DUPLICATE', playerId:playerCareer.playerId, matchId:match?.matchId || null });
         continue;
       }
       matchIds.add(match.matchId);
+      retained.matches++;
       if (!['win','draw','loss'].includes(match.result) || !Number.isFinite(match.finalizedAt) ||
           !Number.isSafeInteger(match.minutesPlayedMs) || match.minutesPlayedMs < 0) {
         errors.push({ code:'PLAYER_CAREER_MATCH_RECORD_INVALID', playerId:playerCareer.playerId, matchId:match.matchId });
-      }
+      } else retained.minutesPlayedMs += match.minutesPlayedMs;
+      if (['win','draw','loss'].includes(match.result)) retained[match.result === 'win' ? 'wins' : match.result === 'draw' ? 'draws' : 'losses']++;
       for (const field of ['goals','assists','shots','passes','completedPasses','tackles','interceptions','saves']) {
         const value = match.stats?.[field];
         if (!Number.isSafeInteger(value) || value < 0) {
           errors.push({ code:'PLAYER_CAREER_MATCH_STAT_INVALID', playerId:playerCareer.playerId, matchId:match.matchId, field });
-        }
+        } else retained[field] += value;
       }
       if (Number.isSafeInteger(match.stats?.passes) && Number.isSafeInteger(match.stats?.completedPasses) &&
           match.stats.completedPasses > match.stats.passes)
         errors.push({ code:'PLAYER_CAREER_PASS_TOTAL_INVALID', playerId:playerCareer.playerId, matchId:match.matchId });
+    }
+    for (const [field, value] of Object.entries(retained)) {
+      if (!Number.isSafeInteger(totals?.[field]) || totals[field] < value)
+        errors.push({ code:'PLAYER_CAREER_TOTAL_BELOW_RETAINED_MATCHES', playerId:playerCareer.playerId, field });
     }
     const transferCareer = transferCareerByPlayer.get(playerCareer.playerId);
     if (!transferCareer) {
