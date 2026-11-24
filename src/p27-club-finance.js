@@ -109,13 +109,18 @@ export class ClubFinanceStore {
       for(let i=0;i<payable;i++)due.push({id:'sponsor-'+sponsor.id+'-'+(sponsor.paidWeeks+i+1),category:'sponsorship',amount:sponsor.weeklyPayment,direction:'income',description:'Versement sponsor : '+sponsor.name,createdAt:sponsor.signedAt+(sponsor.paidWeeks+i+1)*7*86400000,referenceId:sponsor.id});
     }
     if(!due.length)return {ok:true,paid:0,account:this.getAccount(id)};
-    const result=this.postBatch(id,due);
-    if(!result.ok)return result;
+    const snapshot=clone(account);
+    const existing=new Set(account.entries.map(entry=>entry.id));
+    const fresh=due.filter(entry=>!existing.has(entry.id)).map(normalizeEntry);
+    if(fresh.some(entry=>!entry))return {ok:false,reason:'invalid-entry'};
+    const nextBalance=this.balance(id)+fresh.reduce((sum,entry)=>sum+entry.amount,0);
+    if(!Number.isSafeInteger(nextBalance)||nextBalance>MAX_MONEY)return {ok:false,reason:'balance-limit'};
+    account.entries.push(...fresh);
     for(const sponsor of account.sponsors){
-      const paid=due.filter(x=>x.referenceId===sponsor.id).length;
-      if(paid){sponsor.paidWeeks+=paid;sponsor.status=sponsor.paidWeeks>=sponsor.durationWeeks?'completed':'active';}
+      const paid=due.filter(entry=>entry.referenceId===sponsor.id).length;
+      if(paid){sponsor.paidWeeks=Math.min(sponsor.durationWeeks,sponsor.paidWeeks+paid);sponsor.status=sponsor.paidWeeks>=sponsor.durationWeeks?'completed':'active';}
     }
-    if(!this.persist())return {ok:false,reason:'persistence-failed'};
+    if(!this.persist()){this.accounts.set(id,snapshot);return {ok:false,reason:'persistence-failed'};}
     return {ok:true,paid:due.length,amount:due.reduce((n,x)=>n+x.amount,0),account:this.getAccount(id)};
   }
   issueLoan(clubId,input) {
