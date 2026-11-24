@@ -120,3 +120,36 @@ test('P27 API snapshot : publie une prévision de mouvements seulement lorsque l
   assert.equal(snapshot.movementPreview.policy.status,'proposed');
  }finally{f.cleanup();}
 });
+
+
+test('P27 saisons : applique la prévision validée et archive les détails de chaque mouvement',()=>{
+ const f=setup();try{
+  for(const competition of f.store.activeSeason.competitions) if(competition.type==='league')competition.status='completed';
+  for(const competition of f.store.activeSeason.competitions) if(competition.type==='cup')competition.status='completed';
+  const preview=f.store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  const result=f.store.finalizeSeason({nextSeasonId:'2027-28',movements:preview.movements,completedAt:3000});
+  assert.equal(result.ok,true,JSON.stringify(result));
+  assert.equal(result.movements,20);
+  const archived=f.store.seasonHistory()[0].movements;
+  assert.equal(archived.length,20);
+  assert.ok(archived.every(item=>item.clubName&&item.fromDivision&&item.toDivision&&item.type&&Number.isSafeInteger(item.finalPosition)&&item.competitionId));
+  const promotions=archived.filter(item=>item.type==='promotion');
+  const relegations=archived.filter(item=>item.type==='relegation');
+  assert.equal(promotions.length,10);
+  assert.equal(relegations.length,10);
+  assert.deepEqual(Object.fromEntries(['Nord','Sud'].map(conference=>[conference,f.store.clubs.size? [...f.store.clubs.values()].filter(club=>club.division==='D4'&&club.conference===conference).length:0])),{Nord:16,Sud:16});
+  assert.equal(f.store.activeSeason.competitions.find(item=>item.division==='D5'&&item.conference==='Est').members.length,16);
+  const restored=new JsonCompetitionStore(f.directory,{seasonId:'ignored'});
+  assert.equal(restored.seasonHistory()[0].movements[0].type!==undefined,true);
+ }finally{f.cleanup();}
+});
+
+test('P27 saisons : refuse une liste de mouvements mal formée sans modifier la saison',()=>{
+ const f=setup();try{
+  const result=f.store.finalizeSeason({nextSeasonId:'invalid',movements:null});
+  assert.equal(result.reason,'invalid-movement-list');
+  assert.equal(f.store.seasonHistory().length,1);
+  assert.equal(f.store.activeSeason.status,'active');
+ }finally{f.cleanup();}
+});

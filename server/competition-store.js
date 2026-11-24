@@ -147,6 +147,7 @@ export class JsonCompetitionStore {
   finalizeSeason({ nextSeasonId, movements = [], completedAt = this.now() } = {}) {
     const current = this.activeSeason;
     const nextId = clean(nextSeasonId, 48);
+    if (!Array.isArray(movements)) return { ok:false, reason:'invalid-movement-list' };
     if (!nextId || !Number.isFinite(completedAt)) return { ok:false, reason:'invalid-season-transition' };
     if (this.state.seasons.some(season => season.id === nextId)) return { ok:false, reason:'season-already-exists' };
     if (current.competitions.some(competition => competition.status !== 'completed')) return { ok:false, reason:'season-competitions-incomplete' };
@@ -187,7 +188,19 @@ export class JsonCompetitionStore {
       return { ok:false, reason:'conference-capacity-mismatch', conferenceCounts };
     current.status = 'completed';
     current.completedAt = completedAt;
-    current.movements = movements.map(item => ({ clubId:clean(item.clubId,80), fromDivision:this.clubs.get(clean(item.clubId,80)).division, toDivision:item.toDivision, toConference:item.toConference || null }));
+    current.movements = movements.map(item => {
+      const clubId=clean(item.clubId,80);
+      const club=this.clubs.get(clubId);
+      return {
+        clubId, clubName:club.name,
+        fromDivision:club.division, fromConference:conferenceForClub(club),
+        toDivision:item.toDivision, toConference:item.toConference || null,
+        type:['promotion','relegation'].includes(item.type) ? item.type : null,
+        finalPosition:Number.isSafeInteger(item.finalPosition) ? item.finalPosition : null,
+        competitionId:clean(item.competitionId,96) || null,
+        competitionName:clean(item.competitionName,100) || null
+      };
+    });
     this.clubs = nextClubs;
     this.state.clubAssignments = [...nextClubs.values()].map(club => ({...club}));
     const nextSeason = createSeason(nextId,[...nextClubs.values()],completedAt);
