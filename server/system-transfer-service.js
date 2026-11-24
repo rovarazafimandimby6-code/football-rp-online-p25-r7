@@ -185,21 +185,17 @@ export class P27SystemTransferService {
     const results = [];
     const usedPlayers = new Set();
     const usedBuyers = new Set();
-    const sellerRoleSales = new Map();
     for (const candidate of candidates) {
       if (results.length >= maxTransfers) break;
       if (usedPlayers.has(candidate.playerId) || usedBuyers.has(candidate.toClubId)) continue;
-      const sellerRoleKey = `${candidate.fromClubId}:${candidate.role}`;
-      const initialDepth = this.clubManager.getClub(candidate.fromClubId)?.roster
+      const currentDepth = this.clubManager.getClub(candidate.fromClubId)?.roster
         .filter(player => player.playerType === 'system' && (player.role || 'OTHER') === candidate.role).length || 0;
-      const alreadySold = sellerRoleSales.get(sellerRoleKey) || 0;
-      // Keep at least two system players in the seller's role after every accepted move.
-      if (initialDepth - alreadySold <= 2) continue;
+      // The roster is re-read after each accepted transfer; never sell below two.
+      if (currentDepth <= 2) continue;
       const result = this.transfer({ ...candidate, now });
       if (!result.ok) continue;
       usedPlayers.add(candidate.playerId);
       usedBuyers.add(candidate.toClubId);
-      sellerRoleSales.set(sellerRoleKey,alreadySold+1);
       results.push({ ...candidate, result });
     }
     return { ok:true, windowId:window, evaluated:candidates.length, processed:results.length, transfers:results };
