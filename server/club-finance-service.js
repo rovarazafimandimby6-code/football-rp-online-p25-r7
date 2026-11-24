@@ -15,6 +15,8 @@ export class JsonClubFinanceService {
     this.now = now;
     this.transferStore = transferStore;
     mkdirSync(this.directory, { recursive: true });
+    this.transferJournalFile = path.join(this.directory, 'transfer-finance-journal.json');
+    this.transferJournal = this.loadTransferJournal();
     const storage = {
       getItem: key => {
         if (key !== 'p27-club-finance') return null;
@@ -184,6 +186,90 @@ export class JsonClubFinanceService {
     return { ok: unpaid === 0, posted, unpaid, clubs };
   }
 
+  loadTransferJournal() {
+    try {
+      const parsed = JSON.parse(readFileSync(this.transferJournalFile, 'utf8'));
+      if (parsed?.version !== 1 || !Array.isArray(parsed.transfers) ||
+          parsed.transfers.some(item => !item?.id || !item.fromClubId || !item.toClubId ||
+            !Number.isSafeInteger(item.fee) || item.fee <= 0 ||
+            typeof item.debitPosted !== 'boolean' || typeof item.creditPosted !== 'boolean')) {
+        throw new Error('TRANSFER_FINANCE_JOURNAL_CORRUPT');
+      }
+      return parsed;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw new Error('TRANSFER_FINANCE_JOURNAL_CORRUPT');
+      const initial = { version: 1, transfers: [] };
+      if (!this.persistTransferJournal(initial)) throw new Error('TRANSFER_FINANCE_JOURNAL_INITIALIZATION_FAILED');
+      return initial;
+    }
+  }
+
+  persistTransferJournal(next) {
+    const temp = `${this.transferJournalFile}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      writeFileSync(temp, JSON.stringify(next), { mode: 0o600 });
+      renameSync(temp, this.transferJournalFile);
+      this.transferJournal = next;
+      return true;
+    } catch (error) {
+      try { unlinkSync(temp); } catch {}
+      return false;
+    }
+  }
+
+  journalTransferFee(event) {
+    const id = String(event.id);
+    const fee = safeAmount(event.fee);
+    if (!id || fee === null || fee <= 0 ||
+        !this.clubs.has(event.fromClubId) || !this.clubs.has(event.toClubId) ||
+        event.fromClubId === event.toClubId) {
+      return { ok: false, reason: 'invalid-transfer-event' };
+    }
+    let record = this.transferJournal.transfers.find(item => item.id === id);
+    if (record && (record.fromClubId !== event.fromClubId ||
+        record.toClubId !== event.toClubId || record.fee !== fee)) {
+      return { ok: false, reason: 'transfer-journal-conflict' };
+    }
+    if (!record) {
+      const next = structuredClone(this.transferJournal);
+      record = {
+        id, fromClubId: event.fromClubId, toClubId: event.toClubId, fee,
+        createdAt: Number.isSafeInteger(event.at) ? event.at : this.now(),
+        debitPosted: false, creditPosted: false, status: 'pending'
+      };
+      next.transfers.push(record);
+      if (!this.persistTransferJournal(next)) return { ok: false, reason: 'journal-persistence-failed', stage: 'prepare' };
+      record = this.transferJournal.transfers.find(item => item.id === id);
+    }
+    // Ledger entry IDs are deterministic. Replaying a step after a crash between
+    // ledger persistence and journal persistence is therefore safe and idempotent.
+    const debit = this.store.post(record.fromClubId, {
+      id: `transfer-fee-out-${record.id}`, category: 'transfer-expense', amount: record.fee,
+      direction: 'expense', description: 'Indemnité de transfert versée',
+      createdAt: record.createdAt, referenceId: record.id
+    });
+    if (!debit.ok) return { ok: false, reason: debit.reason, stage: 'debit' };
+    if (!record.debitPosted) {
+      const next = structuredClone(this.transferJournal);
+      next.transfers.find(item => item.id === id).debitPosted = true;
+      if (!this.persistTransferJournal(next)) return { ok: false, reason: 'journal-persistence-failed', stage: 'debit-checkpoint' };
+      record = this.transferJournal.transfers.find(item => item.id === id);
+    }
+    const credit = this.store.post(record.toClubId, {
+      id: `transfer-fee-in-${record.id}`, category: 'transfer-income', amount: record.fee,
+      direction: 'income', description: 'Indemnité de transfert reçue',
+      createdAt: record.createdAt, referenceId: record.id
+    });
+    if (!credit.ok) return { ok: false, reason: credit.reason, stage: 'credit' };
+    const next = structuredClone(this.transferJournal);
+    const completed = next.transfers.find(item => item.id === id);
+    completed.debitPosted = true;
+    completed.creditPosted = true;
+    completed.status = 'completed';
+    if (!this.persistTransferJournal(next)) return { ok: false, reason: 'journal-persistence-failed', stage: 'complete-checkpoint' };
+    return { ok: true, posted: (debit.posted || 0) + (credit.posted || 0), record: this.transferJournal.transfers.find(item => item.id === id) };
+  }
+
   syncRecordedTransferFees() {
     const events = this.transferStore?.state?.events;
     if (!Array.isArray(events)) return { ok: true, posted: 0, unpaid: 0, transfers: [] };
@@ -192,31 +278,18 @@ export class JsonClubFinanceService {
     for (const event of events) {
       if (event?.type !== 'transfer' || !event.id) continue;
       const fee = safeAmount(event.fee);
-      const fromClubId = event.fromClubId;
-      const toClubId = event.toClubId;
-      if (fee === null || fee === 0 || !this.clubs.has(fromClubId) || !this.clubs.has(toClubId) || fromClubId === toClubId) continue;
-      const debit = this.store.post(fromClubId, {
-        id: `transfer-fee-out-${event.id}`, category: 'transfer-expense', amount: fee,
-        direction: 'expense', description: 'Indemnité de transfert versée', createdAt: Number.isSafeInteger(event.at) ? event.at : this.now(),
-        referenceId: event.id
-      });
-      if (!debit.ok) {
+      if (fee === null || fee === 0 || !this.clubs.has(event.fromClubId) ||
+          !this.clubs.has(event.toClubId) || event.fromClubId === event.toClubId) continue;
+      const result = this.journalTransferFee(event);
+      if (!result.ok) {
         unpaid++;
-        transfers.push({ eventId: event.id, ok: false, reason: debit.reason, stage: 'debit', fromClubId, toClubId, fee });
+        transfers.push({ eventId: event.id, ok: false, reason: result.reason, stage: result.stage || null,
+          fromClubId: event.fromClubId, toClubId: event.toClubId, fee });
         continue;
       }
-      const credit = this.store.post(toClubId, {
-        id: `transfer-fee-in-${event.id}`, category: 'transfer-income', amount: fee,
-        direction: 'income', description: 'Indemnité de transfert reçue', createdAt: Number.isSafeInteger(event.at) ? event.at : this.now(),
-        referenceId: event.id
-      });
-      if (!credit.ok) {
-        unpaid++;
-        transfers.push({ eventId: event.id, ok: false, reason: credit.reason, stage: 'credit', fromClubId, toClubId, fee });
-        continue;
-      }
-      posted += (debit.posted || 0) + (credit.posted || 0);
-      transfers.push({ eventId: event.id, ok: true, fromClubId, toClubId, fee });
+      posted += result.posted || 0;
+      transfers.push({ eventId: event.id, ok: true, fromClubId: event.fromClubId,
+        toClubId: event.toClubId, fee, journalStatus: result.record.status });
     }
     return { ok: unpaid === 0, posted, unpaid, transfers };
   }
