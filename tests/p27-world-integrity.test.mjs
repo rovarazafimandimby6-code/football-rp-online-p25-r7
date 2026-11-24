@@ -366,3 +366,26 @@ test('P27 intégrité monde : refuse une commande outbox sans carrière source',
  assert.ok(result.errors.some(item=>item.code==='ROSTER_SYNC_CAREER_LINK_MISSING'));
  assert.ok(result.errors.some(item=>item.code==='ROSTER_SYNC_EVENT_MISSING'));
 });
+
+
+test('P27 intégrité paie humaine : refuse les événements sans carrière, club ou montant cohérent',()=>{
+ const input=cleanWorld();
+ input.transferState.events=[
+  {id:'salary-valid',type:'salary-payment',playerId:'human-unknown',clubId:'club-a',amount:100,periods:1,at:Date.UTC(2027,0,1)},
+  {id:'salary-invalid-club',type:'salary-payment',playerId:'human-unknown',clubId:'unknown-club',amount:-1,periods:0,at:'invalid'}
+ ];
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('SALARY_EVENT_CAREER_LINK_INVALID'));
+ assert.ok(codes.includes('SALARY_EVENT_CLUB_LINK_INVALID'));
+ assert.ok(codes.includes('SALARY_EVENT_AMOUNT_OR_DATE_INVALID'));
+});
+
+test('P27 intégrité paie humaine : refuse une écriture de journal sans événement métier source',()=>{
+ const input=cleanWorld();
+ input.financeJournal={version:1,transfers:[],playerWages:[
+  {id:'orphan-salary-event',clubId:'club-a',amount:100,posted:false}
+ ]};
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='PLAYER_WAGE_JOURNAL_EVENT_MISSING'));
+});
