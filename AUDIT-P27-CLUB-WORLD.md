@@ -2,8 +2,8 @@
 
 Date de vérification : 24 novembre 2026  
 Branche : `p27-dev`  
-Commit code audité : `9662b1eeeeaeeba5aef25b2b38fd0666c24cbeb9`  
-Workflow de référence : [GitHub Actions 45399367704](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45399367704)
+Commit code audité : `ded7807b0f80687d80cb0073638fb48ed6e45825`  
+Workflow de référence : [GitHub Actions 45401475202](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45401475202)
 
 ## Résultat de l'audit
 
@@ -56,7 +56,7 @@ Le catalogue public expose également `managementType` (`human` ou `system`) san
 
 ## Validation CI
 
-- **527 tests réussis**
+- **529 tests réussis**
 - **0 échec**
 - Contrôle de syntaxe JavaScript exécuté avec succès
 - Run : [45397509144](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45397509144)
