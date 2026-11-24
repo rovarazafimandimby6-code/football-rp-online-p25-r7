@@ -830,4 +830,4 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 ### Lot 73 — validation du redémarrage complet de la saga (en cours)
 - [x] Simuler l'arrêt du serveur avant l'application d'une commande d'inscription, puis reconstruire les deux stockages et reprendre la commande.
 - [x] Simuler l'arrêt après sauvegarde de l'effectif mais avant checkpoint outbox, reconstruire les deux stockages et vérifier l'idempotence de la reprise.
-- [ ] Valider la CI consolidée sur le commit courant.
+- [x] Valider la CI consolidée : 635/635 tests réussis, 0 échec ; contrôle syntaxique JavaScript réussi (run `45445615266`, commit testé `4b4f85d36607ed2a8afbad297b34da92bb42a341`).
