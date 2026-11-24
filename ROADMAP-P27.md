@@ -796,7 +796,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [ ] Ajouter les tests de panne et de redémarrage de cette coordination multi-stockages avant d'activer les invariants bloquants.
 
 
-### Lot 70 — saga de synchronisation carrière/effectif (en cours de validation)
+### Lot 70 — saga de synchronisation carrière/effectif (intégré, CI validée)
 - [x] Écrire une commande outbox durable dans la même transaction que la signature, le transfert, le renouvellement, la résiliation ou l'expiration du contrat humain.
 - [x] Préserver les événements métier historiques du mercato ; l'outbox ne remplace pas les événements de signature/transfert/renouvellement/libération.
 - [x] Appliquer les commandes à l'effectif avec une opération idempotente : inscription, mise à jour, transfert et libération d'un joueur humain.
@@ -807,3 +807,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - Limite : saga rejouable et idempotente entre deux stockages JSON ; ce n'est pas une transaction ACID distribuée. Une opération de mercato peut être acceptée tandis que sa synchronisation d'effectif reste temporairement en attente, visible dans la réponse API et récupérée automatiquement.
 
 - [x] CI consolidée après la saga d'effectif et son audit : 629/629 tests réussis, 0 échec ; contrôle syntaxique JavaScript réussi (run `45443695649`, commit testé `0bc7c11e4ac298a847e4719d676b7baa99822799`).
+
+
+### Lot 71 — précontrôle d'admission humaine au mercato (intégré)
+- [x] Vérifier l'existence du club cible et l'identité stable du joueur humain avant signature ou demande d'offre.
+- [x] Refuser un club réservé au système, un effectif déjà complet, une limite de 7 joueurs humains atteinte, un numéro indisponible ou un identifiant déjà détenu par un joueur système.
+- [x] Réévaluer l'admission au moment de l'acceptation d'une offre, même si le club était admissible lors de la demande initiale.
+- [x] Conserver le comportement idempotent lorsqu'un joueur est déjà inscrit dans le club cible.
+- [x] Ajouter les tests du seuil de 7 joueurs humains, de la capacité maximale et des clubs fermés.
+- [x] CI de la branche p27-dev : 631/631 tests réussis, 0 échec ; contrôle syntaxique JavaScript réussi (run 45443989876, commit testé 9bdcada209a30188823f6bf316acb9208bc2eb94).
