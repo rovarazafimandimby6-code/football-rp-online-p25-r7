@@ -36,7 +36,12 @@ Depuis la racine du dépôt :
 
 ```sh
 npm test
+npm run preflight
 ```
+
+La commande `npm run preflight` vérifie que `P27_ADMIN_TOKEN` est présent et fait au moins 32 octets, puis crée et supprime un fichier temporaire privé dans chacun des 11 répertoires de stockage utilisés par le serveur. Elle n'affiche jamais le secret. Elle échoue si un répertoire n'est pas inscriptible. Elle ne peut toutefois pas prouver que le volume est durable après remplacement de conteneur ou panne de l'hébergeur : cette propriété doit être confirmée dans le panneau et la documentation de l'hébergeur.
+
+Variables de stockage prises en charge : `RESULTS_DIR`, `CAREERS_DIR`, `PLAYER_PROGRESSION_DIR`, `PLAYER_PROFILES_DIR`, `COMPETITIONS_DIR`, `TRANSFERS_DIR`, `FINANCES_DIR`, `CLUB_ROSTERS_DIR`, `SYSTEM_TRANSFERS_DIR`, `ROOMS_DIR` et `ACCOUNTS_DIR`. En leur absence, les sous-répertoires correspondants de `data/` sont utilisés.
 
 Les workflows GitHub Actions exécutent aussi les tests et `node --check` sur les fichiers JavaScript/MJS. Une validation verte ne remplace pas le contrôle des variables d'environnement, des permissions du système de fichiers, du proxy HTTPS, des sauvegardes ni de la persistance de l'hébergeur.
 
