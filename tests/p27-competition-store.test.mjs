@@ -374,3 +374,58 @@ test('P27 saisons : interdit le renouvellement tant que les huit barrages de pro
   assert.equal(f.store.seasonHistory().length,1);
  }finally{f.cleanup();}
 });
+
+
+test('P27 résultats : refuse les scores invalides sans altérer le calendrier',()=>{
+ const f=setup();try{
+  const fixture=f.store.snapshot().competitions.find(item=>item.type==='league').fixtures[0];
+  for(const [homeGoals,awayGoals] of [[-1,0],[0,-1],[1.5,0],[0,1.5],[100,0],[0,100],[NaN,0],[0,Infinity]]){
+   const result=f.store.recordFixtureResult(fixture.id,{roomId:'invalid-score',homeGoals,awayGoals});
+   assert.equal(result.ok,false,JSON.stringify({homeGoals,awayGoals,result}));
+   assert.equal(result.reason,'invalid-result');
+  }
+  assert.equal(f.store.getFixture(fixture.id).status,'scheduled');
+  assert.equal(f.store.snapshot().competitions.find(item=>item.type==='league').standings.reduce((sum,row)=>sum+row.played,0),0);
+ }finally{f.cleanup();}
+});
+
+test('P27 affectations : respecte chaque destination de conférence lors des montées et descentes',()=>{
+ const f=setup();try{
+  for(const competition of f.store.activeSeason.competitions){
+   if(competition.type!=='league')continue;
+   competition.status='completed';
+   competition.standings=competition.standings.map((row,index)=>({...row,points:competition.standings.length-index,goalsFor:100-index,goalsAgainst:index}));
+  }
+  finishPromotionPlayoffs(f.store);
+  const preview=f.store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  const movements=preview.movements;
+  const select=(division,conference,type)=>movements.filter(item=>item.fromDivision===division&&(item.fromConference||null)===conference&&item.type===type);
+  assert.deepEqual(select('D3',null,'relegation').map(item=>item.toConference).sort(),['A','A','B','B']);
+  assert.deepEqual(select('D4','A','relegation').map(item=>item.toConference).sort(),['A','A','B','B']);
+  assert.deepEqual(select('D4','B','relegation').map(item=>item.toConference).sort(),['C','C','D','D']);
+  for(const conference of ['A','B']) assert.ok(select('D5',conference,'promotion').every(item=>item.toDivision==='D4'&&item.toConference==='A'));
+  for(const conference of ['C','D']) assert.ok(select('D5',conference,'promotion').every(item=>item.toDivision==='D4'&&item.toConference==='B'));
+  assert.deepEqual(preview.conferenceCounts,{D4:{A:16,B:16},D5:{A:16,B:16,C:16,D:16}});
+ }finally{f.cleanup();}
+});
+
+test('P27 renouvellement : refuse un doublon de mouvement et conserve intégralement la saison active',()=>{
+ const f=setup();try{
+  for(const competition of f.store.activeSeason.competitions){
+   if(competition.type==='league'||competition.type==='cup')competition.status='completed';
+   if(competition.type==='league')competition.standings=competition.standings.map((row,index)=>({...row,points:competition.standings.length-index,goalsFor:100-index,goalsAgainst:index}));
+  }
+  finishPromotionPlayoffs(f.store);
+  const preview=f.store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  const duplicated=[...preview.movements];
+  duplicated[1]={...duplicated[0]};
+  const result=f.store.finalizeSeason({nextSeasonId:'duplicate-movement',movements:duplicated});
+  assert.equal(result.ok,false);
+  assert.equal(result.reason,'invalid-or-duplicate-club-movement');
+  assert.equal(f.store.activeSeason.id,'test-season');
+  assert.equal(f.store.activeSeason.status,'active');
+  assert.equal(f.store.seasonHistory().length,1);
+ }finally{f.cleanup();}
+});
