@@ -18,7 +18,6 @@ export function auditClubCatalog(clubs = []) {
   const ids = new Set();
   const names = new Map();
   const stadiums = new Map();
-  const kitFingerprints = new Map();
   const divisionCounts = Object.fromEntries(LEAGUE_DIVISIONS.map(item => [item.id, 0]));
   const conferenceCounts = { D4:{ Nord:0, Sud:0 }, D5:{ Nord:0, Sud:0, Est:0, Ouest:0 } };
   const systemOnlyCounts = Object.fromEntries(LEAGUE_DIVISIONS.map(item => [item.id, 0]));
@@ -83,12 +82,7 @@ export function auditClubCatalog(clubs = []) {
       addIssue(issues, 'error', 'invalid-club-color-palette', { clubId:id });
     } else if (!KIT_DESIGNS.has(effectiveKitDesign)) {
       addIssue(issues, 'error', 'invalid-club-kit-design', { clubId:id, kitDesign:effectiveKitDesign });
-    } else {
-      quality.visualIdentities++;
-      const fingerprint = JSON.stringify([colors.map(value=>value.toLowerCase()), effectiveKitDesign]);
-      if (kitFingerprints.has(fingerprint)) addIssue(issues, 'error', 'duplicate-club-kit-identity', { clubId:id, duplicateOf:kitFingerprints.get(fingerprint) });
-      else kitFingerprints.set(fingerprint,id);
-    }
+    } else quality.visualIdentities++;
 
     if (division === 'D4' || division === 'D5') {
       const rawConference = club?.conference ?? club?.region;

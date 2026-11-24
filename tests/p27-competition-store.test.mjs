@@ -56,3 +56,67 @@ test('P27 palmarès : agrège les saisons, les titres et les bilans sans dupliqu
   assert.equal(restored.headToHead(home,home),null);
  }finally{f.cleanup();}
 });
+
+
+test('P27 mouvements : propose un barème complet et conserve exactement les quotas des divisions',()=>{
+ const f=setup();try{
+  for(const competition of f.store.activeSeason.competitions) if(competition.type==='league') competition.status='completed';
+  const preview=f.store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  assert.equal(preview.policy.status,'proposed');
+  assert.equal(preview.totalMovements,20);
+  assert.equal(preview.promotions,10);
+  assert.equal(preview.relegations,10);
+  assert.deepEqual(preview.divisionCounts,{D1:16,D2:20,D3:24,D4:32,D5:64});
+  assert.deepEqual(preview.conferenceCounts,{D4:{Nord:16,Sud:16},D5:{Nord:16,Sud:16,Est:16,Ouest:16}});
+  assert.equal(new Set(preview.movements.map(item=>item.clubId)).size,20);
+ }finally{f.cleanup();}
+});
+
+test('P27 mouvements : respecte les places nationales et les quatre conférences régionales',()=>{
+ const f=setup();try{
+  for(const competition of f.store.activeSeason.competitions){
+   if(competition.type!=='league')continue;
+   competition.status='completed';
+   competition.standings=competition.standings.map((row,index)=>({...row,points:competition.standings.length-index,goalsFor:100-index,goalsAgainst:index}));
+  }
+  const preview=f.store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  const byDivision=(division,type)=>preview.movements.filter(item=>item.fromDivision===division&&item.type===type);
+  assert.equal(byDivision('D1','relegation').length,2);
+  assert.equal(byDivision('D2','promotion').length,2);
+  assert.equal(byDivision('D2','relegation').length,2);
+  assert.equal(byDivision('D3','promotion').length,2);
+  assert.equal(byDivision('D3','relegation').length,2);
+  assert.equal(byDivision('D4','promotion').length,2);
+  assert.equal(byDivision('D4','relegation').length,4);
+  assert.equal(byDivision('D5','promotion').length,4);
+  for(const conference of ['Nord','Sud','Est','Ouest']){
+   const winner=byDivision('D5','promotion').find(item=>item.fromConference===conference);
+   assert.ok(winner);
+   assert.equal(winner.finalPosition,1);
+  }
+  assert.deepEqual(byDivision('D4','relegation').map(item=>item.toConference).sort(),['Est','Nord','Ouest','Sud']);
+ }finally{f.cleanup();}
+});
+
+test('P27 mouvements : ne calcule pas de promotions sur un championnat incomplet ou une table tronquée',()=>{
+ const f=setup();try{
+  assert.equal(f.store.previewSeasonMovements().reason,'league-table-incomplete');
+  for(const competition of f.store.activeSeason.competitions) if(competition.type==='league')competition.status='completed';
+  const d5=f.store.activeSeason.competitions.find(item=>item.division==='D5'&&item.conference==='Est');
+  d5.standings.pop();
+  assert.equal(f.store.previewSeasonMovements().reason,'league-table-incomplete');
+ }finally{f.cleanup();}
+});
+
+test('P27 API snapshot : publie une prévision de mouvements seulement lorsque les neuf classements sont terminés',()=>{
+ const f=setup();try{
+  assert.equal(f.store.snapshot().movementPreview,null);
+  for(const competition of f.store.activeSeason.competitions) if(competition.type==='league')competition.status='completed';
+  const snapshot=f.store.snapshot();
+  assert.equal(snapshot.movementPreview.ok,true);
+  assert.equal(snapshot.movementPreview.totalMovements,20);
+  assert.equal(snapshot.movementPreview.policy.status,'proposed');
+ }finally{f.cleanup();}
+});

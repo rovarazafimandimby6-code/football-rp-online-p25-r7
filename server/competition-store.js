@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { DEFAULT_CLUBS } from '../src/club-manager.js';
 import { getCompetitionGroups, conferenceForClub } from '../src/league-structure.js';
+import { calculateSeasonMovements } from '../src/season-movement-policy.js';
 
 const clean = (value, max = 64) => String(value ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max);
 const scoreValue = value => Number.isSafeInteger(value) && value >= 0 && value <= 99 ? value : null;
@@ -137,6 +138,11 @@ export class JsonCompetitionStore {
     const next=competition.fixtures.find(item=>item.round===fixture.round+1&&(!item.homeClubId||!item.awayClubId));
     if(next){if(!next.homeClubId) next.homeClubId=winnerId; else if(!next.awayClubId) next.awayClubId=winnerId; if(next.homeClubId&&next.awayClubId) next.status='scheduled';}
     if(fixture.round===8){competition.status='completed';competition.championClubId=winnerId;const club=this.clubs.get(winnerId);if(club&&!this.activeSeason.trophies.some(item=>item.competitionId===competition.id))this.activeSeason.trophies.push({id:`${competition.id}-champion`,competitionId:competition.id,competitionName:competition.name,clubId:winnerId,clubName:club.name,awardedAt:fixture.result.finalizedAt});}
+  }
+  previewSeasonMovements() {
+    const season = this.activeSeason;
+    const preview = calculateSeasonMovements({ competitions:season.competitions, clubs:[...this.clubs.values()] });
+    return { ...preview, seasonId:season.id, seasonStatus:season.status };
   }
   finalizeSeason({ nextSeasonId, movements = [], completedAt = this.now() } = {}) {
     const current = this.activeSeason;
@@ -312,6 +318,8 @@ export class JsonCompetitionStore {
   }
   snapshot() {
     const season=this.activeSeason;
-    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies)};
+    const leagueTablesComplete = season.competitions.filter(item=>item.type==='league').length===9 && season.competitions.filter(item=>item.type==='league').every(item=>item.status==='completed');
+    const movementPreview = leagueTablesComplete ? this.previewSeasonMovements() : null;
+    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview};
   }
 }

@@ -95,24 +95,6 @@ const STARTER_CLUB_LOCATIONS = Object.freeze({
   'nairobi-tana-academy': { city:'Nairobi', country:'Kenya', countryCode:'KE' },
   'antsiranana-north-fc': { city:'Antsiranana', country:'Madagascar', countryCode:'MG' }
 });
-const STARTER_KIT_DESIGNS = Object.freeze({
-  'antananarivo-fc':'vertical',
-  'manparis-sporting':'sash',
-  'dakar-milan-union':'hoops',
-  'toamasina-united':'wave',
-  'londaka-city':'pinstripes',
-  'lisboa-nova-athletic':'quartered',
-  'fianarantsoa-athletic':'chevron',
-  'osaka-antsirabe-fc':'sunburst',
-  'mahajanga-city':'horizontal',
-  'rio-tana-creative':'diagonal',
-  'antsirabe-sport':'central',
-  'valencia-northbridge':'split',
-  'tulear-sunrise':'shoulder',
-  'morondava-lagoon':'ripple',
-  'nairobi-tana-academy':'cross',
-  'antsiranana-north-fc':'sidepanels'
-});
 const normalizeClubLocation = (location, legacyCity = '') => {
   const source = location && typeof location === 'object' ? location : {};
   const city = cleanText(source.city, String(legacyCity).split('/')[0].trim(), 48);
@@ -141,7 +123,7 @@ export const DEFAULT_CLUBS = Object.freeze([
   club('morondava-lagoon','Morondava Lagoon','Morondava','Madagascar','MG','AMATEUR',51,'open',['#278c9b','#14515d','#d8f0e8'],'Stade du Baobab',45,360000),
   club('nairobi-tana-academy','Nairobi-Tana Academy','Nairobi / Antananarivo','Kenya · Madagascar','MG','AMATEUR',52,'open',['#526f3e','#273c24','#e3d7a4'],'Academy Field',47,390000),
   club('antsiranana-north-fc','Antsiranana North FC','Antsiranana','Madagascar','MG','AMATEUR',50,'open',['#3976a8','#1e3f68','#f0d477'],'Stade du Nord',44,340000)
-].map(item => ({ ...item, location: STARTER_CLUB_LOCATIONS[item.id], kitDesign: STARTER_KIT_DESIGNS[item.id], ...(item.division === 'AMATEUR' ? { division: 'D5', conference: ({ 'tulear-sunrise': 'Sud', 'morondava-lagoon': 'Ouest', 'nairobi-tana-academy': 'Est', 'antsiranana-north-fc': 'Nord' })[item.id] } : {}) })).concat(P27_EXPANSION_CLUBS));
+].map(item => ({ ...item, location: STARTER_CLUB_LOCATIONS[item.id], ...(item.division === 'AMATEUR' ? { division: 'D5', conference: ({ 'tulear-sunrise': 'Sud', 'morondava-lagoon': 'Ouest', 'nairobi-tana-academy': 'Est', 'antsiranana-north-fc': 'Nord' })[item.id] } : {}) })).concat(P27_EXPANSION_CLUBS));
 
 export class ClubManager {
   constructor(clubs = DEFAULT_CLUBS, storage, storageKey = COMPETITION_KEY) {
