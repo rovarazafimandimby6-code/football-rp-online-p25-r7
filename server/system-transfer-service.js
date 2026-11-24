@@ -140,6 +140,59 @@ export class P27SystemTransferService {
     return { ok:false, reason:item.lastError, pending:true, transfer:{...item} };
   }
 
+  simulateMarket({ windowId, maxTransfers = 5, now = this.now() } = {}) {
+    const window = String(windowId || '').trim();
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{2,48}$/.test(window) ||
+        !Number.isInteger(maxTransfers) || maxTransfers < 1 || maxTransfers > 30 ||
+        !Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-market-window', transfers:[] };
+
+    const clubs = this.clubManager.listClubs().sort((a,b) => a.id.localeCompare(b.id));
+    const divisionRank = new Map(['D1','D2','D3','D4','D5'].map((id,index) => [id,index]));
+    const candidates = [];
+    for (const seller of clubs) {
+      if (!divisionRank.has(seller.division)) continue;
+      const sellerCounts = new Map();
+      for (const player of seller.roster) sellerCounts.set(player.role || 'OTHER',(sellerCounts.get(player.role || 'OTHER') || 0)+1);
+      for (const player of seller.roster) {
+        if (player.playerType !== 'system' || player.contract?.status !== 'active') continue;
+        const expiresAt = Date.parse(player.contract.expiresAt || '');
+        if (!Number.isFinite(expiresAt) || expiresAt <= now + 14*86400000) continue;
+        const role = player.role || 'OTHER';
+        if ((sellerCounts.get(role) || 0) < 3) continue;
+        for (const buyer of clubs) {
+          if (buyer.id === seller.id || !divisionRank.has(buyer.division) ||
+              Math.abs(divisionRank.get(buyer.division)-divisionRank.get(seller.division)) > 1 ||
+              buyer.roster.length >= buyer.capacity) continue;
+          const buyerRoleCount = buyer.roster.filter(item => (item.role || 'OTHER') === role).length;
+          if (buyerRoleCount >= 2) continue;
+          const rating = Number.isFinite(player.rating) ? Math.max(1,Math.min(99,Math.round(player.rating))) : 1;
+          const fee = Math.max(500,Math.round(rating*rating*1.5));
+          const available = this.financeService.store?.balance?.(buyer.id);
+          if (Number.isFinite(available) && available < fee) continue;
+          const gap = Math.max(0, (Number(buyer.rating)||0)-(Number(seller.rating)||0));
+          const score = buyerRoleCount*1000 + gap*10 + rating;
+          const id = `ai-market-${window}-${player.id}-${buyer.id}`.slice(0,96);
+          candidates.push({ id, playerId:player.id, fromClubId:seller.id, toClubId:buyer.id, fee, score, rating, role });
+        }
+      }
+    }
+    candidates.sort((a,b) => b.score-a.score || a.playerId.localeCompare(b.playerId) ||
+      a.fromClubId.localeCompare(b.fromClubId) || a.toClubId.localeCompare(b.toClubId));
+    const results = [];
+    const usedPlayers = new Set();
+    const usedBuyers = new Set();
+    for (const candidate of candidates) {
+      if (results.length >= maxTransfers) break;
+      if (usedPlayers.has(candidate.playerId) || usedBuyers.has(candidate.toClubId)) continue;
+      const result = this.transfer(candidate);
+      if (!result.ok) continue;
+      usedPlayers.add(candidate.playerId);
+      usedBuyers.add(candidate.toClubId);
+      results.push({ ...candidate, result });
+    }
+    return { ok:true, windowId:window, evaluated:candidates.length, processed:results.length, transfers:results };
+  }
+
   processPending() {
     const pending = this.state.transfers.filter(item => item.status === 'pending').map(item => item.id);
     const results = pending.map(id => this.process(id));
