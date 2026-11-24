@@ -79,6 +79,10 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       return json(res, 200, manager.join(joinMatch[1], body));
     }
+    const entryRequestMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})\/entry-request$/);
+    if (req.method === 'POST' && entryRequestMatch) {
+      return json(res, 200, manager.requestEntry(entryRequestMatch[1], bearer(req)));
+    }
     const rotationMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})\/rotation$/);
     if (req.method === 'POST' && rotationMatch) {
       const body = await readBody(req);

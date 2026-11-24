@@ -710,3 +710,39 @@ test('P27 déconnexion : une prise en charge IA ne compte pas comme un nouveau b
   assert.equal(teamPlayers.filter(player => player.isOnPitch !== false).length, 5);
   assert.equal(teamPlayers.filter(player => player.aiControlled).length, 1);
 });
+
+
+test('P27 demande d'entrée depuis le banc : mise en file puis rotation serveur au prochain arrêt', () => {
+  let now = 500_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create();
+  const joined = manager.join(room.id, { displayName: 'Remplaçant' });
+  const internal = manager.rooms.get(room.id);
+  const requester = internal.players.get(joined.playerId);
+  requester.isOnPitch = false;
+  requester.controlMode = 'bench';
+  const activeHuman = [...internal.players.values()].find(player => player.team === requester.team && player.id !== requester.id && !player.isBot && player.connected);
+  if (activeHuman) activeHuman.isOnPitch = true;
+  const activeBotsBefore = [...internal.players.values()].filter(player => player.team === requester.team && player.isBot && player.isOnPitch !== false);
+  const queued = manager.requestEntry(room.id, joined.token);
+  assert.equal(queued.queued, true);
+  assert.equal(internal.rotationRequests.length, 1);
+  assert.equal(requester.isOnPitch, false);
+  assert.equal(manager.requestEntry(room.id, joined.token).duplicate, true);
+  internal.elapsedMs = 600_000;
+  internal.goalPauseMs = 1_500;
+  manager.processRotationRequests(internal);
+  assert.equal(requester.isOnPitch, true);
+  assert.equal(internal.rotationRequests.length, 0);
+  assert.equal(manager.get(room.id).counts[requester.team], 5);
+  assert.equal(activeHuman?.isOnPitch, true, 'un humain connecté ne peut pas être remplacé automatiquement');
+  assert.ok(activeBotsBefore.some(player => player.isOnPitch === false), 'un joueur IA actif a été remplacé');
+  assert.ok(manager.get(room.id).events.some(event => event.type === 'rotation-request-completed' && event.playerId === requester.id));
+});
+
+test('P27 demande d'entrée depuis le banc : refus d'un joueur encore sur le terrain', () => {
+  const manager = new RoomManager();
+  const room = manager.create();
+  const joined = manager.join(room.id);
+  assert.throws(() => manager.requestEntry(room.id, joined.token), /PLAYER_NOT_ON_BENCH/);
+});

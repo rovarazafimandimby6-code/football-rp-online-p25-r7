@@ -29,7 +29,7 @@ export class RoomManager {
       startedAt: null, elapsedMs: 0, sequence: 0, players: new Map(),
       period: 1, halftimeUntil: null, halftimeDurationMs: 5_000, goalPauseMs: 0, lastTickAt: this.now(), attackDirection: { blue: 1, red: -1 },
       teams: { blue: blueClub, red: redClub },
-      nextEventId: 1, result: null, score: { blue: 0, red: 0 }, ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null }, events: [],
+      nextEventId: 1, result: null, rotationRequests: [], score: { blue: 0, red: 0 }, ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null }, events: [],
     };
     this.rooms.set(roomId, room);
     return this.publicState(room);
@@ -271,6 +271,7 @@ export class RoomManager {
       }
       // Un avatar humain déconnecté reste dans le match et passe sous contrôle IA jusqu'au coup de sifflet final.
       this.ensureBotCoverage(room);
+      this.processRotationRequests(room);
       if (room.phase === 'halftime') {
         room.lastTickAt = now;
         if (room.halftimeUntil !== null && now >= room.halftimeUntil) {
@@ -393,6 +394,63 @@ export class RoomManager {
     return { results, pagination: { limit: results.length, offset: 0, total: results.length, hasMore: false, nextOffset: null } };
   }
 
+  requestEntry(roomId, token) {
+    const { room, player } = this.authenticate(roomId, token);
+    if (room.phase === 'lobby' || room.phase === 'fulltime') throw new Error('ROTATION_NOT_AVAILABLE');
+    if (player.isBot || !player.connected || player.isOnPitch !== false) throw new Error('PLAYER_NOT_ON_BENCH');
+    const existing = room.rotationRequests.find(request => request.playerId === player.id);
+    if (existing) return { queued: true, duplicate: true, request: { ...existing }, state: this.publicState(room) };
+    const request = { playerId: player.id, team: player.team, requestedAt: this.now() };
+    room.rotationRequests.push(request);
+    room.events.push({ type: 'rotation-request', team: player.team, playerId: player.id, at: room.elapsedMs });
+    room.updatedAt = this.now();
+    if (room.phase === 'halftime' || (room.phase === 'playing' && room.goalPauseMs > 0)) this.processRotationRequests(room);
+    room.sequence++;
+    return { queued: room.rotationRequests.some(item => item.playerId === player.id), request: { ...request }, state: this.publicState(room) };
+  }
+
+  processRotationRequests(room) {
+    if (room.phase !== 'halftime' && !(room.phase === 'playing' && room.goalPauseMs > 0)) return 0;
+    let processed = 0;
+    for (const request of [...room.rotationRequests]) {
+      const incoming = room.players.get(request.playerId);
+      if (!incoming || !incoming.connected || incoming.isOnPitch !== false) {
+        room.rotationRequests = room.rotationRequests.filter(item => item.playerId !== request.playerId);
+        continue;
+      }
+      const outgoingCandidates = [...room.players.values()]
+        .filter(player => player.team === request.team && player.isOnPitch !== false)
+        .filter(player => player.isBot || (player.aiControlled && !player.connected))
+        .sort((a, b) => Number(b.isBot) - Number(a.isBot)
+          || (Number(b.matchTimePlayedMs) || 0) - (Number(a.matchTimePlayedMs) || 0)
+          || String(a.id).localeCompare(String(b.id)));
+      const outgoing = outgoingCandidates.find(candidate => {
+        const result = validateRotation({
+          phase: room.phase === 'halftime' ? 'halftime' : 'stoppage',
+          elapsedMatchSeconds: room.elapsedMs / 1000,
+          outgoing: candidate,
+          incoming,
+          teamPlayers: [...room.players.values()],
+        });
+        return result.ok;
+      });
+      if (!outgoing) {
+        room.rotationRequests = room.rotationRequests.filter(item => item.playerId !== request.playerId);
+        room.events.push({ type: 'rotation-request-unavailable', team: request.team, playerId: request.playerId, at: room.elapsedMs });
+        continue;
+      }
+      try {
+        this.rotate(room.id, incoming.token, { outgoingId: outgoing.id, incomingId: incoming.id });
+        room.rotationRequests = room.rotationRequests.filter(item => item.playerId !== request.playerId);
+        room.events.push({ type: 'rotation-request-completed', team: request.team, playerId: request.playerId, outgoingId: outgoing.id, at: room.elapsedMs });
+        processed++;
+      } catch {
+        room.rotationRequests = room.rotationRequests.filter(item => item.playerId !== request.playerId);
+      }
+    }
+    return processed;
+  }
+
   rotate(roomId, token, { outgoingId, incomingId } = {}) {
     const { room, player: requester } = this.authenticate(roomId, token);
     if (room.phase === 'fulltime' || room.phase === 'lobby') throw new Error('ROTATION_NOT_AVAILABLE');
@@ -480,7 +538,7 @@ export class RoomManager {
       phase: room.phase, period: room.period, halftimeRemainingMs: room.phase === 'halftime' && room.halftimeUntil ? Math.max(0, room.halftimeUntil - this.now()) : 0, attackDirection: { ...room.attackDirection }, elapsedMs: room.elapsedMs, durationMs: room.durationMinutes * 60_000, sequence: room.sequence,
       virtualClock: `${String(Math.floor(Math.min(5400, room.elapsedMs / (room.durationMinutes * 60_000) * 5400) / 60)).padStart(2,'0')}:${String(Math.floor(Math.min(5400, room.elapsedMs / (room.durationMinutes * 60_000) * 5400) % 60)).padStart(2,'0')}`,
       score: { ...room.score }, teams: cloneMatchTeams(room.teams), counts: this.teamCounts(room),
-      players, benchCounts: { blue: players.filter(p => p.team === 'blue' && p.isOnPitch === false).length, red: players.filter(p => p.team === 'red' && p.isOnPitch === false).length }, ball: { ...room.ball }, result: room.result, events: room.events.slice(-40), eventCursor: room.nextEventId - 1,
+      players, rotationRequests: (room.rotationRequests || []).map(request => ({ ...request })), benchCounts: { blue: players.filter(p => p.team === 'blue' && p.isOnPitch === false).length, red: players.filter(p => p.team === 'red' && p.isOnPitch === false).length }, ball: { ...room.ball }, result: room.result, events: room.events.slice(-40), eventCursor: room.nextEventId - 1,
     };
   }
 }
