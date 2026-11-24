@@ -98,6 +98,16 @@ test('P27 intégrité mercato IA : détecte les identifiants de transfert outbox
  assert.ok(result.errors.some(item=>item.code==='SYSTEM_TRANSFER_OUTBOX_ID_INVALID_OR_DUPLICATE'));
 });
 
+test('P27 intégrité mercato IA : détecte une écriture financière sans outbox de transfert correspondante',()=>{
+ const input=cleanWorld();
+ input.financeJournal={transfers:[{
+  id:'orphan-ai-finance-transfer',fromClubId:'club-b',toClubId:'club-a',fee:500,
+  status:'pending',debitPosted:false,creditPosted:false
+ }]};
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='SYSTEM_TRANSFER_FINANCE_OUTBOX_MISSING'));
+});
+
 test('P27 clubs : synchronise les divisions et conférences officielles après transition',()=>{
  const club={id:'club-a',division:'D2',conference:null};
  const manager={clubs:new Map([['club-a',club]]),saveSeason:()=>true};
