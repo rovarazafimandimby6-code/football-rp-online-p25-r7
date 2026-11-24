@@ -157,7 +157,7 @@ export class ClubFinanceStore {
         description:'Remboursement du prêt',createdAt:item.createdAt,referenceId:item.loanId});
       paidByLoan.set(item.loanId,(paidByLoan.get(item.loanId)||0)+1);
     }
-    if(!entries.length)return {ok:false,reason:'insufficient-funds',paid:0,account:this.getAccount(id)};
+    if(!entries.length)return {ok:false,reason:'insufficient-funds',paid:0,unpaid:due.length,amount:0,account:this.getAccount(id)};
     const normalized=entries.map(normalizeEntry);
     account.entries.push(...normalized);
     for(const loan of account.loans) {
@@ -169,7 +169,9 @@ export class ClubFinanceStore {
       for(const loan of account.loans){const count=paidByLoan.get(loan.id)||0;if(count){loan.paidInstallments-=count;loan.status='active';}}
       return {ok:false,reason:'persistence-failed'};
     }
-    return {ok:true,paid:entries.length,amount:entries.reduce((n,x)=>n+x.amount,0),account:this.getAccount(id)};
+    const amount=entries.reduce((n,x)=>n+x.amount,0);
+    const unpaid=due.length-entries.length;
+    return {ok:unpaid===0,reason:unpaid?'insufficient-funds':null,paid:entries.length,unpaid,amount,account:this.getAccount(id)};
   }
   balance(clubId) {
     const account=this.accounts.get(cleanId(clubId)); if(!account)return null;

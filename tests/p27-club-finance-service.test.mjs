@@ -197,3 +197,22 @@ test('P27 finances : le cycle global signale les salaires impayés au monde pers
   assert.equal(service.store.getAccount(club.id).totalExpenses,0);
  } finally {rmSync(directory,{recursive:true,force:true});}
 });
+
+
+test('P27 finances : le cycle global remonte un remboursement de prêt partiel',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'partial-loan-club',budget:0,roster:[]};
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-partial-loan-'));
+ try {
+  const service=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+  service.store.openAccount(club.id,0);
+  service.store.issueLoan(club.id,{id:'partial-loan',lender:'Caisse',principal:1000,totalRepayment:1200,durationWeeks:2,issuedAt:start});
+  service.store.post(club.id,{id:'partial-loan-funds',category:'other',amount:600,direction:'income'});
+  now=start+15*86400000;
+  const result=service.settleScheduledItems(now);
+  assert.equal(result.ok,false);
+  assert.equal(result.failures.some(item=>item.category==='loan-repayment'&&item.paid===1&&item.unpaid===1),true);
+  assert.equal(result.loans[0].unpaid,true);
+  assert.equal(result.loans[0].paid,1);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});

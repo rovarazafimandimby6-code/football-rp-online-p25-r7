@@ -188,7 +188,7 @@ export class JsonClubFinanceService {
       const loan = this.store.settleLoanRepayments(account.clubId, now);
       if (loan.ok && loan.paid) loans.push({ clubId: account.clubId, paid: loan.paid, amount: loan.amount });
       else if (!loan.ok) {
-        const failure = { clubId: account.clubId, category: 'loan-repayment', reason: loan.reason || 'payment-failed' };
+        const failure = { clubId: account.clubId, category: 'loan-repayment', reason: loan.reason || 'payment-failed', paid: loan.paid || 0, unpaid: loan.unpaid ?? 1, amount: loan.amount || 0 };
         loans.push({ ...failure, unpaid: true });
         failures.push(failure);
       }
