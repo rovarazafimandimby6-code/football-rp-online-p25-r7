@@ -667,6 +667,16 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter des tests de panne disque sur inscription, connexion et révocation.
 
 
+### Lot 66 — réconciliation des indemnités de transfert dans les finances (intégré)
+- [x] Lire les événements de transfert validés depuis le journal du mercato.
+- [x] Débiter le club cédant dans son grand livre avec un identifiant d'écriture déterministe.
+- [x] Créditer le club acquéreur avec un identifiant d'écriture déterministe.
+- [x] Rendre la synchronisation rejouable : si le débit passe mais que le crédit échoue, une nouvelle tentative ne débite pas une seconde fois.
+- [x] Signaler les indemnités non réconciliées dans le résultat du règlement financier global.
+- [x] Ajouter des tests de succès, d'idempotence et de reprise après trésorerie insuffisante.
+
+Limite : les deux grands livres restent deux fichiers distincts. L'idempotence rend la reprise sûre, mais ce mécanisme n'est pas une transaction ACID multi-fichiers ; un journal transactionnel commun reste à construire au lot 65.
+
 ### Lot 63 — transactions atomiques du mercato et des contrats (intégré)
 - [x] Exécuter signatures, offres, acceptations, refus, renouvellements, résiliations et actualisations sur une copie de l'état.
 - [x] Annuler ensemble le changement de club, le contrat, les événements et les budgets des deux clubs si l'écriture échoue.
