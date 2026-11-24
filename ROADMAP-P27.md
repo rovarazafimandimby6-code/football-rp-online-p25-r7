@@ -1042,3 +1042,27 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Contrôle `node --check` réussi sur les fichiers JavaScript et MJS de `src`, `server` et `tests`.
 - [x] Contrôle des quotas du monde exécuté contre `DEFAULT_CLUBS`, la source canonique des 156 clubs.
 - Limite restante du lot 104 : aucune restauration automatique n'est activée ; une procédure basée sur une sauvegarde réelle doit être vérifiée avant d'en créer une.
+
+
+### Lot 108 — cohérence du statut des championnats
+- [x] Un championnat terminé doit avoir toutes ses rencontres terminées.
+- [x] Le champion archivé doit correspondre au premier du classement recalculé.
+- [x] Un calendrier intégralement joué ne peut pas rester actif.
+- [x] Tests des états terminés incomplets, actifs complets et champion incohérent.
+
+### Lot 109 — audit de chronologie des saisons
+- [x] Vérifier l'unicité des identifiants de saison.
+- [x] Exiger une seule saison active, placée en dernière position.
+- [x] Exiger une date de clôture entière, sûre et positive ou nulle pour chaque archive terminée.
+- [x] Exposer `timelineAudit` dans le snapshot et tester après rechargement.
+
+### Lot 110 — cohérence de clôture de la Coupe
+- [x] Interdire une Coupe marquée terminée tant que toutes ses rencontres ne sont pas terminées.
+- [x] Interdire un champion ou un état actif après achèvement intégral du tableau.
+- [x] Conserver les contrôles de progression des 28 matchs préliminaires et des 100 exemptions.
+
+### Lot 111 — validation stricte de la transition de saison
+- [x] Refuser les dates de clôture négatives, décimales ou non sûres.
+- [x] Refuser une transition si la saison courante n'est pas active.
+- [x] Conserver la transaction atomique et le contrôle des 20 montées / 20 descentes.
+- [ ] Validation complète GitHub Actions.
