@@ -89,7 +89,7 @@ export function auditClubCatalog(clubs = []) {
     }
 
     if (division === 'D4' || division === 'D5') {
-      const rawConference = club?.conference ?? club?.region;
+      const rawConference = club?.conference;
       if (rawConference !== undefined && rawConference !== null && rawConference !== '' && !normalizeConference(division, rawConference)) {
         addIssue(issues, 'error', 'invalid-explicit-conference', { clubId:id, division, conference:rawConference });
       }
