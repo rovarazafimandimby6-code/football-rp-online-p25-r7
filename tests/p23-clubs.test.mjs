@@ -11,9 +11,9 @@ function memoryStorage() {
 
 test('P23 clubs: catalogue international et malgache rattaché aux cinq championnats', () => {
   const manager = new ClubManager();
-  assert.equal(manager.listClubs().length, 16);
+  assert.equal(manager.listClubs().length, 156);
   assert.deepEqual(DIVISIONS.map(item => item.id), ['D1','D2','D3','D4','D5']);
-  assert.deepEqual(DIVISIONS.map(division => manager.clubsByDivision(division.id).length), [4,4,4,0,4]);
+  assert.deepEqual(DIVISIONS.map(division => manager.clubsByDivision(division.id).length), [16,20,24,32,64]);
   assert.ok(manager.listClubs().filter(item => item.countryCode === 'MG').length >= 8);
 });
 
@@ -75,11 +75,13 @@ test('P23 clubs: les onze joueurs IA des deux clubs sont injectés dans les line
   assert.ok(red.every(player => player.appearance?.kitColors?.primary === away.colors[player.role === 'GK' ? 2 : 0]));
 });
 
-test('P23 clubs: les 192 joueurs ont des noms fictifs uniques et aucun nom vedette interdit', () => {
+test('P23 clubs: les joueurs des 156 clubs ont des noms fictifs uniques et aucun nom vedette interdit', () => {
   const manager = new ClubManager();
-  const players = manager.listClubs().flatMap(item => item.roster);
+  const clubs = manager.listClubs();
+  const players = clubs.flatMap(item => item.roster);
   const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  assert.equal(players.length, 192);
+  assert.ok(players.length >= 1200 && players.length <= 1872);
+  assert.ok(clubs.every(item => item.roster.length >= 8 && item.roster.length <= 12));
   assert.equal(new Set(players.map(player => normalize(player.name))).size, players.length);
   assert.ok(players.every(player => normalize(player.name) !== 'thiago silva'));
   assert.ok(players.every(player => !/\b(messi|ronaldo|neymar|mbappe|haaland|salah|yamal)\b/i.test(player.name)));
@@ -93,9 +95,10 @@ test('P23 clubs: diversité nationale internationale avec une présence malgache
   const Malagasy = players.filter(player => player.nationality === 'MG').length;
   assert.ok(nationalities.size >= 12, `nationalités trouvées: ${[...nationalities].join(', ')}`);
   for (const code of nationalities) assert.ok(players.some(player => player.nationality === code), `${code} doit être représenté`);
-  assert.ok(Malagasy >= 35 && Malagasy <= 75, `joueurs malgaches: ${Malagasy}`);
+  const malagasyShare = Malagasy / players.length;
+  assert.ok(malagasyShare >= 0.40 && malagasyShare <= 0.50, `part malgache: ${Math.round(malagasyShare * 100)}% (${Malagasy}/${players.length})`);
   for (const item of clubs) {
-    assert.equal(item.roster.length, 12);
+    assert.ok(item.roster.length >= 8 && item.roster.length <= 12);
     assert.ok(new Set(item.roster.map(player => player.nationality)).size >= 3, `${item.name} doit avoir au moins 3 nationalités`);
   }
 });
@@ -104,10 +107,10 @@ test('P23 clubs: effectifs équilibrés par poste, âge et niveau de division', 
   const manager = new ClubManager();
   const expected = ['GK','GK','DEF','DEF','DEF','DEF','MID','MID','MID','MID','FWD','FWD'];
   for (const item of manager.listClubs()) {
-    assert.deepEqual(item.roster.map(player => player.role), expected);
+    assert.deepEqual(item.roster.map(player => player.role), expected.slice(0, item.roster.length));
     assert.ok(item.roster.every(player => player.age >= 18 && player.age <= 33));
-    assert.ok(item.roster.filter(player => player.age <= 21).length >= 3);
-    assert.ok(item.roster.filter(player => player.age >= 28).length >= 2);
+    assert.ok(item.roster.filter(player => player.age <= 21).length >= 2);
+    assert.ok(item.roster.filter(player => player.age >= 28).length >= 1);
     assert.ok(item.roster.every(player => player.rating >= 35 && player.rating <= 91 && player.potential >= player.rating));
     const average = item.roster.reduce((sum, player) => sum + player.rating, 0) / item.roster.length;
     assert.ok(Math.abs(average - item.rating) <= 3.5, `${item.name}: moyenne ${average}, référence ${item.rating}`);

@@ -7,9 +7,11 @@ const manager = new ClubManager(DEFAULT_CLUBS, { getItem(){return null;}, setIte
 test('P23: chaque club possède un motif de maillot distinct', () => {
   const clubs = manager.listClubs();
   const designs = clubs.map(club => club.roster[0]?.appearance?.kitDesign);
-  assert.equal(clubs.length, 16);
-  assert.equal(new Set(designs).size, 16);
+  assert.equal(clubs.length, 156);
+  assert.ok(new Set(designs).size >= 10);
   assert.ok(designs.every(Boolean));
+  const visualIdentities = clubs.map(club => [club.roster[0]?.appearance?.kitDesign, ...club.colors].join('|'));
+  assert.equal(new Set(visualIdentities).size, 156);
 });
 
 test('P23: les tenues de gardien sont différenciées de celles des joueurs de champ', () => {
