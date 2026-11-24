@@ -51,14 +51,15 @@ test('P27 paie humaine : une échéance avant transfert reste imputée à l’an
  const f=setup();try{
   const signed=f.store.signContract('account-wage-transfer',{clubId:'antananarivo-fc',salary:700,durationDays:365});
   assert.equal(signed.ok,true);
-  const offer=f.store.requestOffer('account-wage-transfer',{toClubId:'toamasina-united'});
-  assert.equal(offer.ok,true);
   f.setNow(f.now+7*86400000);
-  const moved=f.store.acceptOffer('account-wage-transfer',offer.offer.id);
-  assert.equal(moved.ok,true);
+  f.store.getCareer('account-wage-transfer');
   const firstPayment=f.store.state.events.find(event=>event.type==='salary-payment');
   assert.equal(firstPayment.clubId,'antananarivo-fc');
   assert.equal(firstPayment.amount,700);
+  const offer=f.store.requestOffer('account-wage-transfer',{toClubId:'toamasina-united'});
+  assert.equal(offer.ok,true);
+  const moved=f.store.acceptOffer('account-wage-transfer',offer.offer.id);
+  assert.equal(moved.ok,true);
   f.setNow(f.now+7*86400000);
   f.store.getCareer('account-wage-transfer');
   const payments=f.store.state.events.filter(event=>event.type==='salary-payment');
