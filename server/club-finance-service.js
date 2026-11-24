@@ -11,6 +11,7 @@ export class JsonClubFinanceService {
   constructor(directory, { clubs = [], transferStore = null, now = () => Date.now() } = {}) {
     this.directory = path.resolve(directory);
     this.file = path.join(this.directory, 'club-finance.json');
+    this.payrollFile = path.join(this.directory, 'system-payroll-schedule.json');
     this.now = now;
     this.transferStore = transferStore;
     mkdirSync(this.directory, { recursive: true });
@@ -30,6 +31,7 @@ export class JsonClubFinanceService {
     this.store = new ClubFinanceStore(storage, 'p27-club-finance');
     this.clubs = new Map(clubs.filter(club => club?.id).map(club => [club.id, club]));
     this.bootstrap();
+    this.payrollSchedule = this.loadPayrollSchedule();
   }
 
   bootstrap() {
@@ -41,6 +43,89 @@ export class JsonClubFinanceService {
       if (result.ok && result.created) created++;
     }
     return { clubs: this.clubs.size, accounts: this.store.listAccounts().length, created };
+  }
+
+
+  loadPayrollSchedule() {
+    try {
+      const parsed = JSON.parse(readFileSync(this.payrollFile, 'utf8'));
+      if (parsed?.version !== 1 || !parsed.clubs || typeof parsed.clubs !== 'object') throw new Error('invalid');
+      const valid = {};
+      for (const [clubId, at] of Object.entries(parsed.clubs)) {
+        if (this.clubs.has(clubId) && Number.isSafeInteger(at) && at >= 0) valid[clubId] = at;
+      }
+      for (const clubId of this.clubs.keys()) if (!Number.isSafeInteger(valid[clubId])) valid[clubId] = this.now();
+      return valid;
+    } catch (error) {
+      if (error.code !== 'ENOENT') process.stderr.write('P27 payroll schedule unreadable; initializing new schedule\\n');
+      const initial = Object.fromEntries([...this.clubs.keys()].map(id => [id, this.now()]));
+      this.persistPayrollSchedule(initial);
+      return initial;
+    }
+  }
+
+  persistPayrollSchedule(schedule = this.payrollSchedule) {
+    const temp = `${this.payrollFile}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      writeFileSync(temp, JSON.stringify({ version: 1, clubs: schedule }), { mode: 0o600 });
+      renameSync(temp, this.payrollFile);
+      return true;
+    } catch (error) {
+      try { unlinkSync(temp); } catch {}
+      return false;
+    }
+  }
+
+  settleSystemPayroll(now = this.now()) {
+    if (!Number.isSafeInteger(now) || now < 0) return { ok: false, reason: 'invalid-time', posted: 0, unpaid: 0, clubs: [] };
+    let posted = 0, unpaid = 0;
+    const clubs = [];
+    for (const club of this.clubs.values()) {
+      const account = this.store.getAccount(club.id);
+      if (!account) { unpaid++; clubs.push({ clubId: club.id, ok: false, reason: 'account-not-found' }); continue; }
+      const last = this.payrollSchedule[club.id];
+      const periods = Math.max(0, Math.floor((now - last) / WEEK));
+      if (!periods) continue;
+      const contracts = (club.roster || []).filter(player =>
+        player?.playerType === 'system' && player.contract?.status === 'active' &&
+        player.contract.clubId === club.id && player.contract.playerId === player.id
+      );
+      if (!contracts.length) {
+        this.payrollSchedule[club.id] = last + periods * WEEK;
+        if (!this.persistPayrollSchedule()) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
+        continue;
+      }
+      const entries = [];
+      for (let period = 1; period <= periods; period++) {
+        const dueAt = last + period * WEEK;
+        for (const player of contracts) {
+          const wage = safeAmount(player.contract.weeklyWage ?? player.contract.salary);
+          if (wage === null || wage === 0) continue;
+          entries.push({
+            id: `system-wage-${player.contract.id}-${dueAt}`,
+            category: 'wages', amount: wage, direction: 'expense',
+            description: `Salaire hebdomadaire : ${player.name || player.id}`,
+            createdAt: dueAt, referenceId: player.contract.id
+          });
+        }
+      }
+      if (!entries.length) {
+        this.payrollSchedule[club.id] = last + periods * WEEK;
+        if (!this.persistPayrollSchedule()) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
+        continue;
+      }
+      const result = this.store.postBatch(club.id, entries);
+      if (!result.ok) {
+        unpaid += entries.length;
+        clubs.push({ clubId: club.id, ok: false, reason: result.reason, dueEntries: entries.length, periods });
+        continue;
+      }
+      this.payrollSchedule[club.id] = last + periods * WEEK;
+      if (!this.persistPayrollSchedule()) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
+      posted += result.posted || 0;
+      clubs.push({ clubId: club.id, ok: true, posted: result.posted || 0, periods });
+    }
+    return { ok: true, posted, unpaid, clubs };
   }
 
   syncRecordedPlayerWages() {
@@ -72,6 +157,7 @@ export class JsonClubFinanceService {
   settleScheduledItems() {
     const now = this.now();
     if (!Number.isSafeInteger(now) || now < 0) return { ok: false, reason: 'invalid-time' };
+    const systemWages = this.settleSystemPayroll(now);
     const wages = this.syncRecordedPlayerWages();
     const sponsors = [], loans = [];
     for (const account of this.store.listAccounts()) {
@@ -81,7 +167,7 @@ export class JsonClubFinanceService {
       if (loan.ok && loan.paid) loans.push({ clubId: account.clubId, paid: loan.paid, amount: loan.amount });
       else if (!loan.ok && loan.reason === 'insufficient-funds') loans.push({ clubId: account.clubId, unpaid: true });
     }
-    return { ok: true, at: now, wages, sponsors, loans };
+    return { ok: true, at: now, systemWages, wages, sponsors, loans };
   }
 
   getClubFinance(clubId, { weeklyMaintenance = 0 } = {}) {

@@ -76,3 +76,56 @@ test('P27 finances : intègre la masse salariale des joueurs du système et des 
   assert.equal(report.payroll.weeklyPayroll,expectedSystem+250);
  } finally {rmSync(directory,{recursive:true,force:true});}
 });
+
+test('P27 paie système : prélève chaque salaire après une semaine et ne paie pas deux fois',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'payroll-club',budget:10000,roster:[
+  {id:'player-one',name:'Joueur Un',playerType:'system',contract:{id:'contract-one',clubId:'payroll-club',playerId:'player-one',status:'active',weeklyWage:100,salary:100}},
+  {id:'player-two',name:'Joueur Deux',playerType:'system',contract:{id:'contract-two',clubId:'payroll-club',playerId:'player-two',status:'active',weeklyWage:150,salary:150}}
+ ]};
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-system-payroll-'));
+ try {
+  const service=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+  assert.equal(service.settleSystemPayroll(now).posted,0);
+  now=start+7*86400000;
+  const first=service.settleSystemPayroll(now);
+  assert.equal(first.posted,2);assert.equal(first.unpaid,0);
+  assert.equal(service.store.getAccount(club.id).totalExpenses,250);
+  assert.equal(service.settleSystemPayroll(now).posted,0);
+  assert.equal(service.store.getAccount(club.id).totalExpenses,250);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+test('P27 paie système : conserve les échéances en attente si le club ne peut pas payer',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'poor-payroll-club',budget:0,roster:[
+  {id:'player-poor',name:'Joueur Sans Fonds',playerType:'system',contract:{id:'contract-poor',clubId:'poor-payroll-club',playerId:'player-poor',status:'active',weeklyWage:100,salary:100}}
+ ]};
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-system-payroll-poor-'));
+ try {
+  const service=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+  now=start+7*86400000;
+  const result=service.settleSystemPayroll(now);
+  assert.equal(result.posted,0);assert.equal(result.unpaid,1);
+  assert.equal(result.clubs[0].reason,'insufficient-funds');
+  assert.equal(service.store.getAccount(club.id).totalExpenses,0);
+  service.store.post(club.id,{id:'rescue-funds',category:'other',amount:500,direction:'income'});
+  const retry=service.settleSystemPayroll(now);
+  assert.equal(retry.posted,1);assert.equal(retry.unpaid,0);
+  assert.equal(service.store.getAccount(club.id).totalExpenses,100);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+test('P27 paie système : le calendrier de paie survit au redémarrage',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'persistent-payroll-club',budget:1000,roster:[
+  {id:'player-persist',name:'Joueur Persistant',playerType:'system',contract:{id:'contract-persist',clubId:'persistent-payroll-club',playerId:'player-persist',status:'active',weeklyWage:75,salary:75}}
+ ]};
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-system-payroll-restart-'));
+ try {
+  const first=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+  now=start+7*86400000;
+  assert.equal(first.settleSystemPayroll(now).posted,1);
+  const restarted=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+  assert.equal(restarted.settleSystemPayroll(now).posted,0);
+  assert.equal(restarted.store.getAccount(club.id).totalExpenses,75);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
