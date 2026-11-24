@@ -106,6 +106,40 @@ test('P27 lot 85 : annule le déplacement si la sauvegarde du roster échoue pui
  } finally {f.cleanup();}
 });
 
+function marketFixture(directory) {
+ const player={id:'system-market-forward',name:'Forward',playerType:'system',role:'FWD',rating:70,number:9,contract:{status:'active',clubId:'market-seller',playerId:'system-market-forward',expiresAt:'2028-12-31T00:00:00.000Z'}};
+ const seller={id:'market-seller',division:'D2',rating:60,capacity:12,roster:[player,{id:'s2',playerType:'system',role:'FWD',rating:55,contract:{status:'active',clubId:'market-seller',expiresAt:'2028-12-31T00:00:00.000Z'}},{id:'s3',playerType:'system',role:'FWD',rating:54,contract:{status:'active',clubId:'market-seller',expiresAt:'2028-12-31T00:00:00.000Z'}}]};
+ const buyer={id:'market-buyer',division:'D2',rating:75,capacity:12,roster:[]};
+ const manager={
+  clubs:new Map([[seller.id,seller],[buyer.id,buyer]]),
+  getClub(id){return this.clubs.get(id)||null;},
+  listClubs(){return [...this.clubs.values()];},
+  transferPlayer(fromId,toId,playerId){
+   const from=this.clubs.get(fromId),to=this.clubs.get(toId),i=from.roster.findIndex(p=>p.id===playerId);
+   if(i<0||to.roster.length>=to.capacity)return {ok:false,reason:'invalid'};
+   const [p]=from.roster.splice(i,1);to.roster.push({...p,number:10,contract:{...p.contract,clubId:toId,previousClubId:fromId}});
+   return {ok:true};
+  }
+ };
+ const finance={store:{balance(){return 1000000;}},journalTransferFee(){return {ok:true};}};
+ return new P27SystemTransferService(directory,{clubManager:manager,financeService:finance,now:()=>Date.parse('2028-01-01T00:00:00.000Z')});
+}
+
+test('P27 lot 85 : simulation du mercato IA déterministe, fondée sur les besoins de poste et limitée',()=>{
+ const a=mkdtempSync(path.join(os.tmpdir(),'p27-market-a-'));
+ const b=mkdtempSync(path.join(os.tmpdir(),'p27-market-b-'));
+ try {
+  const first=marketFixture(a).simulateMarket({windowId:'winter-2028',maxTransfers:2,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  const second=marketFixture(b).simulateMarket({windowId:'winter-2028',maxTransfers:2,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  assert.equal(first.ok,true);
+  assert.equal(first.processed,1);
+  assert.equal(first.transfers[0].playerId,'system-market-forward');
+  assert.equal(first.transfers[0].id,second.transfers[0].id);
+  assert.equal(first.transfers[0].fee,second.transfers[0].fee);
+  assert.equal(marketFixture(mkdtempSync(path.join(os.tmpdir(),'p27-market-invalid-'))).simulateMarket({windowId:'x',maxTransfers:0}).reason,'invalid-market-window');
+ } finally {rmSync(a,{recursive:true,force:true});rmSync(b,{recursive:true,force:true});}
+});
+
 test('P27 lot 85 : refuse les carrières humaines, les indemnités invalides et les clubs inconnus',()=>{
  const f=setup();
  try {
