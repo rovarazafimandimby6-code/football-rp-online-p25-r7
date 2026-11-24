@@ -77,7 +77,20 @@ export function calculateSeasonMovements({ competitions = [], clubs = [], policy
       add(rows[i],division,null,'D'+(DIVISION_ORDER[division]-1),null,'promotion',i+1,competition);
     for(let i=0;i<policy.nationalSlots;i++) {
       const position=rows.length-i;
-      add(rows[position-1],division,null,'D'+(DIVISION_ORDER[division]+1),null,'relegation',position,competition);
+      const row=rows[position-1];
+      const targetDivision='D'+(DIVISION_ORDER[division]+1);
+      let targetConference=null;
+      if(targetDivision==='D4') {
+        targetConference=conferenceForClub({ ...clubMap.get(row.id), division:'D4', conference:null });
+        if(!['Nord','Sud'].includes(targetConference))
+          return fail('national-relegation-conference-unresolved',{clubId:row.id,city:clubMap.get(row.id)?.location?.city});
+        if(d4RelegationAssignments[targetConference]>=1)
+          targetConference=targetConference==='Nord'?'Sud':'Nord';
+        if(d4RelegationAssignments[targetConference]>=1)
+          return fail('national-relegation-conference-capacity-exceeded');
+        d4RelegationAssignments[targetConference]++;
+      }
+      add(row,division,null,targetDivision,targetConference,'relegation',position,competition);
     }
   }
 
