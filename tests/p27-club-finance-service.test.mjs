@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DEFAULT_CLUBS } from '../src/club-manager.js';
+import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { JsonClubFinanceService } from '../server/club-finance-service.js';
 
 function setup({events=[],careers=[],now=()=>Date.UTC(2027,0,15)}={}) {
@@ -61,7 +61,6 @@ test('P27 finances : versements sponsors et échéances de prêts traités par l
 });
 
 test('P27 finances : intègre la masse salariale des joueurs du système et des carrières humaines',()=>{
- const { ClubManager }=await import('../src/club-manager.js');
  const clubs=new ClubManager(DEFAULT_CLUBS).listClubs();
  const club=clubs[0];
  const human={accountId:'human-account',clubId:club.id,contract:{status:'active',salary:250}};

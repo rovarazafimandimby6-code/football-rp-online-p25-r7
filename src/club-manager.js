@@ -1,3 +1,4 @@
+import { createSystemPlayerContract } from './p27-player-contracts.js';
 import { generateClubRoster } from './club-roster.js';
 import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './league-structure.js';
 import { generateClubCharacteristics, generateClubRecruitmentProfile, generateClubStrategicProfile, balanceClubRosterQuality } from './club-profile.js';
@@ -32,11 +33,13 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     potential: Math.max(1, Math.min(99, Number(player?.potential) || safeRating)),
     potentialBand: ['standard','good','high','exceptional'].includes(player?.potentialBand) ? player.potentialBand : 'standard',
     loyalty: normalizePlayerLoyalty(player?.loyalty),
-    contract: player?.contract && typeof player.contract === 'object' && player.contract.status === 'active' &&
-      Number.isSafeInteger(Number(player.contract.weeklyWage ?? player.contract.salary)) &&
-      Number(player.contract.weeklyWage ?? player.contract.salary) >= 0
-      ? { ...player.contract, weeklyWage: Math.max(0, Math.floor(Number(player.contract.weeklyWage ?? player.contract.salary))), salary: Math.max(0, Math.floor(Number(player.contract.salary ?? player.contract.weeklyWage))) }
-      : null,
+    contract: player?.playerType !== 'human'
+      ? createSystemPlayerContract({ clubId: club.id, playerId: safeId(player?.id), division: club.division, rating: safeRating })
+      : player?.contract && typeof player.contract === 'object' && player.contract.status === 'active' &&
+        Number.isSafeInteger(Number(player.contract.weeklyWage ?? player.contract.salary)) &&
+        Number(player.contract.weeklyWage ?? player.contract.salary) >= 0
+        ? { ...player.contract, weeklyWage: Math.max(0, Math.floor(Number(player.contract.weeklyWage ?? player.contract.salary))), salary: Math.max(0, Math.floor(Number(player.contract.salary ?? player.contract.weeklyWage))) }
+        : null,
     playerType: player?.playerType === 'human' ? 'human' : 'system',
     controlStatus: player?.playerType === 'human' ? (player?.controlStatus === 'automated' ? 'automated' : 'human') : 'system',
     preferredFoot: player?.preferredFoot === 'left' ? 'left' : 'right',

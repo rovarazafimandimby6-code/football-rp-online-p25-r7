@@ -1,3 +1,4 @@
+import { createSystemPlayerContract } from './p27-player-contracts.js';
 const NATIONAL_POOLS = Object.freeze({
   MG: { names: ['Toky','Hery','Mika','Tiana','Njaka','Kanto','Mamy','Faneva','Rado','Ando','Lova','Tahina','Faly','Niry','Hasina','Miora','Soa','Voary','Nantenaina','Fitia','Tsanta','Haja'], surnames: ['Rakoto','Randria','Andrian','Raveloson','Razafindrakoto','Rasolo','Ramanantsoa','Rakotomalala','Randrianarisoa','Andriamihaja','Razanakoto','Rajaonarison','Rafalimanana','Rakotondrabe','Ratsimbazafy','Rasoanaivo','Andriatsiferana','Rakotovao'] },
   FR: { names: ['Noah','Elias','Mathis','Yanis','Enzo','Sami','Lucas','Nolan','Theo','Mael','Bastien','Adrien','Ilyes','Remy'], surnames: ['Morel','Diallo','Laurent','Bernard','Camara','Leroy','Petit','Garnier','Fontaine','Chevalier','Roux','Marchand','Giraud','Perrin','Colin','Andre'] },
