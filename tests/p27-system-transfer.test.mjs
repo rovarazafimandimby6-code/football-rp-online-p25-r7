@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ClubManager } from '../src/club-manager.js';
@@ -327,5 +327,54 @@ test('P27 lot 85 : refuse les carrières humaines, les indemnités invalides et 
   assert.equal(service.transfer({id:'ai-transfer-human',fromClubId:'club-a',toClubId:'club-b',playerId:'human-career-1',fee:1000}).reason,'human-career-managed');
   assert.equal(service.transfer({id:'ai-transfer-bad-fee',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:-1}).reason,'invalid-request');
   assert.equal(service.transfer({id:'ai-transfer-bad-club',fromClubId:'missing',toClubId:'club-b',playerId:'system-player-1',fee:1000}).reason,'invalid-clubs');
+ } finally {f.cleanup();}
+});
+
+
+test('P27 lot 103 : signale explicitement l’échec du checkpoint de reprise sans prétendre avoir persisté la tentative',()=>{
+ const f=setup();
+ try {
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService});
+  f.setFailFinance(true);
+  const persist=service.persist.bind(service);
+  let writes=0;
+  service.persist=next=>{writes++;return writes===1?persist(next):false;};
+  const result=service.transfer({id:'ai-fail-checkpoint-103',fromClubId:'club-a',toClubId:'system-player-1',playerId:'system-player-1',fee:1200});
+  assert.equal(result.ok,false);
+  assert.equal(result.reason,'invalid-clubs');
+  service.persist=persist;
+  const pending=service.transfer({id:'ai-fail-checkpoint-103b',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:1200});
+  assert.equal(pending.ok,false);
+  assert.equal(pending.reason,'ledger-temporary-failure');
+  assert.equal(pending.pending,true);
+  assert.equal(pending.transfer.attempts,1);
+ } finally {f.cleanup();}
+});
+
+test('P27 lot 104 : refuse un outbox corrompu sans écraser ni réinitialiser son contenu',()=>{
+ const f=setup();
+ try {
+  const file=path.join(f.directory,'system-transfer-outbox.json');
+  const corrupt='{"version":1,"transfers":[broken';
+  writeFileSync(file,corrupt,'utf8');
+  assert.throws(()=>new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService}),/SYSTEM_TRANSFER_OUTBOX_CORRUPT/);
+  assert.equal(readFileSync(file,'utf8'),corrupt);
+ } finally {f.cleanup();}
+});
+
+test('P27 lot 105 : réconcilie les soldes nets après deux transferts successifs dans le grand livre réel',()=>{
+ const f=setup();
+ try {
+  const finance=new JsonClubFinanceService(f.directory,{clubs:[...f.manager.clubs.values()]});
+  const a0=finance.store.balance('club-a'),b0=finance.store.balance('club-b');
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:finance});
+  assert.equal(service.transfer({id:'net-ledger-105-a',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:1000}).ok,true);
+  assert.equal(service.transfer({id:'net-ledger-105-b',fromClubId:'club-b',toClubId:'club-a',playerId:'system-player-1',fee:1500}).ok,true);
+  assert.equal(finance.store.balance('club-a'),a0+500);
+  assert.equal(finance.store.balance('club-b'),b0-500);
+  assert.equal(finance.store.getAccount('club-a').entries.filter(e=>e.id==='transfer-fee-in-net-ledger-105-a').length,1);
+  assert.equal(finance.store.getAccount('club-b').entries.filter(e=>e.id==='transfer-fee-out-net-ledger-105-a').length,1);
+  assert.equal(finance.store.getAccount('club-b').entries.filter(e=>e.id==='transfer-fee-in-net-ledger-105-b').length,1);
+  assert.equal(finance.store.getAccount('club-a').entries.filter(e=>e.id==='transfer-fee-out-net-ledger-105-b').length,1);
  } finally {f.cleanup();}
 });
