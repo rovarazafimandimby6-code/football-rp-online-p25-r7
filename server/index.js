@@ -189,7 +189,7 @@ const server = http.createServer(async (req, res) => {
       if (career.player) career.transfers = transferStore.getPlayerHistory(playerCareerMatch[1]);
       return career.player ? json(res, 200, { career }) : json(res, 404, { error: 'PLAYER_NOT_FOUND' });
     }
-    if (url.pathname.startsWith('/api/contract') || url.pathname.startsWith('/api/transfer/')) {
+    if (url.pathname.startsWith('/api/contract') || url.pathname.startsWith('/api/transfer/') || url.pathname.startsWith('/api/loan/')) {
       const account = accountStore.resolve(bearer(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       if (req.method === 'GET' && url.pathname === '/api/contract') {
@@ -212,6 +212,31 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' && url.pathname === '/api/contract/terminate') {
         const result = transferStore.terminateContract(account.id);
         return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/loan/offers') {
+        const body = await readBody(req);
+        const career = transferStore.getCareer(account.id);
+        syncPendingHumanRosters();
+        const admission = serverClubManager.canAcceptHuman(body.toClubId, career?.playerId);
+        if (!admission.ok) return json(res,409,{ok:false,reason:admission.reason});
+        const result = transferStore.requestLoanOffer(account.id,body);
+        return json(res,200,{...result,rosterSync:syncPendingHumanRosters()});
+      }
+      const loanAction = url.pathname.match(/^\\/api\\/loan\\/offers\\/([a-z0-9-]{8,96})\\/(accept|reject)$/i);
+      if (req.method === 'POST' && loanAction) {
+        if (loanAction[2] === 'accept') {
+          const career = transferStore.getCareer(account.id);
+          syncPendingHumanRosters();
+          const offer = career?.loanOffers?.find(item => item.id === loanAction[1] && item.status === 'pending');
+          if (offer) {
+            const admission = serverClubManager.canAcceptHuman(offer.toClubId,career.playerId);
+            if (!admission.ok) return json(res,409,{ok:false,reason:admission.reason});
+          }
+        }
+        const result = loanAction[2] === 'accept'
+          ? transferStore.acceptLoanOffer(account.id,loanAction[1])
+          : transferStore.rejectLoanOffer(account.id,loanAction[1]);
+        return json(res,200,{...result,rosterSync:syncPendingHumanRosters()});
       }
       if (req.method === 'POST' && url.pathname === '/api/transfer/offers') {
         const body = await readBody(req);
