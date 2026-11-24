@@ -108,7 +108,7 @@ export class Game {
           this.match.timeLeft = Math.max(0, ((state.durationMs || 300000) - (state.elapsedMs || 0)) / 1000);
           const controlled = this.players.find(player => player.isControlled);
           if (controlled) this.activePlayer = controlled;
-          this.ui?.setBenchStatus?.(state.players || [], callbacks.onlineJoinResult.playerId, state.phase, state.rotationRequests || []);
+          this.ui?.setBenchStatus?.(state.players || [], callbacks.onlineJoinResult.playerId, state.phase, state.rotationRequests || [], state.rotationAvailable === true);
           if (state.phase === 'fulltime') {
             this.match.phase = 'fulltime';
             if (state.result && !this.onlineMatchReportShown) {
@@ -129,6 +129,16 @@ export class Game {
 
     this.ui = new UIManager(this.players, {
       onTogglePause: () => this.togglePause(),
+      onRotate: async (outgoingId, incomingId) => {
+        try {
+          const rotated = await this.onlineBridge?.rotatePlayers(outgoingId, incomingId);
+          if (rotated) this.ui?.setStatus?.('REMPLACEMENT VALIDÉ PAR LE SERVEUR');
+          return rotated;
+        } catch (error) {
+          this.ui?.setStatus?.(`REMPLACEMENT : ${String(error?.message || 'refusé').slice(0, 42)}`);
+          throw error;
+        }
+      },
       onRequestEntry: async () => {
         try {
           const result = await this.onlineBridge?.requestEntry();
