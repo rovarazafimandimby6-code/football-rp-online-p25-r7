@@ -370,3 +370,22 @@ test('P27 catalogue: l’audit détecte les effectifs faibles et les conflits de
   assert.ok(audit.errors.some(issue => issue.code === 'system-only-control-conflict'));
   assert.ok(audit.errors.some(issue => issue.code === 'recruitment-nationality-mismatch'));
 });
+
+
+test('clubs: chaque club starter possède une implantation principale structurée et indépendante de son recrutement', () => {
+  const clubs = new ClubManager();
+  const manparis = clubs.getClub('manparis-sporting');
+  const antananarivo = clubs.getClub('antananarivo-fc');
+  assert.deepEqual(manparis.location, { city:'Manchester', country:'Royaume-Uni', countryCode:'GB' });
+  assert.equal(manparis.countryCode, 'FR');
+  assert.deepEqual(antananarivo.location, { city:'Antananarivo', country:'Madagascar', countryCode:'MG' });
+  manparis.location.city = 'Modifié';
+  assert.equal(clubs.getClub('manparis-sporting').location.city, 'Manchester');
+});
+
+test('géographie: la ville principale structurée prime sur le libellé historique composite', async () => {
+  const { conferenceForClub } = await import('../src/league-structure.js');
+  assert.equal(conferenceForClub({ division:'D5', city:'Ville inconnue / Nairobi', location:{ city:'Antsiranana' } }), 'Nord');
+  assert.equal(conferenceForClub({ division:'D5', city:'Nairobi / Antananarivo' }), 'Est');
+  assert.equal(conferenceForClub({ division:'D5', city:'Ville inconnue' }), null);
+});

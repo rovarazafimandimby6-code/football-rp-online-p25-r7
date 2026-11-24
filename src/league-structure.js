@@ -67,7 +67,7 @@ export function conferenceForClub(club) {
   if (explicit) return explicit;
   if (division !== 'D4' && division !== 'D5') return null;
 
-  const primaryCity = String(club?.city ?? '').split('/')[0];
+  const primaryCity = String(club?.location?.city || club?.city || '').split('/')[0];
   const city = normalizeCityName(primaryCity);
   return CITY_GEOGRAPHY[city]?.[division] ?? null;
 }

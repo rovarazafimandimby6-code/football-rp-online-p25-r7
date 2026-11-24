@@ -13,7 +13,7 @@ const normalizePlayerLoyalty = loyalty => ({
   departurePolicy: ['no-normal-exit','reluctant','balanced','ambitious'].includes(loyalty?.departurePolicy) ? loyalty.departurePolicy : 'balanced'
 });
 const clonePlayer = player => ({ ...player, loyalty: player.loyalty ? { ...player.loyalty } : null, attributes: player.attributes ? { ...player.attributes } : null, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
-const cloneClub = club => ({ ...club, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, strategicProfile: club.strategicProfile ? { ...club.strategicProfile, competitiveVariance: { ...club.strategicProfile.competitiveVariance } } : null, recruitmentProfile: club.recruitmentProfile ? { ...club.recruitmentProfile, nationalityCodes: [...(club.recruitmentProfile.nationalityCodes || [])] } : null, roster: club.roster.map(clonePlayer) });
+const cloneClub = club => ({ ...club, location: club.location ? { ...club.location } : null, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, strategicProfile: club.strategicProfile ? { ...club.strategicProfile, competitiveVariance: { ...club.strategicProfile.competitiveVariance } } : null, recruitmentProfile: club.recruitmentProfile ? { ...club.recruitmentProfile, nationalityCodes: [...(club.recruitmentProfile.nationalityCodes || [])] } : null, roster: club.roster.map(clonePlayer) });
 
 const normalizeRosterPlayer = (player, club, index = 0) => {
   const rating = Number(player?.rating);
@@ -58,6 +58,32 @@ const club = (id, name, city, country, countryCode, division, rating, control, c
 
 export const DIVISIONS = LEAGUE_DIVISIONS;
 
+const STARTER_CLUB_LOCATIONS = Object.freeze({
+  'antananarivo-fc': { city:'Antananarivo', country:'Madagascar', countryCode:'MG' },
+  'manparis-sporting': { city:'Manchester', country:'Royaume-Uni', countryCode:'GB' },
+  'dakar-milan-union': { city:'Dakar', country:'Sénégal', countryCode:'SN' },
+  'toamasina-united': { city:'Toamasina', country:'Madagascar', countryCode:'MG' },
+  'londaka-city': { city:'Londres', country:'Royaume-Uni', countryCode:'GB' },
+  'lisboa-nova-athletic': { city:'Lisbonne', country:'Portugal', countryCode:'PT' },
+  'fianarantsoa-athletic': { city:'Fianarantsoa', country:'Madagascar', countryCode:'MG' },
+  'osaka-antsirabe-fc': { city:'Osaka', country:'Japon', countryCode:'JP' },
+  'mahajanga-city': { city:'Mahajanga', country:'Madagascar', countryCode:'MG' },
+  'rio-tana-creative': { city:'Rio de Janeiro', country:'Brésil', countryCode:'BR' },
+  'antsirabe-sport': { city:'Antsirabe', country:'Madagascar', countryCode:'MG' },
+  'valencia-northbridge': { city:'Valence', country:'Espagne', countryCode:'ES' },
+  'tulear-sunrise': { city:'Toliara', country:'Madagascar', countryCode:'MG' },
+  'morondava-lagoon': { city:'Morondava', country:'Madagascar', countryCode:'MG' },
+  'nairobi-tana-academy': { city:'Nairobi', country:'Kenya', countryCode:'KE' },
+  'antsiranana-north-fc': { city:'Antsiranana', country:'Madagascar', countryCode:'MG' }
+});
+const normalizeClubLocation = (location, legacyCity = '') => {
+  const source = location && typeof location === 'object' ? location : {};
+  const city = cleanText(source.city, String(legacyCity).split('/')[0].trim(), 48);
+  const country = cleanText(source.country, '', 48);
+  const countryCode = /^[A-Z]{2}$/.test(source.countryCode || '') ? source.countryCode : null;
+  return { city, country, countryCode };
+};
+
 export const DEFAULT_CLUBS = Object.freeze([
   club('antananarivo-fc','Antananarivo Crown FC','Antananarivo / Madrid','Madagascar · Espagne','MG','D1',76,'ai',['#1769aa','#092e55','#f3d36a'],'Stade des Hautes-Terres',82,4200000),
   club('manparis-sporting','Manparis Sporting','Manchester / Paris','International','FR','D1',78,'ai',['#493b91','#211b4e','#e7d8ff'],'Arena des Deux Capitales',86,5100000),
@@ -78,7 +104,7 @@ export const DEFAULT_CLUBS = Object.freeze([
   club('morondava-lagoon','Morondava Lagoon','Morondava','Madagascar','MG','AMATEUR',51,'open',['#278c9b','#14515d','#d8f0e8'],'Stade du Baobab',45,360000),
   club('nairobi-tana-academy','Nairobi-Tana Academy','Nairobi / Antananarivo','Kenya · Madagascar','MG','AMATEUR',52,'open',['#526f3e','#273c24','#e3d7a4'],'Academy Field',47,390000),
   club('antsiranana-north-fc','Antsiranana North FC','Antsiranana','Madagascar','MG','AMATEUR',50,'open',['#3976a8','#1e3f68','#f0d477'],'Stade du Nord',44,340000)
-].map(item => item.division === 'AMATEUR' ? ({ ...item, division: 'D5', conference: ({ 'tulear-sunrise': 'Sud', 'morondava-lagoon': 'Ouest', 'nairobi-tana-academy': 'Est', 'antsiranana-north-fc': 'Nord' })[item.id] }) : item));
+].map(item => ({ ...item, location: STARTER_CLUB_LOCATIONS[item.id], ...(item.division === 'AMATEUR' ? { division: 'D5', conference: ({ 'tulear-sunrise': 'Sud', 'morondava-lagoon': 'Ouest', 'nairobi-tana-academy': 'Est', 'antsiranana-north-fc': 'Nord' })[item.id] } : {}) })));
 
 export class ClubManager {
   constructor(clubs = DEFAULT_CLUBS, storage, storageKey = COMPETITION_KEY) {
@@ -96,6 +122,7 @@ export class ClubManager {
         id,
         name: cleanText(input.name, 'Club', 48),
         city: cleanText(input.city, '', 48),
+        location: normalizeClubLocation(input.location, input.city),
         country: cleanText(input.country, 'Madagascar', 48),
         countryCode: /^[A-Z]{2}$/.test(input.countryCode || '') ? input.countryCode : 'MG',
         division: normalizeDivision(input.division),
