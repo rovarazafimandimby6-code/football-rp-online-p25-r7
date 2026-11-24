@@ -251,3 +251,39 @@ test('P27 finances : une panne du calendrier après écriture du salaire reste r
   assert.equal(service.payrollSchedule[club.id],now);
  } finally {rmSync(directory,{recursive:true,force:true});}
 });
+
+
+test('P27 finances : réconcilie les indemnités de transfert dans les deux grands livres sans doublon',()=>{
+ const from=DEFAULT_CLUBS[0],to=DEFAULT_CLUBS[1];
+ const event={id:'transfer-ledger-event-1',type:'transfer',fromClubId:from.id,toClubId:to.id,fee:2500,at:Date.UTC(2027,0,15)};
+ const f=setup({events:[event]});
+ try {
+  const fromBefore=f.service.store.balance(from.id),toBefore=f.service.store.balance(to.id);
+  const first=f.service.syncRecordedTransferFees();
+  assert.equal(first.ok,true);assert.equal(first.posted,2);assert.equal(first.unpaid,0);
+  assert.equal(f.service.store.balance(from.id),fromBefore-2500);
+  assert.equal(f.service.store.balance(to.id),toBefore+2500);
+  const second=f.service.syncRecordedTransferFees();
+  assert.equal(second.ok,true);assert.equal(second.posted,0);
+  assert.equal(f.service.store.balance(from.id),fromBefore-2500);
+  assert.equal(f.service.store.balance(to.id),toBefore+2500);
+  assert.equal(f.service.store.getAccount(from.id).totalExpenses,2500);
+  assert.equal(f.service.store.getAccount(to.id).totalIncome,2500);
+ } finally {f.cleanup();}
+});
+
+test('P27 finances : conserve une indemnité de transfert à réconcilier si le débit échoue',()=>{
+ const from={...DEFAULT_CLUBS[0],budget:0},to=DEFAULT_CLUBS[1];
+ const event={id:'transfer-ledger-event-retry',type:'transfer',fromClubId:from.id,toClubId:to.id,fee:100,at:1000};
+ const f=setup({events:[event]});
+ try {
+  const first=f.service.syncRecordedTransferFees();
+  assert.equal(first.ok,false);assert.equal(first.unpaid,1);
+  assert.equal(f.service.store.getAccount(to.id).totalIncome,0);
+  f.service.store.post(from.id,{id:'transfer-retry-funds',category:'other',amount:100,direction:'income'});
+  const retry=f.service.syncRecordedTransferFees();
+  assert.equal(retry.ok,true);assert.equal(retry.posted,2);
+  assert.equal(f.service.store.getAccount(from.id).totalExpenses,100);
+  assert.equal(f.service.store.getAccount(to.id).totalIncome,100);
+ } finally {f.cleanup();}
+});
