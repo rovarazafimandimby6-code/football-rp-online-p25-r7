@@ -300,6 +300,7 @@ export class ClubManager {
     const target = this.clubs.get(safeId(clubId));
     const id = safeId(playerId);
     if (!target || !id || !Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-request' };
+    if (id.startsWith('human-')) return { ok:false, reason:'human-career-managed' };
     if ([...this.clubs.values()].some(item => item.roster.some(player => player.id === id)))
       return { ok:false, reason:'player-already-registered' };
     const candidates = [];
