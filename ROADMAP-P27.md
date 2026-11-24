@@ -1196,5 +1196,5 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 ### Lots 147–148 — cloisonnement des fichiers servis par HTTP
 - [x] Lot 147 : interdire le service statique des répertoires internes `data/`, `server/`, `tests/`, `node_modules/` ainsi que de tout segment caché (dont `.git/` et `.env`). Les contrôles de confinement de chemin restent actifs.
 - [x] Lot 148 : étendre le test HTTP d'intégration avec un véritable fichier temporaire sous `data/` et vérifier que les données privées, le code serveur et les fichiers cachés répondent tous par HTTP 403.
-- [ ] Validation GitHub Actions complète et contrôle syntaxique après correctif.
+- [x] Validation GitHub Actions complète : [workflow P27 validation — run 45475368715](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45475368715), **711/711 tests réussis**, 0 échec ; contrôle syntaxique JavaScript/MJS réussi.
 - Limite : le test couvre le serveur Node intégré ; les règles de proxy, CDN et hébergement de production restent à vérifier dans l'environnement de déploiement.
