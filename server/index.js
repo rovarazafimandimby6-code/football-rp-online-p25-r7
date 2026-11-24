@@ -191,7 +191,7 @@ const server = http.createServer(async (req, res) => {
         const result = transferStore.requestOffer(account.id, await readBody(req));
         return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
       }
-      const offerAction = url.pathname.match(/^\\/api\\/transfer\\/offers\\/([a-z0-9-]{8,96})\\/(accept|reject)$/i);
+      const offerAction = url.pathname.match(/^\/api\/transfer\/offers\/([a-z0-9-]{8,96})\/(accept|reject)$/i);
       if (req.method === 'POST' && offerAction) {
         const result = offerAction[2] === 'accept' ? transferStore.acceptOffer(account.id, offerAction[1]) : transferStore.rejectOffer(account.id, offerAction[1]);
         return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
