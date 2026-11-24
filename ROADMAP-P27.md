@@ -728,7 +728,10 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Resynchroniser les affectations après une clôture de saison réussie.
 - [x] Signaler explicitement une persistance d’affectations en attente sans masquer l’état en mémoire.
 - [x] Vérifier que la synchronisation des affectations n'accepte que des catalogues complets et à identifiants uniques.
-- [ ] Ajouter une reprise contrôlée des synchronisations en attente et une validation de bout en bout sur plusieurs transitions de saison.
+- [x] Ne pas bloquer le démarrage sur une panne temporaire de sauvegarde des affectations lorsque le catalogue officiel est valide et déjà appliqué en mémoire.
+- [x] Réessayer la persistance des affectations en attente toutes les 60 secondes ; une nouvelle tentative persiste aussi les états déjà alignés en mémoire.
+- [x] Ajouter un test de reprise après panne temporaire de sauvegarde.
+- [ ] Valider de bout en bout plusieurs transitions de saison avec redémarrages et stockage réel.
 
 
 ### Lot 64 — audit croisé des relations joueur, club et transferts (renforcé)
