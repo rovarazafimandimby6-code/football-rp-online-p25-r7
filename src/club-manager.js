@@ -484,7 +484,11 @@ export class ClubManager {
       };
     }
     to.roster.push(transferred);
-    this.saveSeason();
+    if (!this.saveSeason()) {
+      to.roster.pop();
+      from.roster.splice(sourceIndex, 0, player);
+      return { ok:false, reason:'roster-persistence-failed' };
+    }
     return { ok: true, fromRosterSize: from.roster.length, toRosterSize: to.roster.length, number: assignedNumber };
   }
 
