@@ -65,7 +65,7 @@ test('P27 paie humaine : une échéance avant transfert reste imputée à l’an
   const payments=f.store.state.events.filter(event=>event.type==='salary-payment');
   assert.equal(payments.length,2);
   assert.equal(payments[1].clubId,'toamasina-united');
-  assert.equal(payments[1].amount,700);
+  assert.equal(payments[1].amount,f.store.getCareer('account-wage-transfer').contract.salary);
  }finally{f.cleanup();}
 });
 
