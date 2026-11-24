@@ -1141,3 +1141,11 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 123 : ajouter des tests de falsification plausible après rechargement du store, sans modifier les archives sources.
 - [ ] Validation CI complète et contrôle syntaxique sur le commit consolidé.
 - Limite : les statistiques sont recalculées depuis les archives actuellement disponibles ; aucune statistique absente des résultats sources n'est inventée.
+
+
+### Lots 124 à 127 — historiques par compétition et confrontations directes
+- [x] Lot 124 : produire les bilans historiques distincts pour chaque groupe de championnat et chaque compétition.
+- [x] Lot 125 : recalculer les matchs, victoires, nuls, défaites et buts par club et compétition.
+- [x] Lot 126 : auditer les agrégats par compétition contre les rencontres archivées et exposer le résultat dans le snapshot.
+- [x] Lot 127 : renforcer les tests de confrontations directes, d'ordre des clubs et de persistance après rechargement.
+- [ ] Validation CI complète et contrôle syntaxique sur le commit documentaire consolidé.
