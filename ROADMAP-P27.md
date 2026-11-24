@@ -854,4 +854,4 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 81 : distinguer un joueur humain réellement orphelin d'une synchronisation d'effectif encore en attente.
 - [x] Lot 82 : élever en erreur l'absence d'effectif lorsqu'aucune commande outbox valide n'explique l'écart.
 - [x] Lot 83 : tests de non-régression pour l'orphelin contractuel et la fenêtre de reprise saga.
-- [ ] Lot 84 : validation CI consolidée et vérification des résultats.
+- [x] Lot 84 : CI complète réussie — 643/643 tests, 0 échec, contrôle syntaxique réussi (run 45449493916, commit 7682af3f6499621a2da4ed485e4e000335addb09).
