@@ -6,10 +6,10 @@ import path from 'node:path';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { JsonClubFinanceService } from '../server/club-finance-service.js';
 
-function setup({events=[],careers=[],now=()=>Date.UTC(2027,0,15)}={}) {
+function setup({events=[],careers=[],clubs=DEFAULT_CLUBS,now=()=>Date.UTC(2027,0,15)}={}) {
   const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-finance-service-'));
   const transferStore={state:{events,careers}};
-  return {directory,transferStore,service:new JsonClubFinanceService(directory,{clubs:DEFAULT_CLUBS,transferStore,now}),cleanup:()=>rmSync(directory,{recursive:true,force:true})};
+  return {directory,transferStore,service:new JsonClubFinanceService(directory,{clubs,transferStore,now}),cleanup:()=>rmSync(directory,{recursive:true,force:true})};
 }
 test('P27 finances : ouvre un compte persistant pour les 156 clubs sans réinitialiser les soldes',()=>{
  const f=setup();try{
@@ -275,7 +275,7 @@ test('P27 finances : réconcilie les indemnités de transfert dans les deux gran
 test('P27 finances : conserve une indemnité de transfert à réconcilier si le débit échoue',()=>{
  const from={...DEFAULT_CLUBS[0],budget:0},to=DEFAULT_CLUBS[1];
  const event={id:'transfer-ledger-event-retry',type:'transfer',fromClubId:from.id,toClubId:to.id,fee:100,at:1000};
- const f=setup({events:[event]});
+ const f=setup({events:[event],clubs:[from,to]});
  try {
   const first=f.service.syncRecordedTransferFees();
   assert.equal(first.ok,false);assert.equal(first.unpaid,1);
