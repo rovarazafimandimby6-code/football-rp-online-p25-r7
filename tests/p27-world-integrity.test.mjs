@@ -389,3 +389,26 @@ test('P27 intégrité paie humaine : refuse une écriture de journal sans évén
  const result=auditP27World(input);
  assert.ok(result.errors.some(item=>item.code==='PLAYER_WAGE_JOURNAL_EVENT_MISSING'));
 });
+
+
+test('P27 intégrité carrière : signale un contrat actif sans effectif ni synchronisation en attente',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-orphan';
+ input.transferState.careers[0].contract.playerId='human-orphan';
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='CAREER_ACTIVE_PLAYER_ORPHANED'&&item.playerId==='human-orphan'));
+});
+
+test('P27 intégrité carrière : tolère temporairement un effectif absent si la saga outbox est en attente',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-pending';
+ input.transferState.careers[0].contract.playerId='human-pending';
+ input.transferState.rosterSync=[{
+  id:'roster-event-pending',eventId:'event-pending',playerId:'human-pending',action:'upsert',clubId:'club-a',
+  contract:{status:'active',playerId:'human-pending',clubId:'club-a',salary:100},status:'pending',attempts:0,
+  createdAt:'2027-01-01T00:00:00.000Z'
+ }];
+ const result=auditP27World(input);
+ assert.ok(!result.errors.some(item=>item.code==='CAREER_ACTIVE_PLAYER_ORPHANED'));
+ assert.ok(result.warnings.some(item=>item.code==='CAREER_PLAYER_ROSTER_SYNC_PENDING'));
+});
