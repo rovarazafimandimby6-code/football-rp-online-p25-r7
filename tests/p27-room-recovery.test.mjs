@@ -77,7 +77,7 @@ test('P27 salons persistés : un checkpoint JSON corrompu bloque explicitement l
   try {
     const store = new JsonRoomStore(directory);
     writeFileSync(store.file, '{broken-json');
-    assert.throws(() => new RoomManager({ roomStore: store }), /ROOM_STORE_CORRUPT/);
+    assert.throws(() => new RoomManager({ now: () => 2, roomStore: store }), /ROOM_STORE_CORRUPT/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
@@ -86,7 +86,7 @@ test('P27 salons persistés : les identifiants de joueurs dupliqués invalident 
   try {
     const store = new JsonRoomStore(directory);
     store.save({
-      id: 'room-duplicate', phase: 'lobby', elapsedMs: 0, updatedAt: 1,
+      id: 'room-duplicate', phase: 'playing', elapsedMs: 0, updatedAt: 1,
       score: { blue: 0, red: 0 },
       players: [
         { id: 'same-player', team: 'blue', slot: 0 },
