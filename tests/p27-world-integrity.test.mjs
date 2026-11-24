@@ -147,6 +147,33 @@ test('P27 intégrité mercato IA : contrôle la provenance du contrat après dé
  assert.ok(result.errors.some(item=>item.code==='SYSTEM_TRANSFER_CONTRACT_LINK_MISMATCH'));
 });
 
+test('P27 lot 99 : accepte la chaîne de deux transferts IA et vérifie uniquement la destination courante',()=>{
+ const input=cleanWorld();
+ const player=input.clubs[0].roster.pop();
+ player.contract={status:'active',clubId:'club-b',playerId:'player-a',previousClubId:'club-a',transferredAt:'2028-01-02T00:00:00.000Z'};
+ input.clubs[1].roster.push(player);
+ input.systemTransferState={version:1,transfers:[
+  {id:'ai-chain-first',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',fee:500,createdAt:1000,status:'completed'},
+  {id:'ai-chain-second',playerId:'player-a',fromClubId:'club-b',toClubId:'club-a',fee:600,createdAt:2000,status:'pending'}
+ ]};
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.equal(codes.includes('SYSTEM_TRANSFER_CHAIN_INVALID'),false);
+ assert.equal(codes.includes('SYSTEM_TRANSFER_COMPLETED_ROSTER_MISMATCH'),false);
+ assert.equal(codes.includes('SYSTEM_TRANSFER_CONTRACT_LINK_MISMATCH'),false);
+});
+
+test('P27 lot 99 : refuse deux transferts IA simultanément en attente pour le même joueur',()=>{
+ const input=cleanWorld();
+ input.systemTransferState={version:1,transfers:[
+  {id:'ai-chain-pending-a',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',fee:500,createdAt:1000,status:'pending'},
+  {id:'ai-chain-pending-b',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',fee:600,createdAt:2000,status:'pending'}
+ ]};
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='SYSTEM_TRANSFER_PLAYER_MULTIPLE_PENDING'));
+ assert.ok(result.errors.some(item=>item.code==='SYSTEM_TRANSFER_CHAIN_INVALID'));
+});
+
 test('P27 clubs : synchronise les divisions et conférences officielles après transition',()=>{
  const club={id:'club-a',division:'D2',conference:null};
  const manager={clubs:new Map([['club-a',club]]),saveSeason:()=>true};
