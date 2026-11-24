@@ -13,6 +13,7 @@ import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
 import { JsonClubRosterStorage } from './club-roster-storage.js';
 import { P27ClubWorldService } from './club-world-service.js';
+import { syncClubAssignments } from './club-assignment-sync.js';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/league-structure.js';
 import { listPublicClubs, resolvePublicClub } from './club-catalog.js';
@@ -32,6 +33,10 @@ const transferStore = new JsonTransferStore(transferDirectory);
 const financeDirectory = process.env.FINANCES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'finances');
 const rosterDirectory = process.env.CLUB_ROSTERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'club-rosters');
 const serverClubManager = new ClubManager(DEFAULT_CLUBS, new JsonClubRosterStorage(rosterDirectory), 'p27-server-club-rosters');
+// Competition assignments are authoritative after a season rollover; restore them
+// into the roster/finance world before any service reads club divisions.
+const startupAssignmentSync = syncClubAssignments({ clubManager:serverClubManager, competitionStore });
+if (!startupAssignmentSync.ok) throw new Error(`P27_CLUB_ASSIGNMENT_SYNC_FAILED:${startupAssignmentSync.reason}`);
 const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs:[...serverClubManager.clubs.values()], transferStore });
 function configuredSystemWageBudgets() {
   try {
@@ -113,6 +118,11 @@ const server = http.createServer(async (req, res) => {
       const preview = competitionStore.previewSeasonMovements();
       if (!preview.ok) return json(res, 409, { error: 'SEASON_MOVEMENTS_NOT_READY', reason: preview.reason });
       const result = competitionStore.finalizeSeason({ nextSeasonId: body.nextSeasonId, movements: preview.movements });
+      if (result.ok) {
+        const sync = syncClubAssignments({ clubManager:serverClubManager, competitionStore });
+        if (!sync.ok) return json(res, 503, { ...result, assignmentSync:sync, warning:'SEASON_SAVED_ASSIGNMENT_PERSISTENCE_PENDING' });
+        result.assignmentSync = sync;
+      }
       return json(res, result.ok ? 200 : 409, result);
     }
     if (req.method === 'POST' && (url.pathname === '/api/accounts/register' || url.pathname === '/api/accounts/login')) {
