@@ -1204,7 +1204,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 150 : contrôler les profils joueurs et la progression persistée : unicité par compte, absence de références orphelines, schéma du profil, bornes des attributs/ressources et unicité des identifiants de matchs traités.
 - [x] Lot 151 : brancher les stores comptes, profils et progression sur l'endpoint d'audit administratif ; ajouter des tests unitaires de cohérence et un test HTTP d'intégration avec profils/progressions orphelins.
 - [x] Lot 152 : documenter la configuration sûre de `P27_ADMIN_TOKEN`, les vérifications HTTP attendues et le parcours de recette Android dans `docs/P27-DEPLOYMENT-ANDROID-CHECKLIST.md`.
-- [ ] CI verte sur le commit consolidé après correction des premiers échecs d'intégration.
+- [x] CI verte après correction du conflit de nommage dans l'auditeur : workflow [45476499733](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45476499733), **713/713 tests réussis** et syntaxe vérifiée ; workflow de documentation/pré-livraison [45476582050](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45476582050) également vert.
 - [ ] Configuration réelle de `P27_ADMIN_TOKEN` par l'administrateur de l'hébergement ; impossible à confirmer depuis le dépôt.
 - [ ] Exécution de la recette sur appareil Android physique ; non simulable par GitHub Actions.
 - Limite : les tests de stores et d'API sont automatisés ; ils ne constituent pas une validation de déploiement ni un essai physique.
