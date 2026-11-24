@@ -76,6 +76,42 @@ export function auditP27World({
     warnings.push({ code:'CLUB_CATALOGUE_SIZE_MISMATCH', expected:expectedClubCount, actual:catalogue.length });
   }
 
+  // Audit the canonical pyramid only when the complete 156-club catalogue is supplied.
+  if (expectedClubCount === 156 && catalogue.length === 156) {
+    const expectedDivisions = { D1:16, D2:16, D3:16, D4:32, D5:64 };
+    const divisionCounts = Object.fromEntries(Object.keys(expectedDivisions).map(id => [id, 0]));
+    const conferenceCounts = new Map();
+    for (const club of catalogue) {
+      if (!Object.hasOwn(expectedDivisions, club.division)) {
+        errors.push({ code:'CLUB_DIVISION_INVALID', clubId:club.id, division:club.division || null });
+        continue;
+      }
+      divisionCounts[club.division]++;
+      if (['D1','D2','D3'].includes(club.division) && club.conference != null)
+        errors.push({ code:'NATIONAL_DIVISION_CONFERENCE_FORBIDDEN', clubId:club.id, division:club.division });
+      if (club.division === 'D4' || club.division === 'D5') {
+        const allowed = club.division === 'D4' ? ['A','B'] : ['A','B','C','D'];
+        if (!allowed.includes(club.conference))
+          errors.push({ code:'CLUB_CONFERENCE_INVALID', clubId:club.id, division:club.division, conference:club.conference || null });
+        const key = `${club.division}:${club.conference || 'NONE'}`;
+        conferenceCounts.set(key, (conferenceCounts.get(key) || 0) + 1);
+      }
+    }
+    for (const [division, expected] of Object.entries(expectedDivisions)) {
+      if (divisionCounts[division] !== expected)
+        errors.push({ code:'DIVISION_CLUB_COUNT_INVALID', division, expected, actual:divisionCounts[division] });
+    }
+    for (const division of ['D4','D5']) {
+      const groups = division === 'D4' ? ['A','B'] : ['A','B','C','D'];
+      for (const conference of groups) {
+        const key = `${division}:${conference}`;
+        const actual = conferenceCounts.get(key) || 0;
+        if (actual !== 16)
+          errors.push({ code:'DIVISION_CONFERENCE_CLUB_COUNT_INVALID', division, conference, expected:16, actual });
+      }
+    }
+  }
+
   const officialCompetitionClubs = asList(competitionClubs);
   if (officialCompetitionClubs.length) {
     const seenCompetitionClubIds = new Set();
