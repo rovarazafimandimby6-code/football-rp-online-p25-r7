@@ -6,6 +6,7 @@
   "description": "Football RP Online P27 — interface carrière paysage, gameplay RP et multijoueur.",
   "scripts": {
     "test": "node --test",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "preflight": "node server/deployment-preflight.js"
   }
 }
