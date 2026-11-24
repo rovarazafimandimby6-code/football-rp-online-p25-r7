@@ -130,6 +130,19 @@ export class OnlineMatchBridge {
     }
   }
 
+  async rotatePlayers(outgoingId, incomingId) {
+    if (this.disposed || !this.localServerId || !outgoingId || !incomingId) return false;
+    if (!this.lastState?.rotationAvailable) throw new Error('NOT_A_STOPPAGE');
+    try {
+      const result = await this.client.rotate({ outgoingId, incomingId });
+      if (result?.state) this.applyState(result.state, []);
+      return result?.rotated === true;
+    } catch (error) {
+      this.onError?.(error);
+      throw error;
+    }
+  }
+
   async requestEntry() {
     if (this.disposed || !this.localServerId || this.localOnPitch) return false;
     try {
