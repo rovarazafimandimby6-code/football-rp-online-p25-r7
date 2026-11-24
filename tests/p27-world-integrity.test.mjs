@@ -129,7 +129,7 @@ test('P27 intégrité monde : contrôle les budgets et identités du catalogue m
  assert.ok(codes.includes('TRANSFER_CLUB_ID_INVALID_OR_DUPLICATE'));
  assert.ok(codes.includes('TRANSFER_CLUB_UNKNOWN'));
  assert.ok(codes.includes('TRANSFER_CLUB_BUDGET_INVALID'));
- assert.ok(result.warnings.some(item=>item.code==='TRANSFER_CLUB_CATALOGUE_SIZE_MISMATCH'));
+ assert.ok(codes.includes('TRANSFER_CLUB_CATALOGUE_SIZE_MISMATCH'));
 });
 
 test('P27 intégrité monde : détecte contrats actifs invalides et comptes financiers dupliqués',()=>{
