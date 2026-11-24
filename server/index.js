@@ -176,7 +176,12 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { career, rosterSync:syncPendingHumanRosters() });
       }
       if (req.method === 'POST' && url.pathname === '/api/contract/sign') {
-        const result = transferStore.signContract(account.id, await readBody(req));
+        const body = await readBody(req);
+        const career = transferStore.getCareer(account.id);
+        syncPendingHumanRosters();
+        const admission = serverClubManager.canAcceptHuman(body.clubId, career?.playerId);
+        if (!admission.ok) return json(res, 409, { ok:false, reason:admission.reason });
+        const result = transferStore.signContract(account.id, body);
         return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
       }
       if (req.method === 'POST' && url.pathname === '/api/contract/renew') {
@@ -188,11 +193,25 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
       }
       if (req.method === 'POST' && url.pathname === '/api/transfer/offers') {
-        const result = transferStore.requestOffer(account.id, await readBody(req));
+        const body = await readBody(req);
+        const career = transferStore.getCareer(account.id);
+        syncPendingHumanRosters();
+        const admission = serverClubManager.canAcceptHuman(body.toClubId, career?.playerId);
+        if (!admission.ok) return json(res, 409, { ok:false, reason:admission.reason });
+        const result = transferStore.requestOffer(account.id, body);
         return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
       }
       const offerAction = url.pathname.match(/^\/api\/transfer\/offers\/([a-z0-9-]{8,96})\/(accept|reject)$/i);
       if (req.method === 'POST' && offerAction) {
+        if (offerAction[2] === 'accept') {
+          const career = transferStore.getCareer(account.id);
+          syncPendingHumanRosters();
+          const offer = career?.offers?.find(item => item.id === offerAction[1] && item.status === 'pending');
+          if (offer) {
+            const admission = serverClubManager.canAcceptHuman(offer.fromClubId, career.playerId);
+            if (!admission.ok) return json(res, 409, { ok:false, reason:admission.reason });
+          }
+        }
         const result = offerAction[2] === 'accept' ? transferStore.acceptOffer(account.id, offerAction[1]) : transferStore.rejectOffer(account.id, offerAction[1]);
         return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
       }
