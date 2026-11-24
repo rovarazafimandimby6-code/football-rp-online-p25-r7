@@ -126,10 +126,10 @@ export class JsonCompetitionStore {
   }
   transaction(mutator) {
     if (this._transactionDepth) return mutator();
-    const previousState = this.state;
-    const previousClubs = this.clubs;
-    this.state = clone(previousState);
-    this.clubs = new Map([...previousClubs].map(([id, club]) => [id, clone(club)]));
+    // Keep live object identity during successful writes: room and UI services may
+    // hold references to competition records while a result is being committed.
+    const snapshotState = clone(this.state);
+    const snapshotClubs = new Map([...this.clubs].map(([id, club]) => [id, clone(club)]));
     this._transactionDepth = 1;
     this._transactionDirty = false;
     try {
@@ -140,8 +140,8 @@ export class JsonCompetitionStore {
       if (dirty) this.persist();
       return result;
     } catch (error) {
-      this.state = previousState;
-      this.clubs = previousClubs;
+      this.state = snapshotState;
+      this.clubs = snapshotClubs;
       this._transactionDepth = 0;
       this._transactionDirty = false;
       throw error;
