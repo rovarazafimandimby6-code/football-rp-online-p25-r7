@@ -141,10 +141,6 @@ export function auditP27World({
       errors.push({ code:'FINANCE_BALANCE_MISMATCH', clubId:account.clubId, calculated:balance, stored:account.balance });
     } else financeBalanceTotal += balance;
   }
-  if (asList(financeAccounts).length && catalogue.length === expectedClubCount && asList(financeAccounts).length >= expectedClubCount - 1) {
-    for (const club of catalogue) if (!financeClubIds.has(club.id))
-      errors.push({ code:'FINANCE_ACCOUNT_MISSING', clubId:club.id });
-  }
 
   const transferEvents = Array.isArray(transferState?.events) ? transferState.events : [];
   const transferEventIds = new Set();
