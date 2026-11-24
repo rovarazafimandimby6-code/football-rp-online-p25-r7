@@ -59,3 +59,18 @@ Noter pour chaque anomalie : modèle Android, version Android, navigateur, taill
 ## 4. Critères de clôture
 
 La configuration du secret n'est considérée terminée qu'après vérification sur l'hébergeur réel. Les essais Android ne sont considérés terminés qu'après exécution sur le téléphone cible. Ne pas déclarer la pré-livraison validée sur la seule base de CI.
+
+
+## 5. Persistance et reprise des salons actifs
+
+Le serveur utilise `JsonRoomStore` pour checkpoint les salons et matchs non terminés dans `data/rooms/active-rooms.json`. Le chemin peut être remplacé par la variable `ROOMS_DIR`.
+
+Avant un déploiement :
+- vérifier que le répertoire désigné par `ROOMS_DIR` est inscriptible par le processus Node et situé sur un volume réellement persistant ;
+- conserver les permissions privées du fichier de checkpoint (création en mode `0600`) ; il contient les jetons nécessaires à la reconnexion et ne doit jamais être exposé, copié dans un artefact public ou ajouté à Git ;
+- inclure ce répertoire dans une politique de sauvegarde/restauration privée, cohérente avec les sauvegardes des autres données serveur ;
+- ne pas considérer un disque éphémère de conteneur/hébergement comme une persistance garantie.
+
+Après redémarrage, vérifier qu'un match actif revient avec le même identifiant, le score, les positions, les statistiques et le chronomètre du dernier checkpoint. Les joueurs humains sont temporairement contrôlés par l'IA et doivent pouvoir se reconnecter avec leur jeton. Le temps d'indisponibilité du serveur est suspendu ; les actions intervenues depuis le dernier checkpoint (fenêtre nominale d'environ une seconde) peuvent être rejouées. Un JSON de checkpoint corrompu doit bloquer explicitement le démarrage plutôt que créer des salons vides.
+
+Les checkpoints locaux ne constituent ni une réplication multi-instance ni une transaction distribuée. Ne pas lancer plusieurs instances serveur partageant ce fichier sans mécanisme de verrouillage/coordination dédié.
