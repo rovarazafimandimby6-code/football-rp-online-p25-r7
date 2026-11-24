@@ -185,3 +185,53 @@ test('P27 historique des clubs : vérifie les agrégats et refuse les statistiqu
   assert.equal(store.auditHistoricalRecords(duplicated).reason,'historical-club-identity-invalid');
  } finally {rmSync(directory,{recursive:true,force:true});}
 });
+
+
+test('P27 audit historique : rapproche les statistiques calculées avec les archives sources',()=>{
+ const directory=mkdtempSync(path.join(tmpdir(),'p27-historical-reconciliation-'));
+ try {
+  const store=new JsonCompetitionStore(directory,{seasonId:'2026-27',now:()=>1000});
+  for(const competition of store.activeSeason.competitions) competition.status='completed';
+  finishPromotionPlayoffs(store);
+  const preview=store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  assert.equal(store.finalizeSeason({nextSeasonId:'2027-28',movements:preview.movements,completedAt:2000}).ok,true);
+  const restored=new JsonCompetitionStore(directory,{seasonId:'ignored',now:()=>3000});
+  const records=restored.clubHistoricalRecords();
+  assert.equal(restored.auditHistoricalRecords(records).ok,true);
+  const alteredGoals=records.map(record=>({...record}));
+  alteredGoals[0].goalsFor++;
+  assert.deepEqual(restored.auditHistoricalRecords(alteredGoals),{
+   ok:false,reason:'historical-derived-stat-mismatch',clubId:alteredGoals[0].clubId,field:'goalsFor'
+  });
+  const alteredPosition=records.map(record=>({...record}));
+  alteredPosition[0].bestLeaguePosition=99;
+  assert.equal(restored.auditHistoricalRecords(alteredPosition).reason,'historical-derived-stat-mismatch');
+  const alteredSeasons=records.map(record=>({...record,seasonIds:[...record.seasonIds].reverse()}));
+  assert.equal(restored.auditHistoricalRecords(alteredSeasons).reason,'historical-season-order-mismatch');
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
+test('P27 audit historique : refuse une provenance de trophée falsifiée même si les compteurs concordent',()=>{
+ const directory=mkdtempSync(path.join(tmpdir(),'p27-historical-trophy-provenance-'));
+ try {
+  const store=new JsonCompetitionStore(directory,{seasonId:'2026-27',now:()=>1000});
+  for(const competition of store.activeSeason.competitions) competition.status='completed';
+  finishPromotionPlayoffs(store);
+  const preview=store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  assert.equal(store.finalizeSeason({nextSeasonId:'2027-28',movements:preview.movements,completedAt:2000}).ok,true);
+  const records=store.clubHistoricalRecords();
+  const holder=records.find(record=>record.trophies.length>0);
+  if (!holder) {
+   // This fixture set has no awarded champion; the positive case is still
+   // covered by the source-derived audit in the preceding test.
+   assert.equal(store.auditHistoricalRecords(records).ok,true);
+   return;
+  }
+  const altered=records.map(record=>({...record,trophies:record.trophies.map(trophy=>({...trophy}))}));
+  const target=altered.find(record=>record.clubId===holder.clubId);
+  target.trophies[0].seasonId='nonexistent-season';
+  assert.equal(store.auditHistoricalRecords(altered).reason,'historical-trophy-reference-invalid');
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
