@@ -1,6 +1,7 @@
-import { DEFAULT_CLUBS } from '../src/club-manager.js';
+import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 
-const catalog = new Map(DEFAULT_CLUBS.map(club => [club.id, club]));
+const catalogManager = new ClubManager(DEFAULT_CLUBS, null, 'server-match-catalog');
+const catalog = new Map(catalogManager.listClubs().map(club => [club.id, club]));
 
 /** Return a server-owned, immutable identity snapshot for a known fictional club. */
 export function resolveMatchClub(id) {
