@@ -12,9 +12,18 @@ function createSeason(seasonId, clubs, now) {
   for (const division of ['D1','D2','D3','AMATEUR']) {
     const members = clubs.filter(club => club.division === division).map(club => ({ id: club.id, name: club.name }));
     const fixtures = [];
-    let round = 1;
-    for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) {
-      fixtures.push({ id: `${seasonId}-${division}-${round++}`, competitionId: `${seasonId}-league-${division}`, type: 'league', round: round - 1, homeClubId: members[i].id, awayClubId: members[j].id, status: 'scheduled', result: null, roomId: null });
+    const rotation = members.map(member => member.id);
+    const scheduled = rotation.length % 2 ? [...rotation, null] : [...rotation];
+    const rounds = Math.max(0, scheduled.length - 1);
+    for (let round = 1; round <= rounds; round++) {
+      for (let match = 0; match < scheduled.length / 2; match++) {
+        let home = scheduled[match], away = scheduled[scheduled.length - 1 - match];
+        if (!home || !away) continue;
+        if ((round + match) % 2) [home, away] = [away, home];
+        fixtures.push({ id: `${seasonId}-${division}-R${round}-M${match+1}`, competitionId: `${seasonId}-league-${division}`, type: 'league', round, homeClubId: home, awayClubId: away, status: 'scheduled', result: null, roomId: null });
+      }
+      const last = scheduled.pop();
+      scheduled.splice(1, 0, last);
     }
     season.competitions.push({ id: `${seasonId}-league-${division}`, type: 'league', name: `Championnat · ${division}`, division, status: 'active', members, fixtures, standings: members.map(club => ({ ...club, played:0, wins:0, draws:0, losses:0, goalsFor:0, goalsAgainst:0, points:0 })) });
   }
@@ -61,8 +70,10 @@ export class JsonCompetitionStore {
       const fixture=competition.fixtures.find(item=>item.id===id);
       if(!fixture) continue;
       if(fixture.status==='completed') return fixture.roomId===room ? {ok:true,duplicate:true,fixture:clone(fixture)} : {ok:false,reason:'fixture-already-completed'};
-      if(fixture.status!=='scheduled'||!fixture.homeClubId||!fixture.awayClubId) return {ok:false,reason:'fixture-not-ready'};
-      fixture.status='completed'; fixture.roomId=room; fixture.result={home,away,finalizedAt};
+      if(!['scheduled','replay-required'].includes(fixture.status)||!fixture.homeClubId||!fixture.awayClubId) return {ok:false,reason:'fixture-not-ready'};
+      if(fixture.result) fixture.replays=[...(fixture.replays||[]),fixture.result];
+      fixture.roomId=room; fixture.result={home,away,finalizedAt};
+      fixture.status='completed';
       if(competition.type==='league') this.applyLeagueResult(competition,fixture);
       else this.advanceCup(competition,fixture);
       this.persist(); return {ok:true,duplicate:false,fixture:clone(fixture)};
@@ -82,7 +93,7 @@ export class JsonCompetitionStore {
     }
   }
   advanceCup(competition,fixture) {
-    if(fixture.result.home===fixture.result.away){fixture.status='awaiting-tiebreak';return;}
+    if(fixture.result.home===fixture.result.away){fixture.status='replay-required';fixture.replayCount=(fixture.replayCount||0)+1;return;}
     const winnerId=fixture.result.home>fixture.result.away?fixture.homeClubId:fixture.awayClubId;
     const next=competition.fixtures.find(item=>item.round===fixture.round+1&&(!item.homeClubId||!item.awayClubId));
     if(next){if(!next.homeClubId) next.homeClubId=winnerId; else if(!next.awayClubId) next.awayClubId=winnerId; if(next.homeClubId&&next.awayClubId) next.status='scheduled';}

@@ -28,7 +28,7 @@ export class RoomManager {
     if (competitionFixtureId) {
       competitionFixture = this.competitionStore?.getFixture(competitionFixtureId);
       if (!competitionFixture) throw new Error('COMPETITION_FIXTURE_NOT_FOUND');
-      if (competitionFixture.status !== 'scheduled') throw new Error('COMPETITION_FIXTURE_NOT_READY');
+      if (!['scheduled','replay-required'].includes(competitionFixture.status)) throw new Error('COMPETITION_FIXTURE_NOT_READY');
       if (!blueClub || blueClub.id !== competitionFixture.homeClubId || redClub.id !== competitionFixture.awayClubId) throw new Error('COMPETITION_FIXTURE_MISMATCH');
     }
     const roomId = randomBytes(6).toString('hex');
