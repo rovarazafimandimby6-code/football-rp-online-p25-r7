@@ -131,6 +131,29 @@ export function auditP27World({
       errors.push({ code:'CAREER_CONTRACT_DATES_INVALID', accountId:career.accountId });
   }
 
+  const rosterSyncEntries = Array.isArray(transferState?.rosterSync) ? transferState.rosterSync : [];
+  const rosterSyncIds = new Set();
+  let pendingRosterSync = 0;
+  for (const entry of rosterSyncEntries) {
+    if (!safeText(entry?.id) || rosterSyncIds.has(entry.id))
+      errors.push({ code:'ROSTER_SYNC_ID_INVALID_OR_DUPLICATE', syncId:entry?.id || null });
+    rosterSyncIds.add(entry?.id);
+    if (!safeText(entry?.playerId) || !entry.playerId.startsWith('human-') ||
+        !['upsert','release'].includes(entry?.action) ||
+        !['pending','completed'].includes(entry?.status) ||
+        !Number.isSafeInteger(entry?.attempts) || entry.attempts < 0)
+      errors.push({ code:'ROSTER_SYNC_ENTRY_INVALID', syncId:entry?.id || null });
+    if (entry?.action === 'upsert' && (!safeText(entry.clubId) || entry.contract?.status !== 'active' ||
+        entry.contract?.playerId !== entry.playerId || entry.contract?.clubId !== entry.clubId))
+      errors.push({ code:'ROSTER_SYNC_UPSERT_LINK_INVALID', syncId:entry?.id || null });
+    if (entry?.action === 'release' && entry.clubId !== null)
+      errors.push({ code:'ROSTER_SYNC_RELEASE_LINK_INVALID', syncId:entry?.id || null });
+    if (entry?.status === 'pending') {
+      pendingRosterSync++;
+      warnings.push({ code:'ROSTER_SYNC_PENDING', syncId:entry.id, playerId:entry.playerId, action:entry.action, attempts:entry.attempts });
+    }
+  }
+
   let financeBalanceTotal = 0, financeEntries = 0;
   const financeClubIds = new Set();
   for (const account of asList(financeAccounts)) {
@@ -332,7 +355,7 @@ export function auditP27World({
     warnings,
     counts:{
       clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,
-      careers:careers.length, financeAccounts:asList(financeAccounts).length,
+      careers:careers.length, pendingRosterSync, financeAccounts:asList(financeAccounts).length,
       financeEntries, financeBalanceTotal, pendingTransferSettlements, pendingPlayerWages, seasons:seasons.length, fixtures, completedFixtures, archivedResults:asList(resultArchive).length
     }
   };
