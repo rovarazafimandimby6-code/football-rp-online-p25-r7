@@ -7,6 +7,7 @@ import { calculateSeasonMovements, createPromotionPlayoff, advancePromotionPlayo
 import { auditLeagueSchedules } from '../src/league-schedule-audit.js';
 import { auditCupBracket } from '../src/cup-bracket-audit.js';
 import { auditSeasonTimeline } from '../src/season-timeline-audit.js';
+import { auditSeasonArchives } from '../src/season-archive-audit.js';
 
 const clean = (value, max = 64) => String(value ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max);
 const scoreValue = value => Number.isSafeInteger(value) && value >= 0 && value <= 99 ? value : null;
@@ -452,6 +453,7 @@ export class JsonCompetitionStore {
     const scheduleAudit = auditLeagueSchedules(season.competitions);
     const cupAudit = auditCupBracket(season.competitions.find(item=>item.type==='cup'));
     const timelineAudit = auditSeasonTimeline(this.state);
-    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit,cupAudit,timelineAudit};
+    const archiveAudit = auditSeasonArchives(this.state);
+    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit,cupAudit,timelineAudit,archiveAudit};
   }
 }
