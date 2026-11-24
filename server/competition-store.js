@@ -221,11 +221,12 @@ export class JsonCompetitionStore {
     for (const season of this.state.seasons) {
       const participated = new Set();
       for (const competition of season.competitions || []) {
+        const competitionParticipants = new Set();
         const names = new Map((competition.members || []).map(member => [member.id, member.name]));
         for (const row of competition.standings || []) names.set(row.id, row.name);
-        for (const member of competition.members || []) participated.add(member.id);
+        for (const member of competition.members || []) { participated.add(member.id); competitionParticipants.add(member.id); }
         for (const row of competition.standings || []) {
-          participated.add(row.id);
+          participated.add(row.id); competitionParticipants.add(row.id);
           const record = records.get(row.id);
           if (record && competition.type === 'league') {
             const position = (competition.standings || []).findIndex(item => item.id === row.id) + 1;
@@ -240,7 +241,8 @@ export class JsonCompetitionStore {
           const hg = fixture.result.home, ag = fixture.result.away;
           if (!home || !away || !Number.isSafeInteger(hg) || !Number.isSafeInteger(ag)) continue;
           participated.add(home.clubId); participated.add(away.clubId);
-          for (const record of [home, away]) { record.matches++; record.competitions++; }
+          competitionParticipants.add(home.clubId); competitionParticipants.add(away.clubId);
+          home.matches++; away.matches++;
           home.goalsFor += hg; home.goalsAgainst += ag;
           away.goalsFor += ag; away.goalsAgainst += hg;
           if (hg > ag) { home.wins++; away.losses++; }
@@ -256,6 +258,10 @@ export class JsonCompetitionStore {
           if (aGoals > bGoals) duel.clubAWins++;
           else if (bGoals > aGoals) duel.clubBWins++;
           else duel.draws++;
+        }
+        for (const clubId of competitionParticipants) {
+          const record = records.get(clubId);
+          if (record) record.competitions++;
         }
       }
       for (const clubId of participated) {
