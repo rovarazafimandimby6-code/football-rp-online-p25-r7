@@ -119,6 +119,7 @@ const server = http.createServer(async (req, res) => {
         clubs:[...serverClubManager.clubs.values()],
         competitionClubs:[...competitionStore.clubs.values()],
         transferState:transferStore.state,
+        systemTransferState:systemTransfers.state,
         financeAccounts:clubFinance.store.listAccounts(),
         financeJournal:clubFinance.transferJournal,
         competitionState:competitionStore.state,
