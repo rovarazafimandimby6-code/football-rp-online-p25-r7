@@ -66,6 +66,38 @@ test('P27 intégrité monde : détecte les contrats liés au mauvais club et les
  assert.ok(codes.includes('COMPLETED_FIXTURE_INVALID'));
 });
 
+test('P27 intégrité mercato IA : accepte un transfert en attente encore localisé au club vendeur',()=>{
+ const input=cleanWorld();
+ input.systemTransferState={version:1,transfers:[{
+  id:'ai-transfer-audit-1',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',
+  fee:500,createdAt:1000,status:'pending'
+ }]};
+ const result=auditP27World(input);
+ assert.equal(result.ok,true,JSON.stringify(result.errors));
+ assert.equal(result.counts.pendingSystemTransfers,1);
+});
+
+test('P27 intégrité mercato IA : refuse un transfert déclaré terminé sans déplacement et règlement',()=>{
+ const input=cleanWorld();
+ input.systemTransferState={version:1,transfers:[{
+  id:'ai-transfer-audit-2',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',
+  fee:500,createdAt:1000,status:'completed'
+ }]};
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('SYSTEM_TRANSFER_COMPLETED_ROSTER_MISMATCH'));
+ assert.ok(codes.includes('SYSTEM_TRANSFER_FINANCE_NOT_SETTLED'));
+});
+
+test('P27 intégrité mercato IA : détecte les identifiants de transfert outbox dupliqués',()=>{
+ const input=cleanWorld();
+ const record={id:'ai-transfer-audit-3',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',
+  fee:500,createdAt:1000,status:'pending'};
+ input.systemTransferState={version:1,transfers:[record,{...record}]};
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='SYSTEM_TRANSFER_OUTBOX_ID_INVALID_OR_DUPLICATE'));
+});
+
 test('P27 clubs : synchronise les divisions et conférences officielles après transition',()=>{
  const club={id:'club-a',division:'D2',conference:null};
  const manager={clubs:new Map([['club-a',club]]),saveSeason:()=>true};
