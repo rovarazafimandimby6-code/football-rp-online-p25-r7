@@ -25,3 +25,28 @@ test('P27 migration : l’ancienne division amateur est reconnue comme Challenge
   assert.equal(normalizeConference('D5', 'Nord'), 'Nord');
   assert.equal(normalizeConference('D4', 'Est'), null);
 });
+
+test('P27 géographie : les conférences D4 suivent la région nord/sud des villes malgaches', async () => {
+  const { conferenceForClub } = await import('../src/league-structure.js');
+  assert.equal(conferenceForClub({ division: 'D4', city: 'Antsiranana' }), 'Nord');
+  assert.equal(conferenceForClub({ division: 'D4', city: 'Antananarivo' }), 'Sud');
+  assert.equal(conferenceForClub({ division: 'D4', city: 'Mahajanga' }), 'Nord');
+  assert.equal(conferenceForClub({ division: 'D4', city: 'Fianarantsoa' }), 'Sud');
+});
+
+test('P27 géographie : les conférences D5 distinguent les quatre façades régionales', async () => {
+  const { conferenceForClub } = await import('../src/league-structure.js');
+  assert.equal(conferenceForClub({ division: 'D5', city: 'Antsiranana' }), 'Nord');
+  assert.equal(conferenceForClub({ division: 'D5', city: 'Toamasina' }), 'Est');
+  assert.equal(conferenceForClub({ division: 'D5', city: 'Toliara' }), 'Sud');
+  assert.equal(conferenceForClub({ division: 'D5', city: 'Mahajanga' }), 'Ouest');
+  assert.equal(conferenceForClub({ division: 'D5', city: 'Morondava' }), 'Ouest');
+});
+
+test('P27 géographie : une conférence explicite prévaut et les villes inconnues restent non classées', async () => {
+  const { conferenceForClub } = await import('../src/league-structure.js');
+  assert.equal(conferenceForClub({ division: 'D5', city: 'Toamasina', conference: 'Nord' }), 'Nord');
+  assert.equal(conferenceForClub({ division: 'D5', city: 'Weston' }), null);
+  assert.equal(conferenceForClub({ division: 'D4', city: 'Ville inconnue' }), null);
+  assert.equal(conferenceForClub({ division: 'D3', city: 'Antsiranana' }), null);
+});

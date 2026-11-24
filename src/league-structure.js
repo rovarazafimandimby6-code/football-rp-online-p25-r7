@@ -22,17 +22,54 @@ export function normalizeConference(division, value) {
   return (CONFERENCE_NAMES[division] || []).includes(label) ? label : null;
 }
 
+const CITY_GEOGRAPHY = Object.freeze({
+  'antsiranana': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
+  'diego suarez': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
+  'nosy be': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
+  'ambanja': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
+  'sambava': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
+  'antalaha': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
+  'mahajanga': Object.freeze({ D4: 'Nord', D5: 'Ouest' }),
+  'majunga': Object.freeze({ D4: 'Nord', D5: 'Ouest' }),
+  'toamasina': Object.freeze({ D4: 'Nord', D5: 'Est' }),
+  'tamatave': Object.freeze({ D4: 'Nord', D5: 'Est' }),
+  'antananarivo': Object.freeze({ D4: 'Sud' }),
+  'antsirabe': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
+  'fianarantsoa': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
+  'toliara': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
+  'tulear': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
+  'morondava': Object.freeze({ D4: 'Sud', D5: 'Ouest' }),
+  'taolagnaro': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
+  'fort dauphin': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
+  'manakara': Object.freeze({ D4: 'Sud', D5: 'Est' }),
+  'mananjary': Object.freeze({ D4: 'Sud', D5: 'Est' }),
+  'nairobi': Object.freeze({ D5: 'Est' })
+});
+
+function normalizeCityName(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .toLocaleLowerCase('fr')
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Resolve a conference from a club's primary city.
+ * Explicit conference data always wins; unknown locations stay unassigned
+ * instead of being guessed from arbitrary substrings in a club name or ID.
+ */
 export function conferenceForClub(club) {
   const division = normalizeDivision(club?.division);
   const explicit = normalizeConference(division, club?.conference ?? club?.region);
   if (explicit) return explicit;
-  if (division !== 'D5') return null;
-  const identity = `${club?.id || ''} ${club?.city || ''}`.toLocaleLowerCase('fr');
-  if (/antsiranana|diego|nord/.test(identity)) return 'Nord';
-  if (/toliara|tulear|tuléar|sud/.test(identity)) return 'Sud';
-  if (/morondava|ouest|west/.test(identity)) return 'Ouest';
-  if (/nairobi|toamasina|tamatave|est|east/.test(identity)) return 'Est';
-  return null;
+  if (division !== 'D4' && division !== 'D5') return null;
+
+  const primaryCity = String(club?.city ?? '').split('/')[0];
+  const city = normalizeCityName(primaryCity);
+  return CITY_GEOGRAPHY[city]?.[division] ?? null;
 }
 
 export function getCompetitionGroups() {
