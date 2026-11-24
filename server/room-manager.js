@@ -50,6 +50,10 @@ export class RoomManager {
     if (!this.roomStore) return 0;
     const now = this.now();
     for (const snapshot of this.roomStore.readAll()) {
+      if (snapshot.phase === 'lobby' && Number.isFinite(snapshot.updatedAt) && now - snapshot.updatedAt > this.roomTtlMs) {
+        this.roomStore.delete(snapshot.id);
+        continue;
+      }
       const players = new Map();
       for (const saved of snapshot.players) {
         if (!saved || typeof saved.id !== 'string' || !saved.id || players.has(saved.id) ||
