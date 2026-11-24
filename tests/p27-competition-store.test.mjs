@@ -155,16 +155,16 @@ test('P27 saisons : refuse une liste de mouvements mal formée sans modifier la 
 });
 
 
-test('P27 calendrier : audite les neuf groupes, chaque journée et les 1 306 rencontres',()=>{
+test('P27 calendrier : audite les neuf groupes, chaque journée et les 1 892 rencontres',()=>{
  const f=setup();try{
   const snapshot=f.store.snapshot();
   const audit=snapshot.scheduleAudit;
   assert.equal(audit.ok,true,JSON.stringify(audit.errors));
   assert.equal(audit.leagueCount,9);
-  assert.equal(audit.fixtureCount,1306);
+  assert.equal(audit.fixtureCount,1892);
   assert.equal(audit.errors.length,0);
-  assert.deepEqual(audit.competitions.map(item=>item.rounds),[15,19,23,15,15,15,15,15,15]);
-  assert.ok(audit.competitions.every(item=>item.ok&&item.appearancesPerClub===item.clubs-1));
+  assert.deepEqual(audit.competitions.map(item=>item.rounds),[30,38,46,15,15,15,15,15,15]);
+  assert.ok(audit.competitions.every(item=>item.ok&&item.appearancesPerClub===item.rounds));
  }finally{f.cleanup();}
 });
 
@@ -218,7 +218,7 @@ test('P27 migration calendrier : convertit une ancienne saison active en aller-r
   assert.equal(migratedD1.fixtures.length,240);
   assert.equal(migratedD1.matchFormat,'home-away');
   assert.equal(migratedD1.fixtures.filter(item=>item.leg===2).length,120);
-  assert.equal(migratedD4.fixtures.length,240);
+  assert.equal(migratedD4.fixtures.length,120);
   assert.equal(migratedD4.matchFormat,'single-leg');
   assert.ok(migratedD4.fixtures.every(item=>item.leg===1));
   assert.equal(restored.snapshot().scheduleAudit.ok,true,JSON.stringify(restored.snapshot().scheduleAudit.errors));

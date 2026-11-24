@@ -19,7 +19,7 @@ test('P27 transition de saison : conserve les 156 clubs et les quotas régionaux
     assert.equal(snapshot.season.id,'2027-28');
     assert.equal(snapshot.scheduleAudit.ok,true,JSON.stringify(snapshot.scheduleAudit.errors));
     assert.equal(snapshot.scheduleAudit.leagueCount,9);
-    assert.equal(snapshot.scheduleAudit.fixtureCount,1306);
+    assert.equal(snapshot.scheduleAudit.fixtureCount,1892);
     const leagues=snapshot.competitions.filter(item=>item.type==='league');
     assert.equal(leagues.length,9);
     assert.deepEqual(leagues.filter(item=>item.division==='D4').map(item=>[item.conference,item.members.length]),[['Nord',16],['Sud',16]]);

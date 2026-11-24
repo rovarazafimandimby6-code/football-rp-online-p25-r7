@@ -291,7 +291,7 @@ async function loadServerCompetitionOverview() {
     const snapshot=await response.json();
     if(requestId!==publicCompetitionRequest || !document.getElementById('menu-content')?.querySelector('.competition-layout')) return;
     const leagues=(snapshot.competitions||[]).filter(item=>item.type==='league');
-    if(leagues.length!==9 || !snapshot.scheduleAudit?.ok || snapshot.scheduleAudit.fixtureCount!==1306) throw new Error('COMPETITION_SNAPSHOT_INCOMPLETE');
+    if(leagues.length!==9 || !snapshot.scheduleAudit?.ok || snapshot.scheduleAudit.fixtureCount!==1892) throw new Error('COMPETITION_SNAPSHOT_INCOMPLETE');
     const order={D1:1,D2:2,D3:3,D4:4,D5:5};
     const conferenceOrder={Nord:1,Sud:2,Est:3,Ouest:4};
     leagues.sort((a,b)=>order[a.division]-order[b.division]||(conferenceOrder[a.conference]||0)-(conferenceOrder[b.conference]||0));
