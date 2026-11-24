@@ -1,5 +1,6 @@
 import { generateClubRoster } from './club-roster.js';
 import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './league-structure.js';
+import { generateClubCharacteristics } from './club-profile.js';
 
 const safeId = value => String(value ?? '').trim().slice(0, 48);
 const safeCount = value => Number.isFinite(Number(value)) && Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 5 ? Number(value) : null;
@@ -7,7 +8,7 @@ const cleanText = (value, fallback, max = 48) => String(value ?? fallback).repla
 const PLAYER_ATTRIBUTE_KEYS = ['pace','shooting','passing','defense','stamina','control'];
 const normalizePlayerAttributes = (attributes, fallback = 50) => Object.fromEntries(PLAYER_ATTRIBUTE_KEYS.map(key => [key, Number.isFinite(Number(attributes?.[key])) ? Math.max(1, Math.min(99, Math.round(Number(attributes[key])))) : Math.max(1, Math.min(99, Math.round(fallback)))]));
 const clonePlayer = player => ({ ...player, attributes: player.attributes ? { ...player.attributes } : null, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
-const cloneClub = club => ({ ...club, colors: [...club.colors], roster: club.roster.map(clonePlayer) });
+const cloneClub = club => ({ ...club, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, roster: club.roster.map(clonePlayer) });
 
 const normalizeRosterPlayer = (player, club, index = 0) => {
   const rating = Number(player?.rating);
@@ -22,6 +23,7 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     rating: safeRating,
     attributes: normalizePlayerAttributes(player?.attributes, safeRating),
     potential: Math.max(1, Math.min(99, Number(player?.potential) || safeRating)),
+    potentialBand: ['standard','good','high','exceptional'].includes(player?.potentialBand) ? player.potentialBand : 'standard',
     preferredFoot: player?.preferredFoot === 'left' ? 'left' : 'right',
     archetype: cleanText(player?.archetype, 'Joueur polyvalent', 40),
     appearance: player?.appearance && typeof player.appearance === 'object'
@@ -45,7 +47,7 @@ const availableShirtNumber = (club, preferred, playerId = null) => {
 const COMPETITION_KEY = 'football-rp-online.competition-season.v1';
 
 const club = (id, name, city, country, countryCode, division, rating, control, colors, stadium, reputation, budget) => ({
-  id, name, city, country, countryCode, division, rating, control, colors, stadium, reputation, budget, capacity: 15
+  id, name, city, country, countryCode, division, rating, control, colors, stadium, reputation, budget, capacity: 12
 });
 
 export const DIVISIONS = LEAGUE_DIVISIONS;
@@ -98,7 +100,10 @@ export class ClubManager {
         reputation: Number.isFinite(Number(input.reputation)) ? Math.max(1, Math.min(100, Math.round(Number(input.reputation)))) : 40,
         budget: Number.isFinite(Number(input.budget)) ? Math.max(0, Math.min(1_000_000_000, Math.floor(Number(input.budget)))) : 250000,
         colors: Array.isArray(input.colors) && input.colors.length >= 3 ? input.colors.slice(0,3).map(c => /^#[0-9a-f]{6}$/i.test(c) ? c : '#245b48') : ['#1769aa','#092e55','#f3d36a'],
-        capacity: Number.isFinite(capacity) ? Math.max(1, Math.min(30, Math.floor(capacity))) : 12,
+        capacity: Number.isFinite(capacity) ? Math.max(1, Math.min(12, Math.floor(capacity))) : 12,
+        characteristics: input.characteristics && typeof input.characteristics === 'object'
+          ? Object.fromEntries(['popularity','attractiveness','infrastructure','management'].map(key => [key, Math.max(1, Math.min(100, Math.round(Number(input.characteristics[key]) || 50)))]))
+          : generateClubCharacteristics({ ...input, division: normalizeDivision(input.division) }),
         roster: [], managerId: null, points: 0, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0
       };
       normalized.roster = seedDefaultRosters ? generateClubRoster(normalized, { size: Math.min(12, normalized.capacity), usedNames: globallyUsedNames }) : [];
@@ -126,7 +131,7 @@ export class ClubManager {
             id: safeId(p.id), name: cleanText(p.name, 'Joueur', 36), nationality: /^[A-Z]{2}$/.test(p.nationality || '') ? p.nationality : club.countryCode,
             age: Number.isInteger(p.age) ? Math.max(16, Math.min(45, p.age)) : 24,
             role: ['GK','DEF','MID','FWD'].includes(p.role) ? p.role : 'MID', number: Number.isInteger(p.number) ? Math.max(1, Math.min(99,p.number)) : 1,
-            rating: Math.max(1, Math.min(99, Number(p.rating) || 50)), potential: Math.max(1, Math.min(99, Number(p.potential) || Number(p.rating) || 50)), attributes: normalizePlayerAttributes(p.attributes, Number(p.rating) || 50),
+            rating: Math.max(1, Math.min(99, Number(p.rating) || 50)), potential: Math.max(1, Math.min(99, Number(p.potential) || Number(p.rating) || 50)), potentialBand: ['standard','good','high','exceptional'].includes(p.potentialBand) ? p.potentialBand : 'standard', attributes: normalizePlayerAttributes(p.attributes, Number(p.rating) || 50),
             preferredFoot: p.preferredFoot === 'left' ? 'left' : 'right', archetype: cleanText(p.archetype, 'Joueur polyvalent', 40),
             appearance: p.appearance && typeof p.appearance === 'object' ? { skinTone: ['light','olive','tan','medium','brown','dark','deep'].includes(p.appearance.skinTone) ? p.appearance.skinTone : 'medium', bodyBuild: ['lean','athletic','strong'].includes(p.appearance.bodyBuild) ? p.appearance.bodyBuild : 'athletic', hairStyle: ['short','curly','afro','fade','shaved','braids','twists','wavy'].includes(p.appearance.hairStyle) ? p.appearance.hairStyle : 'short', hairColor: ['dark','brown','blond','black'].includes(p.appearance.hairColor) ? p.appearance.hairColor : 'dark', kitColors: p.appearance.kitColors && ['primary','secondary','accent'].every(key => /^#[0-9a-f]{6}$/i.test(p.appearance.kitColors[key] || '')) ? { ...p.appearance.kitColors } : null, kitDesign: ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'].includes(p.appearance.kitDesign) ? p.appearance.kitDesign : 'central', kitVariant: p.appearance.kitVariant === 'goalkeeper' ? 'goalkeeper' : 'outfield', faceShape: ['oval','round','angular','long','square'].includes(p.appearance.faceShape) ? p.appearance.faceShape : 'oval', eyeShape: ['almond','round','deep-set','hooded'].includes(p.appearance.eyeShape) ? p.appearance.eyeShape : 'almond' } : null
           }));

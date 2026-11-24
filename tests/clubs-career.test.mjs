@@ -264,3 +264,42 @@ test('clubs: un transfert réattribue un numéro si celui-ci est déjà occupé 
   assert.equal(clubs.getClub('target').roster.filter(player => player.number === 7).length, 1);
   assert.equal(clubs.getClub('target').roster.filter(player => player.number === 1).length, 1);
 });
+
+
+test('P27 génération: les notes individuelles suivent des fourchettes par division avec chevauchement', async () => {
+  const { generateClubRoster } = await import('../src/club-roster.js');
+  const bands = { D1:[65,84], D2:[59,77], D3:[53,70], D4:[47,64], D5:[40,58] };
+  for (const [division, [min,max]] of Object.entries(bands)) {
+    const roster = generateClubRoster({ id: `rating-${division}`, division, rating: 65 }, { size: 12 });
+    assert.equal(roster.length, 12);
+    assert.ok(roster.every(player => player.rating >= min && player.rating <= max));
+    assert.ok(roster.every(player => player.potential >= player.rating && player.potential <= 99));
+    assert.ok(roster.every(player => ['standard','good','high','exceptional'].includes(player.potentialBand)));
+  }
+});
+
+test('P27 génération: les profils de nationalité sont internationaux et reproductibles', async () => {
+  const { generateClubRoster } = await import('../src/club-roster.js');
+  const club = { id:'international-test', division:'D3', rating:61, countryCode:'MG' };
+  const first = generateClubRoster(club, { size:12 });
+  const second = generateClubRoster(club, { size:12 });
+  assert.deepEqual(first.map(player => player.nationality), second.map(player => player.nationality));
+  assert.ok(new Set(first.map(player => player.nationality)).size >= 5);
+  assert.ok(first.some(player => player.nationality === 'MG'));
+  assert.ok(first.some(player => player.nationality !== 'MG'));
+});
+
+test('P27 clubs: caractéristiques sportives, économiques et structurelles bornées', () => {
+  const clubs = new ClubManager();
+  for (const club of clubs.listClubs()) {
+    assert.ok(club.capacity <= 12);
+    for (const key of ['popularity','attractiveness','infrastructure','management']) {
+      assert.ok(club.characteristics[key] >= 1 && club.characteristics[key] <= 100);
+    }
+  }
+});
+
+test('P27 joueurs: le plafond de 12 joueurs est appliqué même si la donnée entrante demande davantage', () => {
+  const clubs = new ClubManager([{ id:'capacity-limit', name:'Capacity Limit', capacity:30 }], null, 'capacity-limit-p27');
+  assert.equal(clubs.getClub('capacity-limit').capacity, 12);
+});

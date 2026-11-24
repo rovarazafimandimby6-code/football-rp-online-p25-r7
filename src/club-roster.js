@@ -18,22 +18,22 @@ const NATIONAL_POOLS = Object.freeze({
 
 // Quotas are intentional club identities, not random nationality roulette.
 const NATIONALITY_PROFILES = Object.freeze({
-  'antananarivo-fc': { MG:6, ES:2, FR:1, SN:1, BR:1, PT:1 },
-  'manparis-sporting': { FR:3, GB:3, SN:2, NG:1, ES:1, PT:1, MA:1 },
-  'dakar-milan-union': { SN:3, IT:5, FR:1, BR:1, MG:1, TN:1 },
-  'toamasina-united': { MG:8, SN:1, FR:1, BR:1, PT:1 },
-  'londaka-city': { GB:3, SN:3, FR:2, NG:1, ES:1, PT:1, DZ:1 },
-  'lisboa-nova-athletic': { PT:4, BR:2, ES:2, FR:1, MG:1, NG:1, MA:1 },
-  'fianarantsoa-athletic': { MG:8, FR:1, SN:1, NG:1, JP:1 },
-  'osaka-antsirabe-fc': { MG:6, JP:3, BR:1, FR:1, SN:1 },
-  'mahajanga-city': { MG:8, SN:1, FR:1, NG:1, BR:1 },
-  'rio-tana-creative': { MG:6, BR:3, PT:1, FR:1, SN:1 },
-  'antsirabe-sport': { MG:8, FR:1, ES:1, PT:1, NG:1 },
-  'valencia-northbridge': { ES:2, AR:5, PT:1, FR:1, NG:1, MG:1, SN:1 },
-  'tulear-sunrise': { MG:9, FR:1, SN:1, BR:1 },
-  'morondava-lagoon': { MG:9, SN:1, FR:1, PT:1 },
-  'nairobi-tana-academy': { MG:5, KE:5, NG:1, SN:1 },
-  'antsiranana-north-fc': { MG:9, FR:1, SN:1, JP:1 }
+  'antananarivo-fc': { MG:4, FR:2, SN:1, BR:1, PT:1, ES:1, NG:1, JP:1 },
+  'manparis-sporting': { FR:2, GB:2, SN:2, NG:1, ES:1, PT:1, MA:1, IT:1 },
+  'dakar-milan-union': { SN:3, IT:2, FR:2, BR:1, MG:1, TN:1, PT:1 },
+  'toamasina-united': { MG:5, SN:1, FR:1, BR:1, PT:1, KE:1, JP:1, NG:1 },
+  'londaka-city': { GB:2, SN:2, FR:2, NG:1, ES:1, PT:1, DZ:1, IT:1 },
+  'lisboa-nova-athletic': { PT:3, BR:2, ES:2, FR:1, MG:1, NG:1, MA:1, GB:1 },
+  'fianarantsoa-athletic': { MG:5, FR:1, SN:1, NG:1, JP:1, KE:1, BR:1, PT:1 },
+  'osaka-antsirabe-fc': { MG:4, JP:3, BR:1, FR:1, SN:1, NG:1, PT:1 },
+  'mahajanga-city': { MG:5, SN:1, FR:1, NG:1, BR:1, KE:1, PT:1, ES:1 },
+  'rio-tana-creative': { MG:4, BR:3, PT:1, FR:1, SN:1, AR:1, NG:1 },
+  'antsirabe-sport': { MG:5, FR:1, ES:1, PT:1, NG:1, KE:1, SN:1, JP:1 },
+  'valencia-northbridge': { ES:2, AR:2, PT:1, FR:1, NG:1, MG:1, SN:1, IT:1, BR:1, GB:1 },
+  'tulear-sunrise': { MG:5, FR:1, SN:1, BR:1, KE:1, PT:1, NG:1, ES:1 },
+  'morondava-lagoon': { MG:5, SN:1, FR:1, PT:1, KE:1, NG:1, BR:1, IT:1 },
+  'nairobi-tana-academy': { MG:3, KE:3, NG:2, SN:1, FR:1, BR:1, PT:1 },
+  'antsiranana-north-fc': { MG:5, FR:1, SN:1, JP:1, NG:1, KE:1, BR:1, ES:1 }
 });
 
 
@@ -47,6 +47,20 @@ const CLUB_KIT_DESIGNS = Object.freeze({
 const ARCHETYPES = Object.freeze({ GK: ['Gardien réflexe','Gardien relanceur'], DEF: ['Défenseur stoppeur','Défenseur relanceur','Latéral endurant','Défenseur aérien'], MID: ['Milieu récupérateur','Meneur créatif','Relayeur dynamique','Milieu organisateur'], FWD: ['Avant-centre puissant','Ailier percutant','Attaquant mobile','Finisseur de surface'] });
 const ROLES = ['GK','GK','DEF','DEF','DEF','DEF','MID','MID','MID','MID','FWD','FWD'];
 const AGE_PROFILE = [18,19,21,22,23,24,25,26,27,28,30,32];
+const DIVISION_PLAYER_BANDS = Object.freeze({
+  D1: Object.freeze({ min:65, max:84, baseline:75 }),
+  D2: Object.freeze({ min:59, max:77, baseline:68 }),
+  D3: Object.freeze({ min:53, max:70, baseline:61.5 }),
+  D4: Object.freeze({ min:47, max:64, baseline:55.5 }),
+  D5: Object.freeze({ min:40, max:58, baseline:49 })
+});
+function playerPotential(overall, random) {
+  const roll = random();
+  if (roll < 0.65) return { potential: Math.min(90, overall + Math.floor(random() * 9)), potentialBand: 'standard' };
+  if (roll < 0.88) return { potential: Math.min(94, Math.max(overall, 72 + Math.floor(random() * 13))), potentialBand: 'good' };
+  if (roll < 0.97) return { potential: Math.min(97, Math.max(overall, 82 + Math.floor(random() * 9))), potentialBand: 'high' };
+  return { potential: Math.min(99, Math.max(overall, 90 + Math.floor(random() * 7))), potentialBand: 'exceptional' };
+}
 export const PLAYER_ATTRIBUTE_KEYS = Object.freeze(['pace','shooting','passing','defense','stamina','control']);
 const ROLE_ATTRIBUTE_BIAS = Object.freeze({
   GK: { pace:-2, shooting:-22, passing:1, defense:14, stamina:-2, control:11 },
@@ -78,7 +92,9 @@ function randomFor(seed) { let state = seed >>> 0; return () => { state = (Math.
 function pick(list, random) { return list[Math.floor(random() * list.length)]; }
 function shuffled(values, random) { const result = [...values]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; }
 function nationalityPlan(club, count, random) {
-  const profile = NATIONALITY_PROFILES[club.id] || { [club.countryCode || 'MG']: Math.ceil(count * 0.6), FR: Math.floor(count * 0.2), SN: count - Math.ceil(count * 0.6) - Math.floor(count * 0.2) };
+  const homeCode = /^[A-Z]{2}$/.test(club.countryCode || '') ? club.countryCode : 'MG';
+  const internationalCodes = Object.keys(NATIONAL_POOLS).filter(code => code !== homeCode);
+  const profile = NATIONALITY_PROFILES[club.id] || { [homeCode]: Math.ceil(count * 0.35), ...Object.fromEntries(internationalCodes.slice(0, 7).map(code => [code, 1])) };
   const plan = Object.entries(profile).flatMap(([code, quota]) => Array(Math.max(0, quota)).fill(code));
   const fallback = Object.keys(NATIONAL_POOLS).filter(code => !plan.includes(code));
   while (plan.length < count) plan.push(pick(fallback.length ? fallback : Object.keys(NATIONAL_POOLS), random));
@@ -107,10 +123,13 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set() } = 
     const code = nationalities[index];
     const name = createUniqueName(code, random, usedNames, index, club.id);
     const role = ROLES[index] || pick(['DEF','MID','FWD'], random);
-    const base = Number(club.rating) || 50;
-    const roleAdjustment = role === 'FWD' ? 1 : role === 'MID' ? 0.5 : role === 'GK' ? -0.5 : 0;
-    const overall = Math.max(35, Math.min(91, Math.round(base + (random() * 10 - 5) + roleAdjustment)));
+    const band = DIVISION_PLAYER_BANDS[club.division] || DIVISION_PLAYER_BANDS.D5;
+    const clubStrength = Math.max(-4, Math.min(4, ((Number(club.rating) || band.baseline) - band.baseline) * 0.55));
+    const roleAdjustment = role === 'FWD' ? 0.6 : role === 'MID' ? 0.3 : role === 'GK' ? -0.3 : 0;
+    const variation = ((random() + random()) - 1) * 5.5;
+    const overall = Math.max(band.min, Math.min(band.max, Math.round((band.min + band.max) / 2 + clubStrength + variation + roleAdjustment)));
     const age = ages[index];
+    const talent = playerPotential(overall, random);
     const bodyBuild = pick(['lean','athletic','strong'], random);
     const archetype = pick(ARCHETYPES[role], random);
     const attributes = generateAttributes(overall, role, archetype, random);
@@ -124,7 +143,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set() } = 
     roster.push({
       id: `${club.id}-ai-${String(index + 1).padStart(2,'0')}`,
       name, nationality: code, age, role, number: index + 1,
-      rating: overall, potential: Math.min(95, overall + Math.floor(random() * 15)), attributes,
+      rating: overall, potential: talent.potential, potentialBand: talent.potentialBand, attributes,
       preferredFoot: random() < 0.28 ? 'left' : 'right',
       archetype,
       appearance: {
