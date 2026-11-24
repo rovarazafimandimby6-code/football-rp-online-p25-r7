@@ -159,7 +159,7 @@ test('P27 paie système : règle les échéances acquises avant le départ ou la
 test('P27 paie système : les arriérés d’un joueur parti restent payables après redémarrage',()=>{
  const start=Date.UTC(2027,0,1);let now=start;
  const club={id:'departed-restart-club',budget:1000,roster:[],releasedPlayers:[{
-  releasedAt:new Date(start+8*86400000).toISOString(),reason:'player-departed',
+  releasedAt:new Date(start+15*86400000).toISOString(),reason:'player-departed',
   player:{id:'departed-restart-player',name:'Joueur Historique',playerType:'system',contract:{
    id:'departed-restart-contract',clubId:'departed-restart-club',playerId:'departed-restart-player',
    type:'system-roster',status:'active',weeklyWage:80,salary:80,

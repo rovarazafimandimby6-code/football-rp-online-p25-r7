@@ -96,7 +96,6 @@ export class JsonClubFinanceService {
       const contracts = [...rosterPlayers, ...releasedPlayers]
         .filter(({ player }) => player?.playerType === 'system' &&
           ['active', 'expired'].includes(player.contract?.status) &&
-          player.contract.type === 'system-roster' &&
           player.contract.clubId === club.id && player.contract.playerId === player.id)
         .map(({ player, releasedAt }) => {
           const signedAt = Date.parse(player.contract.signedAt);
