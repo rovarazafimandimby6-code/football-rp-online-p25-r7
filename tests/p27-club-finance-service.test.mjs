@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
@@ -215,5 +215,39 @@ test('P27 finances : le cycle global remonte un remboursement de prêt partiel',
   assert.equal(result.failures.some(item=>item.category==='loan-repayment'&&item.paid===1&&item.unpaid===1),true);
   assert.equal(result.loans[0].unpaid,true);
   assert.equal(result.loans[0].paid,1);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
+
+test('P27 finances : refuse un calendrier de paie corrompu au lieu de perdre les arriérés',()=>{
+ const f=setup();
+ try {
+  writeFileSync(path.join(f.directory,'system-payroll-schedule.json'),'{invalid-json');
+  assert.throws(()=>new JsonClubFinanceService(f.directory,{clubs:DEFAULT_CLUBS,transferStore:f.transferStore}),/PAYROLL_SCHEDULE_CORRUPT/);
+ } finally {f.cleanup();}
+});
+
+test('P27 finances : une panne du calendrier après écriture du salaire reste récupérable sans double débit',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'schedule-retry-club',budget:1000,roster:[
+  {id:'schedule-player',name:'Joueur calendrier',playerType:'system',contract:{id:'schedule-contract',clubId:'schedule-retry-club',playerId:'schedule-player',status:'active',weeklyWage:80,salary:80}}
+ ]};
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-payroll-schedule-retry-'));
+ try {
+  const service=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
+  now=start+7*86400000;
+  const persist=service.persistPayrollSchedule.bind(service);
+  service.persistPayrollSchedule=()=>false;
+  const failed=service.settleSystemPayroll(now);
+  assert.equal(failed.ok,false);
+  assert.equal(failed.reason,'schedule-persistence-failed');
+  assert.equal(service.store.getAccount(club.id).totalExpenses,80);
+  assert.equal(service.payrollSchedule[club.id],start);
+  service.persistPayrollSchedule=persist;
+  const retry=service.settleSystemPayroll(now);
+  assert.equal(retry.ok,true);
+  assert.equal(retry.posted,0);
+  assert.equal(service.store.getAccount(club.id).totalExpenses,80);
+  assert.equal(service.payrollSchedule[club.id],now);
  } finally {rmSync(directory,{recursive:true,force:true});}
 });
