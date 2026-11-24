@@ -4,7 +4,9 @@ export function syncClubAssignments({ clubManager, competitionStore } = {}) {
     return { ok:false, reason:'assignment-sync-dependencies-missing', updated:0 };
   }
   const assignments = [...competitionStore.clubs.values()];
-  if (!assignments.length || assignments.some(item => !item?.id || !clubManager.clubs.has(item.id))) {
+  const assignmentIds = new Set(assignments.map(item => item?.id).filter(Boolean));
+  if (!assignments.length || assignments.length !== clubManager.clubs.size || assignmentIds.size !== assignments.length ||
+      assignments.some(item => !item?.id || !clubManager.clubs.has(item.id))) {
     return { ok:false, reason:'assignment-catalogue-mismatch', updated:0 };
   }
   const previous = new Map();
