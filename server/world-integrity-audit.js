@@ -133,7 +133,10 @@ export function auditP27World({
 
   const rosterSyncEntries = Array.isArray(transferState?.rosterSync) ? transferState.rosterSync : [];
   const rosterSyncIds = new Set();
-  let pendingRosterSync = 0;
+  const rosterSyncEventIds = new Set();
+  const careerByPlayerId = new Map(careers.filter(career => safeText(career?.playerId)).map(career => [career.playerId,career]));
+  const transferEventIdsForRoster = new Set(asList(transferState?.events).map(event => event?.id).filter(safeText));
+  let pendingRosterSync = 0, completedRosterSync = 0;
   for (const entry of rosterSyncEntries) {
     if (!safeText(entry?.id) || rosterSyncIds.has(entry.id))
       errors.push({ code:'ROSTER_SYNC_ID_INVALID_OR_DUPLICATE', syncId:entry?.id || null });
@@ -141,13 +144,30 @@ export function auditP27World({
     if (!safeText(entry?.playerId) || !entry.playerId.startsWith('human-') ||
         !['upsert','release'].includes(entry?.action) ||
         !['pending','completed'].includes(entry?.status) ||
-        !Number.isSafeInteger(entry?.attempts) || entry.attempts < 0)
+        !Number.isSafeInteger(entry?.attempts) || entry.attempts < 0 ||
+        !Number.isFinite(Date.parse(entry?.createdAt)))
       errors.push({ code:'ROSTER_SYNC_ENTRY_INVALID', syncId:entry?.id || null });
+    if (!careerByPlayerId.has(entry?.playerId))
+      errors.push({ code:'ROSTER_SYNC_CAREER_LINK_MISSING', syncId:entry?.id || null, playerId:entry?.playerId || null });
+    if (entry?.eventId) {
+      if (rosterSyncEventIds.has(entry.eventId))
+        errors.push({ code:'ROSTER_SYNC_EVENT_DUPLICATE', eventId:entry.eventId });
+      rosterSyncEventIds.add(entry.eventId);
+      if (!entry.id.endsWith(entry.eventId))
+        errors.push({ code:'ROSTER_SYNC_EVENT_LINK_INVALID', syncId:entry.id, eventId:entry.eventId });
+      if (entry.status === 'pending' && !transferEventIdsForRoster.has(entry.eventId))
+        errors.push({ code:'ROSTER_SYNC_EVENT_MISSING', syncId:entry.id, eventId:entry.eventId });
+    }
     if (entry?.action === 'upsert' && (!safeText(entry.clubId) || entry.contract?.status !== 'active' ||
         entry.contract?.playerId !== entry.playerId || entry.contract?.clubId !== entry.clubId))
       errors.push({ code:'ROSTER_SYNC_UPSERT_LINK_INVALID', syncId:entry?.id || null });
     if (entry?.action === 'release' && entry.clubId !== null)
       errors.push({ code:'ROSTER_SYNC_RELEASE_LINK_INVALID', syncId:entry?.id || null });
+    if (entry?.status === 'completed') {
+      completedRosterSync++;
+      if (!Number.isFinite(Date.parse(entry?.completedAt)))
+        errors.push({ code:'ROSTER_SYNC_COMPLETION_DATE_INVALID', syncId:entry?.id || null });
+    }
     if (entry?.status === 'pending') {
       pendingRosterSync++;
       warnings.push({ code:'ROSTER_SYNC_PENDING', syncId:entry.id, playerId:entry.playerId, action:entry.action, attempts:entry.attempts });
@@ -355,7 +375,7 @@ export function auditP27World({
     warnings,
     counts:{
       clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,
-      careers:careers.length, pendingRosterSync, financeAccounts:asList(financeAccounts).length,
+      careers:careers.length, pendingRosterSync, completedRosterSync, financeAccounts:asList(financeAccounts).length,
       financeEntries, financeBalanceTotal, pendingTransferSettlements, pendingPlayerWages, seasons:seasons.length, fixtures, completedFixtures, archivedResults:asList(resultArchive).length
     }
   };
