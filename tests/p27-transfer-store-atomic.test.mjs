@@ -47,6 +47,27 @@ test('P27 mercato : une inscription contractuelle non persistée ne crée pas de
  }finally{f.cleanup();}
 });
 
+test('P27 paie humaine : une échéance avant transfert reste imputée à l’ancien club, la suivante au nouveau',()=>{
+ const f=setup();try{
+  const signed=f.store.signContract('account-wage-transfer',{clubId:'antananarivo-fc',salary:700,durationDays:365});
+  assert.equal(signed.ok,true);
+  const offer=f.store.requestOffer('account-wage-transfer',{toClubId:'toamasina-united'});
+  assert.equal(offer.ok,true);
+  f.setNow(f.now+7*86400000);
+  const moved=f.store.acceptOffer('account-wage-transfer',offer.offer.id);
+  assert.equal(moved.ok,true);
+  const firstPayment=f.store.state.events.find(event=>event.type==='salary-payment');
+  assert.equal(firstPayment.clubId,'antananarivo-fc');
+  assert.equal(firstPayment.amount,700);
+  f.setNow(f.now+7*86400000);
+  f.store.getCareer('account-wage-transfer');
+  const payments=f.store.state.events.filter(event=>event.type==='salary-payment');
+  assert.equal(payments.length,2);
+  assert.equal(payments[1].clubId,'toamasina-united');
+  assert.equal(payments[1].amount,700);
+ }finally{f.cleanup();}
+});
+
 test('P27 mercato : chaque contrat humain conserve l’identifiant stable de sa carrière',()=>{
  const f=setup();try{
   const signed=f.store.signContract('account-stable-id',{clubId:'antananarivo-fc',salary:1500,durationDays:90});
