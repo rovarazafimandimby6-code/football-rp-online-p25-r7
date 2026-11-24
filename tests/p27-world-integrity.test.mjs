@@ -1,4 +1,9 @@
 import test from 'node:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { JsonCareerStore } from '../server/career-store.js';
+import { JsonTransferStore } from '../server/transfer-store.js';
 import assert from 'node:assert/strict';
 import { auditP27World } from '../server/world-integrity-audit.js';
 import { DEFAULT_CLUBS } from '../src/club-manager.js';
@@ -658,4 +663,30 @@ test('P27 intégrité carrière : détecte des totaux inférieurs aux matchs con
  }]};
  const result=auditP27World(input);
  assert.ok(result.errors.some(item=>item.code==='PLAYER_CAREER_TOTAL_BELOW_RETAINED_MATCHES'&&item.field==='minutesPlayedMs'));
+});
+
+
+test('P27 intégrité monde : rapproche carrière et contrat réels après rechargement des deux stores',()=>{
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-cross-career-'));
+ try {
+  let now=Date.parse('2027-01-15T12:00:00.000Z');
+  let transfer=new JsonTransferStore(directory,{now:()=>now});
+  let career=new JsonCareerStore(directory);
+  const signed=transfer.signContract('account-cross-store',{clubId:'antananarivo-fc',salary:1200,durationDays:180});
+  assert.equal(signed.ok,true);
+  career.recordPlayerMatch(signed.career.playerId,{matchId:'cross-store-match',result:'win',finalizedAt:now,
+   name:'Player',role:'FWD',clubName:'Antananarivo FC',teamName:'Antananarivo FC',minutesPlayedMs:90000,
+   stats:{goals:1,assists:0,shots:2,passes:8,completedPasses:7}});
+  transfer=new JsonTransferStore(directory,{now:()=>now});
+  career=new JsonCareerStore(directory);
+  const current=transfer.getCareer('account-cross-store');
+  const clubs=[{id:'antananarivo-fc',name:'Antananarivo FC',division:'D1',conference:null,capacity:12,roster:[{
+   id:current.playerId,playerType:'human',number:10,contract:{...current.contract}
+  }]}];
+  const transferState={careers:transfer.state.careers,events:transfer.state.events,rosterSync:transfer.state.rosterSync,
+   clubs:transfer.state.clubs.filter(club=>club.id==='antananarivo-fc')};
+  const result=auditP27World({clubs,transferState,playerCareerState:career.state,expectedClubCount:1});
+  assert.equal(result.ok,true,JSON.stringify(result.errors));
+  assert.equal(result.counts.playerCareers,1);
+ } finally { rmSync(directory,{recursive:true,force:true}); }
 });
