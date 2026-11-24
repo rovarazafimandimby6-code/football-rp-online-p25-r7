@@ -459,6 +459,27 @@ export class JsonCompetitionStore {
     }
     if (ids.size !== this.clubs.size)
       return fail('historical-club-coverage-incomplete', { expected:this.clubs.size, actual:ids.size });
+
+    // Recompute the public history from source seasons and fixtures. Structural
+    // checks above provide precise errors; this final comparison catches
+    // plausible but falsified counters, positions, trophy lists and season links.
+    const expectedById = new Map(this.clubHistoricalRecords().map(item => [item.clubId, item]));
+    const scalarFields = [
+      'clubName','seasonsParticipated','leagueTitles','cupTitles','bestLeaguePosition',
+      'promotions','relegations','matches','wins','draws','losses',
+      'goalsFor','goalsAgainst','competitions'
+    ];
+    for (const record of records) {
+      const expected = expectedById.get(record.clubId);
+      for (const field of scalarFields) {
+        if (record[field] !== expected[field])
+          return fail('historical-derived-stat-mismatch', { clubId:record.clubId, field });
+      }
+      if (JSON.stringify(record.seasonIds) !== JSON.stringify(expected.seasonIds))
+        return fail('historical-season-order-mismatch', { clubId:record.clubId });
+      if (JSON.stringify(record.trophies) !== JSON.stringify(expected.trophies))
+        return fail('historical-trophy-provenance-mismatch', { clubId:record.clubId });
+    }
     return { ok:true, clubs:records.length, completedSeasons:completedSeasonIds.size };
   }
   headToHead(clubAId, clubBId) {
