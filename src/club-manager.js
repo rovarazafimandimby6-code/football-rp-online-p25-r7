@@ -438,7 +438,8 @@ export class ClubManager {
     return { ok:true, expired };
   }
 
-  replenishSystemRosterVacancies({ clubIds = null } = {}) {
+  replenishSystemRosterVacancies({ clubIds = null, now = Date.now() } = {}) {
+    if (!Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-time', recruited:[], clubsUpdated:[] };
     const selected = Array.isArray(clubIds) ? new Set(clubIds.map(safeId)) : null;
     const usedNames = new Set([...this.clubs.values()].flatMap(item => item.roster.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase())));
     const usedIds = new Set([...this.clubs.values()].flatMap(item => item.roster.map(player => player.id)));
@@ -459,7 +460,7 @@ export class ClubManager {
         } while (!id || usedIds.has(id));
         candidate.id = id;
         candidate.number = availableShirtNumber(club, candidate.number);
-        candidate.contract = createSystemPlayerContract({ clubId:club.id, playerId:id, division:club.division, rating:candidate.rating });
+        candidate.contract = { ...createSystemPlayerContract({ clubId:club.id, playerId:id, division:club.division, rating:candidate.rating }), signedAt:new Date(now).toISOString() };
         candidate.playerType = 'system';
         candidate.controlStatus = 'system';
         candidate.appearance = candidate.appearance ? { ...candidate.appearance, kitColors:candidate.appearance.kitColors ? { ...candidate.appearance.kitColors } : null } : null;
@@ -472,6 +473,20 @@ export class ClubManager {
     }
     if (recruited.length) this.saveSeason();
     return { ok:true, recruited, clubsUpdated:[...new Set(recruited.map(item=>item.clubId))] };
+  }
+
+
+  processSystemRosterLifecycle({ now = Date.now(), weeklyWageBudgets = {} } = {}) {
+    if (!Number.isSafeInteger(now) || now < 0) return {
+      ok:false, reason:'invalid-time',
+      renewals:{ ok:false, renewed:[], declined:[] },
+      expirations:{ ok:false, expired:[] },
+      recruitment:{ ok:false, recruited:[], clubsUpdated:[] }
+    };
+    const renewals = this.processSystemContractRenewals({ now, weeklyWageBudgets });
+    const expirations = this.expireSystemPlayerContracts({ now });
+    const recruitment = this.replenishSystemRosterVacancies({ now });
+    return { ok:renewals.ok && expirations.ok && recruitment.ok, at:now, renewals, expirations, recruitment };
   }
 
   reviewSystemPlayerContract(clubId, playerId, { now = Date.now() } = {}) {

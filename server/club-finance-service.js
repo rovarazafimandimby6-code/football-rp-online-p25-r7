@@ -110,7 +110,8 @@ export class JsonClubFinanceService {
       for (let period = 1; period <= periods; period++) {
         const dueAt = last + period * WEEK;
         for (const { player, signedAt, endAt } of contracts) {
-          if (dueAt < signedAt || dueAt > endAt) continue;
+          // A contract signed on a payroll boundary has not yet completed a paid week.
+          if (dueAt <= signedAt || dueAt > endAt) continue;
           const contract = player.contract;
           const wage = safeAmount(contract.weeklyWage ?? contract.salary);
           if (wage === null || wage === 0) continue;
@@ -174,8 +175,7 @@ export class JsonClubFinanceService {
     return { posted, unpaid, clubs };
   }
 
-  settleScheduledItems() {
-    const now = this.now();
+  settleScheduledItems(now = this.now()) {
     if (!Number.isSafeInteger(now) || now < 0) return { ok: false, reason: 'invalid-time' };
     const systemWages = this.settleSystemPayroll(now);
     const wages = this.syncRecordedPlayerWages();

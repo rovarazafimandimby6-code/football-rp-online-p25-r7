@@ -9,6 +9,8 @@ import { JsonCareerStore } from './career-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
+import { JsonClubRosterStorage } from './club-roster-storage.js';
+import { P27ClubWorldService } from './club-world-service.js';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/league-structure.js';
 
@@ -20,8 +22,22 @@ const competitionStore = new JsonCompetitionStore(competitionDirectory);
 const transferDirectory = process.env.TRANSFERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'transfers');
 const transferStore = new JsonTransferStore(transferDirectory);
 const financeDirectory = process.env.FINANCES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'finances');
-const serverClubManager = new ClubManager(DEFAULT_CLUBS, null, 'p27-server-club-rosters');
-const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs: serverClubManager.listClubs(), transferStore });
+const rosterDirectory = process.env.CLUB_ROSTERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'club-rosters');
+const serverClubManager = new ClubManager(DEFAULT_CLUBS, new JsonClubRosterStorage(rosterDirectory), 'p27-server-club-rosters');
+const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs:[...serverClubManager.clubs.values()], transferStore });
+function configuredSystemWageBudgets() {
+  try {
+    const parsed = JSON.parse(process.env.P27_SYSTEM_WEEKLY_WAGE_BUDGETS || '{}');
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([id, amount]) =>
+      /^[a-z0-9-]{1,48}$/i.test(id) && Number.isSafeInteger(amount) && amount >= 0
+    ));
+  } catch { return {}; }
+}
+const clubWorld = new P27ClubWorldService({
+  clubManager:serverClubManager, financeService:clubFinance,
+  weeklyWageBudgets:configuredSystemWageBudgets()
+});
 const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
@@ -191,16 +207,20 @@ const server = http.createServer(async (req, res) => {
 });
 
 const tick = setInterval(() => manager.tick(0.05), 50);
-const financeTick = setInterval(() => {
-  try { clubFinance.settleScheduledItems(); }
-  catch (error) { process.stderr.write(`P27 club finance settlement failed: ${error.message}\\n`); }
+const clubWorldTick = setInterval(() => {
+  try {
+    const result = clubWorld.tick();
+    if (!result.ok) process.stderr.write(`P27 club world tick incomplete: ${result.reason || 'unknown'}\\n`);
+  } catch (error) { process.stderr.write(`P27 club world tick failed: ${error.message}\\n`); }
 }, 60 * 60 * 1000);
-financeTick.unref();
-try { clubFinance.settleScheduledItems(); }
-catch (error) { process.stderr.write(`P27 club finance startup settlement failed: ${error.message}\\n`); }
+clubWorldTick.unref();
+try {
+  const result = clubWorld.tick();
+  if (!result.ok) process.stderr.write(`P27 club world startup tick incomplete: ${result.reason || 'unknown'}\\n`);
+} catch (error) { process.stderr.write(`P27 club world startup tick failed: ${error.message}\\n`); }
 tick.unref();
 const port = Math.max(1, Math.min(65535, Number(process.env.PORT) || 8080));
 if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
   server.listen(port, '0.0.0.0', () => process.stdout.write(`Football RP Online match server listening on ${port}\n`));
 }
-export { server, manager, clubFinance };
+export { server, manager, clubFinance, serverClubManager, clubWorld };
