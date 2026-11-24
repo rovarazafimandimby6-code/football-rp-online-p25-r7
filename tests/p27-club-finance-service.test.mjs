@@ -287,3 +287,42 @@ test('P27 finances : conserve une indemnité de transfert à réconcilier si le 
   assert.equal(f.service.store.getAccount(to.id).totalIncome,100);
  } finally {f.cleanup();}
 });
+
+
+test('P27 journal financier : reprend une indemnité après redémarrage sans doubler le débit',()=>{
+ const from=DEFAULT_CLUBS[0],to=DEFAULT_CLUBS[1];
+ const event={id:'transfer-journal-restart',type:'transfer',fromClubId:from.id,toClubId:to.id,fee:1800,at:Date.UTC(2027,1,1)};
+ const f=setup({events:[event]});
+ try {
+  const first=f.service.syncRecordedTransferFees();
+  assert.equal(first.ok,true);assert.equal(first.posted,2);
+  const journal=JSON.parse(readFileSync(path.join(f.directory,'transfer-finance-journal.json'),'utf8'));
+  assert.equal(journal.transfers[0].status,'completed');
+  assert.equal(journal.transfers[0].debitPosted,true);
+  assert.equal(journal.transfers[0].creditPosted,true);
+  const restarted=new JsonClubFinanceService(f.directory,{clubs:DEFAULT_CLUBS,transferStore:f.transferStore});
+  const retry=restarted.syncRecordedTransferFees();
+  assert.equal(retry.ok,true);assert.equal(retry.posted,0);
+  assert.equal(restarted.store.getAccount(from.id).totalExpenses,1800);
+  assert.equal(restarted.store.getAccount(to.id).totalIncome,1800);
+ } finally {f.cleanup();}
+});
+
+test('P27 journal financier : reprend après une panne du checkpoint du débit sans double écriture',()=>{
+ const from=DEFAULT_CLUBS[0],to=DEFAULT_CLUBS[1];
+ const event={id:'transfer-journal-checkpoint',type:'transfer',fromClubId:from.id,toClubId:to.id,fee:900,at:Date.UTC(2027,1,2)};
+ const f=setup({events:[event]});
+ try {
+  const persist=f.service.persistTransferJournal.bind(f.service);
+  f.service.persistTransferJournal=next=>next.transfers.some(item=>item.debitPosted&&!item.creditPosted)?false:persist(next);
+  const failed=f.service.syncRecordedTransferFees();
+  assert.equal(failed.ok,false);assert.equal(failed.transfers[0].stage,'debit-checkpoint');
+  assert.equal(f.service.store.getAccount(from.id).totalExpenses,900);
+  assert.equal(f.service.store.getAccount(to.id).totalIncome,0);
+  f.service.persistTransferJournal=persist;
+  const retry=f.service.syncRecordedTransferFees();
+  assert.equal(retry.ok,true);assert.equal(retry.posted,1);
+  assert.equal(f.service.store.getAccount(from.id).totalExpenses,900);
+  assert.equal(f.service.store.getAccount(to.id).totalIncome,900);
+ } finally {f.cleanup();}
+});
