@@ -20,13 +20,20 @@ function createSeason(seasonId, clubs, now) {
     const rotation = members.map(member => member.id);
     const scheduled = rotation.length % 2 ? [...rotation, null] : [...rotation];
     const rounds = Math.max(0, scheduled.length - 1);
+    const homeCounts = new Map(rotation.map(id => [id,0]));
+    const awayCounts = new Map(rotation.map(id => [id,0]));
     const groupKey = group.conference ? `-${group.conference.toLocaleUpperCase('fr')}` : '';
     const competitionId = `${seasonId}-league-${group.division}${groupKey}`;
     for (let round = 1; round <= rounds; round++) {
       for (let match = 0; match < scheduled.length / 2; match++) {
         let home = scheduled[match], away = scheduled[scheduled.length - 1 - match];
         if (!home || !away) continue;
-        if ((round + match) % 2) [home, away] = [away, home];
+        const homeBalance=homeCounts.get(home)-awayCounts.get(home);
+        const awayBalance=homeCounts.get(away)-awayCounts.get(away);
+        if (homeBalance > awayBalance || (homeBalance === awayBalance && (round + match) % 2))
+          [home, away] = [away, home];
+        homeCounts.set(home,homeCounts.get(home)+1);
+        awayCounts.set(away,awayCounts.get(away)+1);
         fixtures.push({ id: `${seasonId}-${group.division}${groupKey}-R${round}-M${match+1}`, competitionId, type: 'league', round, homeClubId: home, awayClubId: away, status: 'scheduled', result: null, roomId: null });
       }
       const last = scheduled.pop();
