@@ -14,6 +14,7 @@ import { JsonClubFinanceService } from './club-finance-service.js';
 import { JsonClubRosterStorage } from './club-roster-storage.js';
 import { P27ClubWorldService } from './club-world-service.js';
 import { syncClubAssignments } from './club-assignment-sync.js';
+import { auditP27World } from './world-integrity-audit.js';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/league-structure.js';
 import { listPublicClubs, resolvePublicClub } from './club-catalog.js';
@@ -90,6 +91,17 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://localhost');
   if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { ok: true, service: 'football-rp-online-match-server', protocol: 1 });
   try {
+    if (req.method === 'GET' && url.pathname === '/api/admin/world-integrity') {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
+      const audit = auditP27World({
+        clubs:[...serverClubManager.clubs.values()],
+        transferState:transferStore.state,
+        financeAccounts:clubFinance.store.listAccounts(),
+        competitionState:competitionStore.state
+      });
+      return json(res, audit.ok ? 200 : 409, audit);
+    }
     if (req.method === 'GET' && url.pathname === '/api/rooms') return json(res, 200, { rooms: manager.list() });
     if (req.method === 'GET' && url.pathname === '/api/clubs') {
       const rawLimit=url.searchParams.get('limit'), rawOffset=url.searchParams.get('offset');
