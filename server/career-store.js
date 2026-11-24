@@ -37,9 +37,19 @@ export class JsonCareerStore {
     if (!row) return { player: null, totals: emptyTotals(), matches: [], currentForm: [], averageRating: null };
     const matches = row.matches.map(match => ({ ...match, stats: { ...match.stats } }));
     const rated = matches.filter(match => Number.isFinite(match.rating));
+    const clubs = new Map();
+    for (const match of matches) {
+      const clubName = clean(match.teamName, 48);
+      if (!clubName) continue;
+      const history = clubs.get(clubName) || { clubName, appearances: 0, firstMatchAt: match.finalizedAt, lastMatchAt: match.finalizedAt };
+      history.appearances++;
+      history.firstMatchAt = Math.min(history.firstMatchAt, match.finalizedAt);
+      history.lastMatchAt = Math.max(history.lastMatchAt, match.finalizedAt);
+      clubs.set(clubName, history);
+    }
     return {
       player: { name: clean(row.name, 24), role: ['GK','DEF','MID','FWD'].includes(row.role) ? row.role : 'MID', clubName: clean(row.clubName,48) },
-      totals: { ...emptyTotals(), ...row.totals }, matches,
+      totals: { ...emptyTotals(), ...row.totals }, matches, clubHistory: [...clubs.values()],
       currentForm: matches.slice(-5).map(match => ({ matchId: match.matchId, result: match.result, rating: match.rating, finalizedAt: match.finalizedAt })),
       averageRating: rated.length ? Math.round(rated.reduce((sum, match) => sum + match.rating, 0) / rated.length * 10) / 10 : null
     };

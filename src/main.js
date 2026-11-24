@@ -203,6 +203,14 @@ async function loadPlayerCareer(player) {
     const payload = await response.json();
     const career = payload?.career;
     if (!career?.player || sequence !== playerCareerRequestSequence || selectedPlayerProfile !== player) return;
+    const clubHistory = Array.isArray(career.clubHistory) ? career.clubHistory : [];
+    const timeline = document.getElementById('player-career-club-history');
+    if (timeline && clubHistory.length) {
+      timeline.innerHTML = clubHistory.slice().reverse().map(item => {
+        const firstDate = new Date(Number(item.firstMatchAt) || 0).toLocaleDateString('fr-FR');
+        return '<div class="player-career-timeline-item"><i></i><div><b>' + escapeHTML(item.clubName) + '</b><span>Club observé dans les matchs archivés</span><small>Première apparition : ' + firstDate + ' · ' + item.appearances + ' match(s)</small></div><strong>ARCHIVÉ</strong></div>';
+      }).join('');
+    }
     const totals = career.totals || {};
     const count = key => Math.max(0, Number(totals[key]) || 0);
     const minutes = Math.floor(count('minutesPlayedMs') / 60000);
@@ -336,7 +344,7 @@ function renderPage(page = 'home') {
       </section>
       <div class="player-career-columns">
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ SPORTIVE</span><h2>Profil technique</h2></div></div><div class="player-career-attributes">${Object.entries(attributeNames).map(([key,label])=>{const value=Number(player.attributes?.[key]??player.rating);return `<div><span>${label}</span><b>${value}</b><i><em style="width:${Math.max(0,Math.min(99,value))}%"></em></i></div>`;}).join('')}</div><p class="notice">${escapeHTML(player.archetype)} · Les attributs décrivent le joueur dans l'effectif actuel.</p></section>
-        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PARCOURS EN CLUB</span><h2>Historique des clubs</h2></div></div><div class="player-career-timeline"><div class="player-career-timeline-item"><i></i><div><b>${escapeHTML(player.clubName)}</b><span>Club actuel · ${escapeHTML(player.clubDivision)}</span><small>Présence dans l'effectif local</small></div><strong>ACTUEL</strong></div></div><p class="notice">Les anciens clubs et dates de transfert apparaîtront lorsqu'ils seront enregistrés par le système de mercato.</p></section>
+        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PARCOURS EN CLUB</span><h2>Historique des clubs</h2></div></div><div class="player-career-timeline" id="player-career-club-history"><div class="player-career-timeline-item"><i></i><div><b>${escapeHTML(player.clubName)}</b><span>Club actuel · ${escapeHTML(player.clubDivision)}</span><small>Présence dans l'effectif local</small></div><strong>ACTUEL</strong></div></div><p class="notice">Les anciens clubs et dates de transfert apparaîtront lorsqu'ils seront enregistrés par le système de mercato.</p></section>
       </div>
       <div class="player-career-columns">
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">STATISTIQUES OFFICIELLES</span><h2>Matchs · buts · passes</h2></div></div><div class="player-career-empty" id="player-career-stats"><b>Chargement du parcours sportif…</b><p>Recherche des matchs validés sur le serveur.</p></div></section>

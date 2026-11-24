@@ -49,10 +49,13 @@ test('P27 carrière serveur : seul le compte authentifié lié au joueur reçoit
 test('P27 profil joueur public : carrière persistante indexée par identité sportive, sans compte privé',()=>{
  const f=fixture();
  try {
-  f.store.recordPlayerMatch('club-tana-fc-slot-2',{matchId:'m-1',result:'win',name:'Mika Randria',role:'FWD',clubName:'Tana FC',teamName:'Tana FC',opponent:'Toamasina United',minutesPlayedMs:120000,rating:8.2,stats:{goals:2,assists:1}});
+  f.store.recordPlayerMatch('club-tana-fc-slot-2',{matchId:'m-1',result:'win',finalizedAt:100,name:'Mika Randria',role:'FWD',clubName:'Tana FC',teamName:'Tana FC',opponent:'Toamasina United',minutesPlayedMs:120000,rating:8.2,stats:{goals:2,assists:1}});
+  f.store.recordPlayerMatch('club-tana-fc-slot-2',{matchId:'m-2',result:'draw',finalizedAt:200,name:'Mika Randria',role:'FWD',clubName:'Toamasina United',teamName:'Toamasina United',opponent:'Fianarantsoa Highland',minutesPlayedMs:90000,rating:7.4,stats:{goals:0}});
   const restored=new JsonCareerStore(f.directory), profile=restored.getPlayerCareer('club-tana-fc-slot-2');
   assert.equal(profile.player.name,'Mika Randria'); assert.equal(profile.player.clubName,'Tana FC');
-  assert.equal(profile.totals.matches,1); assert.equal(profile.totals.goals,2); assert.equal(profile.matches[0].opponent,'Toamasina United');
+  assert.equal(profile.totals.matches,2); assert.equal(profile.totals.goals,2); assert.equal(profile.matches[0].opponent,'Toamasina United');
+  assert.deepEqual(profile.clubHistory.map(row=>row.clubName),['Tana FC','Toamasina United']);
+  assert.equal(profile.clubHistory[0].appearances,1);
   assert.equal(JSON.stringify(profile).includes('accountId'),false);
   assert.equal(restored.getPlayerCareer('unknown-player').player,null);
  } finally { f.cleanup(); }
