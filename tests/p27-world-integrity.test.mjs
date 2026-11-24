@@ -195,3 +195,22 @@ test('P27 intégrité résultats : détecte les archives dupliquées et les fixt
  assert.ok(codes.includes('RESULT_FIXTURE_ARCHIVE_DUPLICATE'));
  assert.ok(codes.includes('RESULT_ARCHIVE_UNKNOWN_FIXTURE'));
 });
+
+
+test('P27 intégrité monde : compare les affectations officielles et le catalogue des effectifs',()=>{
+ const input=cleanWorld();
+ input.competitionClubs=[
+  {id:'club-a',division:'D2',conference:null},
+  {id:'club-b',division:'D1',conference:null}
+ ];
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='CLUB_ASSIGNMENT_CATALOGUE_MISMATCH'&&item.clubId==='club-a'));
+});
+
+test('P27 intégrité monde : détecte un club absent du catalogue persistant du mercato',()=>{
+ const input=cleanWorld();
+ input.transferState.clubs=[{id:'club-a',budget:1000}];
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='TRANSFER_CLUB_MISSING'&&item.clubId==='club-b'));
+ assert.ok(result.errors.some(item=>item.code==='TRANSFER_CLUB_CATALOGUE_SIZE_MISMATCH'));
+});
