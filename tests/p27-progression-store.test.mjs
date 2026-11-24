@@ -37,8 +37,7 @@ test('P27 entraînement serveur : consomme ressources et refuse les dépassement
   assert.equal(trained.progression.trainingPoints,before.trainingPoints-1);
   const poor=f.store.train('account-train','shooting',5);
   assert.equal(poor.ok,false);
-  const invalid=f.store.train('account-train','coins',1);
-  assert.throws(()=>invalid,/./);
+  assert.throws(()=>f.store.train('account-train','coins',1),/INVALID_ATTRIBUTE/);
  }finally{f.cleanup();}
 });
 
