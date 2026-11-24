@@ -58,7 +58,8 @@ const clubWorld = new P27ClubWorldService({
   clubManager:serverClubManager, financeService:clubFinance,
   weeklyWageBudgets:configuredSystemWageBudgets()
 });
-const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore, progressionStore, competitionStore });
+const resultStore = new JsonResultStore(resultDirectory);
+const manager = new RoomManager({ resultStore, careerStore, progressionStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const accountAttempts = new Map();
@@ -104,7 +105,8 @@ const server = http.createServer(async (req, res) => {
         clubs:[...serverClubManager.clubs.values()],
         transferState:transferStore.state,
         financeAccounts:clubFinance.store.listAccounts(),
-        competitionState:competitionStore.state
+        competitionState:competitionStore.state,
+        resultArchive:resultStore.readAll()
       });
       return json(res, audit.ok ? 200 : 409, audit);
     }
