@@ -154,3 +154,18 @@ test('P27 intégrité monde : refuse les identifiants de saison et de compétiti
  assert.ok(codes.includes('SEASON_ID_INVALID_OR_DUPLICATE'));
  assert.ok(codes.includes('COMPETITION_ID_INVALID_OR_DUPLICATE'));
 });
+
+
+test('P27 clubs : reprend automatiquement une affectation après échec temporaire de sauvegarde',()=>{
+ const club={id:'club-a',division:'D2',conference:null};
+ let attempts=0;
+ const manager={clubs:new Map([['club-a',club]]),saveSeason:()=>++attempts>1};
+ const competition={clubs:new Map([['club-a',{id:'club-a',division:'D1',conference:null}]])};
+ const first=syncClubAssignments({clubManager:manager,competitionStore:competition});
+ assert.equal(first.ok,false);
+ assert.equal(first.reason,'club-assignment-persistence-pending');
+ const retry=syncClubAssignments({clubManager:manager,competitionStore:competition});
+ assert.equal(retry.ok,true);
+ assert.equal(retry.updated,0);
+ assert.equal(attempts,2);
+});
