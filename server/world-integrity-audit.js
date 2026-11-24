@@ -381,6 +381,10 @@ export function auditP27World({
     } else if (record.status === 'pending') pendingSystemTransfers++;
   }
 
+  for (const record of journalTransfers) {
+    if (!transferEventById.has(record?.id) && !systemTransferIds.has(record?.id))
+      errors.push({ code:'SYSTEM_TRANSFER_FINANCE_OUTBOX_MISSING', eventId:record?.id || null });
+  }
   const journalPlayerWages = Array.isArray(transferJournal?.playerWages) ? transferJournal.playerWages : [];
   const journalWageIds = new Set();
   let pendingPlayerWages = 0;
