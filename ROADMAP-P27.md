@@ -1186,3 +1186,9 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 144 : tester un cycle transfert → prêt → retour avec rechargement persistant et unicité finale de l'inscription.
 - [x] Validation CI complète : lots 141–144, workflow 45474115302 — 710 tests réussis, 0 échec.
 - Limite : ces tests valident le replay de l'outbox entre les deux stores ; ils ne prétendent pas fournir une transaction distribuée atomique.
+
+### Lots 145–146 — branchement réel de l’audit des carrières individuelles
+- [x] Lot 145 : transmettre l’état persistant de `JsonCareerStore` à `auditP27World()` depuis la route administrative `GET /api/admin/world-integrity`. Le contrôle des carrières individuelles, déjà implémenté dans l’auditeur, est désormais exécuté sur les données réellement chargées par le serveur.
+- [x] Lot 146 : ajouter un test HTTP de bout en bout qui démarre le serveur avec des répertoires temporaires, protège l’endpoint par jeton administrateur et vérifie qu’un identifiant de carrière individuelle dupliqué apparaît bien dans la réponse d’audit.
+- [ ] Validation GitHub Actions complète et contrôle syntaxique sur le commit consolidé.
+- Limite : le test vérifie le branchement HTTP et la détection d’un défaut persistant ; il ne remplace pas l’audit manuel des données d’un déploiement réel.
