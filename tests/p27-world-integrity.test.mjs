@@ -6,17 +6,17 @@ import { syncClubAssignments } from '../server/club-assignment-sync.js';
 const cleanWorld=()=>({
   clubs:[{id:'club-a',division:'D1',conference:null,capacity:2,roster:[
     {id:'player-a',number:1,playerType:'system',contract:{status:'active',clubId:'club-a',playerId:'player-a'}}
-  ]}],
+  ]},{id:'club-b',division:'D1',conference:null,capacity:2,roster:[]}],
   transferState:{careers:[{accountId:'account-a',clubId:'club-a',contract:{status:'active',clubId:'club-a'}}]},
   financeAccounts:[{clubId:'club-a',openingBalance:100,balance:90,entries:[
     {id:'wage-1',amount:10,direction:'expense'}
   ]}],
   competitionState:{seasons:[{id:'season-a',status:'active',competitions:[{
-    id:'league-a',members:[{id:'club-a'}],fixtures:[{
-      id:'fixture-a',status:'completed',homeClubId:'club-a',awayClubId:'club-a',result:{home:1,away:0}
+    id:'league-a',members:[{id:'club-a'},{id:'club-b'}],fixtures:[{
+      id:'fixture-a',status:'completed',homeClubId:'club-a',awayClubId:'club-b',result:{home:1,away:0}
     }]
   }]}]},
-  expectedClubCount:1
+  expectedClubCount:2
 });
 
 test('P27 intégrité monde : accepte un ensemble cohérent de clubs, contrats, finances et compétitions',()=>{
@@ -66,4 +66,31 @@ test('P27 clubs : signale une persistance en attente sans désaligner le monde e
  assert.equal(result.ok,false);
  assert.equal(result.reason,'club-assignment-persistence-pending');
  assert.equal(club.division,'D1');
+});
+
+
+test('P27 intégrité monde : détecte les doublons de carrière et les événements de transfert incohérents',()=>{
+ const input=cleanWorld();
+ input.transferState.careers.push({accountId:'account-b',playerId:'human-player-1',clubId:'club-a',contract:{status:'active',clubId:'club-a',playerId:'human-player-2'}});
+ input.transferState.events=[
+  {id:'transfer-x',type:'transfer',fromClubId:'club-a',toClubId:'unknown-club',fee:-10},
+  {id:'transfer-x',type:'transfer',fromClubId:'club-a',toClubId:'club-b',fee:100}
+ ];
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('CAREER_CONTRACT_PLAYER_MISMATCH'));
+ assert.ok(codes.includes('TRANSFER_EVENT_ID_INVALID_OR_DUPLICATE'));
+ assert.ok(codes.includes('TRANSFER_EVENT_CLUB_LINK_INVALID'));
+ assert.ok(codes.includes('TRANSFER_EVENT_FEE_INVALID'));
+});
+
+test('P27 intégrité monde : détecte les fixtures rattachées à la mauvaise compétition et les auto-rencontres',()=>{
+ const input=cleanWorld();
+ const fixture=input.competitionState.seasons[0].competitions[0].fixtures[0];
+ fixture.competitionId='other-competition';
+ fixture.awayClubId='club-a';
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('FIXTURE_COMPETITION_LINK_MISMATCH'));
+ assert.ok(codes.includes('FIXTURE_SELF_PLAY_INVALID'));
 });
