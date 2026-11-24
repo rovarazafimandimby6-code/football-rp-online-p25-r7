@@ -20,7 +20,7 @@ export class JsonCareerStore {
     try {
       const parsed = JSON.parse(readFileSync(this.file, 'utf8'));
       if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.careers)) throw new Error('bad schema');
-      return { version: 1, careers: parsed.careers.filter(row => row && typeof row.accountId === 'string' && row.totals && Array.isArray(row.matches)) };
+      return { version: 1, careers: parsed.careers.filter(row => row && typeof row.accountId === 'string' && row.totals && Array.isArray(row.matches)).map(row => ({ ...row, processedMatchIds: Array.isArray(row.processedMatchIds) ? [...new Set(row.processedMatchIds.filter(id => typeof id === 'string' && id.trim()).map(id => id.slice(0,64)))].slice(-5000) : row.matches.map(match => match.matchId).filter(Boolean) })) };
     } catch (error) {
       if (error.code === 'ENOENT') return { version: 1, careers: [] };
       throw new Error('CAREER_STORE_CORRUPT');
@@ -47,8 +47,8 @@ export class JsonCareerStore {
     const id = clean(accountId, 64), matchId = clean(input.matchId, 64);
     if (!id || !matchId || !['win','draw','loss'].includes(input.result)) throw new Error('INVALID_CAREER_MATCH');
     let row = this.state.careers.find(item => item.accountId === id);
-    if (row?.matches.some(match => match.matchId === matchId)) return { ok: true, duplicate: true, career: this.get(id) };
-    if (!row) { row = { accountId: id, totals: emptyTotals(), matches: [] }; this.state.careers.push(row); }
+    if (row?.processedMatchIds.includes(matchId)) return { ok: true, duplicate: true, career: this.get(id) };
+    if (!row) { row = { accountId: id, totals: emptyTotals(), matches: [], processedMatchIds: [] }; this.state.careers.push(row); }
     const stats = Object.fromEntries(['goals','assists','shots','passes','completedPasses','tackles','interceptions','saves'].map(field => [field, safeCount(input.stats?.[field])]));
     stats.completedPasses = Math.min(stats.passes, stats.completedPasses);
     const entry = {
@@ -59,6 +59,7 @@ export class JsonCareerStore {
       playerOfMatch: input.playerOfMatch === true, stats
     };
     row.matches.push(entry); row.matches = row.matches.slice(-this.maxMatchesPerCareer);
+    row.processedMatchIds = [...row.processedMatchIds, matchId].slice(-5000);
     row.totals.matches++;
     row.totals.minutesPlayedMs += entry.minutesPlayedMs;
     row.totals[input.result === 'win' ? 'wins' : input.result === 'draw' ? 'draws' : 'losses']++;

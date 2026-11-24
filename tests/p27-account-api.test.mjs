@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { server } from '../server/index.js';
+import { server, manager } from '../server/index.js';
 
 test('P27 API compte : inscription, authentification, session protégée et révocation HTTP', async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -18,6 +18,26 @@ test('P27 API compte : inscription, authentification, session protégée et rév
     const created = await registered.json();
     assert.equal(created.account.username, username);
     assert.ok(created.token.length >= 40);
+
+
+    const roomResponse = await fetch(`${base}/api/rooms`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Carrière liée' }) });
+    const room = await roomResponse.json();
+    const joinedResponse = await fetch(`${base}/api/rooms/${room.id}/join`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${created.token}` }, body: JSON.stringify({ displayName: 'Carrière test' }) });
+    assert.equal(joinedResponse.status, 200);
+    const joined = await joinedResponse.json();
+    const internal = manager.rooms.get(room.id);
+    const participant = internal.players.get(joined.playerId);
+    participant.matchTimePlayedMs = 45000; participant.stats.goals = 1; participant.stats.passes = 5; participant.stats.completedPasses = 4;
+    internal.phase = 'fulltime'; internal.elapsedMs = internal.durationMinutes * 60000; internal.score = { blue: participant.team === 'blue' ? 1 : 0, red: participant.team === 'red' ? 1 : 0 };
+    manager.finalizeResult(internal);
+    const careerResponse = await fetch(`${base}/api/career`, { headers: { authorization: `Bearer ${created.token}` } });
+    assert.equal(careerResponse.status, 200);
+    const career = (await careerResponse.json()).career;
+    assert.equal(career.totals.matches, 1);
+    assert.equal(career.totals.goals, 1);
+    assert.equal(career.totals.completedPasses, 4);
+    const forbiddenCareer = await fetch(`${base}/api/career`);
+    assert.equal(forbiddenCareer.status, 401);
 
     const me = await fetch(`${base}/api/accounts/me`, { headers: { authorization: `Bearer ${created.token}` } });
     assert.equal(me.status, 200);

@@ -390,6 +390,7 @@ export class RoomManager {
           teamName, opponent: room.teams[opponentTeam]?.name || '', role: player.role,
           rating: player.rating, minutesPlayedMs: player.minutesPlayedMs,
           playerOfMatch: performance.awards.playerOfMatch?.playerId === player.playerId,
+          cleanSheet: (player.team === 'blue' ? red : blue) === 0,
           stats: player.stats
         });
       }
@@ -553,7 +554,7 @@ export class RoomManager {
   }
 
   publicState(room) {
-    const players = [...room.players.values()].map(({ token, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p }));
+    const players = [...room.players.values()].map(({ token, accountId, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p }));
     return {
       id: room.id, name: room.name, durationMinutes: room.durationMinutes,
       phase: room.phase, period: room.period, halftimeRemainingMs: room.phase === 'halftime' && room.halftimeUntil ? Math.max(0, room.halftimeUntil - this.now()) : 0, attackDirection: { ...room.attackDirection }, elapsedMs: room.elapsedMs, durationMs: room.durationMinutes * 60_000, sequence: room.sequence,
