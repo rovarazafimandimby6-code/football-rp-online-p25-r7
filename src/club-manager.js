@@ -1,6 +1,7 @@
 import { generateClubRoster } from './club-roster.js';
 import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './league-structure.js';
 import { generateClubCharacteristics, generateClubRecruitmentProfile, generateClubStrategicProfile, balanceClubRosterQuality } from './club-profile.js';
+import { P27_EXPANSION_CLUBS } from './p27-club-expansion.js';
 
 const safeId = value => String(value ?? '').trim().slice(0, 48);
 const safeCount = value => Number.isFinite(Number(value)) && Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 5 ? Number(value) : null;
@@ -106,7 +107,7 @@ export const DEFAULT_CLUBS = Object.freeze([
   club('morondava-lagoon','Morondava Lagoon','Morondava','Madagascar','MG','AMATEUR',51,'open',['#278c9b','#14515d','#d8f0e8'],'Stade du Baobab',45,360000),
   club('nairobi-tana-academy','Nairobi-Tana Academy','Nairobi / Antananarivo','Kenya · Madagascar','MG','AMATEUR',52,'open',['#526f3e','#273c24','#e3d7a4'],'Academy Field',47,390000),
   club('antsiranana-north-fc','Antsiranana North FC','Antsiranana','Madagascar','MG','AMATEUR',50,'open',['#3976a8','#1e3f68','#f0d477'],'Stade du Nord',44,340000)
-].map(item => ({ ...item, location: STARTER_CLUB_LOCATIONS[item.id], ...(item.division === 'AMATEUR' ? { division: 'D5', conference: ({ 'tulear-sunrise': 'Sud', 'morondava-lagoon': 'Ouest', 'nairobi-tana-academy': 'Est', 'antsiranana-north-fc': 'Nord' })[item.id] } : {}) })));
+].map(item => ({ ...item, location: STARTER_CLUB_LOCATIONS[item.id], ...(item.division === 'AMATEUR' ? { division: 'D5', conference: ({ 'tulear-sunrise': 'Sud', 'morondava-lagoon': 'Ouest', 'nairobi-tana-academy': 'Est', 'antsiranana-north-fc': 'Nord' })[item.id] } : {}) })).concat(P27_EXPANSION_CLUBS));
 
 export class ClubManager {
   constructor(clubs = DEFAULT_CLUBS, storage, storageKey = COMPETITION_KEY) {
@@ -136,6 +137,7 @@ export class ClubManager {
         budget: Number.isFinite(Number(input.budget)) ? Math.max(0, Math.min(1_000_000_000, Math.floor(Number(input.budget)))) : 250000,
         colors: Array.isArray(input.colors) && input.colors.length >= 3 ? input.colors.slice(0,3).map(c => /^#[0-9a-f]{6}$/i.test(c) ? c : '#245b48') : ['#1769aa','#092e55','#f3d36a'],
         capacity: Number.isFinite(capacity) ? Math.max(1, Math.min(12, Math.floor(capacity))) : 12,
+        initialRosterSize: Number.isFinite(Number(input.initialRosterSize)) ? Math.max(1, Math.min(12, Math.floor(Number(input.initialRosterSize)))) : (Number.isFinite(capacity) ? Math.max(1, Math.min(12, Math.floor(capacity))) : 12),
         characteristics: input.characteristics && typeof input.characteristics === 'object'
           ? Object.fromEntries(['popularity','attractiveness','infrastructure','management'].map(key => [key, Math.max(1, Math.min(100, Math.round(Number(input.characteristics[key]) || 50)))]))
           : generateClubCharacteristics({ ...input, division: normalizeDivision(input.division) }),
@@ -148,7 +150,7 @@ export class ClubManager {
       normalized.strategicProfile = generateClubStrategicProfile({ ...normalized, ...input });
       if (normalized.humanAdmission === 'system-only') normalized.control = 'ai';
       normalized.roster = seedDefaultRosters ? balanceClubRosterQuality(
-        generateClubRoster({ ...normalized, recruitmentProfile: normalized.recruitmentProfile }, { size: Math.min(12, normalized.capacity), usedNames: globallyUsedNames }),
+        generateClubRoster({ ...normalized, recruitmentProfile: normalized.recruitmentProfile }, { size: Math.min(normalized.initialRosterSize, normalized.capacity), usedNames: globallyUsedNames }),
         normalized
       ) : [];
       this.clubs.set(id, normalized);
@@ -165,7 +167,7 @@ export class ClubManager {
         humanAdmission: 'system-only', recruitmentProfile: { mode:'continent', continent:'Africa' }
       });
       if (seedDefaultRosters) reserved.roster = balanceClubRosterQuality(
-        generateClubRoster({ ...reserved, recruitmentProfile: reserved.recruitmentProfile }, { size: Math.min(12, reserved.capacity), usedNames: globallyUsedNames }),
+        generateClubRoster({ ...reserved, recruitmentProfile: reserved.recruitmentProfile }, { size: Math.min(reserved.initialRosterSize, reserved.capacity), usedNames: globallyUsedNames }),
         reserved
       );
     }

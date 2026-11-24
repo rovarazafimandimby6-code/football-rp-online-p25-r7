@@ -50,3 +50,23 @@ test('P27 géographie : une conférence explicite prévaut et les villes inconnu
   assert.equal(conferenceForClub({ division: 'D4', city: 'Ville inconnue' }), null);
   assert.equal(conferenceForClub({ division: 'D3', city: 'Antsiranana' }), null);
 });
+
+import { DEFAULT_CLUBS } from '../src/club-manager.js';
+import { auditClubCatalog } from '../src/club-catalog-validation.js';
+
+test('P27 catalogue complet : 156 clubs uniques et répartition exacte par division', () => {
+  const audit = auditClubCatalog(DEFAULT_CLUBS);
+  assert.equal(DEFAULT_CLUBS.length, 156);
+  assert.equal(audit.totalClubs, 156);
+  assert.equal(audit.complete, true, JSON.stringify(audit.issues.slice(0, 20)));
+  assert.deepEqual(audit.divisionCounts, { D1:16, D2:20, D3:24, D4:32, D5:64 });
+  assert.deepEqual(audit.conferenceCounts.D4, { Nord:16, Sud:16 });
+  assert.deepEqual(audit.conferenceCounts.D5, { Nord:16, Sud:16, Est:16, Ouest:16 });
+});
+
+test('P27 effectifs initiaux : les nouveaux clubs gardent des places pour les joueurs humains', () => {
+  const expanded = DEFAULT_CLUBS.filter(club => club.id.startsWith('p27-'));
+  assert.equal(expanded.length, 140);
+  assert.ok(expanded.every(club => club.capacity === 12 && club.initialRosterSize >= 8 && club.initialRosterSize <= 12));
+  assert.ok(expanded.some(club => club.initialRosterSize < 12));
+});
