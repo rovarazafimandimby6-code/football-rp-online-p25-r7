@@ -176,3 +176,24 @@ test('P27 paie système : les arriérés d’un joueur parti restent payables ap
   assert.equal(restarted.store.getAccount(club.id).totalExpenses,160);
  } finally {rmSync(directory,{recursive:true,force:true});}
 });
+
+
+test('P27 finances : le cycle global signale les salaires impayés au monde persistant',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'blocked-settlement-club',budget:0,roster:[
+  {id:'blocked-player',name:'Joueur Bloqué',playerType:'system',contract:{id:'blocked-contract',clubId:'blocked-settlement-club',playerId:'blocked-player',status:'active',weeklyWage:100,salary:100}}
+ ]};
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-settlement-failure-'));
+ try {
+  const transferStore={state:{events:[{id:'blocked-human-wage',type:'salary-payment',clubId:club.id,amount:50,at:start}],careers:[]}};
+  const service=new JsonClubFinanceService(directory,{clubs:[club],transferStore,now:()=>now});
+  now=start+7*86400000;
+  const result=service.settleScheduledItems(now);
+  assert.equal(result.ok,false);
+  assert.equal(result.systemWages.unpaid,1);
+  assert.equal(result.wages.unpaid,1);
+  assert.equal(result.failures.some(item=>item.category==='system-wages'),true);
+  assert.equal(result.failures.some(item=>item.category==='player-wages'),true);
+  assert.equal(service.store.getAccount(club.id).totalExpenses,0);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});

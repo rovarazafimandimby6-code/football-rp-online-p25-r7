@@ -130,11 +130,6 @@ export class JsonClubFinanceService {
         if (!this.persistPayrollSchedule()) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
         continue;
       }
-      if (!entries.length) {
-        this.payrollSchedule[club.id] = last + periods * WEEK;
-        if (!this.persistPayrollSchedule()) return { ok: false, reason: 'schedule-persistence-failed', posted, unpaid, clubs };
-        continue;
-      }
       const result = this.store.postBatch(club.id, entries);
       if (!result.ok) {
         unpaid += entries.length;
@@ -146,12 +141,12 @@ export class JsonClubFinanceService {
       posted += result.posted || 0;
       clubs.push({ clubId: club.id, ok: true, posted: result.posted || 0, periods });
     }
-    return { ok: true, posted, unpaid, clubs };
+    return { ok: unpaid === 0, posted, unpaid, clubs };
   }
 
   syncRecordedPlayerWages() {
     const events = this.transferStore?.state?.events;
-    if (!Array.isArray(events)) return { posted: 0, unpaid: 0, clubs: [] };
+    if (!Array.isArray(events)) return { ok: true, posted: 0, unpaid: 0, clubs: [] };
     const grouped = new Map();
     for (const event of events) {
       if (event?.type !== 'salary-payment' || !event.id || !this.clubs.has(event.clubId)) continue;
@@ -172,22 +167,33 @@ export class JsonClubFinanceService {
       else unpaid += entries.length;
       clubs.push({ clubId, ok: result.ok, reason: result.reason || null, entries: entries.length });
     }
-    return { posted, unpaid, clubs };
+    return { ok: unpaid === 0, posted, unpaid, clubs };
   }
 
   settleScheduledItems(now = this.now()) {
     if (!Number.isSafeInteger(now) || now < 0) return { ok: false, reason: 'invalid-time' };
     const systemWages = this.settleSystemPayroll(now);
     const wages = this.syncRecordedPlayerWages();
-    const sponsors = [], loans = [];
+    const sponsors = [], loans = [], failures = [];
+    if (!systemWages.ok || systemWages.unpaid) failures.push({ category: 'system-wages', unpaid: systemWages.unpaid, reason: systemWages.reason || 'payment-failed' });
+    if (!wages.ok || wages.unpaid) failures.push({ category: 'player-wages', unpaid: wages.unpaid, reason: 'payment-failed' });
     for (const account of this.store.listAccounts()) {
       const sponsor = this.store.settleSponsorPayments(account.clubId, now);
       if (sponsor.ok && sponsor.paid) sponsors.push({ clubId: account.clubId, paid: sponsor.paid, amount: sponsor.amount });
+      else if (!sponsor.ok) {
+        const failure = { clubId: account.clubId, category: 'sponsorship', reason: sponsor.reason || 'payment-failed' };
+        sponsors.push({ ...failure, unpaid: true });
+        failures.push(failure);
+      }
       const loan = this.store.settleLoanRepayments(account.clubId, now);
       if (loan.ok && loan.paid) loans.push({ clubId: account.clubId, paid: loan.paid, amount: loan.amount });
-      else if (!loan.ok && loan.reason === 'insufficient-funds') loans.push({ clubId: account.clubId, unpaid: true });
+      else if (!loan.ok) {
+        const failure = { clubId: account.clubId, category: 'loan-repayment', reason: loan.reason || 'payment-failed' };
+        loans.push({ ...failure, unpaid: true });
+        failures.push(failure);
+      }
     }
-    return { ok: true, at: now, systemWages, wages, sponsors, loans };
+    return { ok: failures.length === 0, at: now, systemWages, wages, sponsors, loans, failures };
   }
 
   getClubFinance(clubId, { weeklyMaintenance = 0 } = {}) {
