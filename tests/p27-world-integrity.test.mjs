@@ -584,8 +584,8 @@ test('P27 intégrité mercato : compte les joueurs libres uniques et signale les
 
 test('P27 intégrité catalogue complet : contrôle les 156 clubs et les conférences A/B puis A/B/C/D',()=>{
  const clubs=[];
- for (const division of ['D1','D2','D3']) {
-  for (let i=0;i<16;i++) clubs.push({id:`${division.toLowerCase()}-${i}`,division,conference:null,capacity:12,roster:[]});
+ for (const [division,count] of [['D1',16],['D2',20],['D3',24]]) {
+  for (let i=0;i<count;i++) clubs.push({id:`${division.toLowerCase()}-${i}`,division,conference:null,capacity:12,roster:[]});
  }
  for (const conference of ['A','B']) {
   for (let i=0;i<16;i++) clubs.push({id:`d4-${conference.toLowerCase()}-${i}`,division:'D4',conference,capacity:12,roster:[]});
