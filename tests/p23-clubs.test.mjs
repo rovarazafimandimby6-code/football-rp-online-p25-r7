@@ -9,11 +9,11 @@ function memoryStorage() {
   return { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
 }
 
-test('P23 clubs: catalogue international et malgache réparti en quatre divisions', () => {
+test('P23 clubs: catalogue international et malgache rattaché aux cinq championnats', () => {
   const manager = new ClubManager();
   assert.equal(manager.listClubs().length, 16);
-  assert.deepEqual(DIVISIONS.map(item => item.id), ['D1','D2','D3','AMATEUR']);
-  for (const division of DIVISIONS) assert.equal(manager.clubsByDivision(division.id).length, 4);
+  assert.deepEqual(DIVISIONS.map(item => item.id), ['D1','D2','D3','D4','D5']);
+  assert.deepEqual(DIVISIONS.map(division => manager.clubsByDivision(division.id).length), [4,4,4,0,4]);
   assert.ok(manager.listClubs().filter(item => item.countryCode === 'MG').length >= 8);
 });
 
