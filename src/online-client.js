@@ -1,19 +1,20 @@
 /** Minimal HTTP client for the authoritative match-room API. */
 export class OnlineMatchClient {
-  constructor({ baseUrl = '', fetchImpl = globalThis.fetch, storage = globalThis.sessionStorage } = {}) {
+  constructor({ baseUrl = '', fetchImpl = globalThis.fetch, storage = globalThis.sessionStorage, accountTokenProvider = () => null } = {}) {
     this.baseUrl = String(baseUrl).replace(/\/$/, '');
     this.fetchImpl = fetchImpl;
     this.storage = storage || null;
+    this.accountTokenProvider = typeof accountTokenProvider === 'function' ? accountTokenProvider : () => null;
     this.roomId = null;
     this.token = null;
     this.playerId = null;
     this.sequence = 0;
   }
 
-  async request(path, { method = 'GET', body, auth = false } = {}) {
+  async request(path, { method = 'GET', body, auth = false, accountAuth = false } = {}) {
     if (typeof this.fetchImpl !== 'function') throw new Error('FETCH_UNAVAILABLE');
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
-      method, headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(auth && this.token ? { authorization: `Bearer ${this.token}` } : {}) },
+      method, headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(auth && this.token ? { authorization: `Bearer ${this.token}` } : {}), ...(accountAuth && this.accountTokenProvider() ? { authorization: `Bearer ${this.accountTokenProvider()}` } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     if (response.status === 204) return null;
@@ -42,7 +43,7 @@ export class OnlineMatchClient {
     } catch { return false; }
   }
   async joinRoom(roomId, options = {}) {
-    const result = await this.request(`/api/rooms/${encodeURIComponent(roomId)}/join`, { method: 'POST', body: options });
+    const result = await this.request(`/api/rooms/${encodeURIComponent(roomId)}/join`, { method: 'POST', body: options, accountAuth: true });
     this.roomId = roomId; this.token = result.token; this.playerId = result.playerId; this.sequence = 0;
     this.persistSession();
     return result;
