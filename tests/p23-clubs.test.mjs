@@ -197,5 +197,8 @@ test('P27 contrats : refuse une révision salariale pour joueur humain ou contra
  const club=manager.getClub('antananarivo-fc');
  const player=club.roster[0];
  assert.equal(manager.reviewSystemPlayerContract(club.id,player.id,{now:1}).ok,true);
+ const added=manager.addPlayer(club.id,{id:'human-review-test',name:'Human Test',playerType:'human',rating:60});
+ assert.equal(added.ok,true);
+ assert.equal(manager.reviewSystemPlayerContract(club.id,'human-review-test',{now:1}).reason,'not-system-player');
  assert.equal(manager.reviewSystemPlayerContract(club.id,'unknown',{now:1}).reason,'player-not-found');
 });

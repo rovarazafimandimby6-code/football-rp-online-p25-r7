@@ -38,7 +38,11 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     potentialBand: ['standard','good','high','exceptional'].includes(player?.potentialBand) ? player.potentialBand : 'standard',
     loyalty: normalizePlayerLoyalty(player?.loyalty),
     contract: player?.playerType !== 'human'
-      ? createSystemPlayerContract({ clubId: club.id, playerId: safeId(player?.id), division: club.division, rating: safeRating })
+      ? {
+          ...createSystemPlayerContract({ clubId: club.id, playerId: safeId(player?.id), division: club.division, rating: safeRating }),
+          ...(Number.isSafeInteger(player?.contract?.reviewCount) ? { reviewCount: Math.max(0, player.contract.reviewCount) } : {}),
+          ...(typeof player?.contract?.reviewedAt === 'string' ? { reviewedAt: player.contract.reviewedAt } : {})
+        }
       : player?.contract && typeof player.contract === 'object' && player.contract.status === 'active' &&
         Number.isSafeInteger(Number(player.contract.weeklyWage ?? player.contract.salary)) &&
         Number(player.contract.weeklyWage ?? player.contract.salary) >= 0
