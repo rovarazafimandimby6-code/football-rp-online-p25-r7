@@ -71,12 +71,13 @@ export function auditCupBracket(competition) {
   }
 
   const final=rounds.get(8)?.[0];
+  const allFixturesCompleted=fixtures.every(item=>item.status==='completed');
   if(competition.status==='completed') {
-    if(fixtures.some(item=>item.status!=='completed')||!final||!competition.championClubId||
+    if(!allFixturesCompleted||!final||!competition.championClubId||
       competition.championClubId!==winnerOf(final))
       return fail('cup-completion-without-valid-final-winner');
-  } else if(competition.championClubId) {
-    return fail('cup-champion-before-completion');
+  } else if(competition.championClubId||allFixturesCompleted) {
+    return fail('cup-completion-state-mismatch',{allFixturesCompleted,championClubId:competition.championClubId||null});
   }
   return {ok:true,participants:156,preliminaryMatches:28,byes:100,rounds:8,fixtures:TOTAL_FIXTURES,completedFixtures:fixtures.filter(item=>item.status==='completed').length,championClubId:competition.championClubId||null};
 }
