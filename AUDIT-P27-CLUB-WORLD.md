@@ -2,8 +2,8 @@
 
 Date de vérification : 24 novembre 2026  
 Branche : `p27-dev`  
-Commit code audité : `9a4790148f5480e5b21669ff37d349bd49367d60`  
-Workflow de référence : [GitHub Actions 45404323312](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45404323312)
+Commit audité : `67383b24ab5a818766c28c98da27da711a459550`  
+Workflow de référence : [GitHub Actions 45411343846](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45404323312)
 
 ## Résultat de l'audit
 
@@ -14,8 +14,8 @@ Le catalogue serveur contient 156 clubs fictifs, répartis exactement selon la p
 | D1 | Premier League | 16 | Nationale |
 | D2 | Ligue 2 | 20 | Nationale |
 | D3 | National League | 24 | Nationale |
-| D4 | Challenger League | 32 | Nord 16, Sud 16 |
-| D5 | Regional League | 64 | Nord 16, Sud 16, Est 16, Ouest 16 |
+| D4 | Challenger League | 32 | A 16, B 16 |
+| D5 | Regional League | 64 | A 16, B 16, C 16, D 16 |
 | **Total** | | **156** | **9 groupes de championnat** |
 
 Les 140 clubs d'expansion complètent les 16 clubs fondateurs. Les identifiants et noms sont uniques. Chaque club possède une localisation canonique, un stade, une identité chromatique, un motif de maillot, une note sportive et un budget. Les profils runtime, le recrutement et le lore sont contrôlés séparément.
@@ -25,13 +25,13 @@ Les 140 clubs d'expansion complètent les 16 clubs fondateurs. Les identifiants 
 - Identité : identifiants, noms et stades dupliqués.
 - Localisation : ville, pays et code pays canonique.
 - Divisions : effectifs exacts et notes dans les fourchettes prévues.
-- Conférences : affectation explicite prioritaire ; géographie vérifiée sans affectation explicite pour les clubs D4/D5.
+- Conférences : affectation explicite obligatoire ; les villes restent descriptives et ne déterminent jamais le groupe. Aucune latitude, longitude ou déduction géographique n'est utilisée.
 - Identité visuelle : trois couleurs hexadécimales distinctes et motif reconnu.
 - Effectifs : capacité maximale de 12, minimum initial de 8, maximum de 7 joueurs humains, types de joueurs et numéros de maillot uniques.
 - Gouvernance : politique d'admission valide, clubs réservés au système et profils de recrutement cohérents.
 - Profils : caractéristiques, stratégie, recrutement et lore ; aucune rivalité automatique.
 
-Les calendriers sont adaptés au niveau : D1 (16 clubs), D2 (20) et D3 (24) jouent en aller-retour ; D4 (deux conférences de 16) et D5 (quatre conférences de 16) jouent en aller simple. Cela représente 1 172 rencontres en D1-D3 et 720 en D4-D5, soit 1 892 rencontres de championnat. Les audits vérifient les deux manches inversées en D1-D3, chaque adversaire rencontré une fois en D4-D5, les journées sans doublon et l'équilibre domicile/extérieur. La Coupe des Clubs reste indépendante : élimination directe, 156 participants et 155 rencontres. Le tableau est structuré en 8 tours : 28 barrages préliminaires pour 56 clubs, 100 exemptions au premier tour principal, puis 64, 32, 16, 8, 4, 2 et 1 rencontre. Un audit dédié vérifie l'unicité des 156 entrants, les 155 rencontres, les 8 tours, les participants de chaque match et la cohérence des états de résultat/rejouabilité. Le parcours complet jusqu'au trophée est vérifié par une simulation automatisée des 155 rencontres, avec contrôle du champion et de l'attribution du trophée. Un test séparé couvre les matchs nuls et les reprises sans progression prématurée.
+Les calendriers sont adaptés au niveau : D1 (16 clubs), D2 (20) et D3 (24) jouent en aller-retour ; D4 (conférences A et B de 16) et D5 (conférences A, B, C et D de 16) jouent en aller simple. Cela représente 1 172 rencontres en D1-D3 et 720 en D4-D5, soit 1 892 rencontres de championnat. Les audits vérifient les deux manches inversées en D1-D3, chaque adversaire rencontré une fois en D4-D5, les journées sans doublon et l'équilibre domicile/extérieur. La Coupe des Clubs reste indépendante : élimination directe, 156 participants et 155 rencontres. Le tableau est structuré en 8 tours : 28 barrages préliminaires pour 56 clubs, 100 exemptions au premier tour principal, puis 64, 32, 16, 8, 4, 2 et 1 rencontre. Un audit dédié vérifie l'unicité des 156 entrants, les 155 rencontres, les 8 tours, les participants de chaque match et la cohérence des états de résultat/rejouabilité. Le parcours complet jusqu'au trophée est vérifié par une simulation automatisée des 155 rencontres, avec contrôle du champion et de l'attribution du trophée. Un test séparé couvre les matchs nuls et les reprises sans progression prématurée.
 
 ## API publique du catalogue
 
@@ -39,7 +39,7 @@ Les calendriers sont adaptés au niveau : D1 (16 clubs), D2 (20) et D3 (24) joue
 - `GET /api/clubs` : catalogue paginé ; filtres `division`, `conference`, recherche `q`, pagination `limit` et `offset`.
 - `GET /api/clubs/:id` : fiche publique d'un club.
 
-Les réponses publiques ne contiennent ni effectifs détaillés, ni contrats privés. Les listes et fiches lisent les affectations de la saison active ; les changements de division sont donc reflétés après une transition de saison. Les équipes de match reprennent également la division et la conférence courantes.
+Les réponses publiques ne contiennent ni effectifs détaillés, ni contrats privés. Les listes et fiches lisent les affectations explicites de la saison active ; les changements de division et de conférence sont reflétés après une transition de saison. Les villes et pays restent des données descriptives.
 
 Le catalogue public expose également `managementType` (`human` ou `system`) sans exposer l'identifiant du gestionnaire. L'interface applique les marqueurs discrets approuvés : point vert pour un club dirigé par un joueur, point rouge pour un club dirigé par le système. Le statut d'admission des joueurs reste une information distincte de la direction du club.
 
@@ -49,27 +49,47 @@ Le catalogue public expose également `managementType` (`human` ou `system`) san
 - Recherche, filtres par division, conférence et pays, ainsi que tri des clubs.
 - Les fiches conservent l'accès à l'effectif local sans publier les contrats privés.
 - Si le serveur est indisponible, l'écran conserve le catalogue local et signale clairement que les affectations peuvent être anciennes.
-- L'écran **Compétitions** charge les neuf groupes, classements, calendriers, résultats terminés et aperçu de la Coupe des Clubs depuis `GET /api/competitions`.
-- Le rendu des mouvements de fin de saison est étiqueté comme proposition non approuvée.
+- L'écran **Compétitions** charge les neuf groupes, classements, calendriers, résultats, huit tableaux de barrages de promotion et aperçu de la Coupe des Clubs depuis `GET /api/competitions`.
+- L'écran présente les demi-finales, finales, scores, reprises après nul, qualifiés et mouvements validés.
 - L'API de snapshot expose `cupAudit`, qui contrôle le tableau de Coupe à chaque lecture des compétitions.
 - Les libellés visibles utilisent « Joueur du système » et « Club dirigé par le système » ; l'abréviation « IA » a été retirée de l'interface principale.
 
+## Barème approuvé de fin de saison
+
+Le barème P27 est désormais intégré et déclaré approuvé. Il conserve les capacités fixes des divisions et produit exactement 20 promotions et 20 relégations (40 mouvements de clubs) :
+
+| Division de départ | Promotions | Relégations |
+|---|---:|---:|
+| D1 | 0 | 4 |
+| D2 | 4 | 4 |
+| D3 | 4 | 4 |
+| D4 | 4 (2 par conférence) | 8 (4 par conférence) |
+| D5 | 8 (2 par conférence) | 0 |
+
+- D2 et D3 : trois promotions directes, puis un barrage entre les places 4 à 7 (4e contre 7e, 5e contre 6e, puis finale).
+- D4 A et B : une montée directe par conférence, puis un barrage entre les places 2 à 5 pour la seconde montée.
+- D5 A, B, C et D : une montée directe par conférence, puis un barrage entre les places 2 à 5 pour la seconde montée.
+- Les relégations sont directes.
+- Un match nul en barrage impose une reprise ; aucun club n'est promu avant d'avoir gagné la finale.
+- D5 A et B alimentent D4 A ; D5 C et D alimentent D4 B.
+- Les quatre relégués de D3 sont répartis à raison de deux vers D4 A et deux vers D4 B.
+- Les quatre relégués de chaque groupe D4 sont répartis deux par deux vers les deux groupes D5 correspondants : A vers A/B et B vers C/D.
+
+Le moteur conserve les résultats et archives des barrages, vérifie les listes de mouvements par rapport à l'aperçu approuvé, refuse les transitions prématurées et contrôle les capacités des neuf groupes. Un test automatise trois renouvellements consécutifs, avec rechargement du stockage et contrôle des 156 identifiants, des divisions, des conférences, des calendriers et de la Coupe.
+
 ## Validation CI
 
-- **531 tests réussis**
+- **537 tests réussis**
 - **0 échec**
 - Contrôle de syntaxe JavaScript exécuté avec succès
-- Le workflow CI du commit audité est vert : [45404323312](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45404323312)
+- Le workflow CI du commit audité est vert : [45411343846](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45411343846)
 
-## Décisions qui restent à approuver
+## Vérification restante
 
-Ces éléments ne sont pas verrouillés par cet audit :
-
-1. Le barème de promotions/relégations demeure une proposition de politique. L'aperçu calcule les mouvements et la transition valide les capacités, mais le barème n'est pas déclaré définitivement approuvé.
-2. Une vérification visuelle et fonctionnelle sur appareil Android réel reste à effectuer.
+Une vérification visuelle et fonctionnelle sur appareil Android réel reste à effectuer.
 
 ## Conclusion
 
-Le **catalogue de 156 clubs, la structure des cinq divisions, les neuf groupes, l'affectation géographique, les calendriers, les contrôles d'intégrité, l'API publique et les écrans Clubs/Compétitions** sont intégrés et validés automatiquement sur `p27-dev`.
+Le **catalogue de 156 clubs, la structure des cinq divisions, les neuf groupes, les affectations explicites A/B/C/D, les calendriers, les contrôles d'intégrité, l'API publique et les écrans Clubs/Compétitions** sont intégrés et validés automatiquement sur `p27-dev`.
 
 Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne certifie pas l'ensemble du jeu P27, l'expérience graphique mobile, les performances Android ni les décisions sportives qui restent à approuver.
