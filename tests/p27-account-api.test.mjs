@@ -54,6 +54,26 @@ test('P27 API compte : inscription, authentification, session protégée et rév
     const forbiddenProfile = await fetch(`${base}/api/profile`);
     assert.equal(forbiddenProfile.status, 401);
 
+    const progressionResponse = await fetch(`${base}/api/progression`, { headers: { authorization: `Bearer ${created.token}` } });
+    assert.equal(progressionResponse.status, 200);
+    const progression = (await progressionResponse.json()).progression;
+    assert.ok(progression.processedMatchIds.length >= 1);
+    assert.equal(progression.processedMatchIds[0], room.id);
+    const practiceResponse = await fetch(`${base}/api/progression`, {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${created.token}` },
+      body: JSON.stringify({ action: 'practice', attribute: 'control', amount: 1 })
+    });
+    assert.equal(practiceResponse.status, 200);
+    assert.equal((await practiceResponse.json()).progression.attributes.control, 51);
+    const forbiddenProgression = await fetch(`${base}/api/progression`);
+    assert.equal(forbiddenProgression.status, 401);
+    const forgedProgression = await fetch(`${base}/api/progression`, {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${created.token}` },
+      body: JSON.stringify({ action: 'set', progression: { level: 99, coins: 999999999 } })
+    });
+    assert.equal(forgedProgression.status, 400);
+
+
 
     const me = await fetch(`${base}/api/accounts/me`, { headers: { authorization: `Bearer ${created.token}` } });
     assert.equal(me.status, 200);
