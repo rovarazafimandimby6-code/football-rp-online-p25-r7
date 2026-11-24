@@ -144,6 +144,8 @@ export function auditP27World({
 
   const transferEvents = Array.isArray(transferState?.events) ? transferState.events : [];
   const transferEventIds = new Set();
+  const transferEventById = new Map(transferEvents.filter(event => event?.type === 'transfer' && safeText(event.id)).map(event => [event.id,event]));
+  const salaryEventById = new Map(transferEvents.filter(event => event?.type === 'salary-payment' && safeText(event.id)).map(event => [event.id,event]));
   for (const event of transferEvents) {
     if (!safeText(event?.id) || transferEventIds.has(event.id)) errors.push({ code:'TRANSFER_EVENT_ID_INVALID_OR_DUPLICATE', eventId:event?.id || null });
     transferEventIds.add(event?.id);
@@ -169,7 +171,7 @@ export function auditP27World({
       continue;
     }
     journalTransferIds.add(record.id);
-    const event = transferEvents.find(item => item?.id === record.id && item.type === 'transfer');
+    const event = transferEventById.get(record.id);
     if (event && (record.fromClubId !== event.fromClubId || record.toClubId !== event.toClubId || record.fee !== event.fee))
       errors.push({ code:'TRANSFER_FINANCE_JOURNAL_EVENT_MISMATCH', eventId:record.id });
     if (!Number.isSafeInteger(record.fee) || record.fee <= 0 ||
@@ -208,7 +210,7 @@ export function auditP27World({
       continue;
     }
     journalWageIds.add(record.id);
-    const event = transferEvents.find(item => item?.id === record.id && item.type === 'salary-payment');
+    const event = salaryEventById.get(record.id);
     if (event && (record.clubId !== event.clubId || record.amount !== event.amount))
       errors.push({ code:'PLAYER_WAGE_JOURNAL_EVENT_MISMATCH', eventId:record.id });
     if (!clubById.has(record.clubId) || !Number.isSafeInteger(record.amount) || record.amount <= 0 ||
