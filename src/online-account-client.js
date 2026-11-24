@@ -71,6 +71,21 @@ export class OnlineAccountClient {
     return this.request('/api/profile', { method: 'PUT', auth: true, body: { profile } });
   }
 
+  async getProgression() {
+    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    return this.request('/api/progression', { auth: true });
+  }
+
+  async trainAttribute(attribute, amount = 1) {
+    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    return this.request('/api/progression', { method: 'POST', auth: true, body: { action: 'train', attribute, amount } });
+  }
+
+  async practiceAttribute(attribute, amount = 1) {
+    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    return this.request('/api/progression', { method: 'POST', auth: true, body: { action: 'practice', attribute, amount } });
+  }
+
   async logout() {
     if (!this.token) return false;
     try { await this.request('/api/accounts/logout', { method: 'POST', auth: true }); }
