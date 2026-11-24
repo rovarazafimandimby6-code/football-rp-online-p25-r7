@@ -57,7 +57,12 @@ const server = http.createServer(async (req, res) => {
       const session = accountStore.login(body);
       return session ? json(res, 200, session) : json(res, 401, { error: 'INVALID_CREDENTIALS' });
     }
-    const playerCareerMatch = url.pathname.match(/^\\/api\\/players\\/([a-z0-9-]{8,96})\\/career$/i);\n    if (req.method === 'GET' && playerCareerMatch) {\n      const career = careerStore.getPlayerCareer(playerCareerMatch[1]);\n      return career.player ? json(res, 200, { career }) : json(res, 404, { error: 'PLAYER_NOT_FOUND' });\n    }\n    if (req.method === 'GET' && url.pathname === '/api/career') {
+    const playerCareerMatch = url.pathname.match(/^\/api\/players\/([a-z0-9-]{8,96})\/career$/i);
+    if (req.method === 'GET' && playerCareerMatch) {
+      const career = careerStore.getPlayerCareer(playerCareerMatch[1]);
+      return career.player ? json(res, 200, { career }) : json(res, 404, { error: 'PLAYER_NOT_FOUND' });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/career') {
       const account = accountStore.resolve(bearer(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       return json(res, 200, { career: careerStore.get(account.id) });
