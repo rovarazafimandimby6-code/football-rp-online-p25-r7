@@ -966,3 +966,26 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Vérifier le plafond de transferts, l'unicité des mouvements et la réserve minimale de deux joueurs IA.
 - [x] Garder les villes et coordonnées hors de toute logique de sélection ou de classement.
 - [ ] Exécuter et valider la suite complète en CI ; comparer ensuite le scénario aux données réelles du monde P27.
+
+
+### Lot 99 — chaîne historique des transferts IA
+- [x] Distinguer les transferts successifs légitimes d'un même joueur des conflits d'effectif.
+- [x] Vérifier la continuité chronologique : le club vendeur du mouvement suivant doit être le club acheteur du mouvement précédent.
+- [x] Comparer le roster et la provenance du contrat uniquement au dernier mouvement connu, sans exiger qu'un joueur reste dans un ancien club acheteur.
+- [x] Détecter plusieurs commandes IA simultanément en attente pour un même joueur.
+- [x] Ajouter des tests de chaîne séquentielle valide et de double commande en attente.
+- [ ] Valider en CI.
+
+### Lot 100 — exclusion des transferts concurrents
+- [x] Refuser un nouveau mouvement d'un joueur tant qu'une saga antérieure de ce joueur reste en attente.
+- [x] Autoriser un mouvement séquentiel une fois la saga précédente terminée.
+- [x] Vérifier que le refus expose l'identifiant de la commande qui bloque le joueur.
+- [x] Ajouter un test de panne financière, reprise, puis nouveau transfert.
+- [ ] Valider en CI.
+
+### Lot 101 — historique et reprise après transferts successifs
+- [x] Effectuer deux transferts successifs du même joueur avec deux identifiants métier distincts.
+- [x] Recharger le service d'outbox après les deux mouvements.
+- [x] Vérifier que les deux commandes restent terminées et rejouables sans double mouvement.
+- [x] Contrôler la présence unique des écritures financières déterministes.
+- [ ] Valider en CI et compléter l'audit croisé de la chaîne sur un monde réel de 156 clubs.
