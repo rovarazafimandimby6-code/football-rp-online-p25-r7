@@ -7,12 +7,15 @@ import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
 import { JsonCareerStore } from './career-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
+import { JsonTransferStore } from './transfer-store.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
 const careerStore = new JsonCareerStore(careerDirectory);
 const competitionDirectory = process.env.COMPETITIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'competitions');
 const competitionStore = new JsonCompetitionStore(competitionDirectory);
+const transferDirectory = process.env.TRANSFERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'transfers');
+const transferStore = new JsonTransferStore(transferDirectory);
 const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
@@ -64,7 +67,20 @@ const server = http.createServer(async (req, res) => {
     const playerCareerMatch = url.pathname.match(/^\/api\/players\/([a-z0-9-]{8,96})\/career$/i);
     if (req.method === 'GET' && playerCareerMatch) {
       const career = careerStore.getPlayerCareer(playerCareerMatch[1]);
+      if (career.player) career.transfers = transferStore.getPlayerHistory(playerCareerMatch[1]);
       return career.player ? json(res, 200, { career }) : json(res, 404, { error: 'PLAYER_NOT_FOUND' });
+    }
+    if (url.pathname.startsWith('/api/contract') || url.pathname.startsWith('/api/transfer/')) {
+      const account = accountStore.resolve(bearer(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      if (req.method === 'GET' && url.pathname === '/api/contract') return json(res, 200, { career: transferStore.getCareer(account.id) });
+      if (req.method === 'POST' && url.pathname === '/api/contract/sign') return json(res, 200, transferStore.signContract(account.id, await readBody(req)));
+      if (req.method === 'POST' && url.pathname === '/api/contract/renew') return json(res, 200, transferStore.renewContract(account.id, await readBody(req)));
+      if (req.method === 'POST' && url.pathname === '/api/contract/terminate') return json(res, 200, transferStore.terminateContract(account.id));
+      if (req.method === 'POST' && url.pathname === '/api/transfer/offers') return json(res, 200, transferStore.requestOffer(account.id, await readBody(req)));
+      const offerAction = url.pathname.match(/^\/api\/transfer\/offers\/([a-z0-9-]{8,96})\/(accept|reject)$/i);
+      if (req.method === 'POST' && offerAction) return json(res, 200, offerAction[2] === 'accept' ? transferStore.acceptOffer(account.id, offerAction[1]) : transferStore.rejectOffer(account.id, offerAction[1]));
+      return json(res, 404, { error: 'NOT_FOUND' });
     }
     if (req.method === 'GET' && url.pathname === '/api/career') {
       const account = accountStore.resolve(bearer(req));
