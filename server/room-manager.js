@@ -46,6 +46,17 @@ export class RoomManager {
     }
   }
 
+  persistAllRooms() {
+    let saved = 0;
+    const failed = [];
+    for (const room of this.rooms.values()) {
+      if (!['lobby', 'playing', 'halftime'].includes(room.phase)) continue;
+      if (this.persistRoom(room)) saved++;
+      else failed.push({ roomId: room.id, reason: room.checkpointError || 'ROOM_CHECKPOINT_FAILED' });
+    }
+    return { saved, failed };
+  }
+
   restoreCheckpoints() {
     if (!this.roomStore) return 0;
     const now = this.now();
