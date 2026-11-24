@@ -236,3 +236,41 @@ test('P27 intégrité saisons : détecte les identifiants de fixture dupliqués 
  const result=auditP27World(input);
  assert.ok(result.errors.some(item=>item.code==='FIXTURE_ID_INVALID_OR_DUPLICATE'));
 });
+
+
+test('P27 intégrité financière : détecte un transfert accepté dont la réconciliation est absente ou incomplète',()=>{
+ const input=cleanWorld();
+ input.transferState.events=[{id:'transfer-event-1',type:'transfer',fromClubId:'club-a',toClubId:'club-b',fee:25,at:1000}];
+ input.financeJournal={version:1,transfers:[{id:'transfer-event-1',fromClubId:'club-a',toClubId:'club-b',fee:25,createdAt:1000,debitPosted:true,creditPosted:false,status:'pending'}],playerWages:[]};
+ input.financeAccounts=[
+  {clubId:'club-a',openingBalance:100,balance:75,entries:[{id:'transfer-fee-out-transfer-event-1',category:'transfer-expense',amount:25,direction:'expense',createdAt:1000}]},
+  {clubId:'club-b',openingBalance:100,balance:100,entries:[]}
+ ];
+ const result=auditP27World(input);
+ assert.equal(result.ok,true,JSON.stringify(result.errors));
+ assert.equal(result.counts.pendingTransferSettlements,1);
+ assert.ok(result.warnings.length===0);
+});
+
+test('P27 intégrité financière : détecte les checkpoints de transfert mensongers et les événements non journalisés',()=>{
+ const input=cleanWorld();
+ input.transferState.events=[{id:'transfer-event-2',type:'transfer',fromClubId:'club-a',toClubId:'club-b',fee:30,at:1000}];
+ input.financeJournal={version:1,transfers:[{id:'transfer-event-2',fromClubId:'club-a',toClubId:'club-b',fee:30,createdAt:1000,debitPosted:true,creditPosted:true,status:'completed'}],playerWages:[]};
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('TRANSFER_FINANCE_DEBIT_CHECKPOINT_MISMATCH'));
+ assert.ok(codes.includes('TRANSFER_FINANCE_CREDIT_CHECKPOINT_MISMATCH'));
+ input.financeJournal.transfers=[];
+ const missing=auditP27World(input);
+ assert.ok(missing.warnings.some(item=>item.code==='TRANSFER_FINANCE_JOURNAL_MISSING'));
+ assert.equal(missing.counts.pendingTransferSettlements,1);
+});
+
+test('P27 intégrité financière : vérifie les salaires humains et leurs checkpoints comptables',()=>{
+ const input=cleanWorld();
+ input.transferState.events=[{id:'salary-event-1',type:'salary-payment',clubId:'club-a',amount:10,at:1000}];
+ input.financeJournal={version:1,transfers:[],playerWages:[{id:'salary-event-1',clubId:'club-a',amount:10,createdAt:1000,posted:true}]};
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='PLAYER_WAGE_CHECKPOINT_MISMATCH'));
+ assert.equal(result.counts.pendingPlayerWages,0);
+});
