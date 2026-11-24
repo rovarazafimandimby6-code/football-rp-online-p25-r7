@@ -40,6 +40,13 @@ export function auditP27World({
       if (player?.playerType === 'system' && player?.contract?.status === 'active' && player.contract.playerId !== player.id) {
         errors.push({ code:'SYSTEM_CONTRACT_PLAYER_MISMATCH', clubId:club.id, playerId:player.id });
       }
+      if (player?.playerType === 'system' && player?.contract?.status === 'active') {
+        const expiry = Date.parse(player.contract.expiresAt || '');
+        if (player.contract.expiresAt && !Number.isFinite(expiry))
+          errors.push({ code:'SYSTEM_CONTRACT_EXPIRY_INVALID', clubId:club.id, playerId:player.id });
+        else if (Number.isFinite(expiry) && expiry <= Date.now())
+          errors.push({ code:'SYSTEM_CONTRACT_EXPIRED_STILL_REGISTERED', clubId:club.id, playerId:player.id, expiresAt:player.contract.expiresAt });
+      }
     }
     const humans = roster.filter(player => player?.playerType === 'human').length;
     if (humans > 7) errors.push({ code:'HUMAN_ROSTER_LIMIT_EXCEEDED', clubId:club.id, count:humans });
@@ -48,7 +55,11 @@ export function auditP27World({
   for (const club of catalogue) {
     for (const entry of Array.isArray(club.releasedPlayers) ? club.releasedPlayers : []) {
       const playerId = entry?.player?.id;
-      if (!safeText(playerId) || entry.reason === 'transferred' || rosterIds.has(playerId)) continue;
+      if (!safeText(playerId)) continue;
+      if (entry.player?.playerType === 'system' && entry.player?.contract?.status === 'active' &&
+          ['contract-expired','contract-not-renewed'].includes(entry.reason))
+        errors.push({ code:'EXPIRED_SYSTEM_PLAYER_ARCHIVE_HAS_ACTIVE_CONTRACT', clubId:club.id, playerId });
+      if (entry.reason === 'transferred' || rosterIds.has(playerId)) continue;
       if (!freeAgentArchive.has(playerId)) freeAgentArchive.set(playerId, []);
       freeAgentArchive.get(playerId).push({ clubId:club.id, releasedAt:entry.releasedAt || null });
     }
