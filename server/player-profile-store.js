@@ -59,10 +59,14 @@ export class JsonPlayerProfileStore {
     const id = clean(accountId, 64);
     if (!id) throw new Error('INVALID_ACCOUNT_ID');
     const profile = normalize(input);
-    const index = this.state.profiles.findIndex(item => item.accountId === id);
-    const row = { accountId: id, profile };
-    if (index < 0) this.state.profiles.push(row); else this.state.profiles[index] = row;
-    this.persist();
-    return structuredClone(profile);
+    const previous = this.state;
+    this.state = structuredClone(previous);
+    try {
+      const index = this.state.profiles.findIndex(item => item.accountId === id);
+      const row = { accountId: id, profile };
+      if (index < 0) this.state.profiles.push(row); else this.state.profiles[index] = row;
+      this.persist();
+      return structuredClone(profile);
+    } catch (error) { this.state = previous; throw error; }
   }
 }
