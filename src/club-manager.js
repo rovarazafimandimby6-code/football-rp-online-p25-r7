@@ -296,6 +296,38 @@ export class ClubManager {
     this.saveSeason(); return { ok: true, rosterSize: club.roster.length, number: normalized.number };
   }
 
+  signFreeAgent(clubId, playerId, { now = Date.now() } = {}) {
+    const target = this.clubs.get(safeId(clubId));
+    const id = safeId(playerId);
+    if (!target || !id || !Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-request' };
+    if ([...this.clubs.values()].some(item => item.roster.some(player => player.id === id)))
+      return { ok:false, reason:'player-already-registered' };
+    const candidates = [];
+    for (const source of this.clubs.values()) {
+      for (const entry of source.releasedPlayers || []) {
+        if (entry?.player?.id !== id || entry.reason === 'transferred') continue;
+        candidates.push({ source, entry });
+      }
+    }
+    candidates.sort((a,b) => (Date.parse(b.entry.releasedAt || '') || 0) - (Date.parse(a.entry.releasedAt || '') || 0));
+    const selected = candidates[0];
+    if (!selected) return { ok:false, reason:'free-agent-not-found' };
+    if (selected.entry.player.playerType === 'human') return { ok:false, reason:'human-career-managed' };
+    const player = clonePlayer(selected.entry.player);
+    const result = this.addPlayer(target.id, {
+      ...player,
+      playerType:'system',
+      contract:{
+        ...createSystemPlayerContract({ clubId:target.id, playerId:id, division:target.division, rating:player.rating }),
+        signedAt:new Date(now).toISOString(),
+        previousClubId:selected.source.id,
+        transferredAt:new Date(now).toISOString()
+      }
+    });
+    if (!result.ok) return result;
+    return { ok:true, playerId:id, clubId:target.id, previousClubId:selected.source.id, rosterSize:result.rosterSize };
+  }
+
   canAcceptHuman(clubId, playerId) {
     const target = this.clubs.get(safeId(clubId));
     const id = safeId(playerId);
