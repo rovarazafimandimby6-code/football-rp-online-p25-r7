@@ -6,7 +6,7 @@ import path from 'node:path';
 import {JsonCompetitionStore} from '../server/competition-store.js';
 import {RoomManager} from '../server/room-manager.js';
 const setup=()=>{const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-competitions-'));return {directory,store:new JsonCompetitionStore(directory,{seasonId:'test-season',now:()=>1000}),cleanup:()=>rmSync(directory,{recursive:true,force:true})};};
-test('P27 compétitions : génère les neuf groupes de championnat et la coupe à élimination directe',()=>{const f=setup();try{const data=f.store.snapshot();assert.equal(data.competitions.filter(c=>c.type==='league').length,9);assert.equal(data.competitions.find(c=>c.division==='D4'&&c.conference==='Nord').name,'Challenger League · Conférence Nord');assert.deepEqual(data.competitions.filter(c=>c.division==='D5').map(c=>c.conference),['Nord','Sud','Est','Ouest']);assert.ok(data.competitions.filter(c=>c.type==='league').every(c=>c.status==='active'));assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').members.length,16);assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').fixtures.length,120);assert.equal(new Set(data.competitions.find(c=>c.id==='test-season-league-D1').fixtures.map(f=>f.round)).size,15);assert.equal(data.competitions.find(c=>c.type==='cup').fixtures.length,155);}finally{f.cleanup();}});
+test('P27 compétitions : génère les neuf groupes de championnat et la coupe à élimination directe',()=>{const f=setup();try{const data=f.store.snapshot();assert.equal(data.competitions.filter(c=>c.type==='league').length,9);assert.equal(data.competitions.find(c=>c.division==='D4'&&c.conference==='Nord').name,'Challenger League · Conférence Nord');assert.deepEqual(data.competitions.filter(c=>c.division==='D5').map(c=>c.conference),['Nord','Sud','Est','Ouest']);assert.ok(data.competitions.filter(c=>c.type==='league').every(c=>c.status==='active'));assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').members.length,16);assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').fixtures.length,240);assert.equal(new Set(data.competitions.find(c=>c.id==='test-season-league-D1').fixtures.map(f=>f.round)).size,30);assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').matchFormat,'home-away');assert.equal(data.competitions.find(c=>c.id==='test-season-league-D4-NORD').fixtures.length,120);assert.equal(data.competitions.find(c=>c.type==='cup').fixtures.length,155);}finally{f.cleanup();}});
 test('P27 coupe : les 156 clubs sont engagés une seule fois dans le tableau initial',()=>{const f=setup();try{const cup=f.store.snapshot().competitions.find(c=>c.type==='cup');assert.equal(cup.members.length,156);assert.equal(new Set(cup.members.map(c=>c.id)).size,156);const preliminary=cup.fixtures.filter(x=>x.round===1);const main=cup.fixtures.filter(x=>x.round===2);assert.equal(preliminary.length,28);assert.equal(main.length,64);const preliminaryIds=preliminary.flatMap(x=>[x.homeClubId,x.awayClubId]);assert.equal(new Set(preliminaryIds).size,56);const byeIds=main.flatMap(x=>[x.homeClubId,x.awayClubId].filter(Boolean));assert.equal(byeIds.length,100);assert.equal(new Set(byeIds).size,100);assert.equal(preliminaryIds.some(id=>byeIds.includes(id)),false);assert.equal(main.filter(x=>x.status==='waiting').length,28);assert.equal(cup.fixtures.length,155);}finally{f.cleanup();}});
 test('P27 coupe : les 155 rencontres conduisent à un champion et un trophée',()=>{const f=setup();try{for(let round=1;round<=8;round++){const cup=f.store.snapshot().competitions.find(c=>c.type==='cup');const ready=cup.fixtures.filter(x=>x.round===round&&x.status==='scheduled');assert.equal(ready.length,[0,28,64,32,16,8,4,2,1][round]);for(let i=0;i<ready.length;i++){const result=f.store.recordFixtureResult(ready[i].id,{roomId:`cup-r${round}-${i}`,homeGoals:2,awayGoals:1,finalizedAt:round*1000+i});assert.equal(result.ok,true);}}const cup=f.store.snapshot().competitions.find(c=>c.type==='cup');assert.equal(cup.status,'completed');assert.ok(cup.championClubId);assert.equal(cup.fixtures.length,155);assert.ok(cup.fixtures.every(x=>x.status==='completed'));assert.equal(f.store.snapshot().trophies.filter(x=>x.competitionId===cup.id).length,1);}finally{f.cleanup();}});
 test('P27 compétitions : classement serveur idempotent et persistant',()=>{const f=setup();try{const league=f.store.snapshot().competitions.find(c=>c.id==='test-season-league-D1'),fixture=league.fixtures[0];assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'room-a',homeGoals:2,awayGoals:1,finalizedAt:200}).ok,true);assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'room-a',homeGoals:99,awayGoals:0,finalizedAt:201}).duplicate,true);assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'room-b',homeGoals:0,awayGoals:9}).reason,'fixture-already-completed');const table=f.store.snapshot().competitions.find(c=>c.id===league.id).standings;assert.equal(table.reduce((n,row)=>n+row.played,0),2);assert.equal(table.find(row=>row.id===fixture.homeClubId).points,3);const restored=new JsonCompetitionStore(f.directory,{seasonId:'test-season'});assert.equal(restored.getFixture(fixture.id).status,'completed');}finally{f.cleanup();}});
@@ -176,5 +176,51 @@ test('P27 calendrier : détecte une double programmation et une confrontation ma
   const audit=f.store.snapshot().scheduleAudit;
   assert.equal(audit.ok,false);
   assert.ok(audit.errors.some(item=>['club-scheduled-twice-in-round','duplicate-league-pairing','invalid-club-appearance-count'].includes(item.reason)));
+ }finally{f.cleanup();}
+});
+
+test('P27 calendriers : D1, D2 et D3 jouent en aller-retour ; D4 et D5 en aller simple',()=>{
+ const f=setup();try{
+  const leagues=f.store.snapshot().competitions.filter(c=>c.type==='league');
+  const expected={D1:{format:'home-away',fixtures:240,rounds:30},D2:{format:'home-away',fixtures:380,rounds:38},D3:{format:'home-away',fixtures:552,rounds:46},D4:{format:'single-leg',fixtures:120,rounds:15},D5:{format:'single-leg',fixtures:120,rounds:15}};
+  for(const league of leagues){
+   const rule=expected[league.division];
+   assert.equal(league.matchFormat,rule.format,league.id);
+   assert.equal(league.fixtures.length,rule.fixtures,league.id);
+   assert.equal(new Set(league.fixtures.map(item=>item.round)).size,rule.rounds,league.id);
+   assert.ok(league.fixtures.every(item=>Number.isInteger(item.leg)&&item.leg>0),league.id);
+  }
+  for(const division of ['D1','D2','D3']){
+   const league=leagues.find(item=>item.division===division);
+   const pairs=new Map();
+   for(const fixture of league.fixtures){const key=[fixture.homeClubId,fixture.awayClubId].sort().join('|');if(!pairs.has(key))pairs.set(key,[]);pairs.get(key).push(fixture);}
+   assert.equal(pairs.size,league.members.length*(league.members.length-1)/2);
+   for(const pair of pairs.values()){assert.equal(pair.length,2);assert.equal(pair[0].homeClubId,pair[1].awayClubId);assert.equal(pair[0].awayClubId,pair[1].homeClubId);}
+  }
+  assert.equal(f.store.snapshot().scheduleAudit.fixtureCount,1892);
+  assert.equal(f.store.snapshot().scheduleAudit.ok,true,JSON.stringify(f.store.snapshot().scheduleAudit.errors));
+ }finally{f.cleanup();}
+});
+
+test('P27 migration calendrier : convertit une ancienne saison active en aller-retour sans perdre les résultats aller',()=>{
+ const f=setup();try{
+  const d1=f.store.activeSeason.competitions.find(item=>item.division==='D1');
+  const d4=f.store.activeSeason.competitions.find(item=>item.division==='D4');
+  d1.fixtures=d1.fixtures.filter(item=>item.leg===1).map(({leg,...fixture})=>fixture);
+  delete d1.matchFormat;
+  d1.status='active';
+  d4.fixtures=d4.fixtures.map(({leg,...fixture})=>fixture);
+  delete d4.matchFormat;
+  f.store.persist();
+  const restored=new JsonCompetitionStore(f.directory,{seasonId:'ignored'});
+  const migratedD1=restored.activeSeason.competitions.find(item=>item.division==='D1');
+  const migratedD4=restored.activeSeason.competitions.find(item=>item.division==='D4');
+  assert.equal(migratedD1.fixtures.length,240);
+  assert.equal(migratedD1.matchFormat,'home-away');
+  assert.equal(migratedD1.fixtures.filter(item=>item.leg===2).length,120);
+  assert.equal(migratedD4.fixtures.length,240);
+  assert.equal(migratedD4.matchFormat,'single-leg');
+  assert.ok(migratedD4.fixtures.every(item=>item.leg===1));
+  assert.equal(restored.snapshot().scheduleAudit.ok,true,JSON.stringify(restored.snapshot().scheduleAudit.errors));
  }finally{f.cleanup();}
 });

@@ -9,7 +9,7 @@ test('P27 compétitions UI : charge les neuf classements depuis le snapshot serv
   assert.match(main,/fetch\('\/api\/competitions'/);
   assert.match(main,/leagues\.length!==9/);
   assert.match(main,/snapshot\.scheduleAudit\?\.ok/);
-  assert.match(main,/snapshot\.scheduleAudit\.fixtureCount!==1306/);
+  assert.match(main,/snapshot\.scheduleAudit\.fixtureCount!==1892/);
   assert.match(main,/Classements officiels/);
 });
 
@@ -36,4 +36,10 @@ test('P27 compétitions UI : les tableaux et aperçus restent adaptables aux pet
   assert.match(css,/\.server-season-overview/);
   assert.match(css,/\.server-fixture-preview/);
   assert.match(css,/@media\(max-width:560px\)\{\.server-season-overview/);
+});
+
+test('P27 compétitions UI : indique les formats distincts selon la division',()=>{
+ assert.match(main,/ALLER-RETOUR/);
+ assert.match(main,/ALLER SIMPLE/);
+ assert.match(main,/competition\.matchFormat/);
 });

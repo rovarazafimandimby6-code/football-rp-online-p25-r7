@@ -31,7 +31,7 @@ Les 140 clubs d'expansion complètent les 16 clubs fondateurs. Les identifiants 
 - Gouvernance : politique d'admission valide, clubs réservés au système et profils de recrutement cohérents.
 - Profils : caractéristiques, stratégie, recrutement et lore ; aucune rivalité automatique.
 
-Le calendrier des neuf groupes est audité : 1 306 rencontres de championnat en aller simple, chaque club rencontre chaque adversaire une fois et l'écart domicile/extérieur est au plus égal à un match. La Coupe des Clubs réunit les 156 clubs dans un tableau de 155 rencontres.
+Les calendriers sont adaptés au niveau : D1 (16 clubs), D2 (20) et D3 (24) jouent en aller-retour ; D4 (deux conférences de 16) et D5 (quatre conférences de 16) jouent en aller simple. Cela représente 1 172 rencontres en D1-D3 et 720 en D4-D5, soit 1 892 rencontres de championnat. Les audits vérifient les deux manches inversées en D1-D3, chaque adversaire rencontré une fois en D4-D5, les journées sans doublon et l'équilibre domicile/extérieur. La Coupe des Clubs reste indépendante : élimination directe, 156 participants et 155 rencontres.
 
 ## API publique du catalogue
 
@@ -55,7 +55,7 @@ Le catalogue public expose également `managementType` (`human` ou `system`) san
 
 ## Validation CI
 
-- **524 tests réussis**
+- **Tests à revalider après la modification des calendriers**
 - **0 échec**
 - Contrôle de syntaxe JavaScript exécuté avec succès
 - Run : [45397509144](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45397509144)
@@ -65,7 +65,7 @@ Le catalogue public expose également `managementType` (`human` ou `system`) san
 Ces éléments ne sont pas verrouillés par cet audit :
 
 1. Le barème de promotions/relégations demeure une proposition de politique. L'aperçu calcule les mouvements et la transition valide les capacités, mais le barème n'est pas déclaré définitivement approuvé.
-2. Le calendrier actuel est en aller simple. Le passage à un aller-retour doublerait le nombre de rencontres de championnat ; il n'a pas été activé sans décision explicite.
+2. Le format est désormais différencié : aller-retour en D1-D3 et aller simple en D4-D5. La Coupe conserve son élimination directe.
 3. L'interface des clubs et des compétitions est maintenant reliée au serveur et couverte par les tests automatisés. Une vérification visuelle sur appareil Android réel reste à effectuer.
 
 ## Conclusion

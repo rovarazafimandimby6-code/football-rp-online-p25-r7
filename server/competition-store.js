@@ -24,6 +24,8 @@ function createSeason(seasonId, clubs, now) {
     const awayCounts = new Map(rotation.map(id => [id,0]));
     const groupKey = group.conference ? `-${group.conference.toLocaleUpperCase('fr')}` : '';
     const competitionId = `${seasonId}-league-${group.division}${groupKey}`;
+    const matchFormat = ['D1','D2','D3'].includes(group.division) ? 'home-away' : 'single-leg';
+    const firstLegFixtures = [];
     for (let round = 1; round <= rounds; round++) {
       for (let match = 0; match < scheduled.length / 2; match++) {
         let home = scheduled[match], away = scheduled[scheduled.length - 1 - match];
@@ -34,10 +36,21 @@ function createSeason(seasonId, clubs, now) {
           [home, away] = [away, home];
         homeCounts.set(home,homeCounts.get(home)+1);
         awayCounts.set(away,awayCounts.get(away)+1);
-        fixtures.push({ id: `${seasonId}-${group.division}${groupKey}-R${round}-M${match+1}`, competitionId, type: 'league', round, homeClubId: home, awayClubId: away, status: 'scheduled', result: null, roomId: null });
+        firstLegFixtures.push({ id: `${seasonId}-${group.division}${groupKey}-R${round}-M${match+1}-L1`, competitionId, type: 'league', round, leg:1, homeClubId: home, awayClubId: away, status: 'scheduled', result: null, roomId: null });
       }
       const last = scheduled.pop();
       scheduled.splice(1, 0, last);
+    }
+    fixtures.push(...firstLegFixtures);
+    if (matchFormat === 'home-away') {
+      for (const fixture of firstLegFixtures) fixtures.push({
+        ...fixture,
+        id: fixture.id.replace(/-L1$/, '-L2'),
+        round: fixture.round + rounds,
+        leg:2,
+        homeClubId:fixture.awayClubId,
+        awayClubId:fixture.homeClubId
+      });
     }
     const targetClubCount = group.conference ? 16 : ({ D1: 16, D2: 20, D3: 24 }[group.division]);
     season.competitions.push({
@@ -50,6 +63,7 @@ function createSeason(seasonId, clubs, now) {
       status: members.length >= targetClubCount ? 'active' : 'pending-population',
       members,
       targetClubCount,
+      matchFormat,
       fixtures,
       standings: members.map(club => ({ ...club, played:0, wins:0, draws:0, losses:0, goalsFor:0, goalsAgainst:0, points:0 }))
     });
@@ -91,10 +105,12 @@ export class JsonCompetitionStore {
     this.directory = path.resolve(directory); this.file = path.join(this.directory,'competitions.json');
     this.clubs = new Map(clubs.map(club => [club.id,{...club}]));
     this.now = now; mkdirSync(this.directory,{recursive:true});
-    this.state = this.read() || { version:1, seasons:[createSeason(seasonId,clubs,this.now())] };
+    const storedState = this.read();
+    this.state = storedState || { version:1, seasons:[createSeason(seasonId,clubs,this.now())] };
     if (Array.isArray(this.state.clubAssignments)) this.clubs = new Map(this.state.clubAssignments.map(club => [club.id,{...club}]));
     if (!this.state.seasons.length) this.state.seasons.push(createSeason(seasonId,clubs,this.now()));
-    if (!this.read()) this.persist();
+    if (!storedState) this.persist();
+    if (this.migrateActiveSeasonCalendars()) this.persist();
   }
   read() {
     try { const value=JSON.parse(readFileSync(this.file,'utf8')); if(value?.version!==1||!Array.isArray(value.seasons)) throw new Error('schema'); return value; }
@@ -104,6 +120,40 @@ export class JsonCompetitionStore {
     const temp=`${this.file}.${process.pid}.${randomUUID()}.tmp`;
     try { writeFileSync(temp,JSON.stringify(this.state),{mode:0o600}); renameSync(temp,this.file); }
     catch(error){ try{unlinkSync(temp);}catch{} throw error; }
+  }
+  migrateActiveSeasonCalendars() {
+    const season=this.state.seasons.find(item=>item.status==='active');
+    if(!season)return false;
+    let changed=false;
+    for(const competition of season.competitions||[]) {
+      if(competition.type!=='league'||!['D1','D2','D3','D4','D5'].includes(competition.division))continue;
+      const format=['D1','D2','D3'].includes(competition.division)?'home-away':'single-leg';
+      const fixtures=competition.fixtures||[];
+      const clubCount=competition.members?.length||0;
+      const baseRounds=Math.max(0,clubCount-1);
+      if(competition.matchFormat!==format){competition.matchFormat=format;changed=true;}
+      for(const fixture of fixtures)if(!fixture.leg){fixture.leg=1;changed=true;}
+      if(format!=='home-away')continue;
+      const existingReturns=new Set(fixtures.filter(item=>item.leg===2).map(item=>[item.homeClubId,item.awayClubId].sort().join('|')));
+      const additions=[];
+      for(const fixture of fixtures.filter(item=>item.leg===1)) {
+        const pair=[fixture.homeClubId,fixture.awayClubId].sort().join('|');
+        if(existingReturns.has(pair))continue;
+        additions.push({...fixture,id:`${fixture.id}-RETURN`,round:fixture.round+baseRounds,leg:2,
+          homeClubId:fixture.awayClubId,awayClubId:fixture.homeClubId,status:'scheduled',result:null,roomId:null});
+        existingReturns.add(pair);
+      }
+      if(additions.length) {
+        competition.fixtures.push(...additions);
+        if(competition.status==='completed') {
+          competition.status='active';
+          competition.championClubId=null;
+          season.trophies=(season.trophies||[]).filter(item=>item.competitionId!==competition.id);
+        }
+        changed=true;
+      }
+    }
+    return changed;
   }
   get activeSeason(){ return this.state.seasons.find(season=>season.status==='active') || this.state.seasons.at(-1); }
   getFixture(fixtureId) {
