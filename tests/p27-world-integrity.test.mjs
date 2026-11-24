@@ -134,6 +134,19 @@ test('P27 intégrité financière : détecte une écriture débit/crédit prése
  assert.ok(codes.includes('TRANSFER_FINANCE_CREDIT_UNEXPECTED_ENTRY'));
 });
 
+test('P27 intégrité mercato IA : contrôle la provenance du contrat après déplacement du roster',()=>{
+ const input=cleanWorld();
+ const player=input.clubs[0].roster.pop();
+ player.contract={status:'active',clubId:'club-b',playerId:'player-a'};
+ input.clubs[1].roster.push(player);
+ input.systemTransferState={version:1,transfers:[{
+  id:'ai-transfer-contract-link',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',
+  fee:500,createdAt:1000,status:'pending'
+ }]};
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='SYSTEM_TRANSFER_CONTRACT_LINK_MISMATCH'));
+});
+
 test('P27 clubs : synchronise les divisions et conférences officielles après transition',()=>{
  const club={id:'club-a',division:'D2',conference:null};
  const manager={clubs:new Map([['club-a',club]]),saveSeason:()=>true};
