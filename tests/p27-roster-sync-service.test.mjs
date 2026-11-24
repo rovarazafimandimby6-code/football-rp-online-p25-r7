@@ -314,7 +314,7 @@ test('P27 saga mercato et prêts : conserve une seule inscription après transfe
   f.setNow(Date.parse(loan.career.contract.loan.expiresAt)+1);
   f.transferStore.getCareer('account-transfer-loan-cycle');
   const restartedTransfers=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
-  const restartedClubs=new ClubManager(f.clubs,new JsonClubRosterStorage(f.directory),'test-rosters');
+  const restartedClubs=new ClubManager(f.clubs,new JsonClubRosterStorage(f.directory),'p27-server-club-rosters');
   assert.equal(processPendingRosterSync({transferStore:restartedTransfers,clubManager:restartedClubs}).ok,true);
   const inA=restartedClubs.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length;
   const inB=restartedClubs.getClub('club-b').roster.filter(player=>player.id===signed.career.playerId).length;
