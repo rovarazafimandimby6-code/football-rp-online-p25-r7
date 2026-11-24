@@ -126,6 +126,15 @@ const server = http.createServer(async (req, res) => {
       });
       return json(res, audit.ok ? 200 : 409, audit);
     }
+    if (req.method === 'POST' && url.pathname === '/api/admin/system-transfers/simulate') {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
+      const body = await readBody(req);
+      const result = systemTransfers.simulateMarket({
+        windowId:body.windowId, maxTransfers:body.maxTransfers, now:body.now
+      });
+      return json(res, result.ok ? 200 : 400, result);
+    }
     if (req.method === 'POST' && url.pathname === '/api/admin/system-transfers') {
       if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
       if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
