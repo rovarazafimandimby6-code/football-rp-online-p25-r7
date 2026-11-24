@@ -86,6 +86,10 @@ export function auditP27World({
   }
   if (asList(financeAccounts).length && asList(financeAccounts).length !== catalogue.length)
     warnings.push({ code:'FINANCE_ACCOUNT_CATALOGUE_SIZE_MISMATCH', expected:catalogue.length, actual:asList(financeAccounts).length });
+  if (asList(financeAccounts).length) {
+    for (const club of catalogue) if (!financeClubIds.has(club.id))
+      errors.push({ code:'FINANCE_ACCOUNT_MISSING', clubId:club.id });
+  }
 
   const careers = Array.isArray(transferState?.careers) ? transferState.careers : [];
   const accountIds = new Set();
@@ -128,7 +132,10 @@ export function auditP27World({
       financeEntries++;
       if (!safeText(entry?.id) || ids.has(entry.id)) errors.push({ code:'FINANCE_ENTRY_ID_INVALID_OR_DUPLICATE', clubId:account.clubId, entryId:entry?.id || null });
       ids.add(entry?.id);
-      if (!Number.isSafeInteger(entry?.amount) || entry.amount <= 0 || !['income','expense'].includes(entry.direction)) {
+      const validCategories = new Set(['sponsorship','ticketing','matchday','merchandise','transfer-income','transfer-expense','wages','staff','stadium-maintenance','medical','training','travel','competition-prize','loan','other']);
+      if (!Number.isSafeInteger(entry?.amount) || entry.amount <= 0 || entry.amount > 1_000_000_000_000 ||
+          !['income','expense'].includes(entry.direction) || !validCategories.has(entry.category) ||
+          !Number.isSafeInteger(entry.createdAt) || entry.createdAt < 0) {
         errors.push({ code:'FINANCE_ENTRY_INVALID', clubId:account.clubId, entryId:entry?.id || null });
         continue;
       }
@@ -160,13 +167,16 @@ export function auditP27World({
   const activeSeasons = seasons.filter(season => season?.status === 'active');
   if (seasons.length && activeSeasons.length !== 1) errors.push({ code:'ACTIVE_SEASON_COUNT_INVALID', count:activeSeasons.length });
   let fixtures = 0, completedFixtures = 0;
+  const allFixtureIds = new Set();
   for (const season of seasons) {
     const fixtureIds = new Set();
+    let seasonLeagueCount = 0, seasonLeagueFixtures = 0;
     const competitionIds = new Set();
     for (const competition of Array.isArray(season.competitions) ? season.competitions : []) {
       if (!safeText(competition?.id) || competitionIds.has(competition.id))
         errors.push({ code:'COMPETITION_ID_INVALID_OR_DUPLICATE', seasonId:season.id, competitionId:competition?.id || null });
       competitionIds.add(competition?.id);
+      if (competition?.type === 'league') seasonLeagueCount++;
       const memberIds = new Set();
       for (const member of Array.isArray(competition.members) ? competition.members : []) {
         if (!clubById.has(member?.id)) errors.push({ code:'COMPETITION_UNKNOWN_CLUB', seasonId:season.id, competitionId:competition.id, clubId:member?.id });
@@ -175,8 +185,11 @@ export function auditP27World({
       }
       for (const fixture of Array.isArray(competition.fixtures) ? competition.fixtures : []) {
         fixtures++;
-        if (!safeText(fixture?.id) || fixtureIds.has(fixture.id)) errors.push({ code:'FIXTURE_ID_INVALID_OR_DUPLICATE', seasonId:season.id, fixtureId:fixture?.id || null });
+        if (competition?.type === 'league') seasonLeagueFixtures++;
+        if (!safeText(fixture?.id) || fixtureIds.has(fixture.id) || allFixtureIds.has(fixture.id))
+          errors.push({ code:'FIXTURE_ID_INVALID_OR_DUPLICATE', seasonId:season.id, fixtureId:fixture?.id || null });
         fixtureIds.add(fixture?.id);
+        allFixtureIds.add(fixture?.id);
         if (fixture.competitionId && fixture.competitionId !== competition.id) errors.push({ code:'FIXTURE_COMPETITION_LINK_MISMATCH', seasonId:season.id, competitionId:competition.id, fixtureId:fixture.id });
         if (fixture.homeClubId && fixture.homeClubId === fixture.awayClubId) errors.push({ code:'FIXTURE_SELF_PLAY_INVALID', seasonId:season.id, competitionId:competition.id, fixtureId:fixture.id });
         if (fixture.status === 'completed') {
@@ -188,6 +201,9 @@ export function auditP27World({
         }
       }
     }
+    if (seasonLeagueCount > 0 && (seasonLeagueCount !== 9 || seasonLeagueFixtures !== 1892))
+      errors.push({ code:'LEAGUE_SEASON_STRUCTURE_INVALID', seasonId:season.id,
+        expectedCompetitions:9, actualCompetitions:seasonLeagueCount, expectedFixtures:1892, actualFixtures:seasonLeagueFixtures });
   }
 
   const resultRoomIds = new Set();
