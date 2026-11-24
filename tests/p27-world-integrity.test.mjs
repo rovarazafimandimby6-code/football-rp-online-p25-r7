@@ -313,3 +313,27 @@ test('P27 intégrité monde : signale un joueur humain encore inscrit après exp
  const result=auditP27World(input);
  assert.ok(result.warnings.some(item=>item.code==='INACTIVE_CAREER_PLAYER_STILL_REGISTERED'));
 });
+
+test('P27 intégrité monde : audite les commandes outbox d’effectif et compte les reprises en attente',()=>{
+ const input=cleanWorld();
+ input.transferState.rosterSync=[{
+  id:'roster-command-a',playerId:'human-account-a',action:'upsert',clubId:'club-a',previousClubId:null,
+  contract:{status:'active',playerId:'human-account-a',clubId:'club-a',salary:100},
+  status:'pending',attempts:2
+ }];
+ const result=auditP27World(input);
+ assert.equal(result.ok,true,JSON.stringify(result.errors));
+ assert.equal(result.counts.pendingRosterSync,1);
+ assert.ok(result.warnings.some(item=>item.code==='ROSTER_SYNC_PENDING'));
+});
+
+test('P27 intégrité monde : rejette les commandes outbox dupliquées ou incohérentes',()=>{
+ const input=cleanWorld();
+ const entry={id:'roster-command-a',playerId:'human-account-a',action:'upsert',clubId:'club-a',
+  contract:{status:'active',playerId:'human-account-a',clubId:'club-b',salary:100},status:'pending',attempts:0};
+ input.transferState.rosterSync=[entry,{...entry}];
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('ROSTER_SYNC_ID_INVALID_OR_DUPLICATE'));
+ assert.ok(codes.includes('ROSTER_SYNC_UPSERT_LINK_INVALID'));
+});
