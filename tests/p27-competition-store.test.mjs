@@ -80,7 +80,7 @@ test('P27 mouvements : propose un barème complet et conserve exactement les quo
   assert.equal(preview.relegations,20);
   assert.deepEqual(preview.divisionCounts,{D1:16,D2:20,D3:24,D4:32,D5:64});
   assert.deepEqual(preview.conferenceCounts,{D4:{A:16,B:16},D5:{A:16,B:16,C:16,D:16}});
-  assert.equal(new Set(preview.movements.map(item=>item.clubId)).size,20);
+  assert.equal(new Set(preview.movements.map(item=>item.clubId)).size,40);
  }finally{f.cleanup();}
 });
 
@@ -144,9 +144,9 @@ test('P27 saisons : applique la prévision validée et archive les détails de c
   assert.equal(preview.ok,true,JSON.stringify(preview));
   const result=f.store.finalizeSeason({nextSeasonId:'2027-28',movements:preview.movements,completedAt:3000});
   assert.equal(result.ok,true,JSON.stringify(result));
-  assert.equal(result.movements,20);
+  assert.equal(result.movements,40);
   const archived=f.store.seasonHistory()[0].movements;
-  assert.equal(archived.length,20);
+  assert.equal(archived.length,40);
   assert.ok(archived.every(item=>item.clubName&&item.fromDivision&&item.toDivision&&item.type&&Number.isSafeInteger(item.finalPosition)&&item.competitionId));
   const promotions=archived.filter(item=>item.type==='promotion');
   const relegations=archived.filter(item=>item.type==='relegation');
