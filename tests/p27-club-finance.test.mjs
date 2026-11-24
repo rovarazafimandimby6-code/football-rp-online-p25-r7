@@ -30,3 +30,28 @@ test('P27 finance : recettes de match calculées uniquement depuis affluence et 
  assert.deepEqual(ClubFinanceStore.calculateMatchdayRevenue({attendance:350,averageTicketPrice:20}),{ok:true,revenue:7000});
  assert.equal(ClubFinanceStore.calculateMatchdayRevenue({attendance:-1,averageTicketPrice:20}).ok,false);
 });
+test('P27 finance : contrats sponsors versent les échéances dues une seule fois',()=>{
+ const data=new Map(),storage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,String(v))};
+ const f=new ClubFinanceStore(storage,'sponsor-payments');f.openAccount('club',0);
+ const start=Date.UTC(2026,0,1);
+ assert.equal(f.signSponsorContract('club',{id:'main',name:'Partenaire principal',weeklyPayment:5000,durationWeeks:4,signedAt:start}).ok,true);
+ const first=f.settleSponsorPayments('club',start+15*86400000);
+ assert.equal(first.paid,2);assert.equal(first.amount,10000);assert.equal(first.account.balance,10000);
+ assert.equal(f.settleSponsorPayments('club',start+15*86400000).paid,0);
+ const restored=new ClubFinanceStore(storage,'sponsor-payments');
+ const final=restored.settleSponsorPayments('club',start+40*86400000);
+ assert.equal(final.paid,2);assert.equal(final.account.balance,20000);
+ assert.equal(final.account.sponsors[0].status,'completed');
+});
+test('P27 finance : une paie hebdomadaire est débitée en lot ou pas du tout',()=>{
+ const f=new ClubFinanceStore(null,'payroll-batch');f.openAccount('club',1500);
+ const result=f.postBatch('club',[{id:'week-1-p1',category:'wages',amount:800,direction:'expense'},{id:'week-1-p2',category:'wages',amount:800,direction:'expense'}]);
+ assert.equal(result.reason,'insufficient-funds');assert.equal(f.balance('club'),1500);
+ const paid=f.postBatch('club',[{id:'week-1-p1',category:'wages',amount:800,direction:'expense'},{id:'week-1-p2',category:'wages',amount:600,direction:'expense'}]);
+ assert.equal(paid.ok,true);assert.equal(paid.account.balance,100);
+});
+test('P27 finance : diagnostic budgétaire hebdomadaire et autonomie de trésorerie',()=>{
+ const result=ClubFinanceStore.assessWeeklyBudget({balance:10000,weeklyPayroll:3000,weeklyMaintenance:1000,weeklySponsorIncome:2500});
+ assert.equal(result.status,'deficit');assert.equal(result.weeklyNet,-1500);assert.equal(result.runwayWeeks,6);
+ assert.equal(ClubFinanceStore.assessWeeklyBudget({balance:-1,weeklyPayroll:0,weeklyMaintenance:0}).ok,false);
+});
