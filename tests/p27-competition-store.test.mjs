@@ -434,10 +434,11 @@ test('P27 match officiel : peut réessayer la finalisation si la validation du r
  const f=setup();
  try{
   const fixture=f.store.snapshot().competitions.find(item=>item.type==='league').fixtures[0];
-  const manager=new RoomManager({competitionStore:f.store,now:()=>5000});
+  const manager=new RoomManager({competitionStore:f.store,now:()=>50000});
   const roomState=manager.create({blueClubId:fixture.homeClubId,redClubId:fixture.awayClubId,competitionFixtureId:fixture.id});
   const room=manager.rooms.get(roomState.id);
   room.score={blue:2,red:1};
+  room.players.set('offline-test-player',{id:'offline-test-player',name:'Offline',team:'blue',role:'MID',isBot:false,connected:false,disconnectedAt:1,matchTimePlayedMs:0,stats:{passes:0,completedPasses:0,shots:0,tackles:0,goals:0,assists:0,saves:0,interceptions:0}});
   const record=f.store.recordFixtureResult.bind(f.store);
   let attempts=0;
   f.store.recordFixtureResult=(...args)=>{
@@ -449,11 +450,12 @@ test('P27 match officiel : peut réessayer la finalisation si la validation du r
   manager.tick(0.05);
   assert.equal(room.result,null);
   assert.equal(room.finalizationError,'temporary-storage-rejection');
+  assert.equal(manager.rooms.has(room.id),true);
   assert.equal(f.store.getFixture(fixture.id).status,'scheduled');
   manager.tick(0.05);
   const result=room.result;
   assert.equal(result.competition.fixtureId,fixture.id);
-  assert.deepEqual(result.competition.result,{home:2,away:1,finalizedAt:5000});
+  assert.deepEqual(result.competition.result,{home:2,away:1,finalizedAt:50000});
   assert.equal(f.store.getFixture(fixture.id).status,'completed');
   assert.equal(attempts,2);
  }finally{f.cleanup();}
