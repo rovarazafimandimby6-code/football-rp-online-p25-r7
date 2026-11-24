@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_CLUBS, ClubManager } from '../src/club-manager.js';
 import { P27_EXPANSION_CLUBS, P27_EXPANSION_COUNTS } from '../src/p27-club-expansion.js';
-import { auditClubCatalog } from '../src/club-catalog-validation.js';
+import { auditClubCatalog, auditClubRuntimeProfiles } from '../src/club-catalog-validation.js';
 import { conferenceForClub } from '../src/league-structure.js';
 
 test('P27 expansion : les 140 clubs complètent exactement les cinq divisions', () => {
@@ -29,6 +29,13 @@ test('P27 géographie : toutes les villes des clubs D4/D5 retrouvent leur confé
   assert.deepEqual(unresolved.map(club=>({ id:club.id, city:club.city, expected:club.conference, actual:conferenceForClub({ ...club, conference:undefined }) })), []);
 });
 
+test('P27 audit profils : les 156 clubs ont leurs caractéristiques, stratégie, recrutement et lore', () => {
+  const audit = auditClubRuntimeProfiles(new ClubManager().listClubs());
+  assert.equal(audit.complete, true, JSON.stringify(audit.issues.slice(0, 20)));
+  assert.equal(audit.totalClubs, 156);
+  assert.deepEqual(audit.counts, { characteristics:156, strategic:156, recruitment:156, lore:156 });
+});
+
 test('P27 audit catalogue : détecte doublons d’identité et incohérences de données', () => {
   const clubs = new ClubManager().listClubs();
   clubs[1].name = clubs[0].name;
@@ -48,4 +55,13 @@ test('P27 audit catalogue : une conférence explicite invalide ne se masque pas 
   target.conference = 'East';
   const audit = auditClubCatalog(clubs);
   assert.ok(audit.errors.some(issue => issue.code === 'invalid-explicit-conference' && issue.clubId === target.id));
+});
+
+test('P27 audit profils : refuse une rivalité automatique ou un profil stratégique incomplet', () => {
+  const clubs = new ClubManager().listClubs();
+  clubs[0].clubLore.rivalries = [{ clubId:clubs[1].id, type:'geographic', status:'active' }];
+  clubs[1].strategicProfile.competitiveVariance = {};
+  const audit = auditClubRuntimeProfiles(clubs);
+  assert.ok(audit.errors.some(issue=>issue.code==='club-lore-invalid-or-auto-rivalry'&&issue.clubId===clubs[0].id));
+  assert.ok(audit.errors.some(issue=>issue.code==='club-strategic-profile-invalid'&&issue.clubId===clubs[1].id));
 });

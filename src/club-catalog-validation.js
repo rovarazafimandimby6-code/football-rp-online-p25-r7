@@ -182,3 +182,64 @@ export function auditClubCatalog(clubs = []) {
     issues:Object.freeze(issues)
   });
 }
+
+const RUNTIME_CHARACTERISTICS = Object.freeze(['popularity','attractiveness','infrastructure','management']);
+const RUNTIME_PRESTIGE = new Set(['iconic','renowned','established','local']);
+const RUNTIME_STRENGTH = new Set(['title-contender','strong','competitive','underdog']);
+const RUNTIME_AMBITION = new Set(['title','top-half','promotion','playoffs','stability','upper-table','survival']);
+const RUNTIME_FINANCE = new Set(['major','upper','standard','modest']);
+const RUNTIME_LOYALTY = new Set(['strong','balanced','fluid']);
+const RUNTIME_ORIGINS = new Set(['community-founded','academy-founded','regional-project','fictional-merger']);
+
+/** Audit derived club profiles after ClubManager has initialized the world. */
+export function auditClubRuntimeProfiles(clubs = []) {
+  const list = Array.isArray(clubs) ? clubs : [];
+  const issues = [];
+  const counts = { characteristics:0, strategic:0, recruitment:0, lore:0 };
+  for (const club of list) {
+    const id = String(club?.id || '').trim() || null;
+    const characteristics = club?.characteristics || {};
+    if (RUNTIME_CHARACTERISTICS.every(key => Number.isInteger(characteristics[key]) && characteristics[key] >= 1 && characteristics[key] <= 100)) counts.characteristics++;
+    else addIssue(issues, 'error', 'club-characteristics-incomplete', { clubId:id });
+
+    const strategic = club?.strategicProfile || {};
+    const variance = strategic.competitiveVariance || {};
+    if (RUNTIME_PRESTIGE.has(strategic.prestigeTier) &&
+        RUNTIME_STRENGTH.has(strategic.strengthTier) &&
+        RUNTIME_AMBITION.has(strategic.ambition) &&
+        RUNTIME_FINANCE.has(strategic.financialTier) &&
+        RUNTIME_LOYALTY.has(strategic.loyaltyCulture) &&
+        ['formImpact','injuriesImpact','tacticsImpact','upsetPossible'].every(key => typeof variance[key] === 'boolean')) counts.strategic++;
+    else addIssue(issues, 'error', 'club-strategic-profile-invalid', { clubId:id });
+
+    const recruitment = club?.recruitmentProfile || {};
+    if (['open','system-only'].includes(recruitment.humanAdmission) &&
+        recruitment.humanAdmission === club?.humanAdmission &&
+        ['country','continent','mixed'].includes(recruitment.mode) &&
+        Array.isArray(recruitment.nationalityCodes) &&
+        typeof recruitment.reservedForSystem === 'boolean' &&
+        recruitment.reservedForSystem === (club?.humanAdmission === 'system-only')) counts.recruitment++;
+    else addIssue(issues, 'error', 'club-recruitment-profile-invalid', { clubId:id });
+
+    const lore = club?.clubLore || {};
+    if (lore.contentStatus === 'generated-draft' &&
+        RUNTIME_ORIGINS.has(lore.originType) &&
+        Number.isInteger(lore.foundedYear) && lore.foundedYear >= 1800 && lore.foundedYear <= 2100 &&
+        typeof lore.originSummary === 'string' && lore.originSummary.length > 20 &&
+        typeof lore.identityArchetype === 'string' && lore.identityArchetype.length > 0 &&
+        typeof lore.sportingPhilosophy === 'string' && lore.sportingPhilosophy.length > 0 &&
+        typeof lore.supporterCulture === 'string' && lore.supporterCulture.length > 0 &&
+        lore.rivalryStatus === 'unassigned' &&
+        Array.isArray(lore.rivalries) && lore.rivalries.length === 0) counts.lore++;
+    else addIssue(issues, 'error', 'club-lore-invalid-or-auto-rivalry', { clubId:id });
+  }
+  const errors = issues.filter(issue => issue.severity === 'error');
+  return Object.freeze({
+    complete:list.length === TOTAL_LEAGUE_CLUBS && errors.length === 0,
+    totalClubs:list.length,
+    expectedTotal:TOTAL_LEAGUE_CLUBS,
+    counts:Object.freeze({ ...counts }),
+    errors:Object.freeze(errors),
+    issues:Object.freeze(issues)
+  });
+}
