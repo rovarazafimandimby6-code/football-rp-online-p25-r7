@@ -9,6 +9,7 @@ test('P27 rotations serveur : un joueur authentifié fait entrer un réserviste 
   const room = manager.rooms.get(created.id);
   room.phase = 'halftime';
   room.elapsedMs = 30 * 60 * 1000;
+  assert.equal(manager.publicState(room).rotationAvailable, true);
   const outgoing = [...room.players.values()].find(player => player.team === joined.team && player.isOnPitch !== false && player.isBot);
   const incoming = [...room.players.values()].find(player => player.team === joined.team && player.isOnPitch === false && player.isBot);
   assert.ok(outgoing);
