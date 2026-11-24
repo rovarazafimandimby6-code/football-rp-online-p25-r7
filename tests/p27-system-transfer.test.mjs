@@ -71,8 +71,9 @@ test('P27 lot 85 : reprend le règlement financier en attente après redémarrag
 test('P27 lot 85 : refuse les carrières humaines, les indemnités invalides et les clubs inconnus',()=>{
  const f=setup();
  try {
+  f.manager.addPlayer('club-a',{id:'human-career-1',name:'Human Player',playerType:'human',rating:60,number:9,contract:{status:'active',clubId:'club-a',weeklyWage:100,salary:100}});
   const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService});
-  assert.equal(service.transfer({id:'ai-transfer-human',fromClubId:'club-a',toClubId:'club-b',playerId:'human-career-1',fee:1000}).reason,'player-not-found');
+  assert.equal(service.transfer({id:'ai-transfer-human',fromClubId:'club-a',toClubId:'club-b',playerId:'human-career-1',fee:1000}).reason,'human-career-managed');
   assert.equal(service.transfer({id:'ai-transfer-bad-fee',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:-1}).reason,'invalid-request');
   assert.equal(service.transfer({id:'ai-transfer-bad-club',fromClubId:'missing',toClubId:'club-b',playerId:'system-player-1',fee:1000}).reason,'invalid-clubs');
  } finally {f.cleanup();}
