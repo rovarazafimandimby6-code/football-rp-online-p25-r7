@@ -30,6 +30,7 @@ function createSeason(seasonId, clubs, now) {
       const last = scheduled.pop();
       scheduled.splice(1, 0, last);
     }
+    const targetClubCount = group.conference ? 16 : ({ D1: 16, D2: 20, D3: 24 }[group.division]);
     season.competitions.push({
       id: competitionId,
       type: 'league',
@@ -37,9 +38,9 @@ function createSeason(seasonId, clubs, now) {
       leagueName: group.leagueName,
       division: group.division,
       conference: group.conference,
-      status: members.length > 1 ? 'active' : 'pending-population',
+      status: members.length >= targetClubCount ? 'active' : 'pending-population',
       members,
-      targetClubCount: group.conference ? 16 : ({ D1: 16, D2: 20, D3: 24 }[group.division]),
+      targetClubCount,
       fixtures,
       standings: members.map(club => ({ ...club, played:0, wins:0, draws:0, losses:0, goalsFor:0, goalsAgainst:0, points:0 }))
     });
