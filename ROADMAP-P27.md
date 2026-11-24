@@ -1198,3 +1198,13 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 148 : étendre le test HTTP d'intégration avec un véritable fichier temporaire sous `data/` et vérifier que les données privées, le code serveur et les fichiers cachés répondent tous par HTTP 403.
 - [x] Validation GitHub Actions complète : [workflow P27 validation — run 45475368715](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45475368715), **711/711 tests réussis**, 0 échec ; contrôle syntaxique JavaScript/MJS réussi.
 - Limite : le test couvre le serveur Node intégré ; les règles de proxy, CDN et hébergement de production restent à vérifier dans l'environnement de déploiement.
+
+### Lots 149–152 — audit transversal des identités et préparation pré-livraison
+- [x] Lot 149 : étendre l'audit du monde aux identités de comptes : unicité des identifiants et noms de connexion, empreintes de mots de passe au format attendu, sessions liées à un compte et empreintes de jetons non dupliquées.
+- [x] Lot 150 : contrôler les profils joueurs et la progression persistée : unicité par compte, absence de références orphelines, schéma du profil, bornes des attributs/ressources et unicité des identifiants de matchs traités.
+- [x] Lot 151 : brancher les stores comptes, profils et progression sur l'endpoint d'audit administratif ; ajouter des tests unitaires de cohérence et un test HTTP d'intégration avec profils/progressions orphelins.
+- [x] Lot 152 : documenter la configuration sûre de `P27_ADMIN_TOKEN`, les vérifications HTTP attendues et le parcours de recette Android dans `docs/P27-DEPLOYMENT-ANDROID-CHECKLIST.md`.
+- [ ] CI verte sur le commit consolidé après correction des premiers échecs d'intégration.
+- [ ] Configuration réelle de `P27_ADMIN_TOKEN` par l'administrateur de l'hébergement ; impossible à confirmer depuis le dépôt.
+- [ ] Exécution de la recette sur appareil Android physique ; non simulable par GitHub Actions.
+- Limite : les tests de stores et d'API sont automatisés ; ils ne constituent pas une validation de déploiement ni un essai physique.
