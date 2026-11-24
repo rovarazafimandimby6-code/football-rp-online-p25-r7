@@ -411,7 +411,6 @@ export class RoomManager {
       if (!competitionResult?.ok || !competitionResult.fixture?.result) throw new Error(competitionResult?.reason || 'COMPETITION_RESULT_REJECTED');
       committedResult = Object.freeze({ ...finalizedResult, competition: { fixtureId: room.competitionFixtureId, result: competitionResult.fixture.result } });
     }
-    this.resultStore?.save(committedResult);
     if (this.careerStore) {
       for (const player of performance.players) {
         const livePlayer = room.players.get(player.playerId);
@@ -437,6 +436,7 @@ export class RoomManager {
       const outcome = blue === red ? 'draw' : (player.team === (blue > red ? 'blue' : 'red') ? 'win' : 'loss');
       this.progressionStore?.grantMatchReward(livePlayer.accountId, { matchId: room.id, result: outcome, minutesPlayedMs: player.minutesPlayedMs, rating: player.rating });
     }
+    this.resultStore?.save(committedResult);
     room.result = committedResult;
     room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
     return room.result;
@@ -444,7 +444,8 @@ export class RoomManager {
 
   getResult(roomId) {
     const room = this.rooms.get(roomId);
-    if (room?.phase === 'fulltime' && room.result) return room.result;
+    if (room?.phase === 'fulltime' && !room.result) throw new Error('RESULT_NOT_READY');
+    if (room?.result) return room.result;
     const archived = this.resultStore?.get(roomId);
     if (archived) return archived;
     if (!room) throw new Error('ROOM_NOT_FOUND');
