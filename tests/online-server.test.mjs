@@ -15,10 +15,11 @@ test('P27 : les bots complètent un vrai 5 contre 5 et lancent le match dès le 
   const first = manager.join(room.id, { displayName: 'Humain 1' });
   assert.equal(first.state.phase, 'playing');
   assert.deepEqual(first.state.counts, { blue: 5, red: 5 });
-  assert.equal(first.state.players.filter(p => p.isBot).length, 9);
-  assert.equal(first.state.players.filter(p => p.team === 'blue').length, 5);
-  assert.equal(first.state.players.filter(p => p.team === 'red').length, 5);
-  assert.deepEqual(first.state.players.filter(p => p.team === 'blue').map(p => p.role).sort(), ['DEF','FWD','FWD','GK','MID'].sort());
+  assert.equal(first.state.players.filter(p => p.isBot).length, 13);
+  assert.equal(first.state.players.filter(p => p.team === 'blue' && p.isOnPitch !== false).length, 5);
+  assert.equal(first.state.players.filter(p => p.team === 'red' && p.isOnPitch !== false).length, 5);
+  assert.deepEqual(first.state.players.filter(p => p.team === 'blue' && p.isOnPitch !== false).map(p => p.role).sort(), ['DEF','FWD','FWD','GK','MID'].sort());
+  assert.deepEqual(first.state.benchCounts, { blue: 2, red: 2 });
   assert.equal(first.state.players.filter(p => !p.isBot).length, 1);
 });
 
@@ -93,11 +94,72 @@ test('P27 : le 5 contre 5 conserve cinq avatars actifs par équipe après une d�
   assert.equal(disconnected.isOnPitch, true);
 });
 
+test('P27 rotations : les commandes des joueurs sur le banc sont bloquées', () => {
+  const manager = new RoomManager();
+  const room = manager.create();
+  const joined = manager.join(room.id);
+  const player = manager.rooms.get(room.id).players.get(joined.playerId);
+  player.isOnPitch = false;
+  assert.throws(() => manager.submitInput(room.id, joined.token, { x: 1, z: 0, sequence: 1 }), /PLAYER_ON_BENCH/);
+});
+
+test('P27 rotations : changement aux arrêts de jeu, sans quota, avec dix minutes avant retour', () => {
+  const manager = new RoomManager({ now: () => 100_000, disconnectGraceMs: 300_000 });
+  const room = manager.create();
+  const joined = manager.join(room.id, { displayName: 'Capitaine' });
+  const internal = manager.rooms.get(room.id);
+  const outgoing = internal.players.get(joined.playerId);
+  const incoming = [...internal.players.values()].find(p => p.team === outgoing.team && p.isOnPitch === false);
+  assert.ok(incoming);
+  assert.throws(() => manager.rotate(room.id, joined.token, { outgoingId: outgoing.id, incomingId: incoming.id }), /NOT_A_STOPPAGE/);
+  internal.elapsedMs = 600_000;
+  internal.goalPauseMs = 1_500;
+  const first = manager.rotate(room.id, joined.token, { outgoingId: outgoing.id, incomingId: incoming.id });
+  assert.equal(first.rotated, true);
+  assert.equal(outgoing.isOnPitch, false);
+  assert.equal(incoming.isOnPitch, true);
+  assert.equal(first.state.counts.blue, 5);
+  assert.equal(first.state.benchCounts.blue, 2);
+  assert.throws(() => manager.rotate(room.id, joined.token, { outgoingId: incoming.id, incomingId: outgoing.id }), /RETURN_COOLDOWN/);
+  internal.elapsedMs = 1_200_000;
+  const second = manager.rotate(room.id, joined.token, { outgoingId: incoming.id, incomingId: outgoing.id });
+  assert.equal(second.rotated, true);
+  assert.equal(outgoing.isOnPitch, true);
+  assert.equal(incoming.isOnPitch, false);
+  assert.equal(second.state.counts.blue, 5);
+  assert.equal(second.state.benchCounts.blue, 2);
+});
+
+test('P27 rotations : le jeton ne peut pas remplacer un joueur adverse', () => {
+  const manager = new RoomManager();
+  const room = manager.create();
+  const joined = manager.join(room.id);
+  const internal = manager.rooms.get(room.id);
+  internal.goalPauseMs = 1_000;
+  const outgoing = internal.players.get(joined.playerId);
+  const rival = [...internal.players.values()].find(p => p.team !== outgoing.team && p.isOnPitch === false);
+  assert.throws(() => manager.rotate(room.id, joined.token, { outgoingId: outgoing.id, incomingId: rival.id }), /INVALID_ROTATION_PAIR/);
+});
+
+test('client en ligne : envoie une rotation authentifiée au serveur', async () => {
+  let call;
+  const client = new OnlineMatchClient({ baseUrl: 'https://game.example', fetchImpl: async (url, options) => {
+    call = { url, options };
+    return { ok: true, json: async () => ({ rotated: true }) };
+  } });
+  client.roomId = 'aabbccddeeff'; client.token = 'session-token-123456';
+  const result = await client.rotate({ outgoingId: 'out-1', incomingId: 'in-2' });
+  assert.equal(result.rotated, true);
+  assert.match(call.url, /\/rotation$/);
+  assert.equal(call.options.headers.authorization, 'Bearer session-token-123456');
+  assert.deepEqual(JSON.parse(call.options.body), { outgoingId: 'out-1', incomingId: 'in-2' });
+});
+
 test('serveur multijoueur : limite les équipes à cinq joueurs', () => {
   const manager = new RoomManager();
   const room = manager.create();
   for (let i = 0; i < 10; i++) manager.join(room.id);
-  assert.equal(manager.get(room.id).players.length, 10);
+  assert.equal(manager.get(room.id).players.length, 14);
   assert.throws(() => manager.join(room.id), /ROOM_FULL/);
 });
 
@@ -185,7 +247,7 @@ test('P24 : les arrivées humaines remplacent les bots sans dépasser cinq joueu
   const state = manager.get(room.id);
   assert.equal(state.players.filter(p => !p.isBot).length, 8);
   assert.deepEqual(state.counts, { blue: 5, red: 5 });
-  assert.equal(state.players.filter(p => p.isBot).length, 2);
+  assert.equal(state.players.filter(p => p.isBot).length, 6);
   assert.ok(first.token);
 });
 

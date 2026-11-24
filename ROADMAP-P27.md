@@ -459,6 +459,17 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [ ] Vérifier les changements IA, la fatigue et le banc sur Android en conditions de match ; la CI ne remplace pas l'essai réel.
 
 
+### Lot 42 — banc réel et rotations en ligne côté serveur (intégré)
+- [x] Feuille de match serveur : cinq joueurs actifs et au moins deux réservistes IA par équipe.
+- [x] Capacité de vingt joueurs par match (cinq titulaires + jusqu'à cinq réservistes par équipe à terme).
+- [x] Exclure les joueurs sur le banc de l'IA de terrain, des collisions et du ballon.
+- [x] Bloquer les commandes d'un humain tant qu'il est remplaçant.
+- [x] Route authentifiée de rotation, validée côté serveur aux arrêts de jeu / à la mi-temps.
+- [x] Rotations sans quota, poste tactique conservé et délai de dix minutes avant le retour.
+- [x] Temps de jeu cumulé uniquement lorsque le joueur est sur le terrain.
+- [ ] Caméra spectateur du banc et commandes tactiles dynamiques côté client.
+- [ ] Gestion complète de deux à cinq réservistes humains par équipe.
+
 ### Lot 41 — effectif actif 5 contre 5 et temps de jeu individuel (intégré)
 - [x] Compléter chaque équipe à cinq joueurs actifs côté serveur, sans démarrer un match en 3 contre 3.
 - [x] Répartir les postes IA de base sur les cinq slots (gardien, défenseur, milieu et deux attaquants).

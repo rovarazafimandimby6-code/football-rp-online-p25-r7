@@ -74,7 +74,7 @@ export function stepRoomSimulation(room, dt) {
     }
     return;
   }
-  const players = [...room.players.values()].filter(p => p.connected || p.aiControlled);
+  const players = [...room.players.values()].filter(p => p.isOnPitch !== false && (p.connected || p.aiControlled));
   for (const p of players) {
     const speed = p.aiControlled ? 4.6 : (p.input.sprint ? 7.2 : 5.2);
     p.vx = p.input.x * speed;
@@ -99,7 +99,7 @@ export function stepRoomSimulation(room, dt) {
 
   const ball = room.ball;
   const owner = ball.ownerId ? room.players.get(ball.ownerId) : null;
-  if (owner && (owner.connected || owner.aiControlled)) {
+  if (owner && owner.isOnPitch !== false && (owner.connected || owner.aiControlled)) {
     const lead = 0.92;
     ball.x = owner.x + Math.sin(owner.facing) * lead;
     ball.z = owner.z + Math.cos(owner.facing) * lead;

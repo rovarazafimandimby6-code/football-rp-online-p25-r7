@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { applyPlayerAction, stepRoomSimulation, resetRoomBall } from './simulation.js';
 import { resolveMatchClub, cloneMatchTeams } from './club-catalog.js';
 import { averageAiShouldAct, averageAiAim, averageAiMovement } from '../src/average-ai.js';
+import { validateRotation } from '../src/rotation-rules.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -45,7 +46,7 @@ export class RoomManager {
     if (humans[team] >= 5) throw new Error('ROOM_FULL');
 
     // Human arrivals take the place of a reserve bot first, preserving the 5-player cap.
-    const reserve = [...room.players.values()].find(p => p.isBot && p.team === team);
+    const reserve = [...room.players.values()].find(p => p.isBot && p.team === team && p.isOnPitch !== false);
     const usedSlots = new Set([...room.players.values()].filter(p => p.team === team && p !== reserve).map(p => p.slot));
     const slot = reserve?.slot ?? [0,1,2,3,4].find(value => !usedSlots.has(value));
     if (slot === undefined || (!reserve && room.players.size >= 10)) throw new Error('ROOM_FULL');
@@ -72,8 +73,8 @@ export class RoomManager {
   ensureBotCoverage(room) {
     if (room.phase === 'fulltime') return;
     for (const team of ['blue', 'red']) {
-      let count = [...room.players.values()].filter(p => p.team === team && (p.connected || p.aiControlled)).length;
-      while (count < 5 && room.players.size < 10) {
+      let count = [...room.players.values()].filter(p => p.team === team && p.isOnPitch !== false && (p.connected || p.aiControlled)).length;
+      while (count < 5 && room.players.size < 20) {
         const usedSlots = new Set([...room.players.values()].filter(p => p.team === team).map(p => p.slot));
         const slot = [0,1,2,3,4].find(value => !usedSlots.has(value)) ?? count;
         const id = `bot-${team}-${randomBytes(5).toString('hex')}`;
@@ -89,15 +90,31 @@ export class RoomManager {
         });
         count++;
       }
+      let benchCount = [...room.players.values()].filter(p => p.team === team && p.isOnPitch === false).length;
+      while (benchCount < 2 && room.players.size < 20) {
+        const slot = 5 + benchCount;
+        const id = `bench-${team}-${randomBytes(5).toString('hex')}`;
+        room.players.set(id, {
+          id, token: null, name: `${team === 'blue' ? 'Réserve bleue' : 'Réserve rouge'} ${benchCount + 1}`,
+          team, slot, x: team === 'blue' ? -22 + benchCount * 2 : 22 - benchCount * 2,
+          z: -12 + benchCount * 5, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
+          role: ['DEF', 'MID', 'FWD', 'FWD', 'GK'][benchCount] || 'MID', isBot: true,
+          isOnPitch: false, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
+          input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0,
+          connected: true, controlMode: 'bench', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
+          stats: { passes: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
+        });
+        benchCount++;
+      }
     }
   }
 
   updateBots(room) {
-    const bots = [...room.players.values()].filter(p => (p.isBot || p.aiControlled) && (p.connected || p.aiControlled));
+    const bots = [...room.players.values()].filter(p => p.isOnPitch !== false && (p.isBot || p.aiControlled) && (p.connected || p.aiControlled));
     const ball = room.ball;
     for (const bot of bots) {
-      const teammates = [...room.players.values()].filter(p => p.team === bot.team && p.id !== bot.id && (p.connected || p.aiControlled));
-      const opponents = [...room.players.values()].filter(p => p.team !== bot.team && (p.connected || p.aiControlled));
+      const teammates = [...room.players.values()].filter(p => p.team === bot.team && p.id !== bot.id && p.isOnPitch !== false && (p.connected || p.aiControlled));
+      const opponents = [...room.players.values()].filter(p => p.team !== bot.team && p.isOnPitch !== false && (p.connected || p.aiControlled));
       const owner = ball.ownerId ? room.players.get(ball.ownerId) : null;
       const nearestTeammate = [bot, ...teammates].sort((a,b) => Math.hypot(a.x-ball.x,a.z-ball.z)-Math.hypot(b.x-ball.x,b.z-ball.z))[0];
       const now = this.now();
@@ -192,7 +209,7 @@ export class RoomManager {
 
   teamCounts(room) {
     const counts = { blue: 0, red: 0 };
-    for (const p of room.players.values()) if (p.connected || p.aiControlled) counts[p.team]++;
+    for (const p of room.players.values()) if (p.isOnPitch !== false && (p.connected || p.aiControlled)) counts[p.team]++;
     return counts;
   }
 
@@ -209,6 +226,7 @@ export class RoomManager {
     const { room, player } = this.authenticate(roomId, token);
     if (room.phase !== 'playing') throw new Error('MATCH_NOT_PLAYING');
     if (!player.connected) throw new Error('PLAYER_DISCONNECTED');
+    if (player.isOnPitch === false) throw new Error('PLAYER_ON_BENCH');
     const sequence = payload.sequence;
     if (!Number.isSafeInteger(sequence) || sequence <= player.lastInputSequence) throw new Error('STALE_INPUT');
     const x = payload.x, z = payload.z;
@@ -375,6 +393,33 @@ export class RoomManager {
     return { results, pagination: { limit: results.length, offset: 0, total: results.length, hasMore: false, nextOffset: null } };
   }
 
+  rotate(roomId, token, { outgoingId, incomingId } = {}) {
+    const { room, player: requester } = this.authenticate(roomId, token);
+    if (room.phase === 'fulltime' || room.phase === 'lobby') throw new Error('ROTATION_NOT_AVAILABLE');
+    if (room.phase !== 'halftime' && !(room.phase === 'playing' && room.goalPauseMs > 0)) throw new Error('NOT_A_STOPPAGE');
+    const outgoing = room.players.get(String(outgoingId || ''));
+    const incoming = room.players.get(String(incomingId || ''));
+    if (!outgoing || !incoming || outgoing.team !== requester.team || incoming.team !== requester.team) throw new Error('INVALID_ROTATION_PAIR');
+    if (outgoing.isOnPitch === false || incoming.isOnPitch !== false) throw new Error('PLAYER_NOT_IN_EXPECTED_LIST');
+    if (!outgoing.isBot && !outgoing.connected && !outgoing.aiControlled) throw new Error('OUTGOING_UNAVAILABLE');
+    if (!incoming.isBot && !incoming.connected && !incoming.aiControlled) throw new Error('INCOMING_UNAVAILABLE');
+    const elapsedMatchSeconds = room.elapsedMs / 1000;
+    const validation = validateRotation({ phase: room.phase === 'halftime' ? 'halftime' : 'stoppage', elapsedMatchSeconds, outgoing, incoming, teamPlayers: [...room.players.values()] });
+    if (!validation.ok) throw new Error(validation.code === 'return-cooldown' ? 'RETURN_COOLDOWN' : 'ROTATION_NOT_ALLOWED');
+    const slot = outgoing.slot;
+    const position = { x: outgoing.x, z: outgoing.z, facing: outgoing.facing };
+    outgoing.isOnPitch = false; outgoing.slot = incoming.slot;
+    outgoing.x = incoming.x; outgoing.z = incoming.z; outgoing.lastSubstitutedOutAt = elapsedMatchSeconds;
+    outgoing.input = { x: 0, z: 0, sprint: false }; outgoing.vx = 0; outgoing.vz = 0;
+    incoming.isOnPitch = true; incoming.slot = slot;
+    incoming.x = position.x; incoming.z = position.z; incoming.facing = position.facing;
+    incoming.vx = 0; incoming.vz = 0; incoming.input = { x: 0, z: 0, sprint: false };
+    if (room.ball.ownerId === outgoing.id) { room.ball.ownerId = null; room.ball.x = outgoing.x; room.ball.z = outgoing.z; room.ball.vx = 0; room.ball.vy = 0; room.ball.vz = 0; }
+    room.events.push({ type: 'rotation', team: requester.team, outgoingId: outgoing.id, incomingId: incoming.id, at: room.elapsedMs });
+    room.updatedAt = this.now(); room.sequence++;
+    return { rotated: true, state: this.publicState(room) };
+  }
+
   reconnect(roomId, token) {
     const { room, player } = this.authenticate(roomId, token);
     if (player.isBot || room.phase === 'fulltime') throw new Error('UNAUTHORIZED');
@@ -435,7 +480,7 @@ export class RoomManager {
       phase: room.phase, period: room.period, halftimeRemainingMs: room.phase === 'halftime' && room.halftimeUntil ? Math.max(0, room.halftimeUntil - this.now()) : 0, attackDirection: { ...room.attackDirection }, elapsedMs: room.elapsedMs, durationMs: room.durationMinutes * 60_000, sequence: room.sequence,
       virtualClock: `${String(Math.floor(Math.min(5400, room.elapsedMs / (room.durationMinutes * 60_000) * 5400) / 60)).padStart(2,'0')}:${String(Math.floor(Math.min(5400, room.elapsedMs / (room.durationMinutes * 60_000) * 5400) % 60)).padStart(2,'0')}`,
       score: { ...room.score }, teams: cloneMatchTeams(room.teams), counts: this.teamCounts(room),
-      players, ball: { ...room.ball }, result: room.result, events: room.events.slice(-40), eventCursor: room.nextEventId - 1,
+      players, benchCounts: { blue: players.filter(p => p.team === 'blue' && p.isOnPitch === false).length, red: players.filter(p => p.team === 'red' && p.isOnPitch === false).length }, ball: { ...room.ball }, result: room.result, events: room.events.slice(-40), eventCursor: room.nextEventId - 1,
     };
   }
 }
