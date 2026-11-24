@@ -174,6 +174,20 @@ test('P27 lot 99 : refuse deux transferts IA simultanément en attente pour le m
  assert.ok(result.errors.some(item=>item.code==='SYSTEM_TRANSFER_CHAIN_INVALID'));
 });
 
+test('P27 lot 102 : valide les métadonnées de reprise et de clôture de l’outbox IA',()=>{
+ const input=cleanWorld();
+ input.systemTransferState={version:1,transfers:[
+  {id:'ai-retry-invalid',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',fee:500,
+   createdAt:1000,status:'pending',attempts:-1,lastError:{unexpected:true}},
+  {id:'ai-completion-date-invalid',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',fee:500,
+   createdAt:2000,status:'completed',attempts:0,lastError:null}
+ ]};
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('SYSTEM_TRANSFER_OUTBOX_RETRY_METADATA_INVALID'));
+ assert.ok(codes.includes('SYSTEM_TRANSFER_OUTBOX_COMPLETION_DATE_INVALID'));
+});
+
 test('P27 clubs : synchronise les divisions et conférences officielles après transition',()=>{
  const club={id:'club-a',division:'D2',conference:null};
  const manager={clubs:new Map([['club-a',club]]),saveSeason:()=>true};
