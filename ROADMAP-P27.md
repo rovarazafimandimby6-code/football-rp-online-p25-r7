@@ -554,3 +554,27 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Gérer proprement l'absence de session valide ou l'indisponibilité du serveur.
 - Validation GitHub Actions sur le commit `50697bc6e6b7d06d2a0b52e6a170f68b345e469f` : 547/547 tests réussis, 0 échec ; contrôle syntaxique réussi.
 - Limite : le tableau de bord serveur expose les statistiques des matchs en ligne liés au compte. Les sauvegardes locales de profil, d'attributs et d'entraînement ne sont pas encore migrées vers un stockage cloud.
+
+
+### Lot 49 — synchronisation du profil joueur lié au compte (intégré)
+- [x] Ajouter un stockage serveur séparé, indexé par compte, pour l'identité sportive et l'apparence.
+- [x] Ajouter les routes authentifiées `GET /api/profile` et `PUT /api/profile`.
+- [x] Ajouter les actions client d'enregistrement et de restauration du profil en ligne.
+- [x] Restaurer uniquement identité et apparence ; préserver localement progression, attributs, monnaie et points d'entraînement.
+- [x] Valider/filtrer les champs côté serveur et exclure les données de progression envoyées par le client.
+- [x] Ajouter tests de persistance après redémarrage, séparation entre comptes, filtrage, API protégée et client.
+- Limite : les données de progression compétitives restent locales et ne sont pas encore migrées ; elles nécessitent une autorité serveur anti-triche avant synchronisation.
+
+### Lot 50 — tableau de bord de forme et historique récent (intégré)
+- [x] Enrichir l'écran Compte avec les cinq derniers matchs en ligne.
+- [x] Présenter résultat, adversaire, note et buts, avec la note moyenne de carrière.
+- [x] Lire uniquement les rapports conservés par le serveur authentifié ; ne pas accepter de statistiques saisies dans l'interface.
+- [x] Prévoir un état vide lorsque le compte n'a pas encore de match.
+- Limite : l'historique affiché correspond aux matchs en ligne archivés sur le serveur ; les matchs locaux ne sont pas mélangés à ces statistiques officielles.
+
+### Lot 51 — validation des rotations 5v5 autoritaires (intégré, tests serveur)
+- [x] Tester l'entrée effective d'un réserviste de la même équipe à la mi-temps via le gestionnaire serveur.
+- [x] Vérifier la conservation des cinq joueurs actifs et du slot tactique.
+- [x] Vérifier le refus d'un jeton invalide et d'un remplaçant appartenant à l'équipe adverse.
+- [x] Conserver les règles existantes de disponibilité, de temps de retour et d'authentification sans les réécrire.
+- Limite : ces tests valident le moteur de rotation serveur existant ; l'interface spectateur du banc et les commandes tactiles dynamiques restent à réaliser et à vérifier sur Android.
