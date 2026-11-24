@@ -41,7 +41,7 @@ export class RoomManager {
       return true;
     } catch (error) {
       room.checkpointError = String(error?.message || 'ROOM_CHECKPOINT_FAILED').slice(0, 160);
-      process.stderr.write(`P27 room checkpoint failed (${room.id}): ${room.checkpointError}\\n`);
+      process.stderr.write(`P27 room checkpoint failed (${room.id}): ${room.checkpointError}\n`);
       return false;
     }
   }
@@ -383,6 +383,7 @@ export class RoomManager {
         }
         for (const event of room.events) if (!Number.isSafeInteger(event.id)) event.id = room.nextEventId++;
         room.sequence++;
+        if (now - (this.lastCheckpointAt.get(id) ?? 0) >= 1_000) this.persistRoom(room);
         continue;
       }
       if (room.phase !== 'playing') { room.lastTickAt = now; continue; }
