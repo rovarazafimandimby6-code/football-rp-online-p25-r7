@@ -274,3 +274,39 @@ test('P27 coupe : audit refuse un trophée attribué avant une finale valide',()
  assert.equal(audit.ok,false);
  assert.equal(audit.reason,'cup-champion-before-completion');
 }finally{f.cleanup();}});
+
+
+test('P27 coupe : dispute un match nul en rejouant le même barrage sans faire avancer un club',()=>{const f=setup();try{
+ const cup=f.store.activeSeason.competitions.find(item=>item.type==='cup');
+ const first=cup.fixtures.find(item=>item.round===1);
+ const draw=f.store.recordFixtureResult(first.id,{roomId:'cup-replay-draw',homeGoals:1,awayGoals:1});
+ assert.equal(draw.ok,true);
+ assert.equal(draw.fixture.status,'replay-required');
+ assert.equal(f.store.snapshot().cupAudit.ok,true,JSON.stringify(f.store.snapshot().cupAudit));
+ const replay=f.store.recordFixtureResult(first.id,{roomId:'cup-replay-decider',homeGoals:2,awayGoals:1});
+ assert.equal(replay.ok,true);
+ assert.equal(replay.fixture.status,'completed');
+ assert.equal(f.store.snapshot().cupAudit.ok,true,JSON.stringify(f.store.snapshot().cupAudit));
+}finally{f.cleanup();}});
+
+test('P27 coupe : simule les 155 rencontres jusqu’au champion et au trophée',()=>{const f=setup();try{
+ const cup=f.store.activeSeason.competitions.find(item=>item.type==='cup');
+ let played=0;
+ for(let round=1;round<=8;round++){
+  const ready=cup.fixtures.filter(item=>item.round===round&&item.status==='scheduled');
+  for(const fixture of ready){
+   const result=f.store.recordFixtureResult(fixture.id,{roomId:`cup-complete-${round}-${fixture.id}`,homeGoals:2,awayGoals:1});
+   assert.equal(result.ok,true,JSON.stringify(result));
+   played++;
+  }
+ }
+ const audit=f.store.snapshot().cupAudit;
+ assert.equal(played,155);
+ assert.equal(cup.fixtures.filter(item=>item.status==='completed').length,155);
+ assert.equal(cup.status,'completed');
+ assert.ok(cup.championClubId);
+ assert.equal(audit.ok,true,JSON.stringify(audit));
+ assert.equal(audit.completedFixtures,155);
+ assert.equal(audit.championClubId,cup.championClubId);
+ assert.ok(f.store.activeSeason.trophies.some(item=>item.competitionId===cup.id&&item.clubId===cup.championClubId));
+}finally{f.cleanup();}});

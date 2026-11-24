@@ -2,8 +2,8 @@
 
 Date de vérification : 24 novembre 2026  
 Branche : `p27-dev`  
-Commit code audité : `ded7807b0f80687d80cb0073638fb48ed6e45825`  
-Workflow de référence : [GitHub Actions 45401475202](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45401475202)
+Commit code audité : à mettre à jour après validation CI du test de parcours complet de Coupe.  
+Workflow de référence : à mettre à jour après validation CI du test de parcours complet de Coupe.
 
 ## Résultat de l'audit
 
@@ -31,7 +31,7 @@ Les 140 clubs d'expansion complètent les 16 clubs fondateurs. Les identifiants 
 - Gouvernance : politique d'admission valide, clubs réservés au système et profils de recrutement cohérents.
 - Profils : caractéristiques, stratégie, recrutement et lore ; aucune rivalité automatique.
 
-Les calendriers sont adaptés au niveau : D1 (16 clubs), D2 (20) et D3 (24) jouent en aller-retour ; D4 (deux conférences de 16) et D5 (quatre conférences de 16) jouent en aller simple. Cela représente 1 172 rencontres en D1-D3 et 720 en D4-D5, soit 1 892 rencontres de championnat. Les audits vérifient les deux manches inversées en D1-D3, chaque adversaire rencontré une fois en D4-D5, les journées sans doublon et l'équilibre domicile/extérieur. La Coupe des Clubs reste indépendante : élimination directe, 156 participants et 155 rencontres. Le tableau est structuré en 8 tours : 28 barrages préliminaires pour 56 clubs, 100 exemptions au premier tour principal, puis 64, 32, 16, 8, 4, 2 et 1 rencontre. Un audit dédié vérifie l'unicité des 156 entrants, les 155 rencontres, les 8 tours, les participants de chaque match et la cohérence des états de résultat/rejouabilité. Le parcours complet jusqu'au trophée est également couvert par un test d'intégration.
+Les calendriers sont adaptés au niveau : D1 (16 clubs), D2 (20) et D3 (24) jouent en aller-retour ; D4 (deux conférences de 16) et D5 (quatre conférences de 16) jouent en aller simple. Cela représente 1 172 rencontres en D1-D3 et 720 en D4-D5, soit 1 892 rencontres de championnat. Les audits vérifient les deux manches inversées en D1-D3, chaque adversaire rencontré une fois en D4-D5, les journées sans doublon et l'équilibre domicile/extérieur. La Coupe des Clubs reste indépendante : élimination directe, 156 participants et 155 rencontres. Le tableau est structuré en 8 tours : 28 barrages préliminaires pour 56 clubs, 100 exemptions au premier tour principal, puis 64, 32, 16, 8, 4, 2 et 1 rencontre. Un audit dédié vérifie l'unicité des 156 entrants, les 155 rencontres, les 8 tours, les participants de chaque match et la cohérence des états de résultat/rejouabilité. Le parcours complet jusqu'au trophée est vérifié par une simulation automatisée des 155 rencontres, avec contrôle du champion et de l'attribution du trophée. Un test séparé couvre les matchs nuls et les reprises sans progression prématurée.
 
 ## API publique du catalogue
 
@@ -56,10 +56,8 @@ Le catalogue public expose également `managementType` (`human` ou `system`) san
 
 ## Validation CI
 
-- **529 tests réussis**
-- **0 échec**
-- Contrôle de syntaxe JavaScript exécuté avec succès
-- Run : [45397509144](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45397509144)
+- Le dernier run de référence avant l'ajout du test de parcours complet est vert : [45403947610](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45403947610).
+- Le nombre final de tests et le run associé seront renseignés après le contrôle CI du présent commit.
 
 ## Décisions qui restent à approuver
 
