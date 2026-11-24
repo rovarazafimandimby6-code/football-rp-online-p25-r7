@@ -356,3 +356,21 @@ test('P27 barrages : un nul impose une revanche et seul le vainqueur de la final
   assert.ok(promotion.finalPosition>=4&&promotion.finalPosition<=7);
  }finally{f.cleanup();}
 });
+
+
+test('P27 saisons : interdit le renouvellement tant que les huit barrages de promotion ne sont pas décidés',()=>{
+ const f=setup();try{
+  for(const competition of f.store.activeSeason.competitions){
+   if(competition.type==='league'||competition.type==='cup')competition.status='completed';
+  }
+  const preview=f.store.previewSeasonMovements();
+  assert.equal(preview.ok,false);
+  assert.equal(preview.reason,'promotion-playoffs-incomplete');
+  assert.equal(f.store.activeSeason.competitions.filter(item=>item.type==='promotion-playoff').length,8);
+  const result=f.store.finalizeSeason({nextSeasonId:'2027-28',movements:[]});
+  assert.equal(result.ok,false);
+  assert.equal(result.reason,'season-competitions-incomplete');
+  assert.equal(f.store.activeSeason.id,'test-season');
+  assert.equal(f.store.seasonHistory().length,1);
+ }finally{f.cleanup();}
+});
