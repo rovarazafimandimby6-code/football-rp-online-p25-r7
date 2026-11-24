@@ -18,21 +18,21 @@ const WORLD_CLUB_CITIES = [
   ['Nairobi','Kenya','KE'],['Mombasa','Kenya','KE'],['Kisumu','Kenya','KE'],['Nakuru','Kenya','KE']
 ];
 const D4_CITIES = {
-  Nord: [
+  A: [
     'Ambilobe','Ambanja','Nosy Be','Sambava','Antalaha','Andapa','Vohemar','Bealanana',
     'Befandriana Nord','Port-Berge','Mampikony','Mandritsara','Marovoay','Mitsinjo','Soalala','Antsohihy'
   ],
-  Sud: [
+  C: [
     'Antananarivo','Antsirabe','Fianarantsoa','Ambositra','Manakara','Mananjary','Farafangana','Vangaindrano',
     'Ihosy','Betroka','Taolagnaro','Toliara','Sakaraha','Morondava','Miandrivazo','Belo sur Tsiribihina'
   ]
 };
 const D5_CITIES = {
-  Nord: [
+  A: [
     'Ambilobe','Ambanja','Nosy Be','Sambava','Antalaha','Andapa','Vohemar','Bealanana',
     'Befandriana Nord','Port-Berge','Mampikony','Mandritsara','Marovoay','Soalala','Antsohihy'
   ],
-  Est: [
+  B: [
     'Toamasina','Fenerive-Est','Vatomandry','Mahanoro','Brickaville','Moramanga','Andasibe','Anosibe Anala',
     'Ambatondrazaka','Amparafaravola','Manakara','Mananjary','Farafangana','Vangaindrano','Nosy Varika'
   ],
@@ -40,7 +40,7 @@ const D5_CITIES = {
     'Antsirabe','Fianarantsoa','Ambositra','Ihosy','Betroka','Taolagnaro','Sakaraha','Ampanihy',
     'Betioky','Bekily','Ambovombe','Amboasary','Tsihombe','Beloha','Ejeda'
   ],
-  Ouest: [
+  D: [
     'Mahajanga','Ambato-Boeny','Ambatomainty','Ankavandra','Maintirano','Morafenobe','Besalampy','Antsalova',
     'Belo sur Tsiribihina','Tsiroanomandidy','Miarinarivo','Arivonimamo','Ankazobe','Maevatanana','Kandreho'
   ]
