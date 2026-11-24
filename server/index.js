@@ -23,6 +23,7 @@ import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/l
 import { listPublicClubs, resolvePublicClub } from './club-catalog.js';
 import { listP27Players } from '../src/p27-player-library.js';
 import { isAdminTokenConfigured, isValidAdminToken } from './admin-auth.js';
+import { runP27DeploymentPreflight } from './deployment-preflight.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
@@ -113,7 +114,16 @@ async function readBody(req) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://localhost');
-  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { ok: true, service: 'football-rp-online-match-server', protocol: 1 });
+  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { ok: true, status: 'live', service: 'football-rp-online-match-server', protocol: 1 });
+  if (req.method === 'GET' && url.pathname === '/readyz') {
+    const preflight = await runP27DeploymentPreflight({ root: APP_ROOT });
+    return json(res, preflight.ok ? 200 : 503, {
+      ok: preflight.ok,
+      status: preflight.ok ? 'ready' : 'not-ready',
+      errors: preflight.errors,
+      storage: preflight.checked,
+    });
+  }
   try {
     if (req.method === 'GET' && url.pathname === '/api/admin/world-integrity') {
       if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
@@ -476,8 +486,46 @@ try {
   if (!result.ok) process.stderr.write(`P27 club world startup tick incomplete: ${result.reason || 'unknown'}\n`);
 } catch (error) { process.stderr.write(`P27 club world startup tick failed: ${error.message}\n`); }
 tick.unref();
-const port = Math.max(1, Math.min(65535, Number(process.env.PORT) || 8080));
-if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
-  server.listen(port, '0.0.0.0', () => process.stdout.write(`Football RP Online match server listening on ${port}\n`));
+let shutdownPromise = null;
+function shutdownP27Server() {
+  if (shutdownPromise) return shutdownPromise;
+  clearInterval(tick);
+  clearInterval(assignmentSyncTick);
+  clearInterval(humanRosterSyncTick);
+  clearInterval(clubWorldTick);
+  shutdownPromise = new Promise((resolve, reject) => {
+    const flush = () => {
+      const report = manager.persistAllRooms();
+      if (report.failed.length) {
+        const error = new Error('P27_SHUTDOWN_CHECKPOINT_FAILED');
+        error.details = report.failed;
+        reject(error);
+      } else {
+        process.stdout.write(`P27 shutdown checkpoints saved: ${report.saved}\n`);
+        resolve(report);
+      }
+    };
+    if (!server.listening) { flush(); return; }
+    server.close(error => {
+      if (error) { reject(error); return; }
+      flush();
+    });
+  });
+  return shutdownPromise;
 }
-export { server, manager, clubFinance, serverClubManager, clubWorld };
+
+const port = Math.max(1, Math.min(65535, Number(process.env.PORT) || 8080));
+const isMainModule = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMainModule) {
+  server.listen(port, '0.0.0.0', () => process.stdout.write(`Football RP Online match server listening on ${port}\n`));
+  const handleSignal = signal => {
+    process.stdout.write(`P27 graceful shutdown requested: ${signal}\n`);
+    shutdownP27Server().catch(error => {
+      process.stderr.write(`P27 graceful shutdown failed: ${error.message}\n`);
+      process.exitCode = 1;
+    });
+  };
+  process.once('SIGTERM', () => handleSignal('SIGTERM'));
+  process.once('SIGINT', () => handleSignal('SIGINT'));
+}
+export { server, manager, clubFinance, serverClubManager, clubWorld, shutdownP27Server };
