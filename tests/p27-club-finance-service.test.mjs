@@ -347,7 +347,8 @@ test('P27 journal financier : reprend un salaire humain après panne du checkpoi
  const f=setup({events:[event]});
  try {
   const persist=f.service.persistTransferJournal.bind(f.service);
-  f.service.persistTransferJournal=next=>next.playerWages?.some(item=>!item.posted)?false:persist(next);
+  let journalWrites=0;
+  f.service.persistTransferJournal=next=>{journalWrites++;return journalWrites===2?false:persist(next);};
   const failed=f.service.syncRecordedPlayerWages();
   assert.equal(failed.ok,false);assert.equal(failed.clubs[0].stage,'checkpoint');
   assert.equal(f.service.store.getAccount(event.clubId).totalExpenses,450);
