@@ -23,8 +23,8 @@ test('P27 API HTTP : catalogue consultable, filtrable et protégé contre les fi
     assert.equal(structure.complete,true);
     assert.equal(structure.currentClubCount,156);
     assert.deepEqual(structure.divisionCounts,{D1:16,D2:20,D3:24,D4:32,D5:64});
-    assert.deepEqual(structure.conferenceCounts.D4,{Nord:16,Sud:16});
-    assert.deepEqual(structure.conferenceCounts.D5,{Nord:16,Sud:16,Est:16,Ouest:16});
+    assert.deepEqual(structure.conferenceCounts.D4,{A:16,B:16});
+    assert.deepEqual(structure.conferenceCounts.D5,{A:16,B:16,C:16,D:16});
 
     const competitionResponse=await fetch(base+'/api/competitions');
     assert.equal(competitionResponse.status,200);
@@ -42,7 +42,7 @@ test('P27 API HTTP : catalogue consultable, filtrable et protégé contre les fi
     assert.equal(cup.members.length,156);
     assert.equal(cup.fixtures.length,155);
 
-    const conferenceResponse=await fetch(base+'/api/clubs?division=D4&conference=Nord');
+    const conferenceResponse=await fetch(base+'/api/clubs?division=D4&conference=A');
     assert.equal(conferenceResponse.status,200);
     const conference=await conferenceResponse.json();
     assert.equal(conference.total,16);
