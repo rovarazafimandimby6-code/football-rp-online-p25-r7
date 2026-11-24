@@ -94,3 +94,8 @@ Les checkpoints locaux ne constituent ni une réplication multi-instance ni une 
 Les échéances de checkpoint atteintes pendant un même tick sont maintenant regroupées par `RoomManager.persistRooms()` puis écrites avec un seul `JsonRoomStore.saveMany()`. La méthode valide tous les snapshots et le plafond de capacité avant de remplacer atomiquement le fichier commun. Le flush d'arrêt utilise également ce chemin groupé. Les sauvegardes immédiates déclenchées par les mutations critiques restent en place.
 
 Cette réduction du nombre d'écritures évite de réécrire le fichier complet une fois par salon lors d'un tick. Elle ne constitue pas un benchmark de charge et ne change pas les limites de déploiement : une seule instance, un stockage persistant requis et aucune coordination multi-processus.
+## 7. Limites HTTP configurées
+
+Le serveur Node limite la taille des en-têtes HTTP à 16 Kio, applique un délai de réception des en-têtes de 15 secondes, un délai de réception complet de requête de 30 secondes, une conservation keep-alive de 5 secondes et une limite de 1 000 requêtes par socket. Les corps de requête JSON restent limités à 8 Kio ; un corps trop volumineux renvoie HTTP 413 et un JSON invalide renvoie HTTP 400.
+
+Lors du déploiement, aligner les timeouts du proxy inverse et de la plateforme avec ces limites. Ces réglages réduisent l'exposition aux connexions lentes et aux requêtes excessives, mais ne constituent pas à eux seuls une protection contre un déni de service distribué.
