@@ -9,7 +9,7 @@ const cleanWorld=()=>({
   ]},{id:'club-b',division:'D1',conference:null,capacity:2,roster:[]}],
   transferState:{careers:[{accountId:'account-a',clubId:'club-a',contract:{status:'active',clubId:'club-a',salary:100,signedAt:'2026-01-01T00:00:00.000Z',expiresAt:'2027-01-01T00:00:00.000Z'}}]},
   financeAccounts:[{clubId:'club-a',openingBalance:100,balance:90,entries:[
-    {id:'wage-1',amount:10,direction:'expense'}
+    {id:'wage-1',category:'wages',amount:10,direction:'expense',createdAt:1000}
   ]}],
   competitionState:{seasons:[{id:'season-a',status:'active',competitions:[{
     id:'league-a',members:[{id:'club-a'},{id:'club-b'}],fixtures:[{
@@ -213,4 +213,26 @@ test('P27 intégrité monde : détecte un club absent du catalogue persistant du
  const result=auditP27World(input);
  assert.ok(result.errors.some(item=>item.code==='TRANSFER_CLUB_MISSING'&&item.clubId==='club-b'));
  assert.ok(result.errors.some(item=>item.code==='TRANSFER_CLUB_CATALOGUE_SIZE_MISMATCH'));
+});
+
+
+test('P27 intégrité finances : détecte les écritures mal catégorisées et les comptes manquants',()=>{
+ const input=cleanWorld();
+ input.financeAccounts[0].entries[0].category='unknown';
+ input.financeAccounts[0].entries[0].createdAt=-1;
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('FINANCE_ENTRY_INVALID'));
+ assert.ok(codes.includes('FINANCE_ACCOUNT_MISSING'));
+});
+
+test('P27 intégrité saisons : détecte les identifiants de fixture dupliqués entre saisons',()=>{
+ const input=cleanWorld();
+ const season=structuredClone(input.competitionState.seasons[0]);
+ season.id='season-b';
+ season.competitions[0].id='league-b';
+ season.competitions[0].fixtures[0].id='fixture-a';
+ input.competitionState.seasons.push(season);
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='FIXTURE_ID_INVALID_OR_DUPLICATE'));
 });
