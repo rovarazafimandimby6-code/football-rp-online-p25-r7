@@ -78,11 +78,15 @@ export function auditClubCatalog(clubs = []) {
 
     const colors = Array.isArray(club.colors) ? club.colors : [];
     const effectiveKitDesign = club.kitDesign ?? 'central';
-    if (colors.length !== 3 || !colors.every(validHex) || new Set(colors.map(value=>value.toLowerCase())).size !== 3) {
-      addIssue(issues, 'error', 'invalid-club-color-palette', { clubId:id });
-    } else if (!KIT_DESIGNS.has(effectiveKitDesign)) {
-      addIssue(issues, 'error', 'invalid-club-kit-design', { clubId:id, kitDesign:effectiveKitDesign });
-    } else quality.visualIdentities++;
+    const validPalette = colors.length === 3 && colors.every(validHex) && new Set(colors.map(value=>value.toLowerCase())).size === 3;
+    const validKitDesign = KIT_DESIGNS.has(effectiveKitDesign);
+    if (!validPalette) addIssue(issues, 'error', 'invalid-club-color-palette', { clubId:id });
+    if (!validKitDesign) addIssue(issues, 'error', 'invalid-club-kit-design', { clubId:id, kitDesign:effectiveKitDesign });
+    if (validPalette && validKitDesign) quality.visualIdentities++;
+
+    if (!['open','system-only'].includes(club.humanAdmission)) {
+      addIssue(issues, 'error', 'invalid-human-admission-policy', { clubId:id, humanAdmission:club.humanAdmission ?? null });
+    }
 
     if (division === 'D4' || division === 'D5') {
       const rawConference = club?.conference ?? club?.region;

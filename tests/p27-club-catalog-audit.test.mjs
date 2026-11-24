@@ -65,3 +65,24 @@ test('P27 audit profils : refuse une rivalité automatique ou un profil stratég
   assert.ok(audit.errors.some(issue=>issue.code==='club-lore-invalid-or-auto-rivalry'&&issue.clubId===clubs[0].id));
   assert.ok(audit.errors.some(issue=>issue.code==='club-strategic-profile-invalid'&&issue.clubId===clubs[1].id));
 });
+
+test('P27 géographie : les clubs fondateurs D4/D5 sont également résolus sans conférence explicite', () => {
+  const regionalClubs = DEFAULT_CLUBS.filter(club=>club.division==='D4'||club.division==='D5');
+  const unresolved = regionalClubs.filter(club=>conferenceForClub({ ...club, conference:undefined }) !== club.conference);
+  assert.deepEqual(unresolved.map(club=>({ id:club.id, city:club.city, expected:club.conference, actual:conferenceForClub({ ...club, conference:undefined }) })), []);
+});
+
+test('P27 audit visuel : signale séparément une palette et un motif de maillot invalides', () => {
+  const clubs = DEFAULT_CLUBS.map(club => ({ ...club, colors:[...club.colors] }));
+  clubs[0].colors = ['rouge'];
+  clubs[0].kitDesign = 'motif-inconnu';
+  const codes = new Set(auditClubCatalog(clubs).errors.filter(issue=>issue.clubId===clubs[0].id).map(issue=>issue.code));
+  assert.ok(codes.has('invalid-club-color-palette'));
+  assert.ok(codes.has('invalid-club-kit-design'));
+});
+
+test('P27 audit admission : refuse les politiques de recrutement humain inconnues', () => {
+  const clubs = DEFAULT_CLUBS.map(club => ({ ...club }));
+  clubs[0].humanAdmission = 'unrestricted-unknown';
+  assert.ok(auditClubCatalog(clubs).errors.some(issue=>issue.code==='invalid-human-admission-policy'&&issue.clubId===clubs[0].id));
+});

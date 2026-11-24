@@ -5,7 +5,7 @@
  */
 const WORLD_CLUB_CITIES = [
   ['Glasgow','Royaume-Uni','GB'],['Liverpool','Royaume-Uni','GB'],['Bristol','Royaume-Uni','GB'],['Leeds','Royaume-Uni','GB'],
-  ['Birmingham','Royaume-Uni','GB'],['Cardiff','Royaume-Uni','GB'],['Dublin','Irlande','GB'],['Edimbourg','Royaume-Uni','GB'],
+  ['Birmingham','Royaume-Uni','GB'],['Cardiff','Royaume-Uni','GB'],['Dublin','Irlande','IE'],['Edimbourg','Royaume-Uni','GB'],
   ['Lyon','France','FR'],['Marseille','France','FR'],['Bordeaux','France','FR'],['Lille','France','FR'],
   ['Nantes','France','FR'],['Toulouse','France','FR'],['Nice','France','FR'],['Strasbourg','France','FR'],
   ['Naples','Italie','IT'],['Turin','Italie','IT'],['Bologne','Italie','IT'],['Florence','Italie','IT'],
