@@ -631,3 +631,23 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ne jamais importer les anciennes valeurs compétitives client dans la progression serveur autoritaire.
 - [x] Couvrir la sauvegarde, la non-réécriture et le filtrage des données migrées par des tests.
 - Limite : la migration n'importe pas les anciennes récompenses ni les statistiques locales dans le classement officiel ; celles-ci restent dans la sauvegarde locale de sécurité.
+
+
+### Lot 58 — transactions atomiques de progression (intégré, tests de panne)
+- [x] Exécuter les récompenses de match, l'entraînement et la pratique sur une copie de travail de l'état.
+- [x] Ne publier l'état en mémoire qu'après l'écriture atomique réussie sur disque.
+- [x] Annuler la mutation mémoire si la persistance échoue, afin qu'une nouvelle tentative ne soit jamais considérée comme un doublon déjà enregistré.
+- [x] Préserver l'idempotence des récompenses par identifiant de match et les réponses sans mutation lorsque les ressources sont insuffisantes.
+- [x] Ajouter des tests de panne disque et de reprise pour les récompenses et l'entraînement.
+
+### Lot 59 — transactions atomiques de carrière (intégré, tests de panne)
+- [x] Rendre transactionnels les enregistrements de carrière des comptes et les historiques sportifs individuels.
+- [x] Restaurer l'état mémoire antérieur si l'écriture de carrière échoue.
+- [x] Garder le traitement idempotent des matchs et éviter les statistiques dupliquées lors d'une nouvelle tentative.
+- [x] Ajouter des tests de panne disque, relecture et reprise pour les deux types d'historique.
+
+### Lot 60 — publication du résultat après validation des récompenses (intégré, tests serveur)
+- [x] Enregistrer les carrières et récompenses avant de publier l'archive officielle du résultat.
+- [x] Ne pas exposer un résultat archivé tant que le salon en mémoire est encore en finalisation.
+- [x] Conserver le salon en attente et permettre une nouvelle tentative après une panne de persistance.
+- [x] Vérifier que l'archive et le résultat officiel n'apparaissent qu'après la réussite de la progression du compte.
