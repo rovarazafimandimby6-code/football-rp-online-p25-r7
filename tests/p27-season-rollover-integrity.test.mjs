@@ -102,3 +102,29 @@ test('P27 transition de saison : restaure intégralement clubs et archives si la
   rmSync(directory,{recursive:true,force:true});
  }
 });
+
+
+test('P27 archives de saison : contrôle une chronologie unique et refuse une transition antidatée invalide',()=>{
+ const directory=mkdtempSync(path.join(tmpdir(),'p27-season-timeline-'));
+ try {
+  const store=new JsonCompetitionStore(directory,{seasonId:'2026-27',now:()=>1000});
+  const first=store.snapshot();
+  assert.equal(first.timelineAudit.ok,true,JSON.stringify(first.timelineAudit));
+  const invalid=store.finalizeSeason({nextSeasonId:'invalid-time',movements:[],completedAt:-1});
+  assert.equal(invalid.ok,false);
+  assert.equal(invalid.reason,'invalid-season-transition');
+  for(const competition of store.activeSeason.competitions) competition.status='completed';
+  finishPromotionPlayoffs(store);
+  const preview=store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  assert.equal(store.finalizeSeason({nextSeasonId:'2027-28',movements:preview.movements,completedAt:2000}).ok,true);
+  const snapshot=store.snapshot();
+  assert.equal(snapshot.timelineAudit.ok,true,JSON.stringify(snapshot.timelineAudit));
+  assert.equal(snapshot.timelineAudit.seasons,2);
+  assert.equal(snapshot.timelineAudit.completedSeasons,1);
+  const restored=new JsonCompetitionStore(directory,{seasonId:'unused',now:()=>3000});
+  assert.equal(restored.snapshot().timelineAudit.ok,true);
+  restored.state.seasons[0].id=restored.state.seasons[1].id;
+  assert.equal(restored.snapshot().timelineAudit.reason,'season-id-invalid-or-duplicate');
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
