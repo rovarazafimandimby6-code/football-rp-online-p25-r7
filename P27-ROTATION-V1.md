@@ -21,9 +21,10 @@ Le module `src/rotation-rules.js` formalise les limites de feuille de match, la 
 ## Intégration et état d'avancement
 La prise en charge IA d'un avatar déconnecté est désormais intégrée au serveur autoritaire : l'avatar reste dans la simulation, garde son identifiant et la possession du ballon, et peut être repris par le même jeton jusqu'à la fin du match. L'IA de remplacement utilise une vitesse réduite, ne sprinte pas automatiquement et son statut est diffusé dans les snapshots ; l'interface affiche « · IA » avec l'intitulé accessible « Contrôlé par l’IA · niveau moyen ».
 
-Le mode banc complet n'est pas encore livré. Il reste à relier ces règles :
-1. au modèle autoritaire du serveur multijoueur (joueurs actifs et réserves humains distincts) ;
-2. aux actions de demande/validation de remplacement et à leur synchronisation réseau ;
-3. à la scène 3D du banc, à la caméra spectateur et aux commandes tactiles conditionnelles ;
-4. à la gestion du contrôle IA temporaire lors d'une déconnexion et au retour du contrôle humain ; (socle serveur et indication de statut déjà intégrés, scénarios avancés à compléter)
-5. aux statistiques individuelles, minutes jouées et historique des rotations.
+Le mode banc est partiellement intégré au serveur et au client : les réservistes sont des avatars distincts, placés hors du terrain ; le joueur humain peut demander à entrer ; la demande est traitée au prochain arrêt de jeu en remplaçant prioritairement un bot ou un avatar IA déconnecté, jamais un humain connecté. La caméra spectateur et le verrouillage des commandes sont reliés à l'état `isOnPitch`. Les minutes jouées et les statistiques restent attachées à l'identité du joueur.
+
+Points restant à finaliser :
+1. améliorer la présentation 3D du banc (bancs physiques, alignement, animations d'attente et transitions) ;
+2. gérer le cas où aucun bot/IA remplaçable n'est disponible, avec retour d'état explicite au joueur ;
+3. valider visuellement la caméra spectateur et les transitions sur Android ;
+4. compléter l'historique visuel des rotations et l'affichage des minutes jouées.

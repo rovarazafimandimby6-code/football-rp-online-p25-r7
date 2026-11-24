@@ -755,3 +755,26 @@ test("P27 demande d'entrée depuis le banc : refus d'un joueur encore sur le ter
   const joined = manager.join(room.id);
   assert.throws(() => manager.requestEntry(room.id, joined.token), /PLAYER_NOT_ON_BENCH/);
 });
+
+
+test('P27 banc : les réservistes restent hors du terrain après un but et à la mi-temps', () => {
+  let now = 900_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create();
+  manager.join(room.id);
+  const internal = manager.rooms.get(room.id);
+  const reserve = [...internal.players.values()].find(player => player.isBot && player.isOnPitch === false);
+  assert.ok(reserve);
+  assert.ok(Math.abs(reserve.z) > 17, 'le banc doit être positionné au-delà de la ligne de touche');
+  const benchPosition = { x: reserve.x, z: reserve.z };
+  internal.goalPauseMs = 1;
+  now += 50;
+  manager.tick(0.05);
+  assert.deepEqual({ x: reserve.x, z: reserve.z }, benchPosition, 'la reprise après but ne doit pas téléporter le banc sur la pelouse');
+  internal.phase = 'halftime';
+  internal.halftimeUntil = now;
+  now += 5_000;
+  manager.tick(0.05);
+  assert.deepEqual({ x: reserve.x, z: reserve.z }, benchPosition, 'le changement de côté ne doit pas déplacer les réservistes sur le terrain');
+  assert.equal(reserve.isOnPitch, false);
+});

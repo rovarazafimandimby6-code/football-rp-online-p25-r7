@@ -64,6 +64,7 @@ export function stepRoomSimulation(room, dt) {
     if (wasPaused && room.goalPauseMs === 0) {
       // Replacer les deux équipes pour une reprise lisible au rond central.
       for (const player of room.players.values()) {
+        if (player.isOnPitch === false) continue;
         const sign = player.team === 'blue' ? -1 : 1;
         const lane = (Number.isInteger(player.slot) ? player.slot : 2) - 2;
         player.x = sign * (14 + Math.max(0, 2 - Math.abs(lane)) * 1.2);

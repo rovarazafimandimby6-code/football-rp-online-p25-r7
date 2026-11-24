@@ -96,8 +96,8 @@ export class RoomManager {
         const id = `bench-${team}-${randomBytes(5).toString('hex')}`;
         room.players.set(id, {
           id, token: null, name: `${team === 'blue' ? 'Réserve bleue' : 'Réserve rouge'} ${benchCount + 1}`,
-          team, slot, x: team === 'blue' ? -22 + benchCount * 2 : 22 - benchCount * 2,
-          z: -12 + benchCount * 5, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
+          team, slot, x: team === 'blue' ? -18 + benchCount * 3 : 18 - benchCount * 3,
+          z: -19.5, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
           role: ['DEF', 'MID', 'FWD', 'FWD', 'GK'][benchCount] || 'MID', isBot: true,
           isOnPitch: false, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
           input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0,
@@ -283,7 +283,7 @@ export class RoomManager {
           room.halftimeUntil = null;
           room.events.push({ type: 'second-half', at: room.elapsedMs });
           for (const p of room.players.values()) {
-            p.x *= -1;
+            if (p.isOnPitch !== false) p.x *= -1;
             p.input = { x: 0, z: 0, sprint: false };
             p.vx = 0; p.vz = 0;
             p.facing = p.team === 'blue' ? Math.PI / 2 : -Math.PI / 2;
