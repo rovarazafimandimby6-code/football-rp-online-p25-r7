@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { JsonTransferStore } from '../server/transfer-store.js';
 
-function setup(){const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-transfer-atomic-'));let now=Date.parse('2027-01-15T12:00:00.000Z');return{directory,get now(){return now;},store:new JsonTransferStore(directory,{now:()=>now}),cleanup:()=>rmSync(directory,{recursive:true,force:true})};}
+function setup(){const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-transfer-atomic-'));let now=Date.parse('2027-01-15T12:00:00.000Z');return{directory,get now(){return now;},setNow(value){now=value;},store:new JsonTransferStore(directory,{now:()=>now}),cleanup:()=>rmSync(directory,{recursive:true,force:true})};}
 
 test('P27 mercato : une panne disque annule un transfert et restaure les budgets des deux clubs',()=>{
  const f=setup();try{
