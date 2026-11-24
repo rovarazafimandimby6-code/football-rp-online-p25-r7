@@ -22,8 +22,8 @@ test('P27 transition de saison : conserve les 156 clubs et les quotas régionaux
     assert.equal(snapshot.scheduleAudit.fixtureCount,1892);
     const leagues=snapshot.competitions.filter(item=>item.type==='league');
     assert.equal(leagues.length,9);
-    assert.deepEqual(leagues.filter(item=>item.division==='D4').map(item=>[item.conference,item.members.length]),[['Nord',16],['Sud',16]]);
-    assert.deepEqual(leagues.filter(item=>item.division==='D5').map(item=>[item.conference,item.members.length]),[['Nord',16],['Sud',16],['Est',16],['Ouest',16]]);
+    assert.deepEqual(leagues.filter(item=>item.division==='D4').map(item=>[item.conference,item.members.length]),[['A',16],['B',16]]);
+    assert.deepEqual(leagues.filter(item=>item.division==='D5').map(item=>[item.conference,item.members.length]),[['A',16],['B',16],['C',16],['D',16]]);
     assert.equal(snapshot.competitions.find(item=>item.type==='cup').members.length,156);
     assert.equal(new Set(snapshot.competitions.find(item=>item.type==='cup').members.map(item=>item.id)).size,156);
   } finally {
