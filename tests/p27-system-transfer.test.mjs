@@ -143,6 +143,24 @@ test('P27 lot 85 : simulation du mercato IA déterministe, fondée sur les besoi
  } finally {rmSync(a,{recursive:true,force:true});rmSync(b,{recursive:true,force:true});rmSync(c,{recursive:true,force:true});}
 });
 
+test('P27 lot 96 : les joueurs humains ne masquent pas le besoin de joueurs IA au même poste',()=>{
+ const directory=mkdtempSync(path.join(os.tmpdir(),'p27-market-human-demand-'));
+ try {
+  const service=marketFixture(directory);
+  for (const id of ['market-buyer','market-buyer-2','market-buyer-3']) {
+   const buyer=service.clubManager.getClub(id);
+   buyer.roster.push(
+    {id:`human-${id}-1`,playerType:'human',role:'FWD',rating:85},
+    {id:`human-${id}-2`,playerType:'human',role:'FWD',rating:80}
+   );
+  }
+  const result=service.simulateMarket({windowId:'human-demand-2028',maxTransfers:1,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  assert.equal(result.evaluated,3);
+  assert.equal(result.processed,1);
+  assert.equal(service.clubManager.getClub('market-seller').roster.filter(p=>p.playerType==='system'&&p.role==='FWD').length,2);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
 test('P27 lot 94 : une vague de mercato ne vide jamais le poste du vendeur sous deux joueurs IA',()=>{
  const directory=mkdtempSync(path.join(os.tmpdir(),'p27-market-depth-batch-'));
  try {
