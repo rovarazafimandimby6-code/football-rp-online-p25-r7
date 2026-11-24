@@ -68,6 +68,27 @@ test('P27 lot 85 : reprend le règlement financier en attente après redémarrag
  } finally {f.cleanup();}
 });
 
+test('P27 lot 85 : annule le déplacement si la sauvegarde du roster échoue puis reprend proprement',()=>{
+ const f=setup();
+ try {
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService});
+  const persist=f.manager.storage.setItem.bind(f.manager.storage);
+  f.manager.storage.setItem=()=>{throw new Error('simulated-roster-storage-failure');};
+  const request={id:'ai-transfer-roster-retry',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:700};
+  const failed=service.transfer(request);
+  assert.equal(failed.ok,false);
+  assert.equal(failed.reason,'roster-persistence-failed');
+  assert.equal(f.manager.getClub('club-a').roster.filter(p=>p.id==='system-player-1').length,1);
+  assert.equal(f.manager.getClub('club-b').roster.some(p=>p.id==='system-player-1'),false);
+  assert.equal(f.journal.size,0);
+  f.manager.storage.setItem=persist;
+  const replay=service.processPending();
+  assert.equal(replay.ok,true);
+  assert.equal(f.manager.getClub('club-b').roster.filter(p=>p.id==='system-player-1').length,1);
+  assert.equal(f.journal.size,1);
+ } finally {f.cleanup();}
+});
+
 test('P27 lot 85 : refuse les carrières humaines, les indemnités invalides et les clubs inconnus',()=>{
  const f=setup();
  try {
