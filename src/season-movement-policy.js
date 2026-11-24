@@ -74,7 +74,7 @@ export function calculateSeasonMovements({ competitions = [], clubs = [], policy
     const {competition,rows}=tables.get(division+':-');
     if (division!=='D1') for(let i=0;i<policy.nationalSlots;i++)
       add(rows[i],division,null,'D'+(DIVISION_ORDER[division]-1),null,'promotion',i+1,competition);
-    if (division!=='D3') for(let i=0;i<policy.nationalSlots;i++) {
+    for(let i=0;i<policy.nationalSlots;i++) {
       const position=rows.length-i;
       add(rows[position-1],division,null,'D'+(DIVISION_ORDER[division]+1),null,'relegation',position,competition);
     }
