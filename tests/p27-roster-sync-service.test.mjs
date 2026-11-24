@@ -110,3 +110,16 @@ test('P27 saga effectif : rejoue sans doublon si le checkpoint de sortie échoue
   assert.equal(f.transferStore.pendingRosterSync().length,0);
  }finally{f.cleanup();}
 });
+
+test('P27 saga effectif : les commandes outbox survivent au redémarrage du mercato',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-roster-restart',{clubId:'club-a',salary:500,durationDays:365});
+  assert.equal(f.transferStore.pendingRosterSync().length,1);
+  const restartedStore=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
+  assert.equal(restartedStore.pendingRosterSync().length,1);
+  const result=processPendingRosterSync({transferStore:restartedStore,clubManager:f.clubManager});
+  assert.equal(result.ok,true);
+  assert.equal(f.clubManager.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
+  assert.equal(restartedStore.pendingRosterSync().length,0);
+ }finally{f.cleanup();}
+});
