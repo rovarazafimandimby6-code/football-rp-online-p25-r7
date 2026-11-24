@@ -14,7 +14,7 @@ export function calculatePlayerMatchRating(player = {}) {
   const participation = Math.min(1, minutes / 3.5);
   let score = 6 + (participation - 0.5) * 0.5;
   score += goals * (player.role === 'GK' ? 1.0 : 1.15) + assists * 0.82;
-  score += Math.min(0.18, shots * (player.role === 'FWD' ? 0.025 : 0.012));
+  score += Math.min(0.3, shots * (player.role === 'FWD' ? 0.045 : 0.012));
   if (passAccuracy !== null) {
     score += Math.min(0.38, completedPasses * 0.022);
     score += passAccuracy >= 0.82 ? 0.28 : passAccuracy >= 0.68 ? 0.12 : passAccuracy < 0.45 ? -0.3 : 0;
