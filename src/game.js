@@ -128,6 +128,16 @@ export class Game {
     const pauseButton = document.getElementById('pause'); if (pauseButton) pauseButton.hidden = Boolean(this.onlineBridge);
 
     this.ui = new UIManager(this.players, {
+      isOnline: Boolean(this.onlineBridge),
+      onToggleCamera: () => {
+        const modes = ['player', 'broadcast', 'spectator'];
+        const current = this.onlineBridge?.normalCameraMode || this.cam.mode;
+        const next = modes[(Math.max(0, modes.indexOf(current)) + 1) % modes.length];
+        if (this.onlineBridge) this.onlineBridge.setPreferredCameraMode(next);
+        else this.cam.setMode(next);
+        this.ui?.setCameraModeLabel?.(next);
+        this.ui?.setStatus?.('CAMÉRA : ' + ({ player: 'JOUEUR', broadcast: 'DIFFUSION TV', spectator: 'SPECTATEUR' }[next]));
+      },
       onTogglePause: () => this.togglePause(),
       onRotate: async (outgoingId, incomingId) => {
         try {
