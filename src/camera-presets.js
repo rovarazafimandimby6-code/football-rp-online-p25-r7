@@ -8,5 +8,5 @@ export const CAMERA_PRESETS = Object.freeze({
 });
 
 export function resolveCameraMode(mode) {
-  return mode === 'player' || Object.hasOwn(CAMERA_PRESETS, mode) ? mode : 'broadcast';
+  return mode === 'player' || mode === 'bench' || Object.hasOwn(CAMERA_PRESETS, mode) ? mode : 'broadcast';
 }
