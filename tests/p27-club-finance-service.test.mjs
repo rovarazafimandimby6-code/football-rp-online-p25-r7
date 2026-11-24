@@ -326,3 +326,34 @@ test('P27 journal financier : reprend après une panne du checkpoint du débit s
   assert.equal(f.service.store.getAccount(to.id).totalIncome,900);
  } finally {f.cleanup();}
 });
+
+
+test('P27 journal financier : reprend les salaires humains après redémarrage sans double écriture',()=>{
+ const event={id:'salary-journal-restart',type:'salary-payment',clubId:DEFAULT_CLUBS[0].id,amount:700,at:Date.UTC(2027,0,1)};
+ const f=setup({events:[event]});
+ try {
+  const first=f.service.syncRecordedPlayerWages();
+  assert.equal(first.ok,true);assert.equal(first.posted,1);
+  const journal=JSON.parse(readFileSync(path.join(f.directory,'transfer-finance-journal.json'),'utf8'));
+  assert.equal(journal.playerWages[0].posted,true);
+  const restarted=new JsonClubFinanceService(f.directory,{clubs:DEFAULT_CLUBS,transferStore:f.transferStore});
+  assert.equal(restarted.syncRecordedPlayerWages().posted,0);
+  assert.equal(restarted.store.getAccount(event.clubId).totalExpenses,700);
+ } finally {f.cleanup();}
+});
+
+test('P27 journal financier : reprend un salaire humain après panne du checkpoint sans doubler la dépense',()=>{
+ const event={id:'salary-journal-checkpoint',type:'salary-payment',clubId:DEFAULT_CLUBS[0].id,amount:450,at:Date.UTC(2027,0,2)};
+ const f=setup({events:[event]});
+ try {
+  const persist=f.service.persistTransferJournal.bind(f.service);
+  f.service.persistTransferJournal=next=>next.playerWages?.some(item=>!item.posted)?false:persist(next);
+  const failed=f.service.syncRecordedPlayerWages();
+  assert.equal(failed.ok,false);assert.equal(failed.clubs[0].stage,'checkpoint');
+  assert.equal(f.service.store.getAccount(event.clubId).totalExpenses,450);
+  f.service.persistTransferJournal=persist;
+  const retry=f.service.syncRecordedPlayerWages();
+  assert.equal(retry.ok,true);assert.equal(retry.posted,0);
+  assert.equal(f.service.store.getAccount(event.clubId).totalExpenses,450);
+ } finally {f.cleanup();}
+});
