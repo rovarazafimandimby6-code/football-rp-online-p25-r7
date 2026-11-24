@@ -26,6 +26,18 @@ test('P27 API HTTP : catalogue consultable, filtrable et protégé contre les fi
     assert.deepEqual(structure.conferenceCounts.D4,{Nord:16,Sud:16});
     assert.deepEqual(structure.conferenceCounts.D5,{Nord:16,Sud:16,Est:16,Ouest:16});
 
+    const competitionResponse=await fetch(base+'/api/competitions');
+    assert.equal(competitionResponse.status,200);
+    const competitionSnapshot=await competitionResponse.json();
+    const leagueCompetitions=competitionSnapshot.competitions.filter(item=>item.type==='league');
+    assert.equal(leagueCompetitions.length,9);
+    assert.equal(competitionSnapshot.scheduleAudit.ok,true);
+    assert.equal(competitionSnapshot.scheduleAudit.fixtureCount,1306);
+    assert.ok(leagueCompetitions.every(item=>item.standings.length===item.targetClubCount));
+    const cup=competitionSnapshot.competitions.find(item=>item.type==='cup');
+    assert.equal(cup.members.length,156);
+    assert.equal(cup.fixtures.length,155);
+
     const conferenceResponse=await fetch(base+'/api/clubs?division=D4&conference=Nord');
     assert.equal(conferenceResponse.status,200);
     const conference=await conferenceResponse.json();
