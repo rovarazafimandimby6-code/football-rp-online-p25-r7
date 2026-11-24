@@ -88,7 +88,15 @@ export function auditLeagueSchedule(competition) {
         return fail('league-standings-fixture-mismatch',{clubId:row.id,field:key,expected:expectedStats[key],actual:row[key]});
     }
   }
-  return {ok:true,division:competition.division,conference:competition.conference||null,matchFormat:format,legs:expectedLegs,clubs:expected,rounds:expectedRounds,fixtures:fixtures.length,completedFixtures:fixtures.filter(item=>item.status==='completed').length,appearancesPerClub:expectedRounds};
+  const completedFixtures=fixtures.filter(item=>item.status==='completed').length;
+  const allFixturesCompleted=completedFixtures===fixtures.length;
+  if(competition.status==='completed') {
+    if(!allFixturesCompleted||!competition.championClubId||competition.championClubId!==standings[0]?.id)
+      return fail('league-completion-state-mismatch',{allFixturesCompleted,championClubId:competition.championClubId||null,tableLeaderId:standings[0]?.id||null});
+  } else if(allFixturesCompleted) {
+    return fail('league-completion-state-mismatch',{allFixturesCompleted,championClubId:competition.championClubId||null});
+  }
+  return {ok:true,division:competition.division,conference:competition.conference||null,matchFormat:format,legs:expectedLegs,clubs:expected,rounds:expectedRounds,fixtures:fixtures.length,completedFixtures,appearancesPerClub:expectedRounds};
 }
 
 export function auditLeagueSchedules(competitions=[]) {
