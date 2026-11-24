@@ -561,3 +561,33 @@ test('P27 championnat : refuse un score terminé hors limites même si le classe
   assert.equal(result.reason,'completed-fixture-result-invalid');
  } finally {f.cleanup();}
 });
+
+
+test('P27 calendrier : lie le statut terminé au calendrier complet et au champion du classement',()=>{
+ const f=setup();
+ try {
+  const league=f.store.activeSeason.competitions.find(item=>item.type==='league'&&item.division==='D4'&&item.conference==='A');
+  const fixture=league.fixtures[0];
+  fixture.status='completed';fixture.result={home:1,away:0};
+  const home=league.standings.find(row=>row.id===fixture.homeClubId);
+  const away=league.standings.find(row=>row.id===fixture.awayClubId);
+  home.played++;home.wins++;home.goalsFor++;home.points+=3;
+  away.played++;away.losses++;away.goalsAgainst++;
+  league.status='completed';league.championClubId=home.id;
+  assert.equal(auditLeagueSchedule(league).reason,'league-completion-state-mismatch');
+  league.status='active';league.championClubId=null;
+  assert.equal(auditLeagueSchedule(league).ok,true);
+  for(const item of league.fixtures) {
+   if(item===fixture)continue;
+   item.status='completed';item.result={home:0,away:0};
+   const h=league.standings.find(row=>row.id===item.homeClubId);
+   const v=league.standings.find(row=>row.id===item.awayClubId);
+   h.played++;v.played++;h.draws++;v.draws++;h.points++;v.points++;
+  }
+  league.standings.sort((x,y)=>y.points-x.points||(y.goalsFor-y.goalsAgainst)-(x.goalsFor-x.goalsAgainst)||y.goalsFor-x.goalsFor||x.name.localeCompare(y.name));
+  league.status='completed';league.championClubId=league.standings[0].id;
+  assert.equal(auditLeagueSchedule(league).ok,true);
+  league.championClubId=league.standings[1].id;
+  assert.equal(auditLeagueSchedule(league).reason,'league-completion-state-mismatch');
+ } finally {f.cleanup();}
+});
