@@ -39,6 +39,22 @@ test('P27 API compte : inscription, authentification, session protégée et rév
     const forbiddenCareer = await fetch(`${base}/api/career`);
     assert.equal(forbiddenCareer.status, 401);
 
+    const savedProfile = await fetch(`${base}/api/profile`, {
+      method: 'PUT', headers: { 'content-type': 'application/json', authorization: `Bearer ${created.token}` },
+      body: JSON.stringify({ profile: { identity: { displayName: 'Compte test', role: 'FWD', number: 9 }, appearance: { kit: 'violet', hairStyle: 'fade' }, progression: { coins: 999999 } } })
+    });
+    assert.equal(savedProfile.status, 200);
+    const cloudProfile = (await savedProfile.json()).profile;
+    assert.equal(cloudProfile.identity.role, 'FWD');
+    assert.equal(cloudProfile.appearance.kit, 'violet');
+    assert.equal(Object.hasOwn(cloudProfile, 'progression'), false);
+    const loadedProfile = await fetch(`${base}/api/profile`, { headers: { authorization: `Bearer ${created.token}` } });
+    assert.equal(loadedProfile.status, 200);
+    assert.equal((await loadedProfile.json()).profile.identity.displayName, 'Compte test');
+    const forbiddenProfile = await fetch(`${base}/api/profile`);
+    assert.equal(forbiddenProfile.status, 401);
+
+
     const me = await fetch(`${base}/api/accounts/me`, { headers: { authorization: `Bearer ${created.token}` } });
     assert.equal(me.status, 200);
     assert.equal((await me.json()).account.id, created.account.id);
