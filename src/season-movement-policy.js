@@ -1,4 +1,4 @@
-import { LEAGUE_DIVISIONS } from './league-structure.js';
+import { LEAGUE_DIVISIONS, conferenceForClub } from './league-structure.js';
 
 export const DEFAULT_SEASON_MOVEMENT_POLICY = Object.freeze({
   id: 'balanced-2-4',
@@ -55,7 +55,7 @@ export function calculateSeasonMovements({ competitions = [], clubs = [], policy
     if (!rows) return fail('league-table-incomplete',{division,conference});
     for (const row of rows) {
       const club = clubMap.get(row.id);
-      if (!club || club.division!==division || (conference && club.conference!==conference))
+      if (!club || club.division!==division || (conference && conferenceForClub(club)!==conference))
         return fail('league-table-club-mismatch',{clubId:row.id,division,conference});
     }
     tables.set(division+':'+(conference||'-'),{competition,rows});
@@ -115,7 +115,7 @@ export function calculateSeasonMovements({ competitions = [], clubs = [], policy
   for(const club of clubs) {
     const movement=movements.find(item=>item.clubId===club.id);
     const division=movement?.toDivision||club.division;
-    const conference=movement ? movement.toConference : club.conference;
+    const conference=movement ? movement.toConference : conferenceForClub(club);
     if(!Object.hasOwn(counts,division)) return fail('invalid-club-division',{clubId:club.id});
     counts[division]++;
     if(division==='D4'||division==='D5') {
