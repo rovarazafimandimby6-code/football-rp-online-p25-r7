@@ -1016,3 +1016,13 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Tester deux transferts successifs du même joueur avec le grand livre JSON réel.
 - [x] Vérifier les soldes nets attendus et l'unicité de chacune des quatre écritures de débit/crédit.
 - [ ] Exécuter les tests et la CI complète.
+
+
+### Lot 106 — audit de la pyramide officielle des 156 clubs
+- [x] Contrôler la répartition nationale : D1 16, D2 16, D3 16, D4 32 et D5 64.
+- [x] Contrôler D4 Challenger League : 16 clubs en conférence A et 16 en B.
+- [x] Contrôler D5 Regional League : 16 clubs dans chacune des conférences A, B, C et D.
+- [x] Interdire les conférences en D1–D3 et les identifiants hors nomenclature en D4–D5.
+- [x] Limiter la vérification stricte à un catalogue complet de 156 clubs afin de préserver les audits partiels.
+- [x] Ajouter les tests positifs et négatifs de la structure.
+- [ ] Comparer au catalogue réel de bootstrap P27 et exécuter la suite complète en CI.
