@@ -43,6 +43,21 @@ export function auditP27World({
     warnings.push({ code:'CLUB_CATALOGUE_SIZE_MISMATCH', expected:expectedClubCount, actual:catalogue.length });
   }
 
+  const transferClubs = Array.isArray(transferState?.clubs) ? transferState.clubs : [];
+  const transferClubIds = new Set();
+  for (const club of transferClubs) {
+    if (!safeText(club?.id) || transferClubIds.has(club.id)) {
+      errors.push({ code:'TRANSFER_CLUB_ID_INVALID_OR_DUPLICATE', clubId:club?.id || null });
+      continue;
+    }
+    transferClubIds.add(club.id);
+    if (!clubById.has(club.id)) errors.push({ code:'TRANSFER_CLUB_UNKNOWN', clubId:club.id });
+    if (!Number.isSafeInteger(club.budget) || club.budget < 0 || club.budget > 1_000_000_000)
+      errors.push({ code:'TRANSFER_CLUB_BUDGET_INVALID', clubId:club.id, budget:club.budget });
+  }
+  if (transferClubs.length && transferClubs.length !== catalogue.length)
+    warnings.push({ code:'TRANSFER_CLUB_CATALOGUE_SIZE_MISMATCH', expected:catalogue.length, actual:transferClubs.length });
+
   const careers = Array.isArray(transferState?.careers) ? transferState.careers : [];
   const accountIds = new Set();
   const careerPlayerIds = new Set();
@@ -60,10 +75,19 @@ export function auditP27World({
     }
     if (active && !clubById.has(career.clubId)) errors.push({ code:'CAREER_REFERENCES_UNKNOWN_CLUB', accountId:career.accountId, clubId:career.clubId });
     if (active && career.contract.playerId && career.playerId && career.contract.playerId !== career.playerId) errors.push({ code:'CAREER_CONTRACT_PLAYER_MISMATCH', accountId:career.accountId, playerId:career.playerId, contractPlayerId:career.contract.playerId });
+    if (active && (!Number.isSafeInteger(career.contract.salary) || career.contract.salary < 0))
+      errors.push({ code:'CAREER_CONTRACT_SALARY_INVALID', accountId:career.accountId });
+    if (active && (!Number.isFinite(Date.parse(career.contract.signedAt)) ||
+        !Number.isFinite(Date.parse(career.contract.expiresAt)) ||
+        Date.parse(career.contract.expiresAt) <= Date.parse(career.contract.signedAt)))
+      errors.push({ code:'CAREER_CONTRACT_DATES_INVALID', accountId:career.accountId });
   }
 
   let financeBalanceTotal = 0, financeEntries = 0;
+  const financeClubIds = new Set();
   for (const account of asList(financeAccounts)) {
+    if (financeClubIds.has(account?.clubId)) errors.push({ code:'FINANCE_ACCOUNT_DUPLICATE', clubId:account?.clubId });
+    financeClubIds.add(account?.clubId);
     if (!clubById.has(account?.clubId)) errors.push({ code:'FINANCE_ACCOUNT_UNKNOWN_CLUB', clubId:account?.clubId });
     const ids = new Set();
     let balance = account?.openingBalance;
@@ -98,12 +122,22 @@ export function auditP27World({
     }
   }
   const seasons = Array.isArray(competitionState?.seasons) ? competitionState.seasons : [];
+  const seasonIds = new Set();
+  for (const season of seasons) {
+    if (!safeText(season?.id) || seasonIds.has(season.id))
+      errors.push({ code:'SEASON_ID_INVALID_OR_DUPLICATE', seasonId:season?.id || null });
+    seasonIds.add(season?.id);
+  }
   const activeSeasons = seasons.filter(season => season?.status === 'active');
   if (seasons.length && activeSeasons.length !== 1) errors.push({ code:'ACTIVE_SEASON_COUNT_INVALID', count:activeSeasons.length });
   let fixtures = 0, completedFixtures = 0;
   for (const season of seasons) {
     const fixtureIds = new Set();
+    const competitionIds = new Set();
     for (const competition of Array.isArray(season.competitions) ? season.competitions : []) {
+      if (!safeText(competition?.id) || competitionIds.has(competition.id))
+        errors.push({ code:'COMPETITION_ID_INVALID_OR_DUPLICATE', seasonId:season.id, competitionId:competition?.id || null });
+      competitionIds.add(competition?.id);
       const memberIds = new Set();
       for (const member of Array.isArray(competition.members) ? competition.members : []) {
         if (!clubById.has(member?.id)) errors.push({ code:'COMPETITION_UNKNOWN_CLUB', seasonId:season.id, competitionId:competition.id, clubId:member?.id });
