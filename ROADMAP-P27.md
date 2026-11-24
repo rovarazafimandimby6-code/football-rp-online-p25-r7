@@ -945,3 +945,24 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Détecter une écriture de crédit présente alors que le checkpoint crédit est encore déclaré non effectué.
 - [x] Ajouter un test couvrant les deux cas avec soldes de comptes recalculés et commandes outbox en attente.
 - [ ] Valider la suite complète en CI et exécuter les scénarios de panne sur le grand livre réel.
+
+
+### Lot 96 — calcul du besoin IA indépendant des joueurs humains
+- [x] Ne compter que les joueurs IA du poste ciblé dans le besoin d'effectif IA du club acheteur.
+- [x] Éviter qu'un effectif rempli de joueurs humains masque un poste encore dépourvu de renforts IA.
+- [x] Ajouter un scénario avec plusieurs clubs acheteurs dont les postes sont occupés par des joueurs humains.
+- [ ] Valider la suite complète en CI.
+
+### Lot 97 — reprise des checkpoints financiers et provenance contractuelle
+- [x] Simuler une panne lors de la préparation du journal financier, après le débit et avant son checkpoint, puis avant le checkpoint final.
+- [x] Rejouer chaque scénario avec le grand livre réel et vérifier l'absence de double débit/crédit.
+- [x] Contrôler que le contrat IA déplacé référence le nouveau club, le joueur, le club précédent et une date de transfert valide.
+- [x] Ajouter un test d'intégrité négatif sur un contrat déplacé sans provenance cohérente.
+- [ ] Valider la suite complète en CI.
+
+### Lot 98 — simulation de marché à l'échelle des 156 clubs
+- [x] Construire un scénario déterministe de 156 clubs répartis sur D1–D5.
+- [x] Vérifier l'évaluation des candidats dans la division du vendeur et les divisions immédiatement adjacentes.
+- [x] Vérifier le plafond de transferts, l'unicité des mouvements et la réserve minimale de deux joueurs IA.
+- [x] Garder les villes et coordonnées hors de toute logique de sélection ou de classement.
+- [ ] Exécuter et valider la suite complète en CI ; comparer ensuite le scénario aux données réelles du monde P27.
