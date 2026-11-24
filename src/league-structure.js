@@ -26,7 +26,7 @@ export function normalizeConference(division,value) {
 export function conferenceForClub(club) {
   const division=normalizeDivision(club?.division);
   if (division!=='D4' && division!=='D5') return null;
-  return normalizeConference(division,club?.conference ?? club?.region);
+  return normalizeConference(division,club?.conference);
 }
 
 export function getCompetitionGroups() {
