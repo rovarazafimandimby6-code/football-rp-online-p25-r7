@@ -909,3 +909,20 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 
 
 - [x] Extension lot 87 : validation CI complète après traçage des refus de renouvellement IA et recrutement du remplaçant : **655/655 tests réussis, 0 échec**, contrôle syntaxique réussi ; commit testé 80c67bc3ef0e008f57c8c306178b8ea5c981bec6, run https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45454925657.
+
+
+### Lots 91–92 — fiabilité du mercato IA et audit de sa saga (en cours de validation)
+
+#### Lot 91 — déterminisme temporel et profondeur d'effectif
+- [x] Faire utiliser à la validation du contrat l'horodatage explicite de la simulation, et non l'horloge réelle du serveur.
+- [x] Ne compter que les joueurs IA dans le seuil minimal de réserve du club vendeur ; les joueurs humains ne doivent pas artificiellement autoriser le départ d'un joueur IA.
+- [x] Ajouter des tests de non-régression sur l'horloge de fenêtre et le calcul de profondeur IA.
+- [ ] Valider la suite complète en CI.
+
+#### Lot 92 — audit transversal de l'outbox de transferts IA
+- [x] Injecter l'état durable des transferts IA dans l'audit administrateur du monde.
+- [x] Contrôler le schéma, l'unicité des identifiants, les liens joueur/clubs et la présence unique du joueur dans un effectif.
+- [x] Distinguer un transfert en attente encore au vendeur ou déjà déplacé, sans le déclarer terminé prématurément.
+- [x] Exiger pour un transfert terminé la présence du joueur chez l'acheteur et un règlement financier complet avec les rôles comptables inversés (acheteur débité, vendeur crédité).
+- [x] Ajouter les tests d'attente légitime, de clôture incohérente et d'identifiant dupliqué.
+- [ ] Valider la suite complète en CI et compléter les scénarios de panne entre checkpoints.
