@@ -84,7 +84,7 @@ export function auditClubCatalog(clubs = []) {
     if (!validKitDesign) addIssue(issues, 'error', 'invalid-club-kit-design', { clubId:id, kitDesign:effectiveKitDesign });
     if (validPalette && validKitDesign) quality.visualIdentities++;
 
-    if (!['open','system-only'].includes(club.humanAdmission)) {
+    if (club.humanAdmission !== undefined && !['open','system-only'].includes(club.humanAdmission)) {
       addIssue(issues, 'error', 'invalid-human-admission-policy', { clubId:id, humanAdmission:club.humanAdmission ?? null });
     }
 
