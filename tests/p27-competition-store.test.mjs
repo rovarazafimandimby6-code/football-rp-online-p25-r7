@@ -238,3 +238,36 @@ test('P27 coupe : détecte un club engagé deux fois dans le tableau initial',()
  assert.equal(audit.ok,false);
  assert.equal(audit.reason,'invalid-cup-preliminary-entrants');
 }finally{f.cleanup();}});
+
+test('P27 coupe : audit vérifie que le vainqueur de chaque barrage rejoint le tour principal',()=>{const f=setup();try{
+ const cup=f.store.activeSeason.competitions.find(item=>item.type==='cup');
+ const first=cup.fixtures.find(item=>item.round===1);
+ assert.equal(f.store.recordFixtureResult(first.id,{roomId:'cup-audit-prelim',homeGoals:2,awayGoals:0}).ok,true);
+ const target=cup.fixtures.find(item=>item.round===2&&item.status==='scheduled'&&(!item.homeClubId||!item.awayClubId));
+ assert.ok(target);
+ target.homeClubId=first.awayClubId;
+ const audit=f.store.snapshot().cupAudit;
+ assert.equal(audit.ok,false);
+ assert.equal(audit.reason,'cup-preliminary-advancement-mismatch');
+}finally{f.cleanup();}});
+test('P27 coupe : audit vérifie la transmission des vainqueurs entre les tours',()=>{const f=setup();try{
+ const cup=f.store.activeSeason.competitions.find(item=>item.type==='cup');
+ for(const round of [1,2]){
+  for(const fixture of cup.fixtures.filter(item=>item.round===round&&item.status==='scheduled'))
+   assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:`cup-advance-${round}-${fixture.id}`,homeGoals:2,awayGoals:1}).ok,true);
+ }
+ const feeder=cup.fixtures.find(item=>item.round===2&&item.status==='completed');
+ const target=cup.fixtures.find(item=>item.round===3&&item.status==='scheduled');
+ assert.ok(feeder&&target);
+ target.homeClubId=feeder.awayClubId;
+ const audit=f.store.snapshot().cupAudit;
+ assert.equal(audit.ok,false);
+ assert.equal(audit.reason,'cup-round-advancement-mismatch');
+}finally{f.cleanup();}});
+test('P27 coupe : audit refuse un trophée attribué avant une finale valide',()=>{const f=setup();try{
+ const cup=f.store.activeSeason.competitions.find(item=>item.type==='cup');
+ cup.championClubId=cup.members[0].id;
+ const audit=f.store.snapshot().cupAudit;
+ assert.equal(audit.ok,false);
+ assert.equal(audit.reason,'cup-champion-before-completion');
+}finally{f.cleanup();}});
