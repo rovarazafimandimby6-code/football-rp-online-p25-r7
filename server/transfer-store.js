@@ -13,7 +13,8 @@ export class JsonTransferStore {
  constructor(directory,{clubs=DEFAULT_CLUBS,now=()=>Date.now(),initialWallet=2500}={}) {
   this.directory=path.resolve(directory);this.file=path.join(this.directory,'transfers.json');this.now=now;this.initialWallet=amount(initialWallet);this.clubs=new Map(clubs.map(c=>[c.id,{id:c.id,name:c.name,budget:amount(c.budget),capacity:amount(c.capacity,15)}]));
   mkdirSync(this.directory,{recursive:true});this.state=this.read()||{version:1,careers:[],events:[],clubs:[...this.clubs.values()],rosterSync:[]};
-  if(!Array.isArray(this.state.rosterSync))this.state.rosterSync=[];\n  for(const row of this.state.careers){if(!Array.isArray(row.loanOffers))row.loanOffers=[];if(!Array.isArray(row.loanHistory))row.loanHistory=[];}
+  if(!Array.isArray(this.state.rosterSync))this.state.rosterSync=[];
+  for(const row of this.state.careers){if(!Array.isArray(row.loanOffers))row.loanOffers=[];if(!Array.isArray(row.loanHistory))row.loanHistory=[];}
   for(const club of this.state.clubs){const source=this.clubs.get(club.id);if(source){club.name=source.name;club.budget=amount(club.budget,source.budget);}}
   for(const club of this.clubs.values())if(!this.state.clubs.some(x=>x.id===club.id))this.state.clubs.push({...club});
   if(!this.read())this.persist();
