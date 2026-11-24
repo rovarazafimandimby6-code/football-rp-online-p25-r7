@@ -816,3 +816,11 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Conserver le comportement idempotent lorsqu'un joueur est déjà inscrit dans le club cible.
 - [x] Ajouter les tests du seuil de 7 joueurs humains, de la capacité maximale et des clubs fermés.
 - [x] CI de la branche p27-dev : 631/631 tests réussis, 0 échec ; contrôle syntaxique JavaScript réussi (run 45443989876, commit testé 9bdcada209a30188823f6bf316acb9208bc2eb94).
+
+
+### Lot 72 — durcissement de la reprise outbox (en cours)
+- [x] Vérifier que le service ne considère pas une commande traitée si le checkpoint de clôture retourne explicitement un échec.
+- [x] Relier les commandes outbox à l'événement métier source avec un eventId stable.
+- [x] Auditer l'existence de la carrière correspondante, l'unicité des références d'événement, le lien ID/événement, les dates de création/clôture et les commandes encore en attente.
+- [x] Exposer le nombre de commandes terminées et en attente dans le rapport d'intégrité.
+- [ ] Valider la suite complète de tests et contrôler les cas historiques sans eventId.
