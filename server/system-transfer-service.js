@@ -170,7 +170,7 @@ export class P27SystemTransferService {
           const available = this.financeService.store?.balance?.(buyer.id);
           if (Number.isFinite(available) && available < fee) continue;
           const gap = Math.max(0, (Number(buyer.rating)||0)-(Number(seller.rating)||0));
-          const score = buyerRoleCount*1000 + gap*10 + rating;
+          const score = (2-buyerRoleCount)*1000 + gap*10 + rating;
           const id = `ai-market-${window}-${player.id}-${buyer.id}`.slice(0,96);
           candidates.push({ id, playerId:player.id, fromClubId:seller.id, toClubId:buyer.id, fee, score, rating, role });
         }
