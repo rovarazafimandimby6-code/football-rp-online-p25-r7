@@ -19,7 +19,7 @@ export function averageAiShouldAct(player, elapsedMs, action, probability) {
 
 export function averageAiAim(player, elapsedMs, facing, action = 'kick') {
   const roll = hashRoll(player, elapsedMs, `${action}-accuracy`);
-  // Up to roughly 13 degrees of error: competent enough to play, not a specialist.
+  // Up to roughly 23 degrees of error: basic technique with visibly imperfect execution.
   return facing + (roll * 2 - 1) * 0.40;
 }
 
