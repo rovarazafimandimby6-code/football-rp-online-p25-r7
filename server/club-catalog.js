@@ -15,8 +15,17 @@ export function resolveMatchClub(id) {
     city: club.city,
     country: club.country,
     countryCode: club.countryCode,
+    location: Object.freeze({
+      city: club.location?.city || club.city,
+      country: club.location?.country || club.country,
+      countryCode: club.location?.countryCode || null
+    }),
     division: club.division,
+    conference: club.conference || null,
     rating: club.rating,
+    reputation: club.reputation,
+    humanAdmission: club.humanAdmission,
+    kitDesign: club.kitDesign,
     colors: Object.freeze([...club.colors]),
     stadium: club.stadium,
     roster: club.roster.map(player => ({ ...player, attributes: player.attributes ? { ...player.attributes } : null })),
@@ -27,7 +36,7 @@ export function cloneMatchTeams(teams) {
   const publicTeam = team => {
     if (!team) return null;
     const { roster, ...identity } = team;
-    return { ...identity, colors: [...team.colors] };
+    return { ...identity, colors: [...team.colors], location:team.location ? { ...team.location } : null };
   };
   return { blue: publicTeam(teams?.blue), red: publicTeam(teams?.red) };
 }
