@@ -784,3 +784,13 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Exposer les compteurs de règlements en attente dans l'audit monde administrateur.
 - [x] Ajouter un scénario de bout en bout : acceptation d'un transfert, débit/crédit, redémarrage des deux stockages et audit sans doublon.
 - [ ] Exécuter et valider la CI consolidée après intégration.
+
+
+### Lot 70 — identité stable et audit des liens carrière/effectif (en cours)
+- [x] Inscrire l'identifiant stable playerId de la carrière dans les contrats humains nouvellement signés ou transférés.
+- [x] Compléter à la lecture les contrats actifs historiques qui ne possèdent pas encore cet identifiant, sans changer leur identité.
+- [x] Construire un rapprochement en lecture seule entre les carrières du mercato et les identifiants des joueurs présents dans les effectifs.
+- [x] Détecter les inscriptions multiples, les affectations au mauvais club, les identités de type système et les joueurs encore inscrits après résiliation/expiration.
+- [x] Maintenir en avertissement les carrières actives absentes des effectifs afin de ne pas rendre les mondes historiques artificiellement invalides avant la synchronisation effective.
+- [ ] Mettre en place une opération serveur coordonnée qui inscrit/déplace/libère le joueur dans l'effectif lors d'une signature, d'un transfert ou d'une résiliation ; prévoir une reprise journalisée entre les stockages indépendants.
+- [ ] Ajouter les tests de panne et de redémarrage de cette coordination multi-stockages avant d'activer les invariants bloquants.
