@@ -596,3 +596,38 @@ test('P27 intégrité catalogue complet : vérifie les quotas de la source réel
  assert.ok(rejected.errors.some(item=>item.code==='CLUB_CONFERENCE_INVALID'));
  assert.ok(rejected.errors.some(item=>item.code==='DIVISION_CONFERENCE_CLUB_COUNT_INVALID'));
 });
+
+
+test('P27 intégrité monde : rapproche les carrières individuelles avec contrats et prêts',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-player-a';
+ input.transferState.careers[0].contract.playerId='human-player-a';
+ input.playerCareerState={playerCareers:[{
+  playerId:'human-player-a',
+  totals:{matches:1,wins:1,draws:0,losses:0},
+  matches:[{matchId:'career-match-1',result:'win',finalizedAt:1000,minutesPlayedMs:90000,
+   stats:{goals:1,assists:0,shots:2,passes:8,completedPasses:7,tackles:0,interceptions:0,saves:0}}]
+ }]};
+ const result=auditP27World(input);
+ assert.equal(result.ok,true,JSON.stringify(result.errors));
+ assert.equal(result.counts.playerCareers,1);
+});
+
+test('P27 intégrité monde : détecte une carrière individuelle incohérente et un contrat désynchronisé',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-player-b';
+ input.transferState.careers[0].clubId='club-b';
+ input.transferState.careers[0].contract.playerId='another-player';
+ input.playerCareerState={playerCareers:[{
+  playerId:'human-player-b',
+  totals:{matches:2,wins:2,draws:0,losses:0},
+  matches:[{matchId:'dup',result:'win',finalizedAt:1000,minutesPlayedMs:90000,stats:{goals:0,assists:0,shots:0,passes:2,completedPasses:3,tackles:0,interceptions:0,saves:0}},
+   {matchId:'dup',result:'win',finalizedAt:1000,minutesPlayedMs:90000,stats:{goals:0,assists:0,shots:0,passes:2,completedPasses:0,tackles:0,interceptions:0,saves:0}}]
+ }]};
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('PLAYER_CAREER_CONTRACT_ID_MISMATCH'));
+ assert.ok(codes.includes('PLAYER_CAREER_CONTRACT_CLUB_MISMATCH'));
+ assert.ok(codes.includes('PLAYER_CAREER_MATCH_ID_INVALID_OR_DUPLICATE'));
+ assert.ok(codes.includes('PLAYER_CAREER_PASS_TOTAL_INVALID'));
+});
