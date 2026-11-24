@@ -408,6 +408,7 @@ export class RoomManager {
       if (!competitionResult?.ok || !competitionResult.fixture?.result) throw new Error(competitionResult?.reason || 'COMPETITION_RESULT_REJECTED');
       committedResult = Object.freeze({ ...finalizedResult, competition: { fixtureId: room.competitionFixtureId, result: competitionResult.fixture.result } });
     }
+    this.resultStore?.save(committedResult);
     room.result = committedResult;
     room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
     if (this.careerStore) {
@@ -429,7 +430,6 @@ export class RoomManager {
         if (livePlayer?.accountId && !player.isBot) this.careerStore.recordMatch(livePlayer.accountId, careerInput);
       }
     }
-    this.resultStore?.save(room.result);
     return room.result;
   }
 
