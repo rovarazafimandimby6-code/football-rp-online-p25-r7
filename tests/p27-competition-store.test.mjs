@@ -224,3 +224,17 @@ test('P27 migration calendrier : convertit une ancienne saison active en aller-r
   assert.equal(restored.snapshot().scheduleAudit.ok,true,JSON.stringify(restored.snapshot().scheduleAudit.errors));
  }finally{f.cleanup();}
 });
+
+test('P27 coupe : expose un audit structurel valide du tableau complet de 156 clubs',()=>{const f=setup();try{
+ const cup=f.store.snapshot().competitions.find(item=>item.type==='cup');
+ const audit=f.store.snapshot().cupAudit;
+ assert.equal(audit.ok,true,JSON.stringify(audit));
+ assert.deepEqual({participants:audit.participants,preliminaryMatches:audit.preliminaryMatches,byes:audit.byes,rounds:audit.rounds,fixtures:audit.fixtures},{participants:156,preliminaryMatches:28,byes:100,rounds:8,fixtures:155});
+}finally{f.cleanup();}});
+test('P27 coupe : détecte un club engagé deux fois dans le tableau initial',()=>{const f=setup();try{
+ const cup=f.store.activeSeason.competitions.find(item=>item.type==='cup');
+ cup.fixtures.find(item=>item.round===1).homeClubId=cup.fixtures.find(item=>item.round===1).awayClubId;
+ const audit=f.store.snapshot().cupAudit;
+ assert.equal(audit.ok,false);
+ assert.equal(audit.reason,'invalid-cup-preliminary-entrants');
+}finally{f.cleanup();}});

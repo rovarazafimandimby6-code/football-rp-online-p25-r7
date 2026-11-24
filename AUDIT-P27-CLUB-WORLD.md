@@ -3,7 +3,7 @@
 Date de vérification : 24 novembre 2026  
 Branche : `p27-dev`  
 Commit code audité : `9662b1eeeeaeeba5aef25b2b38fd0666c24cbeb9`  
-Workflow : [GitHub Actions 45399367704](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45397509144)
+Workflow de référence : [GitHub Actions 45399367704](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45399367704)
 
 ## Résultat de l'audit
 
@@ -31,7 +31,7 @@ Les 140 clubs d'expansion complètent les 16 clubs fondateurs. Les identifiants 
 - Gouvernance : politique d'admission valide, clubs réservés au système et profils de recrutement cohérents.
 - Profils : caractéristiques, stratégie, recrutement et lore ; aucune rivalité automatique.
 
-Les calendriers sont adaptés au niveau : D1 (16 clubs), D2 (20) et D3 (24) jouent en aller-retour ; D4 (deux conférences de 16) et D5 (quatre conférences de 16) jouent en aller simple. Cela représente 1 172 rencontres en D1-D3 et 720 en D4-D5, soit 1 892 rencontres de championnat. Les audits vérifient les deux manches inversées en D1-D3, chaque adversaire rencontré une fois en D4-D5, les journées sans doublon et l'équilibre domicile/extérieur. La Coupe des Clubs reste indépendante : élimination directe, 156 participants et 155 rencontres.
+Les calendriers sont adaptés au niveau : D1 (16 clubs), D2 (20) et D3 (24) jouent en aller-retour ; D4 (deux conférences de 16) et D5 (quatre conférences de 16) jouent en aller simple. Cela représente 1 172 rencontres en D1-D3 et 720 en D4-D5, soit 1 892 rencontres de championnat. Les audits vérifient les deux manches inversées en D1-D3, chaque adversaire rencontré une fois en D4-D5, les journées sans doublon et l'équilibre domicile/extérieur. La Coupe des Clubs reste indépendante : élimination directe, 156 participants et 155 rencontres. Le tableau est structuré en 8 tours : 28 barrages préliminaires pour 56 clubs, 100 exemptions au premier tour principal, puis 64, 32, 16, 8, 4, 2 et 1 rencontre. Un audit dédié vérifie l'unicité des 156 entrants, les 155 rencontres, les 8 tours, les participants de chaque match et la cohérence des états de résultat/rejouabilité. Le parcours complet jusqu'au trophée est également couvert par un test d'intégration.
 
 ## API publique du catalogue
 
@@ -51,6 +51,7 @@ Le catalogue public expose également `managementType` (`human` ou `system`) san
 - Si le serveur est indisponible, l'écran conserve le catalogue local et signale clairement que les affectations peuvent être anciennes.
 - L'écran **Compétitions** charge les neuf groupes, classements, calendriers, résultats terminés et aperçu de la Coupe des Clubs depuis `GET /api/competitions`.
 - Le rendu des mouvements de fin de saison est étiqueté comme proposition non approuvée.
+- L'API de snapshot expose `cupAudit`, qui contrôle le tableau de Coupe à chaque lecture des compétitions.
 - Les libellés visibles utilisent « Joueur du système » et « Club dirigé par le système » ; l'abréviation « IA » a été retirée de l'interface principale.
 
 ## Validation CI

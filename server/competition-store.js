@@ -5,6 +5,7 @@ import { DEFAULT_CLUBS } from '../src/club-manager.js';
 import { getCompetitionGroups, conferenceForClub } from '../src/league-structure.js';
 import { calculateSeasonMovements } from '../src/season-movement-policy.js';
 import { auditLeagueSchedules } from '../src/league-schedule-audit.js';
+import { auditCupBracket } from '../src/cup-bracket-audit.js';
 
 const clean = (value, max = 64) => String(value ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max);
 const scoreValue = value => Number.isSafeInteger(value) && value >= 0 && value <= 99 ? value : null;
@@ -392,6 +393,7 @@ export class JsonCompetitionStore {
     const leagueTablesComplete = season.competitions.filter(item=>item.type==='league').length===9 && season.competitions.filter(item=>item.type==='league').every(item=>item.status==='completed');
     const movementPreview = leagueTablesComplete ? this.previewSeasonMovements() : null;
     const scheduleAudit = auditLeagueSchedules(season.competitions);
-    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit};
+    const cupAudit = auditCupBracket(season.competitions.find(item=>item.type==='cup'));
+    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit,cupAudit};
   }
 }
