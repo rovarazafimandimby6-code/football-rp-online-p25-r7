@@ -47,6 +47,10 @@ export class BroadcastCamera {
       this.updatePlayerCamera(ball, activePlayer, dt);
       return;
     }
+    if (this.mode === 'spectator') {
+      this.updateSpectatorCamera(ball, dt);
+      return;
+    }
     const preset = CAMERA_PRESETS[this.mode];
     const role = rolePresentation(activePlayer?.role);
     const aspect = this.camera.aspect || 1.7;
@@ -81,6 +85,28 @@ export class BroadcastCamera {
     this.lookTarget.y += (0.45 - this.lookTarget.y) * smooth;
     this.lookTarget.z += (focusZ - this.lookTarget.z) * smooth;
 
+    this.camera.position.copy(this.camPos);
+    this.camera.lookAt(this.lookTarget);
+    this.initialized = true;
+  }
+
+
+  /** Vue spectateur panoramique : lecture des deux équipes et de l'espace collectif. */
+  updateSpectatorCamera(ball, dt) {
+    const focusX = THREE.MathUtils.clamp(Number(ball?.pos?.x) || 0, -13, 13) * 0.42;
+    const focusZ = THREE.MathUtils.clamp(Number(ball?.pos?.z) || 0, -25, 25) * 0.28;
+    const frameDelta = Number.isFinite(dt) ? THREE.MathUtils.clamp(dt, 0, 0.05) : 0;
+    const smooth = 1 - Math.exp(-2.1 * frameDelta);
+    const zoomFactor = 1.12 - (this.zoom / 100) * 0.22;
+    const desiredX = focusX;
+    const desiredY = 34 * zoomFactor;
+    const desiredZ = 49 * zoomFactor + focusZ;
+    this.camPos.x += (desiredX - this.camPos.x) * smooth;
+    this.camPos.y += (desiredY - this.camPos.y) * smooth;
+    this.camPos.z += (desiredZ - this.camPos.z) * smooth;
+    this.lookTarget.x += (focusX - this.lookTarget.x) * smooth;
+    this.lookTarget.y += (0.35 - this.lookTarget.y) * smooth;
+    this.lookTarget.z += (focusZ - this.lookTarget.z) * smooth;
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.lookTarget);
     this.initialized = true;
