@@ -124,3 +124,27 @@ test('P27 saga effectif : les commandes outbox survivent au redémarrage du merc
   assert.equal(restartedStore.pendingRosterSync().length,0);
  }finally{f.cleanup();}
 });
+
+test('P27 effectif : le précontrôle refuse les clubs fermés et les limites de capacité humaine',()=>{
+ const f=setup();try{
+  f.clubManager.clubs.get('club-a').humanAdmission='system-only';
+  assert.deepEqual(f.clubManager.canAcceptHuman('club-a','human-closed'),{ok:false,reason:'human-admission-closed'});
+  f.clubManager.clubs.get('club-a').humanAdmission='open';
+  for(let index=1;index<=7;index++){
+   const result=f.clubManager.addPlayer('club-a',{id:`human-existing-${index}`,name:`Humain ${index}`,playerType:'human'});
+   assert.equal(result.ok,true);
+  }
+  assert.deepEqual(f.clubManager.canAcceptHuman('club-a','human-new'),{ok:false,reason:'human-player-limit'});
+  assert.equal(f.clubManager.canAcceptHuman('club-a','human-existing-1').ok,true);
+ }finally{f.cleanup();}
+});
+
+test('P27 effectif : le précontrôle refuse un effectif plein avant création du contrat',()=>{
+ const f=setup();try{
+  for(let index=1;index<=12;index++){
+   const result=f.clubManager.addPlayer('club-a',{id:`bot-full-${index}`,name:`Bot ${index}`,playerType:'system'});
+   assert.equal(result.ok,true);
+  }
+  assert.deepEqual(f.clubManager.canAcceptHuman('club-a','human-overflow'),{ok:false,reason:'roster-full'});
+ }finally{f.cleanup();}
+});
