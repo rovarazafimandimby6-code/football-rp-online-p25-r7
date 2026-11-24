@@ -323,3 +323,27 @@ test('P27 contrats : un contrat humain ne peut pas être renouvelé par le gesti
  assert.equal(added.ok,true);
  assert.equal(manager.renewSystemPlayerContract(club.id,'human-renew-test',{now:1,durationWeeks:12}).reason,'not-system-player');
 });
+
+
+test('P27 contrats : renouvellement autonome respecte fenêtre, niveau sportif et budget explicite',()=>{
+ const manager=new ClubManager();
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster[0];
+ const now=Date.UTC(2027,0,1);
+ manager.setSystemPlayerContractTerm(club.id,player.id,{signedAt:now-24*7*24*60*60*1000,durationWeeks:28});
+ const wage=player.contract.weeklyWage;
+ const denied=manager.processSystemContractRenewals({now,weeklyWageBudgets:{[club.id]:wage-1}});
+ assert.equal(denied.renewed.length,0);
+ assert.ok(denied.declined.some(item=>item.playerId===player.id && item.reason==='wage-budget-exceeded'));
+ const accepted=manager.processSystemContractRenewals({now,weeklyWageBudgets:{[club.id]:wage}});
+ assert.equal(accepted.renewed.length,1);
+ assert.equal(accepted.renewed[0].playerId,player.id);
+ assert.equal(manager.getClub(club.id).roster[0].contract.renewalCount,1);
+});
+test('P27 contrats : renouvellement autonome ne devine jamais la trésorerie manquante',()=>{
+ const manager=new ClubManager();
+ const result=manager.processSystemContractRenewals({now:Date.UTC(2027,0,1)});
+ assert.equal(result.ok,true);
+ assert.equal(result.renewed.length,0);
+ assert.ok(result.declined.some(item=>item.reason==='budget-not-provided'));
+});

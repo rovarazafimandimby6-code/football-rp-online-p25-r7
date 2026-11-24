@@ -80,3 +80,31 @@ export function renewSystemPlayerContract(contract, { now, durationWeeks, weekly
     }].slice(-20)
   } };
 }
+
+
+/**
+ * Evaluate a renewal using explicit club wage headroom supplied by the caller.
+ * The policy never reads or guesses a club's cash balance.
+ */
+export function evaluateSystemContractRenewal({ player, club, now, renewalWindowWeeks = 4, availableWeeklyWageBudget } = {}) {
+  if (!player || player.playerType !== 'system' || !player.contract || player.contract.type !== 'system-roster' || player.contract.status !== 'active') return { renew:false, reason:'contract-not-active' };
+  if (!club || !Number.isSafeInteger(now) || now < 0) return { renew:false, reason:'invalid-context' };
+  if (!Number.isInteger(renewalWindowWeeks) || renewalWindowWeeks < 1 || renewalWindowWeeks > 26) return { renew:false, reason:'invalid-renewal-window' };
+  if (!Number.isSafeInteger(availableWeeklyWageBudget) || availableWeeklyWageBudget < 0) return { renew:false, reason:'budget-not-provided' };
+  const expiresAt = Date.parse(player.contract.expiresAt);
+  if (!Number.isFinite(expiresAt)) return { renew:false, reason:'contract-has-no-expiry' };
+  if (expiresAt < now) return { renew:false, reason:'contract-expired' };
+  if (expiresAt - now > renewalWindowWeeks * WEEK_MS) return { renew:false, reason:'outside-renewal-window' };
+  const wage = player.contract.weeklyWage ?? player.contract.salary;
+  if (!Number.isSafeInteger(wage) || wage <= 0) return { renew:false, reason:'invalid-wage' };
+  if (wage > availableWeeklyWageBudget) return { renew:false, reason:'wage-budget-exceeded', requiredWeeklyBudget:wage };
+  const rating = Number(player.rating);
+  const clubRating = Number(club.rating);
+  const loyalty = Number(player.loyalty?.clubLoyalty ?? 50);
+  const age = Number(player.age);
+  const sportingFit = Number.isFinite(rating) && Number.isFinite(clubRating) && rating >= clubRating - 8;
+  const loyaltyFit = Number.isFinite(loyalty) && loyalty >= 75;
+  const ageFit = !Number.isFinite(age) || age <= 34;
+  if ((!sportingFit && !loyaltyFit) || !ageFit) return { renew:false, reason:'sporting-policy-declined' };
+  return { renew:true, reason:'renewal-approved', durationWeeks:26, weeklyWage:wage };
+}

@@ -1,4 +1,4 @@
-import { createSystemPlayerContract, setSystemPlayerContractTerm, expireSystemPlayerContract, renewSystemPlayerContract } from './p27-player-contracts.js';
+import { createSystemPlayerContract, setSystemPlayerContractTerm, expireSystemPlayerContract, renewSystemPlayerContract, evaluateSystemContractRenewal } from './p27-player-contracts.js';
 import { generateClubRoster } from './club-roster.js';
 import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './league-structure.js';
 import { generateClubCharacteristics, generateClubRecruitmentProfile, generateClubStrategicProfile, balanceClubRosterQuality } from './club-profile.js';
@@ -383,6 +383,37 @@ export class ClubManager {
     player.contract = result.contract;
     this.saveSeason();
     return { ok:true, contract:{ ...player.contract, termHistory:player.contract.termHistory.map(entry => ({ ...entry })) } };
+  }
+
+  processSystemContractRenewals({ now = Date.now(), renewalWindowWeeks = 4, durationWeeks = 26, weeklyWageBudgets = {} } = {}) {
+    if (!Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-time', renewed:[], declined:[] };
+    if (!Number.isInteger(durationWeeks) || durationWeeks < 4 || durationWeeks > 104) return { ok:false, reason:'invalid-duration', renewed:[], declined:[] };
+    const renewed = [];
+    const declined = [];
+    for (const club of this.clubs.values()) {
+      let remainingBudget = weeklyWageBudgets[club.id];
+      if (!Number.isSafeInteger(remainingBudget) || remainingBudget < 0) {
+        declined.push({ clubId:club.id, reason:'budget-not-provided' });
+        continue;
+      }
+      for (const player of club.roster) {
+        if (player.playerType !== 'system') continue;
+        const decision = evaluateSystemContractRenewal({
+          player, club, now, renewalWindowWeeks, availableWeeklyWageBudget:remainingBudget
+        });
+        if (!decision.renew) {
+          if (decision.reason !== 'outside-renewal-window' && decision.reason !== 'contract-not-active') declined.push({ clubId:club.id, playerId:player.id, reason:decision.reason });
+          continue;
+        }
+        const result = this.renewSystemPlayerContract(club.id, player.id, {
+          now, durationWeeks, weeklyWage:decision.weeklyWage
+        });
+        if (!result.ok) { declined.push({ clubId:club.id, playerId:player.id, reason:result.reason }); continue; }
+        remainingBudget -= decision.weeklyWage;
+        renewed.push({ clubId:club.id, playerId:player.id, expiresAt:result.contract.expiresAt, weeklyWage:decision.weeklyWage });
+      }
+    }
+    return { ok:true, renewed, declined };
   }
 
   expireSystemPlayerContracts({ now = Date.now() } = {}) {
