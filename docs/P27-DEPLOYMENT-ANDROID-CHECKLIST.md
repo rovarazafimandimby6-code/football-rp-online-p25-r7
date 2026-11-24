@@ -88,3 +88,9 @@ Les checkpoints locaux ne constituent ni une réplication multi-instance ni une 
 - À la réception de `SIGTERM` ou `SIGINT`, le serveur cesse d'accepter de nouvelles requêtes, attend la fermeture HTTP, sauvegarde les checkpoints des salons encore actifs et arrête ses minuteries. Si une sauvegarde échoue, le processus termine avec un code d'erreur plutôt que de signaler un arrêt propre.
 - L'hébergeur doit laisser un délai d'arrêt supérieur au temps nécessaire à la fermeture HTTP et à l'écriture des checkpoints. Le mécanisme ne protège pas d'un arrêt brutal `SIGKILL`, d'une coupure électrique ou d'une perte du volume ; les checkpoints périodiques restent nécessaires.
 - Les sondes de plateforme doivent utiliser `/health` pour redémarrer un processus bloqué et `/readyz` pour éviter d'envoyer du trafic vers un processus dont la configuration ou les stockages ne sont pas prêts.
+
+### Optimisation des checkpoints multi-salons
+
+Les échéances de checkpoint atteintes pendant un même tick sont maintenant regroupées par `RoomManager.persistRooms()` puis écrites avec un seul `JsonRoomStore.saveMany()`. La méthode valide tous les snapshots et le plafond de capacité avant de remplacer atomiquement le fichier commun. Le flush d'arrêt utilise également ce chemin groupé. Les sauvegardes immédiates déclenchées par les mutations critiques restent en place.
+
+Cette réduction du nombre d'écritures évite de réécrire le fichier complet une fois par salon lors d'un tick. Elle ne constitue pas un benchmark de charge et ne change pas les limites de déploiement : une seule instance, un stockage persistant requis et aucune coordination multi-processus.
