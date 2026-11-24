@@ -55,3 +55,35 @@ test('P27 finance : diagnostic budgétaire hebdomadaire et autonomie de trésore
  assert.equal(result.status,'deficit');assert.equal(result.weeklyNet,-1500);assert.equal(result.runwayWeeks,6);
  assert.equal(ClubFinanceStore.assessWeeklyBudget({balance:-1,weeklyPayroll:0,weeklyMaintenance:0}).ok,false);
 });
+
+test('P27 finance : prêt débloqué et remboursements hebdomadaires persistants',()=>{
+ const data=new Map(),storage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,String(v))};
+ const f=new ClubFinanceStore(storage,'club-loan');f.openAccount('club',1000);
+ const start=Date.UTC(2026,0,1);
+ const issued=f.issueLoan('club',{id:'loan-1',lender:'Banque régionale',principal:9000,totalRepayment:9900,durationWeeks:3,issuedAt:start});
+ assert.equal(issued.ok,true);assert.equal(issued.account.balance,10000);
+ const first=f.settleLoanRepayments('club',start+15*86400000);
+ assert.equal(first.paid,2);assert.equal(first.amount,6600);assert.equal(first.account.balance,3400);
+ assert.equal(f.settleLoanRepayments('club',start+15*86400000).paid,0);
+ const restored=new ClubFinanceStore(storage,'club-loan');
+ const final=restored.settleLoanRepayments('club',start+25*86400000);
+ assert.equal(final.paid,1);assert.equal(final.amount,3300);assert.equal(final.account.balance,100);
+ assert.equal(final.account.loans[0].status,'repaid');
+});
+test('P27 finance : prêt refusé si identifiant déjà utilisé ou paramètres invalides',()=>{
+ const f=new ClubFinanceStore(null,'loan-validation');f.openAccount('club',0);
+ const loan={id:'loan-a',lender:'Partenaire',principal:1000,totalRepayment:1100,durationWeeks:4,issuedAt:100};
+ assert.equal(f.issueLoan('club',loan).ok,true);
+ assert.equal(f.issueLoan('club',loan).reason,'loan-id-exists');
+ assert.equal(f.issueLoan('club',{...loan,id:'bad',totalRepayment:900}).reason,'invalid-loan');
+});
+test('P27 finance : remboursement en défaut de trésorerie reste dû sans perte de données',()=>{
+ const f=new ClubFinanceStore(null,'loan-default');f.openAccount('club',0);
+ const start=Date.UTC(2026,0,1);
+ f.issueLoan('club',{id:'loan-b',lender:'Caisse',principal:1000,totalRepayment:1200,durationWeeks:2,issuedAt:start});
+ f.post('club',{id:'spend',category:'other',amount:1000,direction:'expense'});
+ const failed=f.settleLoanRepayments('club',start+8*86400000);
+ assert.equal(failed.reason,'insufficient-funds');
+ assert.equal(failed.account.loans[0].paidInstallments,0);
+ assert.equal(failed.account.balance,0);
+});

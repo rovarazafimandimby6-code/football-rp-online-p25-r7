@@ -10,6 +10,18 @@ const normalizeEntry = entry => {
   if(!id || !categories.has(category) || amount===null || amount===0 || !['income','expense'].includes(direction)) return null;
   return {id,category,amount,direction,description:String(entry.description||category).replace(/[<>\u0000-\u001f]/g,'').slice(0,120),createdAt:Number.isSafeInteger(entry.createdAt)&&entry.createdAt>=0?entry.createdAt:0,referenceId:cleanId(entry.referenceId)||null};
 };
+const normalizeLoan = loan => {
+  if(!loan||typeof loan!=='object')return null;
+  const id=cleanId(loan.id),lender=String(loan.lender||'').replace(/[<>\\u0000-\\u001f]/g,'').trim().slice(0,80);
+  const principal=money(loan.principal),totalRepayment=money(loan.totalRepayment),durationWeeks=loan.durationWeeks;
+  const issuedAt=Number(loan.issuedAt),paidInstallments=Number(loan.paidInstallments||0);
+  if(!id||!lender||principal===null||principal===0||totalRepayment===null||totalRepayment<principal||
+     !Number.isInteger(durationWeeks)||durationWeeks<1||durationWeeks>260||
+     !Number.isSafeInteger(issuedAt)||issuedAt<0||!Number.isInteger(paidInstallments)||paidInstallments<0||paidInstallments>durationWeeks)return null;
+  return {id,lender,principal,totalRepayment,durationWeeks,issuedAt,paidInstallments,
+    installmentAmount:Math.ceil(totalRepayment/durationWeeks),
+    status:paidInstallments>=durationWeeks?'repaid':'active'};
+};
 const normalizeSponsor = sponsor => {
   if(!sponsor||typeof sponsor!=='object')return null;
   const id=cleanId(sponsor.id), name=String(sponsor.name||'').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,80);
@@ -31,8 +43,9 @@ export class ClubFinanceStore {
         const clubId=cleanId(item?.clubId), opening=money(item?.openingBalance), entries=Array.isArray(item?.entries)?item.entries.map(normalizeEntry).filter(Boolean):[];
         if(!clubId || opening===null) continue;
         const seen=new Set(); const unique=entries.filter(entry=>!seen.has(entry.id)&&seen.add(entry.id));
-        const sponsors=Array.isArray(item.sponsors)?item.sponsors.map(normalizeSponsor).filter(Boolean):[];
-        restored.set(clubId,{clubId,openingBalance:opening,entries:unique,sponsors});
+        const sponsors=Array.isArray(item.sponsors)?item.sponsors.map(normalizeSponsor).filter(Boolean):[],
+          loans=Array.isArray(item.loans)?item.loans.map(normalizeLoan).filter(Boolean):[];
+        restored.set(clubId,{clubId,openingBalance:opening,entries:unique,sponsors,loans});
       }
       this.accounts=restored; return true;
     } catch(_) { return false; }
@@ -47,7 +60,7 @@ export class ClubFinanceStore {
     const id=cleanId(clubId), opening=money(openingBalance);
     if(!id || opening===null) return {ok:false,reason:'invalid-account'};
     if(this.accounts.has(id)) return {ok:true,created:false,account:this.getAccount(id)};
-    this.accounts.set(id,{clubId:id,openingBalance:opening,entries:[],sponsors:[]});
+    this.accounts.set(id,{clubId:id,openingBalance:opening,entries:[],sponsors:[],loans:[]});
     if(!this.persist()){this.accounts.delete(id);return {ok:false,reason:'persistence-failed'};}
     return {ok:true,created:true,account:this.getAccount(id)};
   }
@@ -105,6 +118,59 @@ export class ClubFinanceStore {
     if(!this.persist())return {ok:false,reason:'persistence-failed'};
     return {ok:true,paid:due.length,amount:due.reduce((n,x)=>n+x.amount,0),account:this.getAccount(id)};
   }
+  issueLoan(clubId,input) {
+    const id=cleanId(clubId),account=this.accounts.get(id),loan=normalizeLoan(input);
+    if(!account)return {ok:false,reason:'account-not-found'};
+    if(!loan)return {ok:false,reason:'invalid-loan'};
+    if(account.loans.some(item=>item.id===loan.id))return {ok:false,reason:'loan-id-exists'};
+    const entry=normalizeEntry({id:'loan-'+loan.id,category:'loan',amount:loan.principal,direction:'income',
+      description:'Décaissement du prêt : '+loan.lender,createdAt:loan.issuedAt,referenceId:loan.id});
+    const next=this.balance(id)+loan.principal;
+    if(!entry||!Number.isSafeInteger(next)||next>MAX_MONEY)return {ok:false,reason:'balance-limit'};
+    account.entries.push(entry);account.loans.push(loan);
+    if(!this.persist()){account.entries.pop();account.loans.pop();return {ok:false,reason:'persistence-failed'};}
+    return {ok:true,loan:{...loan},account:this.getAccount(id)};
+  }
+  settleLoanRepayments(clubId,now) {
+    const id=cleanId(clubId),account=this.accounts.get(id);
+    if(!account)return {ok:false,reason:'account-not-found'};
+    if(!Number.isSafeInteger(now)||now<0)return {ok:false,reason:'invalid-time'};
+    const due=[];
+    for(const loan of account.loans) {
+      if(loan.status==='repaid')continue;
+      const elapsed=Math.max(0,Math.floor((now-loan.issuedAt)/(7*86400000)));
+      const target=Math.min(loan.durationWeeks,elapsed);
+      for(let n=loan.paidInstallments;n<target;n++) {
+        const amount=n===loan.durationWeeks-1
+          ? loan.totalRepayment-loan.installmentAmount*(loan.durationWeeks-1)
+          : loan.installmentAmount;
+        due.push({loanId:loan.id,installment:n+1,amount,createdAt:loan.issuedAt+(n+1)*7*86400000});
+      }
+    }
+    if(!due.length)return {ok:true,paid:0,account:this.getAccount(id)};
+    let remaining=this.balance(id),entries=[];
+    const paidByLoan=new Map();
+    for(const item of due) {
+      if(remaining<item.amount)break;
+      remaining-=item.amount;
+      entries.push({id:'loan-payment-'+item.loanId+'-'+item.installment,category:'loan',amount:item.amount,direction:'expense',
+        description:'Remboursement du prêt',createdAt:item.createdAt,referenceId:item.loanId});
+      paidByLoan.set(item.loanId,(paidByLoan.get(item.loanId)||0)+1);
+    }
+    if(!entries.length)return {ok:false,reason:'insufficient-funds',paid:0,account:this.getAccount(id)};
+    const normalized=entries.map(normalizeEntry);
+    account.entries.push(...normalized);
+    for(const loan of account.loans) {
+      const count=paidByLoan.get(loan.id)||0;
+      if(count){loan.paidInstallments+=count;loan.status=loan.paidInstallments>=loan.durationWeeks?'repaid':'active';}
+    }
+    if(!this.persist()) {
+      account.entries.splice(-normalized.length,normalized.length);
+      for(const loan of account.loans){const count=paidByLoan.get(loan.id)||0;if(count){loan.paidInstallments-=count;loan.status='active';}}
+      return {ok:false,reason:'persistence-failed'};
+    }
+    return {ok:true,paid:entries.length,amount:entries.reduce((n,x)=>n+x.amount,0),account:this.getAccount(id)};
+  }
   balance(clubId) {
     const account=this.accounts.get(cleanId(clubId)); if(!account)return null;
     return account.entries.reduce((total,entry)=>total+(entry.direction==='income'?entry.amount:-entry.amount),account.openingBalance);
@@ -113,7 +179,7 @@ export class ClubFinanceStore {
     const id=cleanId(clubId), account=this.accounts.get(id); if(!account)return null;
     const income=account.entries.filter(x=>x.direction==='income').reduce((n,x)=>n+x.amount,0);
     const expenses=account.entries.filter(x=>x.direction==='expense').reduce((n,x)=>n+x.amount,0);
-    return {clubId:id,openingBalance:account.openingBalance,balance:this.balance(id),totalIncome:income,totalExpenses:expenses,entries:clone(account.entries),sponsors:clone(account.sponsors||[])};
+    return {clubId:id,openingBalance:account.openingBalance,balance:this.balance(id),totalIncome:income,totalExpenses:expenses,entries:clone(account.entries),sponsors:clone(account.sponsors||[]),loans:clone(account.loans||[])};
   }
   listAccounts(){return [...this.accounts.keys()].sort().map(id=>this.getAccount(id));}
   static calculatePayroll(contracts=[]) {
