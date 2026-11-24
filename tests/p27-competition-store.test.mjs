@@ -153,3 +153,28 @@ test('P27 saisons : refuse une liste de mouvements mal formée sans modifier la 
   assert.equal(f.store.activeSeason.status,'active');
  }finally{f.cleanup();}
 });
+
+
+test('P27 calendrier : audite les neuf groupes, chaque journée et les 1 306 rencontres',()=>{
+ const f=setup();try{
+  const snapshot=f.store.snapshot();
+  const audit=snapshot.scheduleAudit;
+  assert.equal(audit.ok,true,JSON.stringify(audit.errors));
+  assert.equal(audit.leagueCount,9);
+  assert.equal(audit.fixtureCount,1306);
+  assert.equal(audit.errors.length,0);
+  assert.deepEqual(audit.competitions.map(item=>item.rounds),[15,19,23,15,15,15,15,15,15]);
+  assert.ok(audit.competitions.every(item=>item.ok&&item.appearancesPerClub===item.clubs-1));
+ }finally{f.cleanup();}
+});
+
+test('P27 calendrier : détecte une double programmation et une confrontation manquante',()=>{
+ const f=setup();try{
+  const league=f.store.activeSeason.competitions.find(item=>item.division==='D1');
+  const fixture=league.fixtures[1];
+  fixture.homeClubId=league.fixtures[0].homeClubId;
+  const audit=f.store.snapshot().scheduleAudit;
+  assert.equal(audit.ok,false);
+  assert.ok(audit.errors.some(item=>['club-scheduled-twice-in-round','duplicate-league-pairing','invalid-club-appearance-count'].includes(item.reason)));
+ }finally{f.cleanup();}
+});
