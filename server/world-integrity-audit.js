@@ -107,12 +107,16 @@ export function auditP27World({
     if (career.playerId) {
       const memberships = rosterPlayersById.get(career.playerId) || [];
       if (active && memberships.length === 0) {
-        const pendingUpsert = asList(transferState?.rosterSync).some(entry =>
-          entry?.playerId === career.playerId && entry?.action === 'upsert' && entry?.status === 'pending' &&
-          entry?.clubId === career.clubId && entry?.contract?.status === 'active');
         const detail = { accountId:career.accountId, playerId:career.playerId, clubId:career.clubId || null };
-        if (pendingUpsert) warnings.push({ code:'CAREER_PLAYER_ROSTER_SYNC_PENDING', ...detail });
-        else errors.push({ code:'CAREER_ACTIVE_PLAYER_ORPHANED', ...detail });
+        if (!safeText(career.contract?.playerId)) {
+          warnings.push({ code:'CAREER_PLAYER_NOT_IN_ROSTER', ...detail });
+        } else {
+          const pendingUpsert = asList(transferState?.rosterSync).some(entry =>
+            entry?.playerId === career.playerId && entry?.action === 'upsert' && entry?.status === 'pending' &&
+            entry?.clubId === career.clubId && entry?.contract?.status === 'active');
+          if (pendingUpsert) warnings.push({ code:'CAREER_PLAYER_ROSTER_SYNC_PENDING', ...detail });
+          else errors.push({ code:'CAREER_ACTIVE_PLAYER_ORPHANED', ...detail });
+        }
       } else if (active && memberships.length > 1) {
         errors.push({ code:'CAREER_PLAYER_ROSTER_DUPLICATE', accountId:career.accountId, playerId:career.playerId, count:memberships.length });
       } else if (active && memberships.length === 1) {
