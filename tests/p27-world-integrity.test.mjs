@@ -316,6 +316,7 @@ test('P27 intégrité monde : signale un joueur humain encore inscrit après exp
 
 test('P27 intégrité monde : audite les commandes outbox d’effectif et compte les reprises en attente',()=>{
  const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-account-a';
  input.transferState.rosterSync=[{
   id:'roster-command-a',playerId:'human-account-a',action:'upsert',clubId:'club-a',previousClubId:null,
   contract:{status:'active',playerId:'human-account-a',clubId:'club-a',salary:100},
@@ -331,6 +332,7 @@ test('P27 intégrité monde : rejette les commandes outbox dupliquées ou incoh�
  const input=cleanWorld();
  const entry={id:'roster-command-a',playerId:'human-account-a',action:'upsert',clubId:'club-a',
   contract:{status:'active',playerId:'human-account-a',clubId:'club-b',salary:100},status:'pending',attempts:0};
+ input.transferState.careers[0].playerId='human-account-a';
  input.transferState.rosterSync=[entry,{...entry}];
  const result=auditP27World(input);
  const codes=result.errors.map(item=>item.code);
