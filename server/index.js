@@ -7,6 +7,7 @@ import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
 import { JsonCareerStore } from './career-store.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
+import { JsonProgressionStore } from './progression-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
@@ -20,6 +21,8 @@ import { isAdminTokenConfigured, isValidAdminToken } from './admin-auth.js';
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
 const careerStore = new JsonCareerStore(careerDirectory);
+const progressionDirectory = process.env.PLAYER_PROGRESSION_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'progression');
+const progressionStore = new JsonProgressionStore(progressionDirectory);
 const playerProfileDirectory = process.env.PLAYER_PROFILES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'player-profiles');
 const playerProfileStore = new JsonPlayerProfileStore(playerProfileDirectory);
 const competitionDirectory = process.env.COMPETITIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'competitions');
@@ -43,7 +46,7 @@ const clubWorld = new P27ClubWorldService({
   clubManager:serverClubManager, financeService:clubFinance,
   weeklyWageBudgets:configuredSystemWageBudgets()
 });
-const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore, competitionStore });
+const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore, progressionStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const accountAttempts = new Map();
@@ -136,6 +139,24 @@ const server = http.createServer(async (req, res) => {
       const offerAction = url.pathname.match(/^\/api\/transfer\/offers\/([a-z0-9-]{8,96})\/(accept|reject)$/i);
       if (req.method === 'POST' && offerAction) return json(res, 200, offerAction[2] === 'accept' ? transferStore.acceptOffer(account.id, offerAction[1]) : transferStore.rejectOffer(account.id, offerAction[1]));
       return json(res, 404, { error: 'NOT_FOUND' });
+    }
+    if (url.pathname === '/api/progression') {
+      const account = accountStore.resolve(bearer(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      if (req.method === 'GET') return json(res, 200, { progression: progressionStore.get(account.id) });
+      if (req.method === 'POST') {
+        const body = await readBody(req);
+        if (!body || typeof body !== 'object' || Array.isArray(body)) return json(res, 400, { error: 'INVALID_PROGRESSION_ACTION' });
+        try {
+          const result = body.action === 'train'
+            ? progressionStore.train(account.id, body.attribute, body.amount)
+            : body.action === 'practice'
+              ? progressionStore.practice(account.id, body.attribute, body.amount)
+              : null;
+          if (!result) return json(res, 400, { error: 'INVALID_PROGRESSION_ACTION' });
+          return json(res, result.ok ? 200 : 409, result);
+        } catch (error) { return json(res, 400, { error: String(error?.message || 'INVALID_PROGRESSION_ACTION') }); }
+      }
     }
     if (url.pathname === '/api/profile') {
       const account = accountStore.resolve(bearer(req));
