@@ -1149,3 +1149,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 126 : auditer les agrégats par compétition contre les rencontres archivées et exposer le résultat dans le snapshot.
 - [x] Lot 127 : renforcer les tests de confrontations directes, d'ordre des clubs et de persistance après rechargement.
 - [ ] Validation CI complète et contrôle syntaxique sur le commit documentaire consolidé.
+
+
+### Lots 128 à 131 — audit de carrière individuelle et continuité des mouvements
+- [x] Lot 128 : ajouter un audit en lecture seule des statistiques individuelles, des identifiants de matchs et des totaux cumulés, en tenant compte du fait que l'historique visible peut être plafonné.
+- [x] Lot 129 : rapprocher l'historique des clubs observés dans les matchs avec les apparitions par club, sans déduire de transfert à partir d'une simple apparition.
+- [x] Lot 130 : contrôler la chronologie et la continuité des événements de transfert fournis par le registre mercato ; signaler séparément un écart avec le club courant.
+- [x] Lot 131 : ajouter des scénarios de rechargement multi-saisons, de falsification statistique, de doublon et de rupture de chaîne de transferts.
+- [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
+- Limite : cet audit vérifie les historiques et événements déjà persistés ; il ne crée pas de statistiques de match ni de mouvements absents des sources.
