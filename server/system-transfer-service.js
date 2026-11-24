@@ -88,6 +88,10 @@ export class P27SystemTransferService {
           existing.playerId !== player || existing.fee !== fee) return { ok:false, reason:'idempotency-conflict' };
       return this.process(existing.id);
     }
+    const pendingForPlayer = this.state.transfers.find(item =>
+      item.playerId === player && item.status === 'pending');
+    if (pendingForPlayer) return { ok:false, reason:'player-transfer-pending', pending:true,
+      transferId:pendingForPlayer.id };
     const check = this.inspect({ fromClubId:fromId, toClubId:toId, playerId:player, fee, now });
     if (!check.ok) return check;
     const next = structuredClone(this.state);
