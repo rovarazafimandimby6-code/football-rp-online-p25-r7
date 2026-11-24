@@ -14,6 +14,7 @@ import { P27ClubWorldService } from './club-world-service.js';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/league-structure.js';
 import { listPublicClubs, resolvePublicClub } from './club-catalog.js';
+import { isAdminTokenConfigured, isValidAdminToken } from './admin-auth.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
@@ -96,6 +97,15 @@ const server = http.createServer(async (req, res) => {
       return club ? json(res,200,{club}) : json(res,404,{error:'CLUB_NOT_FOUND'});
     }
     if (req.method === 'GET' && url.pathname === '/api/competitions') return json(res, 200, competitionStore.snapshot());
+    if (req.method === 'POST' && url.pathname === '/api/admin/competitions/season/finalize') {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error: 'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error: 'ADMIN_UNAUTHORIZED' });
+      const body = await readBody(req);
+      const preview = competitionStore.previewSeasonMovements();
+      if (!preview.ok) return json(res, 409, { error: 'SEASON_MOVEMENTS_NOT_READY', reason: preview.reason });
+      const result = competitionStore.finalizeSeason({ nextSeasonId: body.nextSeasonId, movements: preview.movements });
+      return json(res, result.ok ? 200 : 409, result);
+    }
     if (req.method === 'POST' && (url.pathname === '/api/accounts/register' || url.pathname === '/api/accounts/login')) {
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'RATE_LIMIT' });
       const body = await readBody(req);
