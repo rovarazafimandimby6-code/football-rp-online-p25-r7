@@ -79,6 +79,37 @@ test('P27 saga effectif : une expiration déclenche une libération après lectu
  }finally{f.cleanup();}
 });
 
+test('P27 saga effectif : un renouvellement synchronise salaire et échéance puis survit au redémarrage',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-roster-renew',{clubId:'club-a',salary:500,durationDays:30});
+  processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  const renewed=f.transferStore.renewContract('account-roster-renew',{salary:850,durationDays:180});
+  assert.equal(renewed.ok,true);
+  const restartTransfers=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
+  const restartClubs=new ClubManager(f.clubs,f.storage,'test-rosters');
+  const replay=processPendingRosterSync({transferStore:restartTransfers,clubManager:restartClubs});
+  assert.equal(replay.ok,true);
+  const player=restartClubs.getClub('club-a').roster.find(item=>item.id===signed.career.playerId);
+  assert.equal(player.contract.salary,850);
+  assert.equal(player.contract.weeklyWage,850);
+  assert.equal(player.contract.expiresAt,renewed.career.contract.expiresAt);
+ }finally{f.cleanup();}
+});
+
+test('P27 saga effectif : une résiliation en attente libère le joueur après redémarrage complet',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-roster-terminate-restart',{clubId:'club-b',salary:500,durationDays:365});
+  processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  assert.equal(f.transferStore.terminateContract('account-roster-terminate-restart').ok,true);
+  const restartTransfers=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
+  const restartClubs=new ClubManager(f.clubs,f.storage,'test-rosters');
+  const replay=processPendingRosterSync({transferStore:restartTransfers,clubManager:restartClubs});
+  assert.equal(replay.ok,true);
+  assert.equal(restartClubs.getClub('club-b').roster.some(item=>item.id===signed.career.playerId),false);
+  assert.ok(restartClubs.getClub('club-b').releasedPlayers.some(item=>item.player.id===signed.career.playerId));
+ }finally{f.cleanup();}
+});
+
 test('P27 saga effectif : une panne du stockage effectif conserve la commande et permet la reprise',()=>{
  const f=setup();try{
   const signed=f.transferStore.signContract('account-roster-retry',{clubId:'club-a',salary:500,durationDays:365});
