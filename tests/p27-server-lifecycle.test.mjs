@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -35,6 +35,20 @@ test('P27 serveur : readiness contrôle les secrets et stockages, puis SIGTERM f
     const ready = await readiness.json();
     assert.equal(ready.status, 'ready');
     assert.equal(ready.storage.length, 11);
+
+    process.env.P27_ADMIN_TOKEN = 'too-short';
+    const missingSecret = await fetch(`${base}/readyz`);
+    assert.equal(missingSecret.status, 503);
+    assert.ok((await missingSecret.json()).errors.includes('P27_ADMIN_TOKEN_MISSING_OR_TOO_SHORT'));
+    process.env.P27_ADMIN_TOKEN = 'p27-lifecycle-test-secret-0123456789abcdef';
+
+    const blockedDirectory = path.join(root, 'rooms-is-a-file');
+    writeFileSync(blockedDirectory, 'not a directory');
+    process.env.ROOMS_DIR = blockedDirectory;
+    const unavailableStorage = await fetch(`${base}/readyz`);
+    assert.equal(unavailableStorage.status, 503);
+    assert.ok((await unavailableStorage.json()).errors.includes('STORAGE_NOT_WRITABLE:ROOMS_DIR'));
+    process.env.ROOMS_DIR = path.join(root, 'rooms');
 
     const room = manager.create({ name: 'Arrêt propre' });
     manager.join(room.id, { displayName: 'Joueur de test' });
