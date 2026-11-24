@@ -31,8 +31,14 @@ export class P27SystemTransferService {
       for (const item of value.transfers) {
         if (!item || typeof item.id !== 'string' || ids.has(item.id) ||
             !['pending','completed','failed'].includes(item.status) ||
-            !validFee(item.fee) || !Number.isSafeInteger(item.createdAt) ||
-            !item.playerId || !item.fromClubId || !item.toClubId) throw new Error('entry');
+            !validFee(item.fee) || !Number.isSafeInteger(item.createdAt) || item.createdAt < 0 ||
+            !Number.isSafeInteger(item.attempts) || item.attempts < 0 || item.attempts > 1_000_000 ||
+            !(item.lastError === null || typeof item.lastError === 'string') ||
+            !item.playerId || !item.fromClubId || !item.toClubId ||
+            (item.status === 'completed' && !Number.isSafeInteger(item.completedAt)) ||
+            (item.completedAt !== undefined && (!Number.isSafeInteger(item.completedAt) || item.completedAt < 0)) ||
+            (item.lastAttemptAt !== undefined && (!Number.isSafeInteger(item.lastAttemptAt) || item.lastAttemptAt < 0)))
+          throw new Error('entry');
         ids.add(item.id);
       }
       return value;
