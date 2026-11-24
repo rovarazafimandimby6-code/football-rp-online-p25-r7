@@ -509,3 +509,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Préserver et cloner les métadonnées de lore dans le gestionnaire de clubs.
 - [x] Ajouter des tests sur la couverture des 156 clubs, la stabilité des données, les statuts provisoires et la conservation des rivalités explicites.
 - Limite : les biographies, les fusions nommées, les dates historiques définitives et les rivalités restent à écrire/valider club par club ; les champs générés constituent une base de travail, pas une histoire officielle.
+
+
+### Lot 45 — registre contrôlé des rivalités fictives (moteur prêt, contenu non validé)
+- [x] Créer un registre de rivalités explicitement renseignées, indépendant des profils générés.
+- [x] Prendre en charge les motifs géographiques, historiques, sportifs, régionaux et liés aux promotions.
+- [x] Empêcher les auto-rivalités, clubs inconnus, doublons et relations mal classées.
+- [x] Limiter à cinq rivalités actives par division ; auditer la cible de deux à cinq rivalités principales par division.
+- [x] Conserver les nouvelles relations en statut proposé par défaut ; l'activation exige une déclaration explicite.
+- [x] Ajouter des tests prouvant qu'aucune rivalité n'est automatiquement inventée pour les 156 clubs.
+- Limite : le registre reste vide tant que les affiches et leur histoire ne sont pas choisies et validées ; l'audit signale les divisions sous la cible sans inventer de contenu.
