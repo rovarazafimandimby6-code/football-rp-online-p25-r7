@@ -12,6 +12,7 @@ import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
 import { JsonClubRosterStorage } from './club-roster-storage.js';
+import { processPendingRosterSync } from './roster-sync-service.js';
 import { P27ClubWorldService } from './club-world-service.js';
 import { syncClubAssignments } from './club-assignment-sync.js';
 import { auditP27World } from './world-integrity-audit.js';
@@ -44,6 +45,13 @@ if (!startupAssignmentSync.ok) {
   assignmentSyncPending = true;
   process.stderr.write('P27 club assignment persistence pending; automatic retry scheduled\\n');
 }
+function syncPendingHumanRosters() {
+  const result = processPendingRosterSync({ transferStore, clubManager:serverClubManager });
+  if (!result.ok) process.stderr.write(`P27 human roster sync pending: ${result.pending} operation(s) awaiting retry\\n`);
+  return result;
+}
+const startupRosterSync = syncPendingHumanRosters();
+if (startupRosterSync.processed.length) process.stdout.write(`P27 human roster sync recovered: ${startupRosterSync.processed.length} operation(s)\\n`);
 const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs:[...serverClubManager.clubs.values()], transferStore });
 function configuredSystemWageBudgets() {
   try {
@@ -163,13 +171,31 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/contract') || url.pathname.startsWith('/api/transfer/')) {
       const account = accountStore.resolve(bearer(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
-      if (req.method === 'GET' && url.pathname === '/api/contract') return json(res, 200, { career: transferStore.getCareer(account.id) });
-      if (req.method === 'POST' && url.pathname === '/api/contract/sign') return json(res, 200, transferStore.signContract(account.id, await readBody(req)));
-      if (req.method === 'POST' && url.pathname === '/api/contract/renew') return json(res, 200, transferStore.renewContract(account.id, await readBody(req)));
-      if (req.method === 'POST' && url.pathname === '/api/contract/terminate') return json(res, 200, transferStore.terminateContract(account.id));
-      if (req.method === 'POST' && url.pathname === '/api/transfer/offers') return json(res, 200, transferStore.requestOffer(account.id, await readBody(req)));
-      const offerAction = url.pathname.match(/^\/api\/transfer\/offers\/([a-z0-9-]{8,96})\/(accept|reject)$/i);
-      if (req.method === 'POST' && offerAction) return json(res, 200, offerAction[2] === 'accept' ? transferStore.acceptOffer(account.id, offerAction[1]) : transferStore.rejectOffer(account.id, offerAction[1]));
+      if (req.method === 'GET' && url.pathname === '/api/contract') {
+        const career = transferStore.getCareer(account.id);
+        return json(res, 200, { career, rosterSync:syncPendingHumanRosters() });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/contract/sign') {
+        const result = transferStore.signContract(account.id, await readBody(req));
+        return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/contract/renew') {
+        const result = transferStore.renewContract(account.id, await readBody(req));
+        return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/contract/terminate') {
+        const result = transferStore.terminateContract(account.id);
+        return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/transfer/offers') {
+        const result = transferStore.requestOffer(account.id, await readBody(req));
+        return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
+      }
+      const offerAction = url.pathname.match(/^\\/api\\/transfer\\/offers\\/([a-z0-9-]{8,96})\\/(accept|reject)$/i);
+      if (req.method === 'POST' && offerAction) {
+        const result = offerAction[2] === 'accept' ? transferStore.acceptOffer(account.id, offerAction[1]) : transferStore.rejectOffer(account.id, offerAction[1]);
+        return json(res, 200, { ...result, rosterSync:syncPendingHumanRosters() });
+      }
       return json(res, 404, { error: 'NOT_FOUND' });
     }
     if (url.pathname === '/api/progression') {
@@ -328,6 +354,11 @@ const assignmentSyncTick = setInterval(() => {
   } catch (error) { process.stderr.write(`P27 club assignment retry failed: ${error.message}\\n`); }
 }, 60 * 1000);
 assignmentSyncTick.unref();
+const humanRosterSyncTick = setInterval(() => {
+  try { syncPendingHumanRosters(); }
+  catch (error) { process.stderr.write(`P27 human roster sync retry failed: ${error.message}\\n`); }
+}, 15 * 1000);
+humanRosterSyncTick.unref();
 const clubWorldTick = setInterval(() => {
   try {
     const result = clubWorld.tick();
