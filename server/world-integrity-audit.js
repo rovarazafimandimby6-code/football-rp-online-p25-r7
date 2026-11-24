@@ -78,7 +78,7 @@ export function auditP27World({
 
   // Audit the canonical pyramid only when the complete 156-club catalogue is supplied.
   if (expectedClubCount === 156 && catalogue.length === 156) {
-    const expectedDivisions = { D1:16, D2:16, D3:16, D4:32, D5:64 };
+    const expectedDivisions = { D1:16, D2:20, D3:24, D4:32, D5:64 };
     const divisionCounts = Object.fromEntries(Object.keys(expectedDivisions).map(id => [id, 0]));
     const conferenceCounts = new Map();
     for (const club of catalogue) {
