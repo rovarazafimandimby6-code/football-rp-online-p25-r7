@@ -186,6 +186,32 @@ export class ClubManager {
       for (const saved of Array.isArray(data.clubs) ? data.clubs : []) {
         const club = this.clubs.get(safeId(saved?.id));
         if (!club) continue;
+        if (saved.clubLore && typeof saved.clubLore === 'object') {
+          const lore = saved.clubLore;
+          const validOrigins = ['community-founded','academy-founded','regional-project','fictional-merger'];
+          const validArchetypes = ['community','academy','technical','intense','ambitious','heritage'];
+          const rivalries = Array.isArray(lore.rivalries) ? lore.rivalries.filter(item =>
+            item && typeof item.clubId === 'string' && safeId(item.clubId) !== club.id &&
+            this.clubs.has(safeId(item.clubId))
+          ).slice(0,5).map(item => ({
+            clubId:safeId(item.clubId),
+            type:['geographic','historical','sporting','regional','promotion'].includes(item.type) ? item.type : 'sporting',
+            status:item.status === 'active' ? 'active' : 'proposed'
+          })) : club.clubLore.rivalries;
+          club.clubLore = {
+            ...club.clubLore,
+            contentStatus:lore.contentStatus === 'approved' ? 'approved' : 'generated-draft',
+            originType:validOrigins.includes(lore.originType) ? lore.originType : club.clubLore.originType,
+            foundedYear:Number.isInteger(lore.foundedYear) ? Math.max(1850,Math.min(2026,lore.foundedYear)) : club.clubLore.foundedYear,
+            originSummary:cleanText(lore.originSummary,club.clubLore.originSummary,240),
+            identityArchetype:validArchetypes.includes(lore.identityArchetype) ? lore.identityArchetype : club.clubLore.identityArchetype,
+            identityLabel:cleanText(lore.identityLabel,club.clubLore.identityLabel,64),
+            sportingPhilosophy:cleanText(lore.sportingPhilosophy,club.clubLore.sportingPhilosophy,180),
+            supporterCulture:cleanText(lore.supporterCulture,club.clubLore.supporterCulture,120),
+            rivalryStatus:rivalries.length ? 'assigned' : 'unassigned',
+            rivalries
+          };
+        }
         for (const field of ['points','played','wins','draws','losses','goalsFor','goalsAgainst']) {
           const value = Number(saved[field]);
           club[field] = Number.isSafeInteger(value) && value >= 0 ? Math.min(value, 1000000) : 0;
