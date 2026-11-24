@@ -131,20 +131,20 @@ export class RoomManager {
             });
           if (goalDistance < 16 && Math.abs(bot.z) < 8) {
             bot.facing = Math.atan2(goalX - bot.x, -bot.z);
-            if (!bot.aiControlled || averageAiShouldAct(bot, room.elapsedMs, 'shoot', 0.46)) {
+            if (!bot.aiControlled || averageAiShouldAct(bot, room.elapsedMs, 'shoot', 0.34)) {
               if (bot.aiControlled) bot.facing = averageAiAim(bot, room.elapsedMs, bot.facing, 'shoot');
               if (applyPlayerAction(room, bot, 'shoot', this.now())) { bot.stats.shots++; }
             }
           } else if (requestedMate) {
             // L'IA moyenne comprend l'appel, mais peut hésiter ou mal ajuster sa passe.
             bot.facing = Math.atan2(requestedMate.x - bot.x, requestedMate.z - bot.z);
-            if (!bot.aiControlled || averageAiShouldAct(bot, room.elapsedMs, 'pass-request', 0.62)) {
+            if (!bot.aiControlled || averageAiShouldAct(bot, room.elapsedMs, 'pass-request', 0.46)) {
               if (bot.aiControlled) bot.facing = averageAiAim(bot, room.elapsedMs, bot.facing, 'pass');
               if (applyPlayerAction(room, bot, 'pass', now)) { bot.stats.passes++; }
             }
           } else if (pressured && forwardMate) {
             bot.facing = Math.atan2(forwardMate.x - bot.x, forwardMate.z - bot.z);
-            if (!bot.aiControlled || averageAiShouldAct(bot, room.elapsedMs, 'pass-pressure', 0.50)) {
+            if (!bot.aiControlled || averageAiShouldAct(bot, room.elapsedMs, 'pass-pressure', 0.38)) {
               if (bot.aiControlled) bot.facing = averageAiAim(bot, room.elapsedMs, bot.facing, 'pass');
               if (applyPlayerAction(room, bot, 'pass', this.now())) { bot.stats.passes++; }
             }
@@ -175,7 +175,7 @@ export class RoomManager {
       bot.input = { x: movement.x, z: movement.z, sprint: !bot.aiControlled && distance > 8 };
       if (distance > 0.2) bot.facing = Math.atan2(dx, dz);
       if (bot.role !== 'GK' && owner && owner.team !== bot.team && Math.hypot(owner.x-bot.x, owner.z-bot.z) < 1.5) {
-        if (!bot.aiControlled || averageAiShouldAct(bot, room.elapsedMs, 'tackle', 0.54)) applyPlayerAction(room, bot, 'tackle', this.now());
+        if (!bot.aiControlled || averageAiShouldAct(bot, room.elapsedMs, 'tackle', 0.40)) applyPlayerAction(room, bot, 'tackle', this.now());
       }
     }
   }

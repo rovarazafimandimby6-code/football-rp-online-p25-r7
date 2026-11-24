@@ -466,3 +466,5 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ajouter une imprécision contrôlée sur l'orientation des passes et des tirs.
 - [x] Garder les règles et actions fondamentales : se déplacer, conserver/jouer le ballon, passer, tirer et défendre.
 - [ ] Vérifier la difficulté ressentie en match réel et ajuster les probabilités après essais Android.
+
+- Ajustement complémentaire : profil de remplacement encore moins performant (déplacement à 70 % de la décision de base, dérive mesurée, visée jusqu'à environ 23°, probabilité d'exécution réduite pour passes/tirs/tacles). Les bots standards ne reçoivent pas ces pénalités.

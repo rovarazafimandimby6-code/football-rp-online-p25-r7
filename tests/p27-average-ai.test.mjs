@@ -13,17 +13,30 @@ test('P27 IA moyenne : les décisions sont stables pour un joueur et une fenêtr
 test('P27 IA moyenne : les passes et tirs ont une marge d’imprécision bornée', () => {
   const facing = 1.2;
   const aim = averageAiAim(player, 4_000, facing, 'shoot');
-  assert.ok(Math.abs(aim - facing) <= 0.23);
+  assert.ok(Math.abs(aim - facing) <= 0.40);
   assert.notEqual(aim, facing);
 });
 
 test('P27 IA moyenne : déplacement plus lent et légèrement imparfait, sans sprint', () => {
   const move = averageAiMovement(player, 4_000, 1, 0);
-  assert.ok(Math.hypot(move.x, move.z) >= 0.75 && Math.hypot(move.x, move.z) <= 0.77);
-  assert.ok(move.z !== 0, 'la trajectoire comporte une petite dérive');
+  assert.ok(Math.hypot(move.x, move.z) >= 0.69 && Math.hypot(move.x, move.z) <= 0.71);
+  assert.ok(move.z !== 0, 'la trajectoire comporte une dérive visible mais limitée');
 });
 
 test('P27 IA moyenne : un bot standard n’est pas forcé d’utiliser le profil de remplacement', () => {
   const move = averageAiMovement({ id: 'ordinary' }, 0, 0, 0);
   assert.ok(Number.isFinite(move.x) && Number.isFinite(move.z));
+});
+
+test('P27 IA moyenne : le profil reste nettement sous la vitesse humaine normale', () => {
+  const move = averageAiMovement(player, 9_000, 1, 0);
+  assert.ok(Math.hypot(move.x, move.z) < 0.71);
+  assert.ok(Math.hypot(move.x, move.z) > 0.69);
+});
+
+test('P27 IA moyenne : une visée peut être franchement imparfaite sans devenir aléatoire', () => {
+  const facing = 0.4;
+  const aim = averageAiAim(player, 9_000, facing, 'pass');
+  assert.ok(Math.abs(aim - facing) <= 0.40);
+  assert.ok(Number.isFinite(aim));
 });
