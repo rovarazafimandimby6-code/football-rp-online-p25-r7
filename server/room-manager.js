@@ -9,11 +9,12 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Authoritative in-memory 5v5 room manager. One input stream controls one avatar. */
 export class RoomManager {
-  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null } = {}) {
+  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, careerStore = null } = {}) {
     this.now = now;
     this.roomTtlMs = roomTtlMs;
     this.disconnectGraceMs = disconnectGraceMs;
     this.resultStore = resultStore;
+    this.careerStore = careerStore;
     this.rooms = new Map();
   }
 
@@ -36,7 +37,7 @@ export class RoomManager {
     return this.publicState(room);
   }
 
-  join(roomId, { displayName = 'Joueur', preferredTeam = 'auto', role = null } = {}) {
+  join(roomId, { displayName = 'Joueur', preferredTeam = 'auto', role = null, accountId = null } = {}) {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('ROOM_NOT_FOUND');
     if (room.phase === 'fulltime') throw new Error('MATCH_ALREADY_FINISHED');
@@ -55,6 +56,7 @@ export class RoomManager {
     const token = randomBytes(24).toString('base64url');
     const player = {
       id: randomBytes(8).toString('hex'), token,
+      accountId: typeof accountId === 'string' && accountId.length <= 64 ? accountId : null,
       name: String(displayName).replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 20) || 'Joueur',
       team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
       z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
@@ -376,6 +378,22 @@ export class RoomManager {
       }),
     });
     room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
+    if (this.careerStore) {
+      for (const player of players) {
+        const livePlayer = room.players.get(player.playerId);
+        if (!livePlayer?.accountId || player.isBot || player.minutesPlayedMs < 15_000) continue;
+        const outcome = blue === red ? 'draw' : (player.team === (blue > red ? 'blue' : 'red') ? 'win' : 'loss');
+        const teamName = room.teams[player.team]?.name || '';
+        const opponentTeam = player.team === 'blue' ? 'red' : 'blue';
+        this.careerStore.recordMatch(livePlayer.accountId, {
+          matchId: room.id, result: outcome, finalizedAt: room.result.finalizedAt,
+          teamName, opponent: room.teams[opponentTeam]?.name || '', role: player.role,
+          rating: player.rating, minutesPlayedMs: player.minutesPlayedMs,
+          playerOfMatch: performance.awards.playerOfMatch?.playerId === player.playerId,
+          stats: player.stats
+        });
+      }
+    }
     this.resultStore?.save(room.result);
     return room.result;
   }

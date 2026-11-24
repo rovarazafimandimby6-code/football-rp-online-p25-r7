@@ -5,9 +5,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
+import { JsonCareerStore } from './career-store.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
-const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory) });
+const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
+const careerStore = new JsonCareerStore(careerDirectory);
+const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const accountAttempts = new Map();
@@ -54,6 +57,11 @@ const server = http.createServer(async (req, res) => {
       const session = accountStore.login(body);
       return session ? json(res, 200, session) : json(res, 401, { error: 'INVALID_CREDENTIALS' });
     }
+    if (req.method === 'GET' && url.pathname === '/api/career') {
+      const account = accountStore.resolve(bearer(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      return json(res, 200, { career: careerStore.get(account.id) });
+    }
     if (req.method === 'GET' && url.pathname === '/api/accounts/me') {
       const account = accountStore.resolve(bearer(req));
       return account ? json(res, 200, { account }) : json(res, 401, { error: 'SESSION_EXPIRED' });
@@ -77,7 +85,10 @@ const server = http.createServer(async (req, res) => {
     const joinMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})\/join$/);
     if (req.method === 'POST' && joinMatch) {
       const body = await readBody(req);
-      return json(res, 200, manager.join(joinMatch[1], body));
+      const accountToken = bearer(req);
+      const account = accountToken ? accountStore.resolve(accountToken) : null;
+      if (accountToken && !account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      return json(res, 200, manager.join(joinMatch[1], { ...body, accountId: account?.id || null }));
     }
     const entryRequestMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})\/entry-request$/);
     if (req.method === 'POST' && entryRequestMatch) {
