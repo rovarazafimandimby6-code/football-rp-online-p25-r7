@@ -13,7 +13,7 @@ test('P27 catalogue UI : charge le catalogue de saison par pages et vérifie les
 });
 
 test('P27 catalogue UI : affiche les cinq divisions et les conférences D4/D5',()=>{
-  for(const token of ['Premier League','Ligue 2','National League','Challenger League','Regional League','Nord 16 · Sud 16','Nord 16 · Sud 16 · Est 16 · Ouest 16']) assert.ok(main.includes(token),token);
+  for(const token of ['Premier League','Ligue 2','National League','Challenger League','Regional League','Conférence A · 16 clubs | Conférence B · 16 clubs','Conférences A, B, C et D · 16 clubs chacune']) assert.ok(main.includes(token),token);
   assert.match(main,/id="club-conference-filter"/);
   assert.match(main,/card\.dataset\.conference===conference/);
   assert.match(main,/data-conference=/);
