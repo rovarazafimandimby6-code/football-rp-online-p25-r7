@@ -34,3 +34,16 @@ test('P27 rotations serveur : refuse le jeton invalide et les réservistes adver
   assert.throws(() => manager.rotate(created.id, 'invalid-token', { outgoingId: outgoing.id, incomingId: enemyReserve.id }), /UNAUTHORIZED/);
   assert.throws(() => manager.rotate(created.id, joined.token, { outgoingId: outgoing.id, incomingId: enemyReserve.id }), /INVALID_ROTATION_PAIR/);
 });
+
+test('P27 rotations serveur : un coéquipier ne peut pas remplacer un humain sans son consentement', () => {
+  const manager = new RoomManager();
+  const created = manager.create();
+  const captain = manager.join(created.id, { displayName: 'Capitaine' });
+  const teammate = manager.join(created.id, { displayName: 'Coéquipier', preferredTeam: captain.team });
+  const room = manager.rooms.get(created.id);
+  room.phase = 'halftime';
+  const incoming = [...room.players.values()].find(player => player.team === captain.team && player.isBot && player.isOnPitch !== false);
+  assert.ok(incoming);
+  incoming.isOnPitch = false;
+  assert.throws(() => manager.rotate(created.id, captain.token, { outgoingId: teammate.playerId, incomingId: incoming.id }), /OUTGOING_PLAYER_CONSENT_REQUIRED/);
+});
