@@ -148,7 +148,7 @@ test('P27 intégrité monde : refuse les identifiants de saison et de compétiti
  const input=cleanWorld();
  const season=input.competitionState.seasons[0];
  season.competitions.push(structuredClone(season.competitions[0]));
- input.competitionState.seasons.push({...structuredClone(season),id:'season-b'});
+ input.competitionState.seasons.push(structuredClone(season));
  const result=auditP27World(input);
  const codes=result.errors.map(item=>item.code);
  assert.ok(codes.includes('SEASON_ID_INVALID_OR_DUPLICATE'));
