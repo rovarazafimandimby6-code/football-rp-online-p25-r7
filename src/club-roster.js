@@ -125,7 +125,8 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set() } = 
   const count = Math.max(1, Math.min(30, Math.floor(Number(size) || 12)));
   const random = randomFor(hashSeed(`fpro-p23:${club.id}:roster-v2`));
   const nationalities = nationalityPlan(club, count, random);
-  const ages = [18,30,19,28,21,32,...shuffled([22,23,24,25,26,27], random)];
+  const shuffledAges = shuffled(AGE_PROFILE, random);
+  const ages = [18,30,19,28,21,32,...shuffledAges.filter(age => ![18,19,21,28,30,32].includes(age))];
   while (ages.length < count) ages.push(18 + Math.floor(random() * 16));
   const roster = [];
   for (let index = 0; index < count; index++) {
