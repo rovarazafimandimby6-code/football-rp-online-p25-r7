@@ -18,15 +18,16 @@ test('P27 audit catalogue : contrôle les 156 identités, localisations et équi
   assert.equal(audit.complete, true, JSON.stringify(audit.issues.slice(0, 30)));
   assert.equal(audit.totalClubs, 156);
   assert.deepEqual(audit.divisionCounts, { D1:16, D2:20, D3:24, D4:32, D5:64 });
-  assert.deepEqual(audit.conferenceCounts.D4, { Nord:16, Sud:16 });
-  assert.deepEqual(audit.conferenceCounts.D5, { Nord:16, Sud:16, Est:16, Ouest:16 });
+  assert.deepEqual(audit.conferenceCounts.D4, { A:16, B:16 });
+  assert.deepEqual(audit.conferenceCounts.D5, { A:16, B:16, C:16, D:16 });
   assert.deepEqual(audit.quality, { named:156, located:156, stadiums:156, visualIdentities:156, rated:156, budgeted:156, rostered:156 });
 });
 
-test('P27 géographie : toutes les villes des clubs D4/D5 retrouvent leur conférence sans donnée explicite', () => {
+test('P27 conférences : les clubs D4/D5 portent une affectation explicite indépendante de leur ville', () => {
   const regionalClubs = P27_EXPANSION_CLUBS.filter(club=>club.division==='D4'||club.division==='D5');
-  const unresolved = regionalClubs.filter(club=>conferenceForClub({ ...club, conference:undefined }) !== club.conference);
-  assert.deepEqual(unresolved.map(club=>({ id:club.id, city:club.city, expected:club.conference, actual:conferenceForClub({ ...club, conference:undefined }) })), []);
+  const unresolved = regionalClubs.filter(club=>conferenceForClub({ ...club, conference:undefined }) !== null);
+  assert.deepEqual(unresolved, []);
+  assert.ok(regionalClubs.every(club=>conferenceForClub(club)===club.conference));
 });
 
 test('P27 audit profils : les 156 clubs ont leurs caractéristiques, stratégie, recrutement et lore', () => {
@@ -49,7 +50,7 @@ test('P27 audit catalogue : détecte doublons d’identité et incohérences de 
   for (const code of ['duplicate-club-name','duplicate-club-stadium','invalid-club-color-palette','club-rating-out-of-division-range','club-location-incomplete','duplicate-player-shirt-number']) assert.ok(codes.has(code), `issue attendue: ${code}`);
 });
 
-test('P27 audit catalogue : une conférence explicite invalide ne se masque pas par la géographie', () => {
+test('P27 audit catalogue : une affectation de conférence invalide est refusée', () => {
   const clubs = DEFAULT_CLUBS.map(club => ({ ...club }));
   const target = clubs.find(club => club.division === 'D5' && club.location?.city === 'Toamasina');
   target.conference = 'East';
@@ -66,10 +67,11 @@ test('P27 audit profils : refuse une rivalité automatique ou un profil stratég
   assert.ok(audit.errors.some(issue=>issue.code==='club-strategic-profile-invalid'&&issue.clubId===clubs[1].id));
 });
 
-test('P27 géographie : les clubs fondateurs D4/D5 sont également résolus sans conférence explicite', () => {
+test('P27 conférences : les clubs fondateurs ont eux aussi une affectation explicite', () => {
   const regionalClubs = DEFAULT_CLUBS.filter(club=>club.division==='D4'||club.division==='D5');
-  const unresolved = regionalClubs.filter(club=>conferenceForClub({ ...club, conference:undefined }) !== club.conference);
-  assert.deepEqual(unresolved.map(club=>({ id:club.id, city:club.city, expected:club.conference, actual:conferenceForClub({ ...club, conference:undefined }) })), []);
+  const unresolved = regionalClubs.filter(club=>conferenceForClub({ ...club, conference:undefined }) !== null);
+  assert.deepEqual(unresolved, []);
+  assert.ok(regionalClubs.every(club=>conferenceForClub(club)===club.conference));
 });
 
 test('P27 audit visuel : signale séparément une palette et un motif de maillot invalides', () => {
