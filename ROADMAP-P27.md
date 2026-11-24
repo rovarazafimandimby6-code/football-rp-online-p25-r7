@@ -1168,3 +1168,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 136 : ajouter un scénario d'intégration qui recharge réellement les stores carrière et mercato avant l'audit transversal.
 - [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
 - Limite : les statistiques globales ne sont pas reconstruites à partir des seuls matchs conservés si l'historique est plafonné ; le contrôle compare uniquement les bornes vérifiables.
+
+
+### Lots 137 à 140 — cohérence de l'outbox de synchronisation des effectifs
+- [x] Lot 137 : relier chaque commande outbox portant un eventId à son événement source lorsqu'il est encore conservé ; distinguer événement absent en attente et événement archivé après clôture.
+- [x] Lot 138 : vérifier l'identité du joueur et le type d'action (upsert/libération) entre l'événement métier et la commande de synchronisation.
+- [x] Lot 139 : vérifier les clubs source et cible lorsqu'ils sont présents dans l'événement, avec test après rechargement d'une commande terminée.
+- [x] Lot 140 : tester la persistance des échecs, du nombre de tentatives et la clôture idempotente après plusieurs redémarrages.
+- [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
+- Limite : l'audit ne suppose pas que l'effet externe d'une commande est distribué atomiquement ; il contrôle la trace métier, la commande persistée et son état de reprise.
