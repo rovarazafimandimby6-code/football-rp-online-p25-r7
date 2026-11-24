@@ -886,7 +886,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Enregistrer explicitement les refus sportifs de renouvellement dans le contrat IA, les conserver après rechargement, libérer le joueur à échéance et recruter un remplaçant pour restaurer l'effectif cible.
 - [x] Auditer les contrats IA actifs dont l'échéance est dépassée et les archives de fin de contrat qui conservent à tort un contrat actif.
 - [x] Ajouter les tests négatifs correspondants ; conserver les tests existants de refus sportif, expiration, archivage et recrutement d'un remplaçant.
-- [ ] Ajouter un scénario persistant complet de recrutement d'un joueur libre IA suivi d'un redémarrage et d'un nouvel audit d'intégrité.
+- [x] Ajouter un scénario persistant complet de recrutement d'un joueur libre IA suivi d'un redémarrage et d'un nouvel audit d'intégrité.
 
 #### Lot 88 — registre et recrutement des joueurs IA libres (intégré)
 - [x] Construire le recrutement à partir des archives de joueurs libérés, en choisissant le dernier état connu et en évitant les doublons d'effectif.
