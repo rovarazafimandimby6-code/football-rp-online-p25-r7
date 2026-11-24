@@ -50,6 +50,10 @@ export class RoomManager {
     if (!this.roomStore) return 0;
     const now = this.now();
     for (const snapshot of this.roomStore.readAll()) {
+      if (this.resultStore?.get(snapshot.id)) {
+        this.roomStore.delete(snapshot.id);
+        continue;
+      }
       if (snapshot.phase === 'lobby' && Number.isFinite(snapshot.updatedAt) && now - snapshot.updatedAt > this.roomTtlMs) {
         this.roomStore.delete(snapshot.id);
         continue;
