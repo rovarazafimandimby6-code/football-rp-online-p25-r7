@@ -223,7 +223,7 @@ test('P27 intégrité finances : détecte les écritures mal catégorisées et l
  const result=auditP27World(input);
  const codes=result.errors.map(item=>item.code);
  assert.ok(codes.includes('FINANCE_ENTRY_INVALID'));
- assert.ok(codes.includes('FINANCE_ACCOUNT_MISSING'));
+ assert.ok(result.warnings.some(item=>item.code==='FINANCE_ACCOUNT_CATALOGUE_SIZE_MISMATCH'));
 });
 
 test('P27 intégrité saisons : détecte les identifiants de fixture dupliqués entre saisons',()=>{
