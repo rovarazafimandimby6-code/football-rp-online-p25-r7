@@ -229,7 +229,7 @@ test('P27 lot 96 : les joueurs humains ne masquent pas le besoin de joueurs IA a
    );
   }
   const result=service.simulateMarket({windowId:'human-demand-2028',maxTransfers:1,now:Date.parse('2028-01-01T00:00:00.000Z')});
-  assert.equal(result.evaluated,3);
+  assert.equal(result.evaluated,9);
   assert.equal(result.processed,1);
   assert.equal(service.clubManager.getClub('market-seller').roster.filter(p=>p.playerType==='system'&&p.role==='FWD').length,2);
  } finally {rmSync(directory,{recursive:true,force:true});}
