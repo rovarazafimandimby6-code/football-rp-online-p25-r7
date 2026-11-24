@@ -55,7 +55,7 @@ export class P27SystemTransferService {
     }
   }
 
-  inspect({ fromClubId, toClubId, playerId, fee }) {
+  inspect({ fromClubId, toClubId, playerId, fee, now = this.now() }) {
     const from = this.clubManager.getClub(fromClubId);
     const to = this.clubManager.getClub(toClubId);
     if (!from || !to || fromClubId === toClubId) return { ok:false, reason:'invalid-clubs' };
@@ -70,29 +70,30 @@ export class P27SystemTransferService {
     if (player.playerType !== 'system' || player.id.startsWith('human-')) return { ok:false, reason:'human-career-managed' };
     const expiresAt = Date.parse(player.contract?.expiresAt || '');
     if (player.contract?.status !== 'active' || player.contract?.clubId !== from.id ||
-        !Number.isFinite(expiresAt) || expiresAt <= this.now()) return { ok:false, reason:'inactive-contract' };
+        !Number.isFinite(expiresAt) || expiresAt <= now) return { ok:false, reason:'inactive-contract' };
     if (to.roster.length >= to.capacity) return { ok:false, reason:'roster-full' };
     if (!validFee(fee)) return { ok:false, reason:'invalid-fee' };
     return { ok:true, from, to, player };
   }
 
-  transfer({ id, fromClubId, toClubId, playerId, fee }) {
+  transfer({ id, fromClubId, toClubId, playerId, fee, now = this.now() }) {
     const transferId = String(id || '').trim();
     const fromId = safeId(fromClubId), toId = safeId(toClubId), player = safeId(playerId);
     if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{2,95}$/.test(transferId) ||
-        !fromId || !toId || !player || !validFee(fee)) return { ok:false, reason:'invalid-request' };
+        !fromId || !toId || !player || !validFee(fee) || !Number.isSafeInteger(now) || now < 0)
+      return { ok:false, reason:'invalid-request' };
     const existing = this.state.transfers.find(item => item.id === transferId);
     if (existing) {
       if (existing.fromClubId !== fromId || existing.toClubId !== toId ||
           existing.playerId !== player || existing.fee !== fee) return { ok:false, reason:'idempotency-conflict' };
       return this.process(existing.id);
     }
-    const check = this.inspect({ fromClubId:fromId, toClubId:toId, playerId:player, fee });
+    const check = this.inspect({ fromClubId:fromId, toClubId:toId, playerId:player, fee, now });
     if (!check.ok) return check;
     const next = structuredClone(this.state);
     next.transfers.push({
       id:transferId, playerId:player, fromClubId:fromId, toClubId:toId, fee,
-      createdAt:this.now(), status:'pending', attempts:0, lastError:null
+      createdAt:now, status:'pending', attempts:0, lastError:null
     });
     if (!this.persist(next)) return { ok:false, reason:'outbox-persistence-failed' };
     return this.process(transferId);
@@ -152,7 +153,10 @@ export class P27SystemTransferService {
     for (const seller of clubs) {
       if (!divisionRank.has(seller.division)) continue;
       const sellerCounts = new Map();
-      for (const player of seller.roster) sellerCounts.set(player.role || 'OTHER',(sellerCounts.get(player.role || 'OTHER') || 0)+1);
+      for (const player of seller.roster) {
+        if (player.playerType !== 'system') continue;
+        sellerCounts.set(player.role || 'OTHER',(sellerCounts.get(player.role || 'OTHER') || 0)+1);
+      }
       for (const player of seller.roster) {
         if (player.playerType !== 'system' || player.contract?.status !== 'active') continue;
         const expiresAt = Date.parse(player.contract.expiresAt || '');
@@ -184,7 +188,7 @@ export class P27SystemTransferService {
     for (const candidate of candidates) {
       if (results.length >= maxTransfers) break;
       if (usedPlayers.has(candidate.playerId) || usedBuyers.has(candidate.toClubId)) continue;
-      const result = this.transfer(candidate);
+      const result = this.transfer({ ...candidate, now });
       if (!result.ok) continue;
       usedPlayers.add(candidate.playerId);
       usedBuyers.add(candidate.toClubId);
