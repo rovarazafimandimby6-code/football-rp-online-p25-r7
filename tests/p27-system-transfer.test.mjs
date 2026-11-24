@@ -128,6 +128,7 @@ function marketFixture(directory) {
 test('P27 lot 85 : simulation du mercato IA déterministe, fondée sur les besoins de poste et limitée',()=>{
  const a=mkdtempSync(path.join(os.tmpdir(),'p27-market-a-'));
  const b=mkdtempSync(path.join(os.tmpdir(),'p27-market-b-'));
+ const c=mkdtempSync(path.join(os.tmpdir(),'p27-market-invalid-'));
  try {
   const first=marketFixture(a).simulateMarket({windowId:'winter-2028',maxTransfers:2,now:Date.parse('2028-01-01T00:00:00.000Z')});
   const second=marketFixture(b).simulateMarket({windowId:'winter-2028',maxTransfers:2,now:Date.parse('2028-01-01T00:00:00.000Z')});
@@ -136,8 +137,8 @@ test('P27 lot 85 : simulation du mercato IA déterministe, fondée sur les besoi
   assert.equal(first.transfers[0].playerId,'system-market-forward');
   assert.equal(first.transfers[0].id,second.transfers[0].id);
   assert.equal(first.transfers[0].fee,second.transfers[0].fee);
-  assert.equal(marketFixture(mkdtempSync(path.join(os.tmpdir(),'p27-market-invalid-'))).simulateMarket({windowId:'x',maxTransfers:0}).reason,'invalid-market-window');
- } finally {rmSync(a,{recursive:true,force:true});rmSync(b,{recursive:true,force:true});}
+  assert.equal(marketFixture(c).simulateMarket({windowId:'x',maxTransfers:0}).reason,'invalid-market-window');
+ } finally {rmSync(a,{recursive:true,force:true});rmSync(b,{recursive:true,force:true});rmSync(c,{recursive:true,force:true});}
 });
 
 test('P27 lot 85 : refuse les carrières humaines, les indemnités invalides et les clubs inconnus',()=>{
