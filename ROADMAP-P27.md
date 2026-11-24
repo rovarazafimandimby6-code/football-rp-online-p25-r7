@@ -794,3 +794,14 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Maintenir en avertissement les carrières actives absentes des effectifs afin de ne pas rendre les mondes historiques artificiellement invalides avant la synchronisation effective.
 - [ ] Mettre en place une opération serveur coordonnée qui inscrit/déplace/libère le joueur dans l'effectif lors d'une signature, d'un transfert ou d'une résiliation ; prévoir une reprise journalisée entre les stockages indépendants.
 - [ ] Ajouter les tests de panne et de redémarrage de cette coordination multi-stockages avant d'activer les invariants bloquants.
+
+
+### Lot 70 — saga de synchronisation carrière/effectif (en cours de validation)
+- [x] Écrire une commande outbox durable dans la même transaction que la signature, le transfert, le renouvellement, la résiliation ou l'expiration du contrat humain.
+- [x] Préserver les événements métier historiques du mercato ; l'outbox ne remplace pas les événements de signature/transfert/renouvellement/libération.
+- [x] Appliquer les commandes à l'effectif avec une opération idempotente : inscription, mise à jour, transfert et libération d'un joueur humain.
+- [x] Restaurer l'état mémoire de l'effectif si sa sauvegarde locale échoue.
+- [x] Rejouer les commandes en attente au démarrage, après les opérations API et périodiquement ; une panne entre la sauvegarde du roster et le checkpoint outbox ne crée pas de doublon.
+- [x] Ajouter des tests de signature, transfert, résiliation, expiration, panne du stockage effectif et reprise après checkpoint manquant.
+- [ ] Valider la CI complète puis ajouter les contrôles d'intégrité du journal outbox (identifiants, statuts, liens de carrière et compteurs en attente).
+- Limite : saga rejouable et idempotente entre deux stockages JSON ; ce n'est pas une transaction ACID distribuée. Une opération de mercato peut être acceptée tandis que sa synchronisation d'effectif reste temporairement en attente, visible dans la réponse API et récupérée automatiquement.
