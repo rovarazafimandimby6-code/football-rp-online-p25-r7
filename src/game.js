@@ -157,7 +157,7 @@ export class Game {
       },
       onWeather: (w) => this.weather.setWeather(w),
       onQuality: (q) => this.sceneMgr.setQuality(q),
-      onCameraMode: (mode) => { if (this.cam.setMode(mode)) { callbacks.onCameraMode?.(mode); this.ui.setStatus(`CAMÉRA : ${{player:'IMMERSION JOUEUR',touchline:'LIGNE DE TOUCHE',broadcast:'DIFFUSION TV',close:'RAPPROCHÉE',tactical:'TACTIQUE'}[mode]}`); } },
+      onCameraMode: (mode) => { if (this.cam.setMode(mode)) { callbacks.onCameraMode?.(mode); this.ui.setStatus(`CAMÉRA : ${{player:'IMMERSION JOUEUR',touchline:'LIGNE DE TOUCHE',broadcast:'DIFFUSION TV',close:'RAPPROCHÉE',tactical:'TACTIQUE',spectator:'VUE SPECTATEUR'}[mode]}`); } },
       onCameraZoom: (value) => { const zoom = this.cam.setZoom(value); callbacks.onCameraZoom?.(zoom); this.ui.setStatus(`ZOOM CAMÉRA : ${zoom}%`); },
       getCameraMode: () => this.cam.mode,
       getCameraZoom: () => this.cam.zoom,
