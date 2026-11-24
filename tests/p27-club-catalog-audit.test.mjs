@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DEFAULT_CLUBS, ClubManager } from '../src/club-manager.js';
 import { P27_EXPANSION_CLUBS, P27_EXPANSION_COUNTS } from '../src/p27-club-expansion.js';
 import { auditClubCatalog } from '../src/club-catalog-validation.js';
+import { conferenceForClub } from '../src/league-structure.js';
 
 test('P27 expansion : les 140 clubs complètent exactement les cinq divisions', () => {
   assert.deepEqual(P27_EXPANSION_COUNTS, { total:140, D1:12, D2:16, D3:20, D4:32, D5:60 });
@@ -20,6 +21,12 @@ test('P27 audit catalogue : contrôle les 156 identités, localisations et équi
   assert.deepEqual(audit.conferenceCounts.D4, { Nord:16, Sud:16 });
   assert.deepEqual(audit.conferenceCounts.D5, { Nord:16, Sud:16, Est:16, Ouest:16 });
   assert.deepEqual(audit.quality, { named:156, located:156, stadiums:156, visualIdentities:156, rated:156, budgeted:156, rostered:156 });
+});
+
+test('P27 géographie : toutes les villes des clubs D4/D5 retrouvent leur conférence sans donnée explicite', () => {
+  const regionalClubs = P27_EXPANSION_CLUBS.filter(club=>club.division==='D4'||club.division==='D5');
+  const unresolved = regionalClubs.filter(club=>conferenceForClub({ ...club, conference:undefined }) !== club.conference);
+  assert.deepEqual(unresolved.map(club=>({ id:club.id, city:club.city, expected:club.conference, actual:conferenceForClub({ ...club, conference:undefined }) })), []);
 });
 
 test('P27 audit catalogue : détecte doublons d’identité et incohérences de données', () => {

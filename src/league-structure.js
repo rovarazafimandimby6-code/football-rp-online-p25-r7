@@ -22,28 +22,49 @@ export function normalizeConference(division, value) {
   return (CONFERENCE_NAMES[division] || []).includes(label) ? label : null;
 }
 
+const GEO = (D4, D5) => Object.freeze({ ...(D4 ? { D4 } : {}), ...(D5 ? { D5 } : {}) });
 const CITY_GEOGRAPHY = Object.freeze({
-  'antsiranana': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
-  'diego suarez': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
-  'nosy be': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
-  'ambanja': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
-  'sambava': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
-  'antalaha': Object.freeze({ D4: 'Nord', D5: 'Nord' }),
-  'mahajanga': Object.freeze({ D4: 'Nord', D5: 'Ouest' }),
-  'majunga': Object.freeze({ D4: 'Nord', D5: 'Ouest' }),
-  'toamasina': Object.freeze({ D4: 'Nord', D5: 'Est' }),
-  'tamatave': Object.freeze({ D4: 'Nord', D5: 'Est' }),
-  'antananarivo': Object.freeze({ D4: 'Sud' }),
-  'antsirabe': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
-  'fianarantsoa': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
-  'toliara': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
-  'tulear': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
-  'morondava': Object.freeze({ D4: 'Sud', D5: 'Ouest' }),
-  'taolagnaro': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
-  'fort dauphin': Object.freeze({ D4: 'Sud', D5: 'Sud' }),
-  'manakara': Object.freeze({ D4: 'Sud', D5: 'Est' }),
-  'mananjary': Object.freeze({ D4: 'Sud', D5: 'Est' }),
-  'nairobi': Object.freeze({ D5: 'Est' })
+  // Nord : extrême nord et nord-ouest malgaches.
+  'antsiranana': GEO('Nord','Nord'), 'diego suarez': GEO('Nord','Nord'),
+  'ambilobe': GEO('Nord','Nord'), 'ambanja': GEO('Nord','Nord'), 'nosy be': GEO('Nord','Nord'),
+  'sambava': GEO('Nord','Nord'), 'antalaha': GEO('Nord','Nord'), 'andapa': GEO('Nord','Nord'),
+  'vohemar': GEO('Nord','Nord'), 'bealanana': GEO('Nord','Nord'),
+  'befandriana nord': GEO('Nord','Nord'), 'port berge': GEO('Nord','Nord'),
+  'mampikony': GEO('Nord','Nord'), 'mandritsara': GEO('Nord','Nord'),
+  'marovoay': GEO('Nord','Nord'), 'mitsinjo': GEO('Nord',null),
+  'soalala': GEO('Nord','Nord'), 'antsohihy': GEO('Nord','Nord'),
+  'mahajanga': GEO('Nord','Ouest'), 'majunga': GEO('Nord','Ouest'),
+  // Sud : hauts plateaux sud, sud-est et grand sud.
+  'antananarivo': GEO('Sud',null), 'antsirabe': GEO('Sud','Sud'),
+  'fianarantsoa': GEO('Sud','Sud'), 'ambositra': GEO('Sud','Sud'),
+  'ihosy': GEO('Sud','Sud'), 'betroka': GEO('Sud','Sud'),
+  'taolagnaro': GEO('Sud','Sud'), 'fort dauphin': GEO('Sud','Sud'),
+  'toliara': GEO('Sud','Sud'), 'tulear': GEO('Sud','Sud'),
+  'sakaraha': GEO('Sud','Sud'), 'ampanihy': GEO(null,'Sud'),
+  'betioky': GEO(null,'Sud'), 'bekily': GEO(null,'Sud'),
+  'ambovombe': GEO(null,'Sud'), 'amboasary': GEO(null,'Sud'),
+  'tsihombe': GEO(null,'Sud'), 'beloha': GEO(null,'Sud'),
+  'ejeda': GEO(null,'Sud'), 'morondava': GEO('Sud','Ouest'),
+  'miandrivazo': GEO('Sud',null),
+  // Est : côte orientale et arrière-pays.
+  'toamasina': GEO('Nord','Est'), 'tamatave': GEO('Nord','Est'),
+  'fenerive est': GEO(null,'Est'), 'vatomandry': GEO(null,'Est'),
+  'mahanoro': GEO(null,'Est'), 'brickaville': GEO(null,'Est'),
+  'moramanga': GEO(null,'Est'), 'andasibe': GEO(null,'Est'),
+  'anosibe anala': GEO(null,'Est'), 'ambatondrazaka': GEO(null,'Est'),
+  'amparafaravola': GEO(null,'Est'), 'manakara': GEO('Sud','Est'),
+  'mananjary': GEO('Sud','Est'), 'farafangana': GEO('Sud','Est'),
+  'vangaindrano': GEO('Sud','Est'), 'nosy varika': GEO(null,'Est'),
+  // Ouest : façade occidentale et moyen-ouest.
+  'ambato boeny': GEO(null,'Ouest'), 'ambatomainty': GEO(null,'Ouest'),
+  'ankavandra': GEO(null,'Ouest'), 'maintirano': GEO(null,'Ouest'),
+  'morafenobe': GEO(null,'Ouest'), 'besalampy': GEO(null,'Ouest'),
+  'antsalova': GEO(null,'Ouest'), 'belo sur tsiribihina': GEO('Sud','Ouest'),
+  'tsiroanomandidy': GEO(null,'Ouest'), 'miarinarivo': GEO(null,'Ouest'),
+  'arivonimamo': GEO(null,'Ouest'), 'ankazobe': GEO(null,'Ouest'),
+  'maevatanana': GEO(null,'Ouest'), 'kandreho': GEO(null,'Ouest'),
+  // Clubs internationaux conservés dans les conférences définies à leur création.
+  'nairobi': GEO(null,'Est')
 });
 
 function normalizeCityName(value) {
@@ -66,7 +87,6 @@ export function conferenceForClub(club) {
   const explicit = normalizeConference(division, club?.conference ?? club?.region);
   if (explicit) return explicit;
   if (division !== 'D4' && division !== 'D5') return null;
-
   const primaryCity = String(club?.location?.city || club?.city || '').split('/')[0];
   const city = normalizeCityName(primaryCity);
   return CITY_GEOGRAPHY[city]?.[division] ?? null;
