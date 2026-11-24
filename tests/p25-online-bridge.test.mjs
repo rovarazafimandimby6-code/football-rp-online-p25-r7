@@ -147,5 +147,6 @@ test('P27 rotations synchronisées : le contrôle unique suit le joueur qui chan
   ], ball:null });
   assert.equal(f.players.filter(player => player.isControlled).length, 1);
   assert.equal(f.players.find(player => player.isControlled), originalHumanAvatar);
+  assert.equal(bridge.remoteIds.get('human-1'), originalHumanAvatar);
   assert.equal(originalHumanAvatar.slotIndex, 5);
 });
