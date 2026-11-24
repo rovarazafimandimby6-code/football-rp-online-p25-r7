@@ -15,6 +15,10 @@ const normalizePlayerLoyalty = loyalty => ({
   transferWillingness: Number.isFinite(Number(loyalty?.transferWillingness)) ? Math.max(0, Math.min(100, Math.round(Number(loyalty.transferWillingness)))) : 50,
   departurePolicy: ['no-normal-exit','reluctant','balanced','ambitious'].includes(loyalty?.departurePolicy) ? loyalty.departurePolicy : 'balanced'
 });
+const assignSystemContracts = (roster, club) => roster.map(player => player.playerType === 'human' ? player : ({
+  ...player,
+  contract: createSystemPlayerContract({ clubId: club.id, playerId: player.id, division: club.division, rating: player.rating })
+}));
 const clonePlayer = player => ({ ...player, contract: player.contract ? { ...player.contract } : null, loyalty: player.loyalty ? { ...player.loyalty } : null, attributes: player.attributes ? { ...player.attributes } : null, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
 const cloneClub = club => ({ ...club, location: club.location ? { ...club.location } : null, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, strategicProfile: club.strategicProfile ? { ...club.strategicProfile, competitiveVariance: { ...club.strategicProfile.competitiveVariance } } : null, clubLore: club.clubLore ? { ...club.clubLore, rivalries: (club.clubLore.rivalries || []).map(item => ({ ...item })) } : null, recruitmentProfile: club.recruitmentProfile ? { ...club.recruitmentProfile, nationalityCodes: [...(club.recruitmentProfile.nationalityCodes || [])] } : null, roster: club.roster.map(clonePlayer) });
 
@@ -160,10 +164,10 @@ export class ClubManager {
       normalized.strategicProfile = generateClubStrategicProfile({ ...normalized, ...input });
       normalized.clubLore = input.clubLore && typeof input.clubLore === 'object' ? { ...generateClubLore({ ...normalized, ...input }), ...input.clubLore, rivalries: Array.isArray(input.clubLore.rivalries) ? input.clubLore.rivalries.filter(item => item && typeof item.clubId === 'string').map(item => ({ clubId:item.clubId, type:String(item.type || 'sporting'), status:item.status === 'active' ? 'active' : 'proposed' })) : [] } : generateClubLore({ ...normalized, ...input });
       if (normalized.humanAdmission === 'system-only') normalized.control = 'ai';
-      normalized.roster = seedDefaultRosters ? balanceClubRosterQuality(
+      normalized.roster = seedDefaultRosters ? assignSystemContracts(balanceClubRosterQuality(
         generateClubRoster({ ...normalized, recruitmentProfile: normalized.recruitmentProfile }, { size: Math.min(normalized.initialRosterSize, normalized.capacity), usedNames: globallyUsedNames }),
         normalized
-      ) : [];
+      ), normalized) : [];
       this.clubs.set(id, normalized);
     }
     // D4 is absent from the starter 16-club catalogue. Reserve one as soon as
@@ -177,10 +181,10 @@ export class ClubManager {
         id: reserved.id, division: reserved.division, countryCode: reserved.countryCode,
         humanAdmission: 'system-only', recruitmentProfile: { mode:'continent', continent:'Africa' }
       });
-      if (seedDefaultRosters) reserved.roster = balanceClubRosterQuality(
+      if (seedDefaultRosters) reserved.roster = assignSystemContracts(balanceClubRosterQuality(
         generateClubRoster({ ...reserved, recruitmentProfile: reserved.recruitmentProfile }, { size: Math.min(reserved.initialRosterSize, reserved.capacity), usedNames: globallyUsedNames }),
         reserved
-      );
+      ), reserved);
     }
     this.fixtures = [];
     this.loadSeason();
@@ -230,7 +234,7 @@ export class ClubManager {
             id: safeId(p.id), name: cleanText(p.name, 'Joueur', 36), nationality: /^[A-Z]{2}$/.test(p.nationality || '') ? p.nationality : club.countryCode,
             age: Number.isInteger(p.age) ? Math.max(16, Math.min(45, p.age)) : 24,
             role: ['GK','DEF','MID','FWD'].includes(p.role) ? p.role : 'MID', number: Number.isInteger(p.number) ? Math.max(1, Math.min(99,p.number)) : 1,
-            playerType: ['human','system'].includes(p.playerType) ? p.playerType : (club.roster.some(seed => seed.id === safeId(p.id)) ? 'system' : 'human'), controlStatus: p.playerType === 'human' && p.controlStatus === 'automated' ? 'automated' : (p.playerType === 'human' ? 'human' : 'system'),
+            playerType: ['human','system'].includes(p.playerType) ? p.playerType : (club.roster.some(seed => seed.id === safeId(p.id)) ? 'system' : 'human'), contract: p.playerType === 'human' ? (p.contract && p.contract.status === 'active' && Number.isSafeInteger(Number(p.contract.weeklyWage ?? p.contract.salary)) ? { ...p.contract, weeklyWage: Math.max(0, Math.floor(Number(p.contract.weeklyWage ?? p.contract.salary))), salary: Math.max(0, Math.floor(Number(p.contract.salary ?? p.contract.weeklyWage))) } : null) : createSystemPlayerContract({ clubId: club.id, playerId: safeId(p.id), division: club.division, rating: Math.max(1, Math.min(99, Number(p.rating) || 50)) }), controlStatus: p.playerType === 'human' && p.controlStatus === 'automated' ? 'automated' : (p.playerType === 'human' ? 'human' : 'system'),
             rating: Math.max(1, Math.min(99, Number(p.rating) || 50)), potential: Math.max(1, Math.min(99, Number(p.potential) || Number(p.rating) || 50)), potentialBand: ['standard','good','high','exceptional'].includes(p.potentialBand) ? p.potentialBand : 'standard', attributes: normalizePlayerAttributes(p.attributes, Number(p.rating) || 50), loyalty: normalizePlayerLoyalty(p.loyalty),
             preferredFoot: p.preferredFoot === 'left' ? 'left' : 'right', archetype: cleanText(p.archetype, 'Joueur polyvalent', 40),
             appearance: p.appearance && typeof p.appearance === 'object' ? { skinTone: ['light','olive','tan','medium','brown','dark','deep'].includes(p.appearance.skinTone) ? p.appearance.skinTone : 'medium', bodyBuild: ['lean','athletic','strong'].includes(p.appearance.bodyBuild) ? p.appearance.bodyBuild : 'athletic', hairStyle: ['short','curly','afro','fade','shaved','braids','twists','wavy'].includes(p.appearance.hairStyle) ? p.appearance.hairStyle : 'short', hairColor: ['dark','brown','blond','black'].includes(p.appearance.hairColor) ? p.appearance.hairColor : 'dark', kitColors: p.appearance.kitColors && ['primary','secondary','accent'].every(key => /^#[0-9a-f]{6}$/i.test(p.appearance.kitColors[key] || '')) ? { ...p.appearance.kitColors } : null, kitDesign: ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'].includes(p.appearance.kitDesign) ? p.appearance.kitDesign : 'central', kitVariant: p.appearance.kitVariant === 'goalkeeper' ? 'goalkeeper' : 'outfield', faceShape: ['oval','round','angular','long','square'].includes(p.appearance.faceShape) ? p.appearance.faceShape : 'oval', eyeShape: ['almond','round','deep-set','hooded'].includes(p.appearance.eyeShape) ? p.appearance.eyeShape : 'almond' } : null
