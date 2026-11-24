@@ -274,3 +274,42 @@ test('P27 intégrité financière : vérifie les salaires humains et leurs check
  assert.ok(result.errors.some(item=>item.code==='PLAYER_WAGE_CHECKPOINT_MISMATCH'));
  assert.equal(result.counts.pendingPlayerWages,0);
 });
+
+test('P27 intégrité monde : relie une carrière humaine à son unique inscription au bon club',()=>{
+ const input=cleanWorld();
+ const career=input.transferState.careers[0];
+ career.playerId='human-account-a';
+ career.contract.playerId='human-account-a';
+ input.clubs[0].roster.push({id:'human-account-a',number:2,playerType:'human',contract:{status:'active',clubId:'club-a'}});
+ const result=auditP27World(input);
+ assert.equal(result.ok,true,JSON.stringify(result.errors));
+ assert.equal(result.warnings.some(item=>item.code==='CAREER_PLAYER_NOT_IN_ROSTER'),false);
+});
+
+test('P27 intégrité monde : signale une carrière active absente de l’effectif sans bloquer les anciens mondes',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-account-missing';
+ const result=auditP27World(input);
+ assert.equal(result.ok,true,JSON.stringify(result.errors));
+ assert.ok(result.warnings.some(item=>item.code==='CAREER_PLAYER_NOT_IN_ROSTER'));
+});
+
+test('P27 intégrité monde : rejette une carrière inscrite dans le mauvais club ou comme joueur système',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-account-a';
+ input.clubs[1].roster.push({id:'human-account-a',number:2,playerType:'system'});
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('CAREER_ROSTER_CLUB_MISMATCH'));
+ assert.ok(codes.includes('CAREER_ROSTER_TYPE_MISMATCH'));
+});
+
+test('P27 intégrité monde : signale un joueur humain encore inscrit après expiration ou résiliation',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-account-a';
+ input.transferState.careers[0].contract.status='terminated';
+ input.transferState.careers[0].clubId=null;
+ input.clubs[0].roster.push({id:'human-account-a',number:2,playerType:'human'});
+ const result=auditP27World(input);
+ assert.ok(result.warnings.some(item=>item.code==='INACTIVE_CAREER_PLAYER_STILL_REGISTERED'));
+});
