@@ -323,9 +323,50 @@ export class ClubManager {
     const assignedNumber = availableShirtNumber(to, player.number);
     if (!assignedNumber) return { ok: false, reason: 'shirt-numbers-full' };
     from.roster.splice(sourceIndex, 1);
-    to.roster.push({ ...player, number: assignedNumber, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
+    const transferred = {
+      ...player,
+      number: assignedNumber,
+      appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null
+    };
+    if (transferred.playerType === 'system') {
+      transferred.contract = createSystemPlayerContract({
+        clubId: to.id, playerId: transferred.id, division: to.division, rating: transferred.rating
+      });
+    } else if (transferred.contract?.status === 'active') {
+      transferred.contract = {
+        ...transferred.contract,
+        clubId: to.id,
+        transferredAt: new Date().toISOString(),
+        previousClubId: from.id
+      };
+    }
+    to.roster.push(transferred);
     this.saveSeason();
     return { ok: true, fromRosterSize: from.roster.length, toRosterSize: to.roster.length, number: assignedNumber };
+  }
+
+
+  reviewSystemPlayerContract(clubId, playerId, { now = Date.now() } = {}) {
+    const club = this.clubs.get(safeId(clubId));
+    const player = club?.roster.find(item => item.id === safeId(playerId));
+    if (!club || !player) return { ok: false, reason: 'player-not-found' };
+    if (player.playerType !== 'system') return { ok: false, reason: 'not-system-player' };
+    if (player.contract?.status !== 'active') return { ok: false, reason: 'contract-not-active' };
+    if (!Number.isSafeInteger(now) || now < 0) return { ok: false, reason: 'invalid-time' };
+    const weeklyWage = createSystemPlayerContract({
+      clubId: club.id, playerId: player.id, division: club.division, rating: player.rating
+    })?.weeklyWage;
+    if (!Number.isSafeInteger(weeklyWage) || weeklyWage <= 0) return { ok: false, reason: 'invalid-wage' };
+    const previousWage = player.contract.weeklyWage ?? player.contract.salary;
+    player.contract = {
+      ...player.contract,
+      weeklyWage,
+      salary: weeklyWage,
+      reviewedAt: new Date(now).toISOString(),
+      reviewCount: Math.max(0, Number(player.contract.reviewCount) || 0) + 1
+    };
+    this.saveSeason();
+    return { ok: true, previousWage, weeklyWage, contract: { ...player.contract } };
   }
 
   setPlayerControlStatus(clubId, playerId, status) {

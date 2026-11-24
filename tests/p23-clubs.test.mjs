@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { ClubManager, DIVISIONS } from '../src/club-manager.js';
 import { generateClubRoster } from '../src/club-roster.js';
 import { renderClubCrest } from '../src/club-identity.js';
+import { calculateSystemWeeklyWage } from '../src/p27-player-contracts.js';
 
 function memoryStorage() {
   const values = new Map();
@@ -159,4 +160,42 @@ test('P23 gameplay: la vitesse individuelle modifie le déplacement des joueurs 
   new TeamAI().update([slow], structuredClone(ball), 0.1, { aiPass(){}, aiShoot(){}, tryTackle(){} });
   new TeamAI().update([fast], structuredClone(ball), 0.1, { aiPass(){}, aiShoot(){}, tryTackle(){} });
   assert.ok(Math.hypot(fast.vel.x,fast.vel.z) > Math.hypot(slow.vel.x,slow.vel.z));
+});
+
+test('P27 contrats : un transfert système rattache le contrat au nouveau club et recalcule le salaire',()=>{
+ const manager=new ClubManager();
+ const from='antananarivo-fc',to='tulear-sunrise';
+ const player=manager.getClub(from).roster.find(item=>item.playerType==='system');
+ const target=manager.getClub(to);
+ manager.removePlayer(to,target.roster[0].id);
+ const result=manager.transferPlayer(from,to,player.id);
+ assert.equal(result.ok,true);
+ const moved=manager.getClub(to).roster.find(item=>item.id===player.id);
+ assert.equal(moved.contract.clubId,to);
+ assert.equal(moved.contract.playerId,player.id);
+ assert.equal(moved.contract.status,'active');
+ assert.equal(moved.contract.weeklyWage,calculateSystemWeeklyWage({division:target.division,rating:player.rating}));
+ assert.equal(manager.getClub(from).roster.some(item=>item.id===player.id),false);
+});
+test('P27 contrats : révision salariale système applique le barème de la division et conserve la trace',()=>{
+ const storage=memoryStorage();
+ const manager=new ClubManager(undefined,storage,'p27-contract-review');
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster[0];
+ const before=player.contract.weeklyWage;
+ const result=manager.reviewSystemPlayerContract(club.id,player.id,{now:Date.UTC(2027,0,1)});
+ assert.equal(result.ok,true);
+ assert.equal(result.weeklyWage,calculateSystemWeeklyWage({division:club.division,rating:player.rating}));
+ assert.equal(result.contract.reviewCount,1);
+ assert.equal(result.contract.reviewedAt,'2027-01-01T00:00:00.000Z');
+ const restored=new ClubManager(undefined,storage,'p27-contract-review');
+ assert.equal(restored.getClub(club.id).roster[0].contract.reviewCount,1);
+ assert.ok(before>=0);
+});
+test('P27 contrats : refuse une révision salariale pour joueur humain ou contrat inactif',()=>{
+ const manager=new ClubManager();
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster[0];
+ assert.equal(manager.reviewSystemPlayerContract(club.id,player.id,{now:1}).ok,true);
+ assert.equal(manager.reviewSystemPlayerContract(club.id,'unknown',{now:1}).reason,'player-not-found');
 });
