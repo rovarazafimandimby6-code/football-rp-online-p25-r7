@@ -1104,3 +1104,31 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Suite complète : **689/689 tests réussis**.
 - [x] Contrôle syntaxique JavaScript/MJS réussi.
 - [ ] Revalider le commit de documentation consolidé.
+
+
+### Lot 116 — audit des classements archivés
+- [x] Vérifier l'unicité des compétitions, des membres et des lignes de classement.
+- [x] Vérifier l'appartenance de chaque ligne de classement aux participants.
+- [x] Vérifier les compteurs de matchs et la formule de points (3/1/0).
+- [x] Refuser les classements historiques incomplets ou arithmétiquement incohérents.
+
+### Lot 117 — intégrité des résultats archivés
+- [x] Vérifier l'unicité des identifiants de rencontres par compétition.
+- [x] Vérifier les scores des rencontres terminées.
+- [x] Vérifier que les deux clubs d'un résultat appartiennent à la compétition source.
+
+### Lot 118 — identité historique des clubs
+- [x] Rapprocher les mouvements avec les participants des compétitions sources.
+- [x] Contrôler division, conférence d'origine et nom historique du club.
+- [x] Ajouter un test de falsification du nom dans un mouvement archivé.
+
+### Lot 119 — statistiques cumulées des clubs
+- [x] Ajouter un audit des 156 fiches historiques.
+- [x] Contrôler la cohérence matchs/victoires/nuls/défaites et des compteurs.
+- [x] Vérifier les références des trophées et des saisons.
+- [x] Tester les agrégats après rechargement pluri-saisons et les données altérées.
+
+### Validation automatisée — lots 116 à 119
+- [x] Workflow [P27 validation — run 45468605705](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45468605705) réussi.
+- [x] Suite complète : **691/691 tests réussis**.
+- [x] Contrôle syntaxique JavaScript/MJS réussi.
