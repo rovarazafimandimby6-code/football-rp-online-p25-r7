@@ -519,3 +519,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Conserver les nouvelles relations en statut proposé par défaut ; l'activation exige une déclaration explicite.
 - [x] Ajouter des tests prouvant qu'aucune rivalité n'est automatiquement inventée pour les 156 clubs.
 - Limite : le registre reste vide tant que les affiches et leur histoire ne sont pas choisies et validées ; l'audit signale les divisions sous la cible sans inventer de contenu.
+
+
+### Lot 46 — clôture, archivage et transition des saisons (intégré, tests serveur)
+- [x] Bloquer la clôture tant qu'une compétition de la saison n'est pas terminée.
+- [x] Archiver les saisons terminées, leurs trophées et leurs mouvements de division.
+- [x] Préparer une nouvelle saison à partir du catalogue de clubs mis à jour.
+- [x] Accepter uniquement des mouvements explicites entre divisions adjacentes, sans inventer les règles de promotion/relégation.
+- [x] Contrôler les quotas exacts D1–D5 et les seize clubs par conférence en D4/D5 avant toute transition.
+- [x] Persister et restaurer le cycle de saisons.
+- Limite : le nombre de promus/relégués et les critères de classement des barrages restent à décider ; aucune promotion automatique n'est appliquée.

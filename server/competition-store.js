@@ -80,7 +80,7 @@ function createSeason(seasonId, clubs, now) {
 export class JsonCompetitionStore {
   constructor(directory, { clubs = DEFAULT_CLUBS, seasonId = '2026-27', now = () => Date.now() } = {}) {
     this.directory = path.resolve(directory); this.file = path.join(this.directory,'competitions.json');
-    this.clubs = new Map(clubs.map(club => [club.id,{id:club.id,name:club.name,division:club.division}]));
+    this.clubs = new Map(clubs.map(club => [club.id,{...club}]));
     this.now = now; mkdirSync(this.directory,{recursive:true});
     this.state = this.read() || { version:1, seasons:[createSeason(seasonId,clubs,this.now())] };
     if (!this.state.seasons.length) this.state.seasons.push(createSeason(seasonId,clubs,this.now()));
@@ -136,6 +136,72 @@ export class JsonCompetitionStore {
     const next=competition.fixtures.find(item=>item.round===fixture.round+1&&(!item.homeClubId||!item.awayClubId));
     if(next){if(!next.homeClubId) next.homeClubId=winnerId; else if(!next.awayClubId) next.awayClubId=winnerId; if(next.homeClubId&&next.awayClubId) next.status='scheduled';}
     if(fixture.round===8){competition.status='completed';competition.championClubId=winnerId;const club=this.clubs.get(winnerId);if(club&&!this.activeSeason.trophies.some(item=>item.competitionId===competition.id))this.activeSeason.trophies.push({id:`${competition.id}-champion`,competitionId:competition.id,competitionName:competition.name,clubId:winnerId,clubName:club.name,awardedAt:fixture.result.finalizedAt});}
+  }
+  finalizeSeason({ nextSeasonId, movements = [], completedAt = this.now() } = {}) {
+    const current = this.activeSeason;
+    const nextId = clean(nextSeasonId, 48);
+    if (!nextId || !Number.isFinite(completedAt)) return { ok:false, reason:'invalid-season-transition' };
+    if (this.state.seasons.some(season => season.id === nextId)) return { ok:false, reason:'season-already-exists' };
+    if (current.competitions.some(competition => competition.status !== 'completed')) return { ok:false, reason:'season-competitions-incomplete' };
+    const divisionOrder = { D1:1, D2:2, D3:3, D4:4, D5:5 };
+    const nextClubs = new Map([...this.clubs].map(([id,club]) => [id,{...club}]));
+    const moved = new Set();
+    for (const movement of movements) {
+      const clubId = clean(movement?.clubId, 80);
+      const target = movement?.toDivision;
+      const club = nextClubs.get(clubId);
+      if (!club || moved.has(clubId)) return { ok:false, reason:'invalid-or-duplicate-club-movement' };
+      if (!divisionOrder[target] || Math.abs(divisionOrder[club.division] - divisionOrder[target]) !== 1)
+        return { ok:false, reason:'movement-must-be-adjacent-division' };
+      const conference = target === 'D4' || target === 'D5' ? clean(movement.toConference, 16) : null;
+      if ((target === 'D4' && !['Nord','Sud'].includes(conference)) ||
+          (target === 'D5' && !['Nord','Sud','Est','Ouest'].includes(conference)))
+        return { ok:false, reason:'destination-conference-required' };
+      club.division = target;
+      club.conference = conference;
+      moved.add(clubId);
+    }
+    const targets = { D1:16, D2:20, D3:24, D4:32, D5:64 };
+    const counts = Object.fromEntries(Object.keys(targets).map(division => [division,0]));
+    const conferenceCounts = { D4:{Nord:0,Sud:0}, D5:{Nord:0,Sud:0,Est:0,Ouest:0} };
+    for (const club of nextClubs.values()) {
+      if (!Object.hasOwn(counts,club.division)) return { ok:false, reason:'invalid-club-division' };
+      counts[club.division]++;
+      if (club.division === 'D4' || club.division === 'D5') {
+        const conference = club.conference;
+        if (!Object.hasOwn(conferenceCounts[club.division],conference)) return { ok:false, reason:'invalid-club-conference' };
+        conferenceCounts[club.division][conference]++;
+      }
+    }
+    if (Object.entries(targets).some(([division,count]) => counts[division] !== count))
+      return { ok:false, reason:'division-capacity-mismatch', counts };
+    if (Object.values(conferenceCounts.D4).some(count => count !== 16) ||
+        Object.values(conferenceCounts.D5).some(count => count !== 16))
+      return { ok:false, reason:'conference-capacity-mismatch', conferenceCounts };
+    current.status = 'completed';
+    current.completedAt = completedAt;
+    current.movements = movements.map(item => ({ clubId:clean(item.clubId,80), fromDivision:this.clubs.get(clean(item.clubId,80)).division, toDivision:item.toDivision, toConference:item.toConference || null }));
+    this.clubs = nextClubs;
+    const nextSeason = createSeason(nextId,[...nextClubs.values()],completedAt);
+    this.state.seasons.push(nextSeason);
+    this.persist();
+    return { ok:true, seasonId:current.id, nextSeasonId:nextId, movements:current.movements.length, nextSeasonStatus:nextSeason.status };
+  }
+  seasonHistory() {
+    return this.state.seasons.map(season => ({
+      id:season.id, status:season.status, startedAt:season.startedAt,
+      completedAt:season.completedAt || null,
+      competitions:season.competitions.map(competition => ({
+        id:competition.id, name:competition.name, type:competition.type,
+        division:competition.division || null, conference:competition.conference || null,
+        status:competition.status, championClubId:competition.championClubId || null,
+        championClubName:competition.type === 'league'
+          ? competition.standings?.find(row => row.id === competition.championClubId)?.name || null
+          : this.clubs.get(competition.championClubId)?.name || null
+      })),
+      trophies:clone(season.trophies || []),
+      movements:clone(season.movements || [])
+    }));
   }
   snapshot() {
     const season=this.activeSeason;
