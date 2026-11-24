@@ -163,33 +163,61 @@ export class JsonClubFinanceService {
   syncRecordedPlayerWages() {
     const events = this.transferStore?.state?.events;
     if (!Array.isArray(events)) return { ok: true, posted: 0, unpaid: 0, clubs: [] };
-    const grouped = new Map();
+    let posted = 0, unpaid = 0;
+    const clubs = [];
     for (const event of events) {
       if (event?.type !== 'salary-payment' || !event.id || !this.clubs.has(event.clubId)) continue;
       const amount = safeAmount(event.amount);
       if (amount === null || amount === 0) continue;
-      if (!grouped.has(event.clubId)) grouped.set(event.clubId, []);
-      grouped.get(event.clubId).push({
-        id: `player-wage-${event.id}`, category: 'wages', amount, direction: 'expense',
-        description: 'Salaire joueur sous contrat', createdAt: Number.isSafeInteger(event.at) ? event.at : this.now(),
-        referenceId: event.id
+      const id = String(event.id);
+      let record = this.transferJournal.playerWages.find(item => item.id === id);
+      if (record && (record.clubId !== event.clubId || record.amount !== amount)) {
+        unpaid++;
+        clubs.push({ clubId:event.clubId, ok:false, reason:'player-wage-journal-conflict', eventId:id });
+        continue;
+      }
+      if (!record) {
+        const next = structuredClone(this.transferJournal);
+        next.playerWages ||= [];
+        next.playerWages.push({ id, clubId:event.clubId, amount,
+          createdAt:Number.isSafeInteger(event.at) ? event.at : this.now(), posted:false });
+        if (!this.persistTransferJournal(next)) {
+          unpaid++;
+          clubs.push({ clubId:event.clubId, ok:false, reason:'journal-persistence-failed', stage:'prepare', eventId:id });
+          continue;
+        }
+        record = this.transferJournal.playerWages.find(item => item.id === id);
+      }
+      const entry = this.store.post(record.clubId, {
+        id:`player-wage-${record.id}`, category:'wages', amount:record.amount, direction:'expense',
+        description:'Salaire joueur sous contrat', createdAt:record.createdAt, referenceId:record.id
       });
+      if (!entry.ok) {
+        unpaid++;
+        clubs.push({ clubId:event.clubId, ok:false, reason:entry.reason, eventId:id });
+        continue;
+      }
+      if (!record.posted) {
+        const next = structuredClone(this.transferJournal);
+        next.playerWages.find(item => item.id === id).posted = true;
+        if (!this.persistTransferJournal(next)) {
+          unpaid++;
+          clubs.push({ clubId:event.clubId, ok:false, reason:'journal-persistence-failed', stage:'checkpoint', eventId:id });
+          continue;
+        }
+      }
+      posted += entry.posted || 0;
+      clubs.push({ clubId:event.clubId, ok:true, posted:entry.posted || 0, eventId:id });
     }
-    let posted = 0, unpaid = 0;
-    const clubs = [];
-    for (const [clubId, entries] of grouped) {
-      const result = this.store.postBatch(clubId, entries);
-      if (result.ok) posted += result.posted || 0;
-      else unpaid += entries.length;
-      clubs.push({ clubId, ok: result.ok, reason: result.reason || null, entries: entries.length });
-    }
-    return { ok: unpaid === 0, posted, unpaid, clubs };
+    return { ok:unpaid === 0, posted, unpaid, clubs };
   }
 
   loadTransferJournal() {
     try {
       const parsed = JSON.parse(readFileSync(this.transferJournalFile, 'utf8'));
       if (parsed?.version !== 1 || !Array.isArray(parsed.transfers) ||
+          (parsed.playerWages !== undefined && !Array.isArray(parsed.playerWages)) ||
+          (parsed.playerWages || []).some(item => !item?.id || !item.clubId || !Number.isSafeInteger(item.amount) || item.amount <= 0 || typeof item.posted !== 'boolean') ||
           parsed.transfers.some(item => !item?.id || !item.fromClubId || !item.toClubId ||
             !Number.isSafeInteger(item.fee) || item.fee <= 0 ||
             typeof item.debitPosted !== 'boolean' || typeof item.creditPosted !== 'boolean')) {
@@ -198,7 +226,7 @@ export class JsonClubFinanceService {
       return parsed;
     } catch (error) {
       if (error.code !== 'ENOENT') throw new Error('TRANSFER_FINANCE_JOURNAL_CORRUPT');
-      const initial = { version: 1, transfers: [] };
+      const initial = { version: 1, transfers: [], playerWages: [] };
       if (!this.persistTransferJournal(initial)) throw new Error('TRANSFER_FINANCE_JOURNAL_INITIALIZATION_FAILED');
       return initial;
     }
