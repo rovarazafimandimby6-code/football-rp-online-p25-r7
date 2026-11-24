@@ -268,3 +268,20 @@ test('P27 contrats : expiration ignore les contrats sans terme',()=>{
  const manager=new ClubManager();
  assert.equal(manager.expireSystemPlayerContracts({now:Date.now()}).expired.length,0);
 });
+
+test('P27 contrats : un transfert conserve la durée et l’échéance du contrat',()=>{
+ const manager=new ClubManager();
+ const from='antananarivo-fc',to='tulear-sunrise';
+ const player=manager.getClub(from).roster[0];
+ const signedAt=Date.UTC(2027,0,1);
+ const term=manager.setSystemPlayerContractTerm(from,player.id,{signedAt,durationWeeks:40});
+ assert.equal(term.ok,true);
+ const target=manager.getClub(to);
+ manager.removePlayer(to,target.roster[0].id);
+ assert.equal(manager.transferPlayer(from,to,player.id).ok,true);
+ const moved=manager.getClub(to).roster.find(item=>item.id===player.id);
+ assert.equal(moved.contract.signedAt,term.contract.signedAt);
+ assert.equal(moved.contract.durationWeeks,40);
+ assert.equal(moved.contract.expiresAt,term.contract.expiresAt);
+ assert.equal(moved.contract.clubId,to);
+});

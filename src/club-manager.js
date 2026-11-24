@@ -340,6 +340,9 @@ export class ClubManager {
         }),
         ...(Number.isSafeInteger(player.contract?.reviewCount) ? { reviewCount: Math.max(0, player.contract.reviewCount) } : {}),
         ...(typeof player.contract?.reviewedAt === 'string' ? { reviewedAt: player.contract.reviewedAt } : {}),
+        ...(typeof player.contract?.signedAt === 'string' ? { signedAt: player.contract.signedAt } : {}),
+        ...(Number.isInteger(player.contract?.durationWeeks) ? { durationWeeks: player.contract.durationWeeks } : {}),
+        ...(typeof player.contract?.expiresAt === 'string' ? { expiresAt: player.contract.expiresAt } : {}),
         transferredAt: new Date().toISOString(),
         previousClubId: from.id
       };
