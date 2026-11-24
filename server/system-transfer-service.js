@@ -147,7 +147,9 @@ export class P27SystemTransferService {
     item.attempts = Math.min(1_000_000, (item.attempts || 0) + 1);
     item.lastError = String(reason || 'transfer-failed').slice(0, 120);
     item.lastAttemptAt = this.now();
-    this.persist(next);
+    if (!this.persist(next)) {
+      return { ok:false, reason:'outbox-persistence-failed', pending:true, transfer:{...record} };
+    }
     return { ok:false, reason:item.lastError, pending:true, transfer:{...item} };
   }
 
