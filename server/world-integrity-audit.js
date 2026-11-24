@@ -4,7 +4,7 @@ const validScore = value => Number.isSafeInteger(value) && value >= 0 && value <
 
 /** Read-only consistency audit across the persistent P27 world stores. */
 export function auditP27World({
-  clubs = [], transferState = null, financeAccounts = [], competitionState = null,
+  clubs = [], transferState = null, financeAccounts = [], competitionState = null, resultArchive = [],
   expectedClubCount = 156
 } = {}) {
   const errors = [], warnings = [];
@@ -161,6 +161,34 @@ export function auditP27World({
     }
   }
 
+  const resultRoomIds = new Set();
+  const resultFixtureIds = new Set();
+  const fixtureById = new Map();
+  for (const season of seasons) for (const competition of Array.isArray(season.competitions) ? season.competitions : [])
+    for (const fixture of Array.isArray(competition.fixtures) ? competition.fixtures : []) fixtureById.set(fixture.id, fixture);
+  for (const result of asList(resultArchive)) {
+    if (!safeText(result?.roomId) || resultRoomIds.has(result.roomId))
+      errors.push({ code:'RESULT_ROOM_ID_INVALID_OR_DUPLICATE', roomId:result?.roomId || null });
+    resultRoomIds.add(result?.roomId);
+    if (result?.phase !== 'fulltime' || !Number.isSafeInteger(result?.score?.blue) ||
+        result.score.blue < 0 || !Number.isSafeInteger(result?.score?.red) || result.score.red < 0 ||
+        !Number.isFinite(result?.finalizedAt))
+      errors.push({ code:'RESULT_ARCHIVE_ENTRY_INVALID', roomId:result?.roomId || null });
+    const fixtureId = result?.competition?.fixtureId;
+    if (!fixtureId) continue;
+    if (resultFixtureIds.has(fixtureId))
+      errors.push({ code:'RESULT_FIXTURE_ARCHIVE_DUPLICATE', fixtureId });
+    resultFixtureIds.add(fixtureId);
+    const fixture = fixtureById.get(fixtureId);
+    if (!fixture) {
+      errors.push({ code:'RESULT_ARCHIVE_UNKNOWN_FIXTURE', roomId:result.roomId, fixtureId });
+      continue;
+    }
+    if (fixture.status !== 'completed' || fixture.roomId !== result.roomId ||
+        fixture.result?.home !== result.score?.blue || fixture.result?.away !== result.score?.red)
+      errors.push({ code:'RESULT_ARCHIVE_FIXTURE_MISMATCH', roomId:result.roomId, fixtureId });
+  }
+
   return {
     ok:errors.length === 0,
     errors,
@@ -168,7 +196,7 @@ export function auditP27World({
     counts:{
       clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,
       careers:careers.length, financeAccounts:asList(financeAccounts).length,
-      financeEntries, financeBalanceTotal, seasons:seasons.length, fixtures, completedFixtures
+      financeEntries, financeBalanceTotal, seasons:seasons.length, fixtures, completedFixtures, archivedResults:asList(resultArchive).length
     }
   };
 }
