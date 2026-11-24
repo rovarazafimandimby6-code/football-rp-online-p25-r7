@@ -162,6 +162,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set() } = 
     roster.push({
       id: `${club.id}-ai-${String(index + 1).padStart(2,'0')}`,
       playerType: 'system', controlStatus: 'system',
+      contract: createSystemPlayerContract({ clubId: club.id, playerId: `${club.id}-ai-${String(index + 1).padStart(2,'0')}`, division: club.division, rating: overall }),
       name, nationality: code, age, role, number: index + 1,
       rating: overall, potential: talent.potential, potentialBand: talent.potentialBand, attributes,
       loyalty: { clubLoyalty, transferWillingness, departurePolicy },

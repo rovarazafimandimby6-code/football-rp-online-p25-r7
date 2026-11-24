@@ -9,7 +9,7 @@ import { JsonCareerStore } from './career-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
-import { DEFAULT_CLUBS } from '../src/club-manager.js';
+import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/league-structure.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
@@ -20,7 +20,8 @@ const competitionStore = new JsonCompetitionStore(competitionDirectory);
 const transferDirectory = process.env.TRANSFERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'transfers');
 const transferStore = new JsonTransferStore(transferDirectory);
 const financeDirectory = process.env.FINANCES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'finances');
-const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs: DEFAULT_CLUBS, transferStore });
+const serverClubManager = new ClubManager(DEFAULT_CLUBS, null, 'p27-server-club-rosters');
+const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs: serverClubManager.listClubs(), transferStore });
 const manager = new RoomManager({ resultStore: new JsonResultStore(resultDirectory), careerStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);

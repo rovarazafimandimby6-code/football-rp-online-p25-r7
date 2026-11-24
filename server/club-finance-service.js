@@ -89,10 +89,18 @@ export class JsonClubFinanceService {
     if (!account) return null;
     const maintenance = safeAmount(weeklyMaintenance);
     if (maintenance === null) return { ok: false, reason: 'invalid-maintenance' };
-    const contracts = (this.transferStore?.state?.careers || [])
+    const club = this.clubs.get(clubId);
+    const systemContracts = (club?.roster || [])
+      .filter(player => player?.playerType === 'system' && player.contract?.status === 'active')
+      .map(player => ({ weeklyWage: player.contract.weeklyWage ?? player.contract.salary }));
+    const humanContracts = (this.transferStore?.state?.careers || [])
       .filter(row => row?.clubId === clubId && row.contract?.status === 'active')
       .map(row => ({ weeklyWage: row.contract.salary }));
-    const payroll = ClubFinanceStore.calculatePayroll(contracts);
+    const systemPayroll = ClubFinanceStore.calculatePayroll(systemContracts);
+    const humanPayroll = ClubFinanceStore.calculatePayroll(humanContracts);
+    if (!systemPayroll.ok) return systemPayroll;
+    if (!humanPayroll.ok) return humanPayroll;
+    const payroll = ClubFinanceStore.calculatePayroll([...systemContracts, ...humanContracts]);
     if (!payroll.ok) return payroll;
     const weeklySponsorIncome = account.sponsors
       .filter(item => item.status === 'active')
@@ -101,6 +109,6 @@ export class JsonClubFinanceService {
       balance: account.balance, weeklyPayroll: payroll.weeklyPayroll,
       weeklyMaintenance: maintenance, weeklySponsorIncome
     });
-    return { account, payroll, weeklyMaintenance: maintenance, budget };
+    return { account, payroll, systemPayroll, humanPayroll, systemPlayersUnderContract: systemContracts.length, humanPlayersUnderContract: humanContracts.length, weeklyMaintenance: maintenance, budget };
   }
 }

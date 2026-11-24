@@ -59,3 +59,21 @@ test('P27 finances : versements sponsors et échéances de prêts traités par l
   assert.equal(result.sponsors.length,1);assert.equal(result.loans.length,1);
  }finally{f.cleanup();}
 });
+
+test('P27 finances : intègre la masse salariale des joueurs du système et des carrières humaines',()=>{
+ const { ClubManager }=await import('../src/club-manager.js');
+ const clubs=new ClubManager(DEFAULT_CLUBS).listClubs();
+ const club=clubs[0];
+ const human={accountId:'human-account',clubId:club.id,contract:{status:'active',salary:250}};
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-full-payroll-'));
+ try {
+  const service=new JsonClubFinanceService(directory,{clubs,transferStore:{state:{events:[],careers:[human]}}});
+  const report=service.getClubFinance(club.id);
+  const expectedSystem=club.roster.filter(p=>p.playerType==='system'&&p.contract?.status==='active').reduce((sum,p)=>sum+(p.contract.weeklyWage||p.contract.salary),0);
+  assert.equal(report.systemPlayersUnderContract,club.roster.length);
+  assert.equal(report.humanPlayersUnderContract,1);
+  assert.equal(report.systemPayroll.weeklyPayroll,expectedSystem);
+  assert.equal(report.humanPayroll.weeklyPayroll,250);
+  assert.equal(report.payroll.weeklyPayroll,expectedSystem+250);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});

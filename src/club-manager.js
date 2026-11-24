@@ -14,7 +14,7 @@ const normalizePlayerLoyalty = loyalty => ({
   transferWillingness: Number.isFinite(Number(loyalty?.transferWillingness)) ? Math.max(0, Math.min(100, Math.round(Number(loyalty.transferWillingness)))) : 50,
   departurePolicy: ['no-normal-exit','reluctant','balanced','ambitious'].includes(loyalty?.departurePolicy) ? loyalty.departurePolicy : 'balanced'
 });
-const clonePlayer = player => ({ ...player, loyalty: player.loyalty ? { ...player.loyalty } : null, attributes: player.attributes ? { ...player.attributes } : null, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
+const clonePlayer = player => ({ ...player, contract: player.contract ? { ...player.contract } : null, loyalty: player.loyalty ? { ...player.loyalty } : null, attributes: player.attributes ? { ...player.attributes } : null, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
 const cloneClub = club => ({ ...club, location: club.location ? { ...club.location } : null, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, strategicProfile: club.strategicProfile ? { ...club.strategicProfile, competitiveVariance: { ...club.strategicProfile.competitiveVariance } } : null, clubLore: club.clubLore ? { ...club.clubLore, rivalries: (club.clubLore.rivalries || []).map(item => ({ ...item })) } : null, recruitmentProfile: club.recruitmentProfile ? { ...club.recruitmentProfile, nationalityCodes: [...(club.recruitmentProfile.nationalityCodes || [])] } : null, roster: club.roster.map(clonePlayer) });
 
 const normalizeRosterPlayer = (player, club, index = 0) => {
@@ -32,6 +32,11 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     potential: Math.max(1, Math.min(99, Number(player?.potential) || safeRating)),
     potentialBand: ['standard','good','high','exceptional'].includes(player?.potentialBand) ? player.potentialBand : 'standard',
     loyalty: normalizePlayerLoyalty(player?.loyalty),
+    contract: player?.contract && typeof player.contract === 'object' && player.contract.status === 'active' &&
+      Number.isSafeInteger(Number(player.contract.weeklyWage ?? player.contract.salary)) &&
+      Number(player.contract.weeklyWage ?? player.contract.salary) >= 0
+      ? { ...player.contract, weeklyWage: Math.max(0, Math.floor(Number(player.contract.weeklyWage ?? player.contract.salary))), salary: Math.max(0, Math.floor(Number(player.contract.salary ?? player.contract.weeklyWage))) }
+      : null,
     playerType: player?.playerType === 'human' ? 'human' : 'system',
     controlStatus: player?.playerType === 'human' ? (player?.controlStatus === 'automated' ? 'automated' : 'human') : 'system',
     preferredFoot: player?.preferredFoot === 'left' ? 'left' : 'right',
