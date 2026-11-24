@@ -932,3 +932,16 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Détecter les écritures du journal de transferts qui ne correspondent ni à un événement de transfert humain ni à une commande outbox IA.
 - [x] Ajouter un test de non-régression pour une écriture financière IA orpheline.
 - [ ] Valider la suite complète en CI.
+
+
+### Lot 94 — protection de la profondeur de poste pendant une vague IA
+- [x] Recalculer la profondeur du poste chez le vendeur après chaque transfert effectivement accepté.
+- [x] Interdire toute nouvelle vente qui ferait descendre le vendeur sous deux joueurs IA au même poste.
+- [x] Couvrir une simulation à plusieurs acheteurs et candidats, avec contrôle du nombre de joueurs restants.
+- [ ] Valider la suite complète en CI.
+
+### Lot 95 — cohérence bidirectionnelle des checkpoints financiers
+- [x] Détecter une écriture de débit présente alors que le checkpoint débit est encore déclaré non effectué.
+- [x] Détecter une écriture de crédit présente alors que le checkpoint crédit est encore déclaré non effectué.
+- [x] Ajouter un test couvrant les deux cas avec soldes de comptes recalculés et commandes outbox en attente.
+- [ ] Valider la suite complète en CI et exécuter les scénarios de panne sur le grand livre réel.
