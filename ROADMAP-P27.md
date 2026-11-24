@@ -1177,3 +1177,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 140 : tester la persistance des échecs, du nombre de tentatives et la clôture idempotente après plusieurs redémarrages.
 - [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
 - Limite : l'audit ne suppose pas que l'effet externe d'une commande est distribué atomiquement ; il contrôle la trace métier, la commande persistée et son état de reprise.
+
+
+### Lots 141 à 144 — projection effective des prêts dans les effectifs
+- [x] Lot 141 : tester l'inscription unique du joueur au club emprunteur puis son retour au club parent à l'échéance du prêt.
+- [x] Lot 142 : tester l'expiration du contrat parent avant le terme du prêt et la libération depuis le club emprunteur.
+- [x] Lot 143 : simuler une panne du stockage d'effectif au moment du retour de prêt, puis reprendre la commande après redémarrage des deux stockages.
+- [x] Lot 144 : tester un cycle transfert → prêt → retour avec rechargement persistant et unicité finale de l'inscription.
+- [ ] Validation CI complète et contrôle syntaxique du commit consolidé.
+- Limite : ces tests valident le replay de l'outbox entre les deux stores ; ils ne prétendent pas fournir une transaction distribuée atomique.
