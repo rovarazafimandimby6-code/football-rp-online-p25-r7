@@ -9,15 +9,77 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Authoritative in-memory 5v5 room manager. One input stream controls one avatar. */
 export class RoomManager {
-  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, careerStore = null, progressionStore = null, competitionStore = null } = {}) {
+  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, roomStore = null, careerStore = null, progressionStore = null, competitionStore = null } = {}) {
     this.now = now;
     this.roomTtlMs = roomTtlMs;
     this.disconnectGraceMs = disconnectGraceMs;
     this.resultStore = resultStore;
+    this.roomStore = roomStore;
     this.careerStore = careerStore;
     this.progressionStore = progressionStore;
     this.competitionStore = competitionStore;
     this.rooms = new Map();
+    this.lastCheckpointAt = new Map();
+    this.restoreCheckpoints();
+  }
+
+  serializeRoom(room) {
+    const { players, halftimeUntil, ...state } = room;
+    return {
+      ...JSON.parse(JSON.stringify(state)),
+      players: [...players.values()].map(player => JSON.parse(JSON.stringify(player))),
+      halftimeRemainingMs: room.phase === 'halftime' && halftimeUntil !== null ? Math.max(0, halftimeUntil - this.now()) : 0,
+    };
+  }
+
+  persistRoom(room) {
+    if (!this.roomStore) return true;
+    try {
+      this.roomStore.save(this.serializeRoom(room));
+      this.lastCheckpointAt.set(room.id, this.now());
+      delete room.checkpointError;
+      return true;
+    } catch (error) {
+      room.checkpointError = String(error?.message || 'ROOM_CHECKPOINT_FAILED').slice(0, 160);
+      process.stderr.write(`P27 room checkpoint failed (${room.id}): ${room.checkpointError}\\n`);
+      return false;
+    }
+  }
+
+  restoreCheckpoints() {
+    if (!this.roomStore) return 0;
+    const now = this.now();
+    for (const snapshot of this.roomStore.readAll()) {
+      const players = new Map();
+      for (const saved of snapshot.players) {
+        if (!saved || typeof saved.id !== 'string' || !saved.id || players.has(saved.id) ||
+            !['blue', 'red'].includes(saved.team) || !Number.isSafeInteger(saved.slot)) throw new Error('ROOM_STORE_CORRUPT');
+        const isBot = saved.isBot === true;
+        players.set(saved.id, {
+          ...saved,
+          connected: isBot,
+          controlMode: isBot ? 'ai' : 'ai',
+          aiControlled: !isBot,
+          disconnectedAt: isBot ? null : now,
+          lastSeen: now,
+          lastCallForPassAt: Number.isFinite(saved.lastCallForPassAt) ? saved.lastCallForPassAt : -Infinity,
+          callForPassUntil: 0,
+          input: { x: 0, z: 0, sprint: false },
+        });
+      }
+      const { players: _savedPlayers, halftimeRemainingMs = 0, ...state } = snapshot;
+      const room = {
+        ...state, players,
+        startedAt: snapshot.phase === 'lobby' ? null : now - snapshot.elapsedMs,
+        lastTickAt: now, updatedAt: now,
+        halftimeUntil: snapshot.phase === 'halftime' ? now + Math.max(0, Number(halftimeRemainingMs) || 0) : null,
+        events: [...(snapshot.events || []), { type: 'server-recovery', at: snapshot.elapsedMs }],
+        sequence: (Number(snapshot.sequence) || 0) + 1,
+      };
+      this.rooms.set(room.id, room);
+      this.persistRoom(room);
+    }
+    return this.rooms.size;
   }
 
   create({ name = 'Match rapide', durationMinutes = 5, blueClubId = null, redClubId = null, competitionFixtureId = null } = {}) {
@@ -43,6 +105,7 @@ export class RoomManager {
       nextEventId: 1, result: null, rotationRequests: [], score: { blue: 0, red: 0 }, ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null }, events: [],
     };
     this.rooms.set(roomId, room);
+    this.persistRoom(room);
     return this.publicState(room);
   }
 
@@ -79,6 +142,7 @@ export class RoomManager {
     this.ensureBotCoverage(room);
     room.updatedAt = this.now();
     if (this.teamCounts(room).blue >= 5 && this.teamCounts(room).red >= 5) this.start(room);
+    this.persistRoom(room);
     return { token, playerId: player.id, team, slot, state: this.publicState(room) };
   }
 
@@ -276,10 +340,15 @@ export class RoomManager {
       const roomExpired = now - room.updatedAt > this.roomTtlMs && room.phase !== 'playing' && room.phase !== 'halftime' && !pendingOfficialResult;
       const allPlayersExpired = !pendingOfficialResult && room.phase !== 'playing' && room.phase !== 'halftime' && room.players.size > 0 && [...room.players.values()].every(p => !p.connected && p.disconnectedAt && now - p.disconnectedAt > this.disconnectGraceMs);
       if (roomExpired || allPlayersExpired) {
-        this.rooms.delete(id); continue;
+        this.rooms.delete(id); this.lastCheckpointAt.delete(id);
+        if (this.roomStore) this.roomStore.delete(id);
+        continue;
       }
       if (room.phase === 'fulltime') {
-        if (!room.result) this.tryFinalizeResult(room);
+        if (!room.result && this.tryFinalizeResult(room)) {
+          if (this.roomStore) this.roomStore.delete(room.id);
+          this.lastCheckpointAt.delete(room.id);
+        }
         continue;
       }
       for (const p of room.players.values()) {
@@ -370,6 +439,7 @@ export class RoomManager {
       }
       for (const event of room.events) if (!Number.isSafeInteger(event.id)) event.id = room.nextEventId++;
       room.sequence++;
+      if (now - (this.lastCheckpointAt.get(id) ?? 0) >= 1_000) this.persistRoom(room);
     }
   }
 
@@ -438,6 +508,8 @@ export class RoomManager {
     }
     this.resultStore?.save(committedResult);
     room.result = committedResult;
+    if (this.roomStore) this.roomStore.delete(room.id);
+    this.lastCheckpointAt.delete(room.id);
     room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
     return room.result;
   }
@@ -472,6 +544,7 @@ export class RoomManager {
     room.updatedAt = this.now();
     if (room.phase === 'halftime' || (room.phase === 'playing' && room.goalPauseMs > 0)) this.processRotationRequests(room);
     room.sequence++;
+    this.persistRoom(room);
     return { queued: room.rotationRequests.some(item => item.playerId === player.id), request: { ...request }, state: this.publicState(room) };
   }
 
@@ -543,6 +616,7 @@ export class RoomManager {
     if (room.ball.ownerId === outgoing.id) { room.ball.ownerId = null; room.ball.x = outgoing.x; room.ball.z = outgoing.z; room.ball.vx = 0; room.ball.vy = 0; room.ball.vz = 0; }
     room.events.push({ type: 'rotation', team: requester.team, outgoingId: outgoing.id, incomingId: incoming.id, at: room.elapsedMs });
     room.updatedAt = this.now(); room.sequence++;
+    this.persistRoom(room);
     return { rotated: true, state: this.publicState(room) };
   }
 
@@ -555,6 +629,7 @@ export class RoomManager {
     player.input = { x: 0, z: 0, sprint: false };
     if (wasAiControlled) room.events.push({ type: 'control-restored', controller: 'human', playerId: player.id, at: room.elapsedMs });
     room.updatedAt = now;
+    this.persistRoom(room);
     return { alive: true, reconnected: true, nextSequence: Math.max(1, player.lastInputSequence + 1), state: this.publicState(room) };
   }
 
@@ -566,6 +641,7 @@ export class RoomManager {
     player.callForPassUntil = 0;
     room.events.push({ type: 'control-takeover', controller: 'ai', skill: 'average', playerId: player.id, at: room.elapsedMs });
     room.updatedAt = this.now();
+    this.persistRoom(room);
     return true;
   }
 
