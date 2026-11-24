@@ -6,6 +6,7 @@ import { getCompetitionGroups, conferenceForClub } from '../src/league-structure
 import { calculateSeasonMovements, createPromotionPlayoff, advancePromotionPlayoff, REQUIRED_PROMOTION_PLAYOFFS } from '../src/season-movement-policy.js';
 import { auditLeagueSchedules } from '../src/league-schedule-audit.js';
 import { auditCupBracket } from '../src/cup-bracket-audit.js';
+import { auditSeasonTimeline } from '../src/season-timeline-audit.js';
 
 const clean = (value, max = 64) => String(value ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max);
 const scoreValue = value => Number.isSafeInteger(value) && value >= 0 && value <= 99 ? value : null;
@@ -253,7 +254,7 @@ export class JsonCompetitionStore {
     const current = this.activeSeason;
     const nextId = clean(nextSeasonId, 48);
     if (!Array.isArray(movements)) return { ok:false, reason:'invalid-movement-list' };
-    if (!nextId || !Number.isFinite(completedAt)) return { ok:false, reason:'invalid-season-transition' };
+    if (!nextId || !Number.isSafeInteger(completedAt) || completedAt < 0 || current.status !== 'active') return { ok:false, reason:'invalid-season-transition' };
     this.ensurePromotionPlayoffs();
     if(current.competitions.some(competition=>competition.status!=='completed'))return {ok:false,reason:'season-competitions-incomplete'};
     const approved=this.previewSeasonMovements();
@@ -450,6 +451,7 @@ export class JsonCompetitionStore {
     const movementPreview = leagueTablesComplete ? this.previewSeasonMovements() : null;
     const scheduleAudit = auditLeagueSchedules(season.competitions);
     const cupAudit = auditCupBracket(season.competitions.find(item=>item.type==='cup'));
-    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit,cupAudit};
+    const timelineAudit = auditSeasonTimeline(this.state);
+    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit,cupAudit,timelineAudit};
   }
 }
