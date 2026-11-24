@@ -20,16 +20,19 @@ test('P27 compétitions UI : sépare les conférences D4 et D5 et affiche les re
   assert.match(main,/status==='scheduled'/);
 });
 
-test('P27 compétitions UI : le barème des mouvements reste explicitement non approuvé',()=>{
-  assert.match(main,/APERÇU NON APPROUVÉ/);
-  assert.match(main,/barème doit encore être validé/);
-  assert.match(main,/barème reste soumis à validation/);
+test('P27 compétitions UI : le barème approuvé et les mouvements de fin de saison sont affichés',()=>{
+  assert.match(main,/BARÈME APPROUVÉ/);
+  assert.match(main,/20 MONTÉES · 20 DESCENTES/);
+  assert.match(main,/qualificationStage==='playoff'/);
 });
 
-test('P27 compétitions UI : le tableau de la Coupe des Clubs conserve ses 156 participants',()=>{
+test('P27 compétitions UI : les barrages et la Coupe des Clubs ont des panneaux distincts',()=>{
   assert.match(main,/Coupe des Clubs/);
   assert.match(main,/cup\?\.members\?\.length/);
   assert.match(main,/cup\?\.fixtures\?\.length/);
+  assert.match(main,/promotion-playoff/);
+  assert.match(main,/BARRAGES DE PROMOTION/);
+  assert.match(main,/replay-required/);
 });
 
 test('P27 compétitions UI : les tableaux et aperçus restent adaptables aux petits écrans',()=>{
