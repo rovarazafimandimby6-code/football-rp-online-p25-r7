@@ -3,6 +3,7 @@ import { applyPlayerAction, stepRoomSimulation, resetRoomBall } from './simulati
 import { resolveMatchClub, cloneMatchTeams } from './club-catalog.js';
 import { averageAiShouldAct, averageAiAim, averageAiMovement } from '../src/average-ai.js';
 import { validateRotation } from '../src/rotation-rules.js';
+import { buildMatchPerformance } from './player-rating.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -360,13 +361,15 @@ export class RoomManager {
       isBot: player.isBot === true, minutesPlayedMs: Math.round(Number(player.matchTimePlayedMs) || 0),
       stats: { passes: player.stats?.passes || 0, shots: player.stats?.shots || 0, tackles: player.stats?.tackles || 0, goals: player.stats?.goals || 0, assists: player.stats?.assists || 0, saves: player.stats?.saves || 0, interceptions: player.stats?.interceptions || 0 },
     }));
+    const performance = buildMatchPerformance(players);
     const blue = room.score.blue, red = room.score.red;
     room.result = Object.freeze({
       roomId: room.id, phase: 'fulltime', score: Object.freeze({ blue, red }),
       teams: Object.freeze(cloneMatchTeams(room.teams)),
       outcome: blue === red ? 'draw' : blue > red ? 'blue' : 'red',
       durationMs: room.elapsedMs, durationMinutes: room.durationMinutes,
-      finalizedAt: this.now(), players: Object.freeze(players.map(player => Object.freeze({ ...player, stats: Object.freeze({ ...player.stats }) }))),
+      awards: Object.freeze(performance.awards),
+      finalizedAt: this.now(), players: Object.freeze(performance.players.map(player => Object.freeze({ ...player, stats: Object.freeze({ ...player.stats }) }))),
       teamStats: Object.freeze({
         blue: Object.freeze({ passes: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.passes,0), shots: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.interceptions,0) }),
         red: Object.freeze({ passes: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.passes,0), shots: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.interceptions,0) }),

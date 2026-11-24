@@ -109,7 +109,13 @@ export class Game {
           const controlled = this.players.find(player => player.isControlled);
           if (controlled) this.activePlayer = controlled;
           this.ui?.setBenchStatus?.(state.players || [], callbacks.onlineJoinResult.playerId, state.phase, state.rotationRequests || []);
-          if (state.phase === 'fulltime') this.match.phase = 'fulltime';
+          if (state.phase === 'fulltime') {
+            this.match.phase = 'fulltime';
+            if (state.result && !this.onlineMatchReportShown) {
+              this.onlineMatchReportShown = true;
+              this.ui?.showMatchReport?.(state.result);
+            }
+          }
           else if (state.phase === 'halftime') this.match.phase = 'halftime';
           else if (state.phase === 'playing') this.match.phase = 'playing';
         }

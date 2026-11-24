@@ -281,6 +281,22 @@ export class UIManager {
     `;
   }
 
+  showMatchReport(result) {
+    if (!result || !this.overlay) return false;
+    const safe = value => String(value ?? '').replace(/[&<>\"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[char]));
+    const teams = result.teams || {};
+    const teamName = team => teams[team]?.name || (team === 'blue' ? 'ÉQUIPE BLEUE' : 'ÉQUIPE ROUGE');
+    const award = result.awards?.playerOfMatch;
+    const performers = (result.awards?.topPerformers || []).map((p,index) => '<div class="match-rating-row"><b>'+(index+1)+'</b><span>'+safe(p.name)+'</span><small>'+p.goals+' B · '+p.assists+' PD</small><strong>'+Number(p.rating).toFixed(1)+'</strong></div>').join('');
+    const rows = (result.players || []).filter(p => p.rating !== null).sort((a,b)=>(b.rating||0)-(a.rating||0)).map(p => '<div class="match-rating-row"><span>'+safe(p.name)+'<small> · '+(p.team==='blue'?'BLEU':'ROUGE')+'</small></span><small>'+Math.round(p.minutesPlayedMs/60000)+' min</small><strong>'+Number(p.rating).toFixed(1)+'</strong></div>').join('');
+    const stats = team => result.teamStats?.[team] || {};
+    const summary = teamName('blue')+' '+result.score.blue+' – '+result.score.red+' '+teamName('red')+'\n\n'+(award?'HOMME DU MATCH : '+award.name+' · '+award.rating.toFixed(1)+'/10':'Aucune performance individuelle classée')+'\n\nBILAN COLLECTIF\n'+teamName('blue')+' : '+(stats('blue').shots||0)+' tirs · '+(stats('blue').passes||0)+' passes · '+(stats('blue').tackles||0)+' tacles\n'+teamName('red')+' : '+(stats('red').shots||0)+' tirs · '+(stats('red').passes||0)+' passes · '+(stats('red').tackles||0)+' tacles';
+    this.showOverlay('Rapport de match',summary,'QUITTER LE MATCH');
+    this.pauseActionsEl.innerHTML='<section class="match-report-ratings"><h3>TOP PERFORMANCES</h3>'+(performers||'<p>Aucune performance disponible.</p>')+'<h3>NOTES DES JOUEURS</h3>'+(rows||'<p>Aucun joueur avec du temps de jeu.</p>')+'</section>';
+    this.overlay.classList.remove('hidden');
+    return true;
+  }
+
   showOverlay(title, text, actionLabel) {
     this.pauseMenuOpen = false;
     this.pauseActionsEl.innerHTML = '';

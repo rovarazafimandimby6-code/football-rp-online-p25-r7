@@ -778,3 +778,31 @@ test('P27 banc : les réservistes restent hors du terrain après un but et à la
   assert.deepEqual({ x: reserve.x, z: reserve.z }, benchPosition, 'le changement de côté ne doit pas déplacer les réservistes sur le terrain');
   assert.equal(reserve.isOnPitch, false);
 });
+
+test('P27 performances : note individuelle et distinctions calculées sans noter les non-participants', async () => {
+  const { calculatePlayerMatchRating, buildMatchPerformance } = await import('../server/player-rating.js');
+  const scorer={playerId:'scorer',name:'Buteur',team:'blue',role:'FWD',minutesPlayedMs:180000,stats:{goals:2,assists:0,passes:5,shots:3,tackles:0,saves:0,interceptions:0}};
+  const creator={playerId:'creator',name:'Créateur',team:'red',role:'MID',minutesPlayedMs:180000,stats:{goals:0,assists:2,passes:12,shots:1,tackles:2,saves:0,interceptions:1}};
+  const reserve={playerId:'reserve',name:'Réserve',team:'blue',role:'DEF',minutesPlayedMs:0,stats:{}};
+  assert.ok(calculatePlayerMatchRating(scorer)>calculatePlayerMatchRating(creator));
+  assert.equal(calculatePlayerMatchRating(reserve),null);
+  const result=buildMatchPerformance([creator,reserve,scorer]);
+  assert.equal(result.awards.playerOfMatch.playerId,'scorer');
+  assert.equal(result.awards.teamStandouts.red.playerId,'creator');
+  assert.equal(result.players.find(p=>p.playerId==='reserve').rating,null);
+  assert.equal(result.awards.topPerformers.length,2);
+});
+
+test('P27 rapport de match : finalizeResult inclut notes, homme du match et meilleur joueur de chaque équipe', async () => {
+  const manager=new RoomManager({now:()=>700000});
+  const room=manager.create();
+  const joined=manager.join(room.id,{displayName:'Joueur noté'});
+  const internal=manager.rooms.get(room.id);
+  const player=internal.players.get(joined.playerId);
+  player.matchTimePlayedMs=120000; player.stats.goals=1;
+  const result=manager.finalizeResult({...internal,phase:'fulltime',result:null,score:{blue:1,red:0}});
+  const reportPlayer=result.players.find(p=>p.playerId===joined.playerId);
+  assert.equal(typeof reportPlayer.rating,'number');
+  assert.equal(result.awards.playerOfMatch.playerId,joined.playerId);
+  assert.equal(result.awards.teamStandouts.blue.playerId,joined.playerId);
+});
