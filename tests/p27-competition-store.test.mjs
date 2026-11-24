@@ -4,7 +4,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {JsonCompetitionStore} from '../server/competition-store.js';
-import {auditLeagueSchedules} from '../src/league-schedule-audit.js';
+import {auditLeagueSchedule} from '../src/league-schedule-audit.js';
 import {RoomManager} from '../server/room-manager.js';
 const setup=()=>{const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-competitions-'));return {directory,store:new JsonCompetitionStore(directory,{seasonId:'test-season',now:()=>1000}),cleanup:()=>rmSync(directory,{recursive:true,force:true})};};
 const finishPromotionPlayoffs=store=>{
@@ -507,11 +507,11 @@ test('P27 saisons : annule en mémoire les mouvements si la sauvegarde de transi
 test('P27 calendrier : refuse une fixture rattachée à une autre compétition',()=>{
  const f=setup();try{
   const league=f.store.snapshot().competitions.find(item=>item.type==='league');
-  assert.equal(auditLeagueSchedules([league]).ok,true);
+  assert.equal(auditLeagueSchedule(league).ok,true);
   league.fixtures[0].competitionId='foreign-competition';
-  const audit=auditLeagueSchedules([league]);
+  const audit=auditLeagueSchedule(league);
   assert.equal(audit.ok,false);
-  assert.equal(audit.errors[0].reason,'fixture-competition-link-mismatch');
+  assert.equal(audit.reason,'fixture-competition-link-mismatch');
  }finally{f.cleanup();}
 });
 
@@ -519,9 +519,9 @@ test('P27 calendrier : refuse un statut incohérent ou un résultat prématuré'
  const f=setup();try{
   const league=f.store.snapshot().competitions.find(item=>item.type==='league');
   league.fixtures[0].status='cancelled';
-  assert.equal(auditLeagueSchedules([league]).errors[0].reason,'invalid-league-fixture-status');
+  assert.equal(auditLeagueSchedule(league).reason,'invalid-league-fixture-status');
   league.fixtures[0].status='scheduled';
   league.fixtures[0].result={home:1,away:0};
-  assert.equal(auditLeagueSchedules([league]).errors[0].reason,'scheduled-fixture-has-result');
+  assert.equal(auditLeagueSchedule(league).reason,'scheduled-fixture-has-result');
  }finally{f.cleanup();}
 });
