@@ -4,7 +4,7 @@ const validScore = value => Number.isSafeInteger(value) && value >= 0 && value <
 
 /** Read-only consistency audit across the persistent P27 world stores. */
 export function auditP27World({
-  clubs = [], transferState = null, financeAccounts = [], competitionState = null, resultArchive = [],
+  clubs = [], competitionClubs = [], transferState = null, financeAccounts = [], competitionState = null, resultArchive = [],
   expectedClubCount = 156
 } = {}) {
   const errors = [], warnings = [];
@@ -43,6 +43,29 @@ export function auditP27World({
     warnings.push({ code:'CLUB_CATALOGUE_SIZE_MISMATCH', expected:expectedClubCount, actual:catalogue.length });
   }
 
+  const officialCompetitionClubs = asList(competitionClubs);
+  if (officialCompetitionClubs.length) {
+    const seenCompetitionClubIds = new Set();
+    for (const official of officialCompetitionClubs) {
+      if (!safeText(official?.id) || seenCompetitionClubIds.has(official.id)) {
+        errors.push({ code:'COMPETITION_CLUB_ID_INVALID_OR_DUPLICATE', clubId:official?.id || null });
+        continue;
+      }
+      seenCompetitionClubIds.add(official.id);
+      const rosterClub = clubById.get(official.id);
+      if (!rosterClub) errors.push({ code:'COMPETITION_CLUB_UNKNOWN', clubId:official.id });
+      else if (rosterClub.division !== official.division ||
+          (rosterClub.conference || null) !== (official.conference || null))
+        errors.push({ code:'CLUB_ASSIGNMENT_CATALOGUE_MISMATCH', clubId:official.id,
+          rosterDivision:rosterClub.division, competitionDivision:official.division,
+          rosterConference:rosterClub.conference || null, competitionConference:official.conference || null });
+    }
+    if (officialCompetitionClubs.length !== catalogue.length)
+      errors.push({ code:'COMPETITION_CLUB_CATALOGUE_SIZE_MISMATCH', expected:catalogue.length, actual:officialCompetitionClubs.length });
+    for (const club of catalogue) if (!seenCompetitionClubIds.has(club.id))
+      errors.push({ code:'COMPETITION_CLUB_ASSIGNMENT_MISSING', clubId:club.id });
+  }
+
   const transferClubs = Array.isArray(transferState?.clubs) ? transferState.clubs : [];
   const transferClubIds = new Set();
   for (const club of transferClubs) {
@@ -55,8 +78,14 @@ export function auditP27World({
     if (!Number.isSafeInteger(club.budget) || club.budget < 0 || club.budget > 1_000_000_000)
       errors.push({ code:'TRANSFER_CLUB_BUDGET_INVALID', clubId:club.id, budget:club.budget });
   }
-  if (transferClubs.length && transferClubs.length !== catalogue.length)
-    warnings.push({ code:'TRANSFER_CLUB_CATALOGUE_SIZE_MISMATCH', expected:catalogue.length, actual:transferClubs.length });
+  if (transferClubs.length) {
+    if (transferClubs.length !== catalogue.length)
+      errors.push({ code:'TRANSFER_CLUB_CATALOGUE_SIZE_MISMATCH', expected:catalogue.length, actual:transferClubs.length });
+    for (const club of catalogue) if (!transferClubIds.has(club.id))
+      errors.push({ code:'TRANSFER_CLUB_MISSING', clubId:club.id });
+  }
+  if (asList(financeAccounts).length && asList(financeAccounts).length !== catalogue.length)
+    warnings.push({ code:'FINANCE_ACCOUNT_CATALOGUE_SIZE_MISMATCH', expected:catalogue.length, actual:asList(financeAccounts).length });
 
   const careers = Array.isArray(transferState?.careers) ? transferState.careers : [];
   const accountIds = new Set();
