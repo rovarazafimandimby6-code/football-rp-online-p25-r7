@@ -222,7 +222,7 @@ const server = http.createServer(async (req, res) => {
         const result = transferStore.requestLoanOffer(account.id,body);
         return json(res,200,{...result,rosterSync:syncPendingHumanRosters()});
       }
-      const loanAction = url.pathname.match(/^\\/api\\/loan\\/offers\\/([a-z0-9-]{8,96})\\/(accept|reject)$/i);
+      const loanAction = url.pathname.match(/^\/api\/loan\/offers\/([a-z0-9-]{8,96})\/(accept|reject)$/i);
       if (req.method === 'POST' && loanAction) {
         if (loanAction[2] === 'accept') {
           const career = transferStore.getCareer(account.id);
