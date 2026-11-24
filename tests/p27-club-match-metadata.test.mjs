@@ -6,6 +6,9 @@ import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { JsonResultStore } from '../server/result-store.js';
 import { RoomManager } from '../server/room-manager.js';
+import { resolveMatchClub } from '../server/club-catalog.js';
+import { DEFAULT_CLUBS } from '../src/club-manager.js';
+import { P27_EXPANSION_CLUBS } from '../src/p27-club-expansion.js';
 
 test('P27: les salons associent uniquement des clubs fictifs connus du catalogue', () => {
   const manager = new RoomManager();
@@ -16,6 +19,20 @@ test('P27: les salons associent uniquement des clubs fictifs connus du catalogue
   assert.throws(() => manager.create({ blueClubId: 'unknown-club', redClubId: 'antananarivo-fc' }), /INVALID_CLUB/);
   assert.throws(() => manager.create({ blueClubId: 'antananarivo-fc', redClubId: 'antananarivo-fc' }), /INVALID_CLUB_MATCHUP/);
   assert.throws(() => manager.create({ blueClubId: 'fianarantsoa-athletic' }), /INVALID_CLUB_MATCHUP/);
+});
+
+test('P27: le catalogue serveur expose les 156 clubs, y compris les 140 clubs ajoutés',()=>{
+  assert.equal(DEFAULT_CLUBS.length,156);
+  assert.equal(P27_EXPANSION_CLUBS.length,140);
+  const generated=P27_EXPANSION_CLUBS[0];
+  const resolved=resolveMatchClub(generated.id);
+  assert.equal(resolved.id,generated.id);
+  assert.equal(resolved.name,generated.name);
+  assert.equal(resolved.division,generated.division);
+  assert.equal(resolved.roster.length,generated.initialRosterSize);
+  const manager=new RoomManager();
+  const created=manager.create({blueClubId:generated.id,redClubId:'antananarivo-fc'});
+  assert.equal(created.teams.blue.id,generated.id);
 });
 
 test('P27: les identités de clubs sont incluses dans les états publics et les résultats archivés', () => {
