@@ -103,3 +103,26 @@ test('P27 finance : un remboursement partiel signale explicitement les échéanc
  assert.equal(result.amount,600);
  assert.equal(result.account.loans[0].paidInstallments,1);
 });
+
+
+test('P27 finance : le versement sponsor et son compteur sont atomiques en cas de panne disque',()=>{
+ const data=new Map();let fail=false;
+ const storage={getItem:k=>data.get(k)||null,setItem:(k,v)=>{if(fail){fail=false;throw new Error('disk unavailable');}data.set(k,String(v));}};
+ const f=new ClubFinanceStore(storage,'sponsor-atomic');f.openAccount('club',0);
+ const start=Date.UTC(2026,0,1);
+ f.signSponsorContract('club',{id:'atomic-sponsor',name:'Sponsor atomique',weeklyPayment:700,durationWeeks:3,signedAt:start});
+ fail=true;
+ const failed=f.settleSponsorPayments('club',start+8*86400000);
+ assert.equal(failed.ok,false);
+ assert.equal(failed.reason,'persistence-failed');
+ assert.equal(f.getAccount('club').balance,0);
+ assert.equal(f.getAccount('club').sponsors[0].paidWeeks,0);
+ const retry=f.settleSponsorPayments('club',start+8*86400000);
+ assert.equal(retry.ok,true);
+ assert.equal(retry.paid,1);
+ assert.equal(retry.account.balance,700);
+ assert.equal(retry.account.sponsors[0].paidWeeks,1);
+ const restored=new ClubFinanceStore(storage,'sponsor-atomic');
+ assert.equal(restored.getAccount('club').balance,700);
+ assert.equal(restored.getAccount('club').sponsors[0].paidWeeks,1);
+});
