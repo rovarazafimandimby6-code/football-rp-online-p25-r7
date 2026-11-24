@@ -651,3 +651,17 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Ne pas exposer un résultat archivé tant que le salon en mémoire est encore en finalisation.
 - [x] Conserver le salon en attente et permettre une nouvelle tentative après une panne de persistance.
 - [x] Vérifier que l'archive et le résultat officiel n'apparaissent qu'après la réussite de la progression du compte.
+
+
+### Lot 61 — sauvegarde transactionnelle du profil cloud (intégré)
+- [x] Construire la nouvelle version du profil sur une copie de l'état courant.
+- [x] Restaurer l'état précédent si l'écriture atomique échoue.
+- [x] Garantir qu'une réponse d'échec ne laisse pas un profil modifié uniquement en mémoire.
+- [x] Ajouter un test de panne disque, de redémarrage et de nouvelle sauvegarde.
+
+### Lot 62 — transactions des comptes et des sessions (intégré)
+- [x] Rendre atomiques l'inscription et la création initiale de session.
+- [x] Rendre atomiques l'ouverture de session et la révocation des jetons.
+- [x] Annuler les changements mémoire en cas d'échec de persistance, sans créer de compte fantôme ni révoquer un jeton non enregistré.
+- [x] Conserver uniquement les empreintes des jetons en stockage et le hachage salé des mots de passe.
+- [x] Ajouter des tests de panne disque sur inscription, connexion et révocation.
