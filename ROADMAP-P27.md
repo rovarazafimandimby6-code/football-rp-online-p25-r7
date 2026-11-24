@@ -823,4 +823,5 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Relier les commandes outbox à l'événement métier source avec un eventId stable.
 - [x] Auditer l'existence de la carrière correspondante, l'unicité des références d'événement, le lien ID/événement, les dates de création/clôture et les commandes encore en attente.
 - [x] Exposer le nombre de commandes terminées et en attente dans le rapport d'intégrité.
+- [x] Ajouter les tests de liens de carrière manquants, d'événement source absent, de checkpoint explicitement refusé et de reprise sans doublon.
 - [ ] Valider la suite complète de tests et contrôler les cas historiques sans eventId.
