@@ -825,3 +825,9 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Exposer le nombre de commandes terminées et en attente dans le rapport d'intégrité.
 - [x] Ajouter les tests de liens de carrière manquants, d'événement source absent, de checkpoint explicitement refusé et de reprise sans doublon.
 - [ ] Valider la suite complète de tests et contrôler les cas historiques sans eventId.
+
+
+### Lot 73 — validation du redémarrage complet de la saga (en cours)
+- [x] Simuler l'arrêt du serveur avant l'application d'une commande d'inscription, puis reconstruire les deux stockages et reprendre la commande.
+- [x] Simuler l'arrêt après sauvegarde de l'effectif mais avant checkpoint outbox, reconstruire les deux stockages et vérifier l'idempotence de la reprise.
+- [ ] Valider la CI consolidée sur le commit courant.
