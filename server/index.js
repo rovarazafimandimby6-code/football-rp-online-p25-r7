@@ -103,6 +103,7 @@ const server = http.createServer(async (req, res) => {
       if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
       const audit = auditP27World({
         clubs:[...serverClubManager.clubs.values()],
+        competitionClubs:[...competitionStore.clubs.values()],
         transferState:transferStore.state,
         financeAccounts:clubFinance.store.listAccounts(),
         competitionState:competitionStore.state,
