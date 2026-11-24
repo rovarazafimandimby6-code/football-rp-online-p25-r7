@@ -412,7 +412,6 @@ export class RoomManager {
       committedResult = Object.freeze({ ...finalizedResult, competition: { fixtureId: room.competitionFixtureId, result: competitionResult.fixture.result } });
     }
     this.resultStore?.save(committedResult);
-    room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
     if (this.careerStore) {
       for (const player of performance.players) {
         const livePlayer = room.players.get(player.playerId);
@@ -421,7 +420,7 @@ export class RoomManager {
         const teamName = room.teams[player.team]?.name || '';
         const opponentTeam = player.team === 'blue' ? 'red' : 'blue';
         const careerInput = {
-          matchId: room.id, result: outcome, finalizedAt: room.result.finalizedAt,
+          matchId: room.id, result: outcome, finalizedAt: finalizedResult.finalizedAt,
           teamName, opponent: room.teams[opponentTeam]?.name || '', role: player.role,
           rating: player.rating, minutesPlayedMs: player.minutesPlayedMs,
           playerOfMatch: performance.awards.playerOfMatch?.playerId === player.playerId,
