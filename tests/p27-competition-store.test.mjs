@@ -429,3 +429,29 @@ test('P27 renouvellement : refuse un doublon de mouvement et conserve intégrale
   assert.equal(f.store.seasonHistory().length,1);
  }finally{f.cleanup();}
 });
+
+test('P27 match officiel : peut réessayer la finalisation si la validation du résultat échoue temporairement',()=>{
+ const f=setup();
+ try{
+  const fixture=f.store.snapshot().competitions.find(item=>item.type==='league').fixtures[0];
+  const manager=new RoomManager({competitionStore:f.store,now:()=>5000});
+  const roomState=manager.create({blueClubId:fixture.homeClubId,redClubId:fixture.awayClubId,competitionFixtureId:fixture.id});
+  const room=manager.rooms.get(roomState.id);
+  room.score={blue:2,red:1};
+  const record=f.store.recordFixtureResult.bind(f.store);
+  let attempts=0;
+  f.store.recordFixtureResult=(...args)=>{
+   attempts++;
+   if(attempts===1)return {ok:false,reason:'temporary-storage-rejection'};
+   return record(...args);
+  };
+  assert.throws(()=>manager.finalizeResult(room),/temporary-storage-rejection/);
+  assert.equal(room.result,null);
+  assert.equal(f.store.getFixture(fixture.id).status,'scheduled');
+  const result=manager.finalizeResult(room);
+  assert.equal(result.competition.fixtureId,fixture.id);
+  assert.deepEqual(result.competition.result,{home:2,away:1,finalizedAt:5000});
+  assert.equal(f.store.getFixture(fixture.id).status,'completed');
+  assert.equal(attempts,2);
+ }finally{f.cleanup();}
+});
