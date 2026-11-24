@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -34,7 +35,17 @@ test('P27 API admin : inclut les carrières individuelles persistées dans l’a
   const { server } = await import('../server/index.js');
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
+  const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const privateDirectory = path.join(projectRoot, 'data', `p27-static-private-${process.pid}`);
+  mkdirSync(privateDirectory, { recursive:true });
+  writeFileSync(path.join(privateDirectory, 'secret.json'), '{"private":true}');
   try {
+    const privateData = await fetch(`${base}/data/p27-static-private-${process.pid}/secret.json`);
+    assert.equal(privateData.status, 403);
+    const serverSource = await fetch(`${base}/server/admin-auth.js`);
+    assert.equal(serverSource.status, 403);
+    const hiddenFile = await fetch(`${base}/.git/config`);
+    assert.equal(hiddenFile.status, 403);
     const unauthorized = await fetch(`${base}/api/admin/world-integrity`);
     assert.equal(unauthorized.status, 401);
     const response = await fetch(`${base}/api/admin/world-integrity`, {
@@ -50,5 +61,6 @@ test('P27 API admin : inclut les carrières individuelles persistées dans l’a
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     for (const key of [...Object.keys(directories), 'P27_ADMIN_TOKEN']) delete process.env[key];
     rmSync(root, { recursive:true, force:true });
+    rmSync(privateDirectory, { recursive:true, force:true });
   }
 });
