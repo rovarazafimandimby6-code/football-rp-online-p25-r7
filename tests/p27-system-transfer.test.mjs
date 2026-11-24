@@ -106,6 +106,42 @@ test('P27 lot 85 : annule le déplacement si la sauvegarde du roster échoue pui
  } finally {f.cleanup();}
 });
 
+test('P27 lot 97 : reprend les trois checkpoints financiers d’un transfert IA sans double écriture',()=>{
+ for (const failureCall of [1,2,3]) {
+  const f=setup();
+  try {
+   const finance=new JsonClubFinanceService(f.directory,{clubs:[...f.manager.clubs.values()]});
+   const buyerBefore=finance.store.balance('club-b');
+   const sellerBefore=finance.store.balance('club-a');
+   const persist=finance.persistTransferJournal.bind(finance);
+   let calls=0, injected=false;
+   finance.persistTransferJournal=next=>{
+    calls++;
+    if(calls===failureCall&&!injected){injected=true;return false;}
+    return persist(next);
+   };
+   const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:finance});
+   const request={id:`ai-finance-checkpoint-${failureCall}`,fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:2100};
+   const first=service.transfer(request);
+   assert.equal(first.ok,false);
+   assert.equal(first.pending,true);
+   assert.equal(injected,true);
+   finance.persistTransferJournal=persist;
+   const replay=service.processPending();
+   assert.equal(replay.ok,true);
+   assert.equal(replay.processed,1);
+   assert.equal(finance.store.balance('club-b'),buyerBefore-2100);
+   assert.equal(finance.store.balance('club-a'),sellerBefore+2100);
+   assert.equal(finance.store.getAccount('club-b').entries.filter(e=>e.id===`transfer-fee-out-${request.id}`).length,1);
+   assert.equal(finance.store.getAccount('club-a').entries.filter(e=>e.id===`transfer-fee-in-${request.id}`).length,1);
+   const record=finance.transferJournal.transfers.find(item=>item.id===request.id);
+   assert.equal(record.status,'completed');
+   assert.equal(record.debitPosted,true);
+   assert.equal(record.creditPosted,true);
+  } finally {f.cleanup();}
+ }
+});
+
 function marketFixture(directory) {
  const player={id:'system-market-forward',name:'Forward',playerType:'system',role:'FWD',rating:70,number:9,contract:{status:'active',clubId:'market-seller',playerId:'system-market-forward',expiresAt:'2028-12-31T00:00:00.000Z'}};
  const seller={id:'market-seller',division:'D2',rating:60,capacity:12,roster:[player,{id:'s2',playerType:'system',role:'FWD',rating:55,contract:{status:'active',clubId:'market-seller',expiresAt:'2028-12-31T00:00:00.000Z'}},{id:'s3',playerType:'system',role:'FWD',rating:54,contract:{status:'active',clubId:'market-seller',expiresAt:'2028-12-31T00:00:00.000Z'}}]};
