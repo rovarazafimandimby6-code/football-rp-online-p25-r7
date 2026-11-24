@@ -370,8 +370,21 @@ export function auditP27World({
         errors.push({ code:'SYSTEM_TRANSFER_PLAYER_TYPE_INVALID', eventId:record.id, playerId:record.playerId });
       if (record.status === 'completed' && membership.clubId !== record.toClubId)
         errors.push({ code:'SYSTEM_TRANSFER_COMPLETED_ROSTER_MISMATCH', eventId:record.id, playerId:record.playerId });
+      if (record.status === 'completed' && membership.clubId === record.toClubId) {
+        const contract = membership.player?.contract;
+        if (contract?.status !== 'active' || contract.clubId !== record.toClubId ||
+            contract.playerId !== record.playerId || contract.previousClubId !== record.fromClubId ||
+            !Number.isFinite(Date.parse(contract.transferredAt || '')))
+          errors.push({ code:'SYSTEM_TRANSFER_CONTRACT_LINK_MISMATCH', eventId:record.id, playerId:record.playerId });
+      }
       if (record.status === 'pending' && ![record.fromClubId,record.toClubId].includes(membership.clubId))
         errors.push({ code:'SYSTEM_TRANSFER_PENDING_ROSTER_MISMATCH', eventId:record.id, playerId:record.playerId });
+      if (record.status === 'pending' && membership.clubId === record.toClubId) {
+        const contract = membership.player?.contract;
+        if (contract?.clubId !== record.toClubId || contract?.previousClubId !== record.fromClubId ||
+            !Number.isFinite(Date.parse(contract.transferredAt || '')))
+          errors.push({ code:'SYSTEM_TRANSFER_CONTRACT_LINK_MISMATCH', eventId:record.id, playerId:record.playerId });
+      }
     }
     const journalRecord = journalTransfers.find(item => item?.id === record.id);
     if (journalRecord && (journalRecord.fromClubId !== record.toClubId ||
