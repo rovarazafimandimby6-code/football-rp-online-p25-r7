@@ -40,7 +40,7 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     contract: player?.playerType !== 'human'
       ? {
           ...createSystemPlayerContract({ clubId: club.id, playerId: safeId(player?.id), division: club.division, rating: safeRating }),
-          ...(player?.contract && typeof player.contract === 'object' ? Object.fromEntries(['reviewCount','reviewedAt','signedAt','durationWeeks','expiresAt','transferredAt','previousClubId','renewalCount','renewedAt','termHistory'].filter(key => player.contract[key] !== undefined).map(key => [key,player.contract[key]])) : {})
+          ...(player?.contract && typeof player.contract === 'object' ? Object.fromEntries(['reviewCount','reviewedAt','signedAt','durationWeeks','expiresAt','transferredAt','previousClubId','renewalCount','renewedAt','termHistory','renewalDecision','renewalDeclinedAt','renewalDeclineReason'].filter(key => player.contract[key] !== undefined).map(key => [key,player.contract[key]])) : {})
         }
       : player?.contract && typeof player.contract === 'object' && player.contract.status === 'active' &&
         Number.isSafeInteger(Number(player.contract.weeklyWage ?? player.contract.salary)) &&
@@ -237,7 +237,7 @@ export class ClubManager {
             id: safeId(p.id), name: cleanText(p.name, 'Joueur', 36), nationality: /^[A-Z]{2}$/.test(p.nationality || '') ? p.nationality : club.countryCode,
             age: Number.isInteger(p.age) ? Math.max(16, Math.min(45, p.age)) : 24,
             role: ['GK','DEF','MID','FWD'].includes(p.role) ? p.role : 'MID', number: Number.isInteger(p.number) ? Math.max(1, Math.min(99,p.number)) : 1,
-            playerType: ['human','system'].includes(p.playerType) ? p.playerType : (club.roster.some(seed => seed.id === safeId(p.id)) ? 'system' : 'human'), contract: p.playerType === 'human' ? (p.contract && p.contract.status === 'active' && Number.isSafeInteger(Number(p.contract.weeklyWage ?? p.contract.salary)) ? { ...p.contract, weeklyWage: Math.max(0, Math.floor(Number(p.contract.weeklyWage ?? p.contract.salary))), salary: Math.max(0, Math.floor(Number(p.contract.salary ?? p.contract.weeklyWage))) } : null) : { ...createSystemPlayerContract({ clubId: club.id, playerId: safeId(p.id), division: club.division, rating: Math.max(1, Math.min(99, Number(p.rating) || 50)) }), ...(p.contract && typeof p.contract === 'object' ? Object.fromEntries(['reviewCount','reviewedAt','signedAt','durationWeeks','expiresAt','transferredAt','previousClubId','renewalCount','renewedAt','termHistory'].filter(key => p.contract[key] !== undefined).map(key => [key,p.contract[key]])) : {}) }, controlStatus: p.playerType === 'human' && p.controlStatus === 'automated' ? 'automated' : (p.playerType === 'human' ? 'human' : 'system'),
+            playerType: ['human','system'].includes(p.playerType) ? p.playerType : (club.roster.some(seed => seed.id === safeId(p.id)) ? 'system' : 'human'), contract: p.playerType === 'human' ? (p.contract && p.contract.status === 'active' && Number.isSafeInteger(Number(p.contract.weeklyWage ?? p.contract.salary)) ? { ...p.contract, weeklyWage: Math.max(0, Math.floor(Number(p.contract.weeklyWage ?? p.contract.salary))), salary: Math.max(0, Math.floor(Number(p.contract.salary ?? p.contract.weeklyWage))) } : null) : { ...createSystemPlayerContract({ clubId: club.id, playerId: safeId(p.id), division: club.division, rating: Math.max(1, Math.min(99, Number(p.rating) || 50)) }), ...(p.contract && typeof p.contract === 'object' ? Object.fromEntries(['reviewCount','reviewedAt','signedAt','durationWeeks','expiresAt','transferredAt','previousClubId','renewalCount','renewedAt','termHistory','renewalDecision','renewalDeclinedAt','renewalDeclineReason'].filter(key => p.contract[key] !== undefined).map(key => [key,p.contract[key]])) : {}) }, controlStatus: p.playerType === 'human' && p.controlStatus === 'automated' ? 'automated' : (p.playerType === 'human' ? 'human' : 'system'),
             rating: Math.max(1, Math.min(99, Number(p.rating) || 50)), potential: Math.max(1, Math.min(99, Number(p.potential) || Number(p.rating) || 50)), potentialBand: ['standard','good','high','exceptional'].includes(p.potentialBand) ? p.potentialBand : 'standard', attributes: normalizePlayerAttributes(p.attributes, Number(p.rating) || 50), loyalty: normalizePlayerLoyalty(p.loyalty),
             preferredFoot: p.preferredFoot === 'left' ? 'left' : 'right', archetype: cleanText(p.archetype, 'Joueur polyvalent', 40),
             appearance: p.appearance && typeof p.appearance === 'object' ? { skinTone: ['light','olive','tan','medium','brown','dark','deep'].includes(p.appearance.skinTone) ? p.appearance.skinTone : 'medium', bodyBuild: ['lean','athletic','strong'].includes(p.appearance.bodyBuild) ? p.appearance.bodyBuild : 'athletic', hairStyle: ['short','curly','afro','fade','shaved','braids','twists','wavy'].includes(p.appearance.hairStyle) ? p.appearance.hairStyle : 'short', hairColor: ['dark','brown','blond','black'].includes(p.appearance.hairColor) ? p.appearance.hairColor : 'dark', kitColors: p.appearance.kitColors && ['primary','secondary','accent'].every(key => /^#[0-9a-f]{6}$/i.test(p.appearance.kitColors[key] || '')) ? { ...p.appearance.kitColors } : null, kitDesign: ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'].includes(p.appearance.kitDesign) ? p.appearance.kitDesign : 'central', kitVariant: p.appearance.kitVariant === 'goalkeeper' ? 'goalkeeper' : 'outfield', faceShape: ['oval','round','angular','long','square'].includes(p.appearance.faceShape) ? p.appearance.faceShape : 'oval', eyeShape: ['almond','round','deep-set','hooded'].includes(p.appearance.eyeShape) ? p.appearance.eyeShape : 'almond' } : null
@@ -509,7 +509,8 @@ export class ClubManager {
     if (player.playerType !== 'system') return { ok:false, reason:'not-system-player' };
     const result = renewSystemPlayerContract(player.contract, { now, durationWeeks, weeklyWage });
     if (!result.ok) return result;
-    player.contract = result.contract;
+    const { renewalDecision, renewalDeclinedAt, renewalDeclineReason, ...renewedContract } = result.contract;
+    player.contract = renewedContract;
     this.saveSeason();
     return { ok:true, contract:{ ...player.contract, termHistory:player.contract.termHistory.map(entry => ({ ...entry })) } };
   }
@@ -519,6 +520,7 @@ export class ClubManager {
     if (!Number.isInteger(durationWeeks) || durationWeeks < 4 || durationWeeks > 104) return { ok:false, reason:'invalid-duration', renewed:[], declined:[] };
     const renewed = [];
     const declined = [];
+    let decisionUpdated = false;
     for (const club of this.clubs.values()) {
       let remainingBudget = weeklyWageBudgets[club.id];
       if (!Number.isSafeInteger(remainingBudget) || remainingBudget < 0) {
@@ -532,6 +534,16 @@ export class ClubManager {
         });
         if (!decision.renew) {
           if (decision.reason !== 'outside-renewal-window' && decision.reason !== 'contract-not-active') declined.push({ clubId:club.id, playerId:player.id, reason:decision.reason });
+          if (decision.reason === 'sporting-policy-declined' &&
+              player.contract.renewalDecision !== 'declined') {
+            player.contract = {
+              ...player.contract,
+              renewalDecision:'declined',
+              renewalDeclinedAt:new Date(now).toISOString(),
+              renewalDeclineReason:decision.reason
+            };
+            decisionUpdated = true;
+          }
           continue;
         }
         const result = this.renewSystemPlayerContract(club.id, player.id, {
@@ -542,6 +554,7 @@ export class ClubManager {
         renewed.push({ clubId:club.id, playerId:player.id, expiresAt:result.contract.expiresAt, weeklyWage:decision.weeklyWage });
       }
     }
+    if (decisionUpdated) this.saveSeason();
     return { ok:true, renewed, declined };
   }
 
@@ -555,7 +568,7 @@ export class ClubManager {
         const result = expireSystemPlayerContract(player.contract, { now });
         if (!result.ok) { remaining.push(player); continue; }
         const released = { ...player, contract:result.contract };
-        club.releasedPlayers.push({ player:released, releasedAt:new Date(now).toISOString(), reason:'contract-expired' });
+        club.releasedPlayers.push({ player:released, releasedAt:new Date(now).toISOString(), reason:player.contract.renewalDecision === 'declined' ? 'contract-not-renewed' : 'contract-expired' });
         expired.push({ clubId:club.id, playerId:player.id, contract:{ ...result.contract } });
       }
       if (remaining.length !== club.roster.length) {
