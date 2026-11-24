@@ -591,3 +591,37 @@ test('P27 calendrier : lie le statut terminé au calendrier complet et au champi
   assert.equal(auditLeagueSchedule(league).reason,'league-completion-state-mismatch');
  } finally {f.cleanup();}
 });
+
+
+test('P27 historique des compétitions : vérifie les bilans par groupe et détecte les statistiques altérées',()=>{
+ const f=setup();try{
+  const league=f.store.snapshot().competitions.find(item=>item.type==='league'&&item.division==='D1');
+  const fixture=league.fixtures[0];
+  assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'history-competition',homeGoals:3,awayGoals:1,finalizedAt:1500}).ok,true);
+  const records=f.store.competitionHistoricalRecords();
+  assert.equal(f.store.auditCompetitionHistoricalRecords(records).ok,true);
+  const row=records.find(item=>item.competitionId===league.id);
+  assert.equal(row.completedFixtures,1);
+  const home=row.clubs.find(item=>item.clubId===fixture.homeClubId);
+  assert.equal(home.matches,1);assert.equal(home.wins,1);assert.equal(home.goalsFor,3);
+  const altered=records.map(item=>({...item,clubs:item.clubs.map(club=>({...club}))}));
+  altered.find(item=>item.competitionId===league.id).clubs.find(item=>item.clubId===fixture.homeClubId).goalsFor++;
+  assert.equal(f.store.auditCompetitionHistoricalRecords(altered).reason,'historical-competition-stat-mismatch');
+  const restored=new JsonCompetitionStore(f.directory,{seasonId:'ignored'});
+  assert.equal(restored.snapshot().competitionHistoryAudit.ok,true);
+ }finally{f.cleanup();}
+});
+
+test('P27 confrontations directes : les bilans historiques restent cohérents après rechargement',()=>{
+ const f=setup();try{
+  const league=f.store.snapshot().competitions.find(item=>item.type==='league'&&item.division==='D1');
+  const fixture=league.fixtures[0];
+  assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'head-to-head-a',homeGoals:2,awayGoals:0,finalizedAt:1600}).ok,true);
+  const restored=new JsonCompetitionStore(f.directory,{seasonId:'ignored'});
+  const duel=restored.headToHead(fixture.homeClubId,fixture.awayClubId);
+  assert.equal(duel.matches,1);assert.equal(duel.clubAWins+duel.clubBWins,1);
+  assert.equal(duel.goalsA+duel.goalsB,2);
+  assert.equal(restored.headToHead('unknown-club',fixture.homeClubId),null);
+  assert.equal(restored.headToHead(fixture.awayClubId,fixture.homeClubId).matches,1);
+ }finally{f.cleanup();}
+});
