@@ -4,7 +4,7 @@ const validScore = value => Number.isSafeInteger(value) && value >= 0 && value <
 
 /** Read-only consistency audit across the persistent P27 world stores. */
 export function auditP27World({
-  clubs = [], competitionClubs = [], transferState = null, financeAccounts = [], financeJournal = null, competitionState = null, resultArchive = [],
+  clubs = [], competitionClubs = [], transferState = null, systemTransferState = null, financeAccounts = [], financeJournal = null, competitionState = null, resultArchive = [],
   expectedClubCount = 156
 } = {}) {
   const errors = [], warnings = [];
@@ -340,6 +340,47 @@ export function auditP27World({
       warnings.push({ code:'TRANSFER_FINANCE_JOURNAL_MISSING', eventId:event.id });
     }
   }
+  const systemTransfers = Array.isArray(systemTransferState?.transfers) ? systemTransferState.transfers : [];
+  const systemTransferIds = new Set();
+  let pendingSystemTransfers = 0, completedSystemTransfers = 0;
+  if (systemTransferState && (systemTransferState.version !== 1 || !Array.isArray(systemTransferState.transfers)))
+    errors.push({ code:'SYSTEM_TRANSFER_OUTBOX_SCHEMA_INVALID' });
+  for (const record of systemTransfers) {
+    if (!safeText(record?.id) || systemTransferIds.has(record.id)) {
+      errors.push({ code:'SYSTEM_TRANSFER_OUTBOX_ID_INVALID_OR_DUPLICATE', eventId:record?.id || null });
+      continue;
+    }
+    systemTransferIds.add(record.id);
+    if (!['pending','completed','failed'].includes(record.status) ||
+        !safeText(record.playerId) || !Number.isSafeInteger(record.fee) || record.fee <= 0 ||
+        !Number.isSafeInteger(record.createdAt) || record.createdAt < 0 ||
+        !clubById.has(record.fromClubId) || !clubById.has(record.toClubId) ||
+        record.fromClubId === record.toClubId)
+      errors.push({ code:'SYSTEM_TRANSFER_OUTBOX_RECORD_INVALID', eventId:record.id });
+    const memberships = rosterPlayersById.get(record.playerId) || [];
+    if (memberships.length !== 1) {
+      errors.push({ code:'SYSTEM_TRANSFER_PLAYER_MEMBERSHIP_INVALID', eventId:record.id, playerId:record.playerId, count:memberships.length });
+    } else {
+      const membership = memberships[0];
+      if (membership.player?.playerType !== 'system')
+        errors.push({ code:'SYSTEM_TRANSFER_PLAYER_TYPE_INVALID', eventId:record.id, playerId:record.playerId });
+      if (record.status === 'completed' && membership.clubId !== record.toClubId)
+        errors.push({ code:'SYSTEM_TRANSFER_COMPLETED_ROSTER_MISMATCH', eventId:record.id, playerId:record.playerId });
+      if (record.status === 'pending' && ![record.fromClubId,record.toClubId].includes(membership.clubId))
+        errors.push({ code:'SYSTEM_TRANSFER_PENDING_ROSTER_MISMATCH', eventId:record.id, playerId:record.playerId });
+    }
+    const journalRecord = journalTransfers.find(item => item?.id === record.id);
+    if (journalRecord && (journalRecord.fromClubId !== record.toClubId ||
+        journalRecord.toClubId !== record.fromClubId || journalRecord.fee !== record.fee))
+      errors.push({ code:'SYSTEM_TRANSFER_FINANCE_LINK_MISMATCH', eventId:record.id });
+    if (record.status === 'completed') {
+      completedSystemTransfers++;
+      if (!journalRecord || journalRecord.status !== 'completed' ||
+          journalRecord.debitPosted !== true || journalRecord.creditPosted !== true)
+        errors.push({ code:'SYSTEM_TRANSFER_FINANCE_NOT_SETTLED', eventId:record.id });
+    } else if (record.status === 'pending') pendingSystemTransfers++;
+  }
+
   const journalPlayerWages = Array.isArray(transferJournal?.playerWages) ? transferJournal.playerWages : [];
   const journalWageIds = new Set();
   let pendingPlayerWages = 0;
@@ -454,6 +495,7 @@ export function auditP27World({
     counts:{
       clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,
       freeAgents:freeAgentArchive.size, duplicateFreeAgentSnapshots,
+      pendingSystemTransfers, completedSystemTransfers,
       careers:careers.length, pendingRosterSync, completedRosterSync, financeAccounts:asList(financeAccounts).length,
       financeEntries, financeBalanceTotal, pendingTransferSettlements, pendingPlayerWages, seasons:seasons.length, fixtures, completedFixtures, archivedResults:asList(resultArchive).length
     }
