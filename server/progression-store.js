@@ -21,31 +21,50 @@ export class JsonProgressionStore {
   persist(){const temp=`${this.file}.${process.pid}.${randomUUID()}.tmp`;try{writeFileSync(temp,JSON.stringify(this.state),{mode:0o600});renameSync(temp,this.file);}catch(error){try{unlinkSync(temp);}catch{}throw error;}}
   get(accountId){const row=this.state.players.find(item=>item.accountId===String(accountId));return structuredClone(row?.progression||emptyProgression());}
   row(accountId){const id=String(accountId||'').trim().slice(0,64);if(!id)throw new Error('INVALID_ACCOUNT_ID');let row=this.state.players.find(item=>item.accountId===id);if(!row){row={accountId:id,progression:emptyProgression()};this.state.players.push(row);}return row;}
+  transaction(mutator){
+    const previous=this.state;
+    this.state=structuredClone(previous);
+    try{
+      const outcome=mutator();
+      if(outcome.persist===false){this.state=previous;return outcome.value;}
+      this.persist();
+      return outcome.value;
+    }catch(error){this.state=previous;throw error;}
+  }
   grantMatchReward(accountId,{matchId,result,minutesPlayedMs=0,rating=null}={}){
-    const row=this.row(accountId),p=row.progression,id=String(matchId||'').trim().slice(0,64);
+    const id=String(matchId||'').trim().slice(0,64);
     if(!id||!['win','draw','loss'].includes(result))throw new Error('INVALID_MATCH_REWARD');
-    if(p.processedMatchIds.includes(id))return {duplicate:true,progression:this.get(accountId),reward:{experience:0,coins:0}};
     const minutes=clampInt(minutesPlayedMs,0,600_000)/60_000;
     const score=Number.isFinite(Number(rating))?Math.max(1,Math.min(10,Number(rating))):5;
     const experience=Math.round(20+minutes*12+score*3);
     const coins=Math.round(8+(result==='win'?18:result==='draw'?10:4)+score*2);
-    addExperience(p,experience);p.coins=Math.min(1_000_000_000,p.coins+coins);p.processedMatchIds.push(id);p.processedMatchIds=p.processedMatchIds.slice(-2000);
-    this.persist();return {duplicate:false,progression:this.get(accountId),reward:{experience,coins}};
+    return this.transaction(()=>{
+      const row=this.row(accountId),p=row.progression;
+      if(p.processedMatchIds.includes(id))return {persist:false,value:{duplicate:true,progression:this.get(accountId),reward:{experience:0,coins:0}}};
+      addExperience(p,experience);p.coins=Math.min(1_000_000_000,p.coins+coins);p.processedMatchIds.push(id);p.processedMatchIds=p.processedMatchIds.slice(-2000);
+      return {value:{duplicate:false,progression:this.get(accountId),reward:{experience,coins}}};
+    });
   }
   train(accountId,attribute,amount=1){
     if(!Object.hasOwn(ATTRIBUTES,attribute))throw new Error('INVALID_ATTRIBUTE');
-    const row=this.row(accountId),p=row.progression,points=clampInt(amount,1,5,1),cost=points*40;
-    if(p.attributes[attribute]+points>99)return {ok:false,reason:'ATTRIBUTE_CAP',progression:this.get(accountId)};
-    if(p.trainingPoints<points||p.coins<cost)return {ok:false,reason:'INSUFFICIENT_RESOURCES',progression:this.get(accountId)};
-    p.trainingPoints-=points;p.coins-=cost;p.attributes[attribute]+=points;this.persist();
-    return {ok:true,attribute,value:p.attributes[attribute],spentCoins:cost,progression:this.get(accountId)};
+    const points=clampInt(amount,1,5,1),cost=points*40;
+    return this.transaction(()=>{
+      const row=this.row(accountId),p=row.progression;
+      if(p.attributes[attribute]+points>99)return {persist:false,value:{ok:false,reason:'ATTRIBUTE_CAP',progression:this.get(accountId)}};
+      if(p.trainingPoints<points||p.coins<cost)return {persist:false,value:{ok:false,reason:'INSUFFICIENT_RESOURCES',progression:this.get(accountId)}};
+      p.trainingPoints-=points;p.coins-=cost;p.attributes[attribute]+=points;
+      return {value:{ok:true,attribute,value:p.attributes[attribute],spentCoins:cost,progression:this.get(accountId)}};
+    });
   }
   practice(accountId,attribute,amount=1){
     if(!Object.hasOwn(ATTRIBUTES,attribute))throw new Error('INVALID_ATTRIBUTE');
-    const row=this.row(accountId),p=row.progression,points=clampInt(amount,1,3,1),cost=points*80;
-    if(p.attributes[attribute]+points>99)return {ok:false,reason:'ATTRIBUTE_CAP',progression:this.get(accountId)};
-    if(p.coins<cost)return {ok:false,reason:'INSUFFICIENT_COINS',progression:this.get(accountId)};
-    p.coins-=cost;p.attributes[attribute]+=points;addExperience(p,points*25);this.persist();
-    return {ok:true,attribute,value:p.attributes[attribute],spentCoins:cost,progression:this.get(accountId)};
+    const points=clampInt(amount,1,3,1),cost=points*80;
+    return this.transaction(()=>{
+      const row=this.row(accountId),p=row.progression;
+      if(p.attributes[attribute]+points>99)return {persist:false,value:{ok:false,reason:'ATTRIBUTE_CAP',progression:this.get(accountId)}};
+      if(p.coins<cost)return {persist:false,value:{ok:false,reason:'INSUFFICIENT_COINS',progression:this.get(accountId)}};
+      p.coins-=cost;p.attributes[attribute]+=points;addExperience(p,points*25);
+      return {value:{ok:true,attribute,value:p.attributes[attribute],spentCoins:cost,progression:this.get(accountId)}};
+    });
   }
 }
