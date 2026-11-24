@@ -6,6 +6,7 @@ import path from 'node:path';
 import { ClubManager } from '../src/club-manager.js';
 import { JsonTransferStore } from '../server/transfer-store.js';
 import { processPendingRosterSync } from '../server/roster-sync-service.js';
+import { JsonClubRosterStorage } from '../server/club-roster-storage.js';
 
 function setup() {
   const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-roster-sync-'));
@@ -224,5 +225,96 @@ test('P27 saga effectif : récupère après redémarrage lorsque le roster est p
   assert.equal(restartedClubs.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
   assert.equal(restartedTransfers.pendingRosterSync().length,0);
   f.transferStore.completeRosterSync=complete;
+ }finally{f.cleanup();}
+});
+
+
+test('P27 saga prêt : le joueur rejoint le club emprunteur puis revient au club parent',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-loan-roster',{clubId:'club-a',salary:700,durationDays:180});
+  assert.equal(signed.ok,true);
+  assert.equal(processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager}).ok,true);
+  const offer=f.transferStore.requestLoanOffer('account-loan-roster',{toClubId:'club-b',durationDays:30});
+  assert.equal(offer.ok,true);
+  const loan=f.transferStore.acceptLoanOffer('account-loan-roster',offer.offer.id);
+  assert.equal(loan.ok,true);
+  assert.equal(processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager}).ok,true);
+  assert.equal(f.clubManager.getClub('club-a').roster.some(player=>player.id===signed.career.playerId),false);
+  assert.equal(f.clubManager.getClub('club-b').roster.filter(player=>player.id===signed.career.playerId).length,1);
+  f.setNow(Date.parse(loan.career.contract.loan.expiresAt)+1);
+  const returned=f.transferStore.getCareer('account-loan-roster');
+  assert.equal(returned.clubId,'club-a');
+  assert.equal(returned.contract.loan,undefined);
+  assert.equal(processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager}).ok,true);
+  assert.equal(f.clubManager.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
+  assert.equal(f.clubManager.getClub('club-b').roster.some(player=>player.id===signed.career.playerId),false);
+ }finally{f.cleanup();}
+});
+
+test('P27 saga prêt : l’expiration du contrat parent libère le joueur depuis le club emprunteur',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-loan-parent-expiry',{clubId:'club-a',salary:700,durationDays:15});
+  processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  const offer=f.transferStore.requestLoanOffer('account-loan-parent-expiry',{toClubId:'club-b',durationDays:30});
+  assert.equal(offer.ok,true);
+  const loan=f.transferStore.acceptLoanOffer('account-loan-parent-expiry',offer.offer.id);
+  assert.equal(loan.ok,true);
+  processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  f.setNow(Date.parse(signed.career.contract.expiresAt)+1);
+  const expired=f.transferStore.getCareer('account-loan-parent-expiry');
+  assert.equal(expired.contract.status,'expired');
+  assert.equal(expired.clubId,null);
+  assert.equal(processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager}).ok,true);
+  assert.equal(f.clubManager.getClub('club-a').roster.some(player=>player.id===signed.career.playerId),false);
+  assert.equal(f.clubManager.getClub('club-b').roster.some(player=>player.id===signed.career.playerId),false);
+ }finally{f.cleanup();}
+});
+
+test('P27 saga prêt : une panne pendant le retour est reprise après redémarrage des deux stockages',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-loan-return-retry',{clubId:'club-a',salary:700,durationDays:180});
+  processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  const offer=f.transferStore.requestLoanOffer('account-loan-return-retry',{toClubId:'club-b',durationDays:30});
+  const loan=f.transferStore.acceptLoanOffer('account-loan-return-retry',offer.offer.id);
+  processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  f.setNow(Date.parse(loan.career.contract.loan.expiresAt)+1);
+  f.transferStore.getCareer('account-loan-return-retry');
+  f.storage.fail=true;
+  const failed=processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  assert.equal(failed.ok,false);
+  assert.equal(f.transferStore.pendingRosterSync().length,1);
+  f.storage.fail=false;
+  const restartedTransfers=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
+  const restartedClubs=new ClubManager(f.clubs,new JsonClubRosterStorage(f.directory),'test-rosters');
+  const replay=processPendingRosterSync({transferStore:restartedTransfers,clubManager:restartedClubs});
+  assert.equal(replay.ok,true,JSON.stringify(replay));
+  assert.equal(restartedClubs.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
+  assert.equal(restartedClubs.getClub('club-b').roster.some(player=>player.id===signed.career.playerId),false);
+  assert.equal(restartedTransfers.pendingRosterSync().length,0);
+ }finally{f.cleanup();}
+});
+
+test('P27 saga mercato et prêts : conserve une seule inscription après transfert, prêt, retour et rechargement',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-transfer-loan-cycle',{clubId:'club-a',salary:700,durationDays:365});
+  processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  const transferOffer=f.transferStore.requestOffer('account-transfer-loan-cycle',{toClubId:'club-b'});
+  assert.equal(f.transferStore.acceptOffer('account-transfer-loan-cycle',transferOffer.offer.id).ok,true);
+  assert.equal(processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager}).ok,true);
+  const loanOffer=f.transferStore.requestLoanOffer('account-transfer-loan-cycle',{toClubId:'club-a',durationDays:30});
+  assert.equal(loanOffer.ok,true);
+  const loan=f.transferStore.acceptLoanOffer('account-transfer-loan-cycle',loanOffer.offer.id);
+  assert.equal(loan.ok,true);
+  assert.equal(processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager}).ok,true);
+  f.setNow(Date.parse(loan.career.contract.loan.expiresAt)+1);
+  f.transferStore.getCareer('account-transfer-loan-cycle');
+  const restartedTransfers=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
+  const restartedClubs=new ClubManager(f.clubs,new JsonClubRosterStorage(f.directory),'test-rosters');
+  assert.equal(processPendingRosterSync({transferStore:restartedTransfers,clubManager:restartedClubs}).ok,true);
+  const inA=restartedClubs.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length;
+  const inB=restartedClubs.getClub('club-b').roster.filter(player=>player.id===signed.career.playerId).length;
+  assert.equal(inA+inB,1);
+  assert.equal(inB,1);
+  assert.equal(restartedTransfers.getCareer('account-transfer-loan-cycle').clubId,'club-b');
  }finally{f.cleanup();}
 });
