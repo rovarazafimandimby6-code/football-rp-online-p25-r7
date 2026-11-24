@@ -389,3 +389,55 @@ test('géographie: la ville principale structurée prime sur le libellé histori
   assert.equal(conferenceForClub({ division:'D5', city:'Nairobi / Antananarivo' }), 'Est');
   assert.equal(conferenceForClub({ division:'D5', city:'Ville inconnue' }), null);
 });
+
+
+test('P27 identité: les joueurs du système sont identifiés séparément du contrôle temporaire', () => {
+  const clubs = new ClubManager();
+  const systemPlayer = clubs.getClub('antananarivo-fc').roster[0];
+  assert.equal(systemPlayer.playerType, 'system');
+  assert.equal(systemPlayer.controlStatus, 'system');
+  const custom = new ClubManager([{ id:'identity', name:'Identity', control:'open', capacity:3 }], null, 'identity-p27');
+  assert.equal(custom.addPlayer('identity', { id:'human-1', name:'Humain' }).ok, true);
+  assert.equal(custom.getClub('identity').roster[0].playerType, 'human');
+  assert.equal(custom.setPlayerControlStatus('identity', 'human-1', 'automated').ok, true);
+  const disconnected = custom.getClub('identity').roster[0];
+  assert.equal(disconnected.playerType, 'human');
+  assert.equal(disconnected.controlStatus, 'automated');
+  assert.equal(custom.setPlayerControlStatus('identity', 'human-1', 'human').ok, true);
+});
+
+test('P27 effectif: sept humains maximum, même si des places restent disponibles', () => {
+  const custom = new ClubManager([{ id:'human-cap', name:'Human Cap', control:'open', capacity:12 }], null, 'human-cap-p27');
+  for (let i=1;i<=7;i++) assert.equal(custom.addPlayer('human-cap', { id:`human-${i}` }).ok, true);
+  assert.equal(custom.addPlayer('human-cap', { id:'human-8' }).reason, 'human-player-limit');
+  assert.equal(custom.addPlayer('human-cap', { id:'system-extra', playerType:'system' }).ok, true);
+  assert.equal(custom.getClub('human-cap').roster.length, 8);
+});
+
+test('P27 effectif: un transfert humain respecte le plafond de sept du club receveur', () => {
+  const custom = new ClubManager([
+    { id:'human-source', name:'Source', control:'open', capacity:12 },
+    { id:'human-target', name:'Target', control:'open', capacity:12 }
+  ], null, 'human-transfer-cap-p27');
+  custom.addPlayer('human-source', { id:'moving-human' });
+  for (let i=1;i<=7;i++) custom.addPlayer('human-target', { id:`target-human-${i}` });
+  assert.equal(custom.transferPlayer('human-source','human-target','moving-human').reason, 'human-player-limit');
+  assert.equal(custom.getClub('human-source').roster.some(p=>p.id==='moving-human'), true);
+});
+
+test('P27 admission: les clubs réservés au système refusent les joueurs humains', () => {
+  const custom = new ClubManager([{ id:'system-only-test', name:'System Only', humanAdmission:'system-only', capacity:12 }], null, 'system-only-human-p27');
+  assert.equal(custom.addPlayer('system-only-test', { id:'blocked-human' }).reason, 'human-admission-closed');
+  assert.equal(custom.addPlayer('system-only-test', { id:'allowed-system', playerType:'system' }).ok, true);
+});
+
+test('P27 audit: détecte les dépassements humains, les identifiants dupliqués et les types invalides', async () => {
+  const { auditClubCatalog } = await import('../src/club-catalog-validation.js');
+  const result = auditClubCatalog([
+    { id:'audit-a', division:'D1', capacity:12, roster:Array.from({length:8},(_,i)=>({id:`p${i}`,playerType:'human',controlStatus:'human',rating:80})) },
+    { id:'audit-b', division:'D1', capacity:12, roster:[{id:'p0',playerType:'unknown',rating:80}] }
+  ]);
+  assert.ok(result.errors.some(issue=>issue.code==='human-player-limit-exceeded'));
+  assert.ok(result.errors.some(issue=>issue.code==='duplicate-player-id'));
+  assert.ok(result.errors.some(issue=>issue.code==='invalid-player-type'));
+});

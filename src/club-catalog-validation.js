@@ -15,6 +15,7 @@ export function auditClubCatalog(clubs = []) {
   const divisionCounts = Object.fromEntries(LEAGUE_DIVISIONS.map(item => [item.id, 0]));
   const conferenceCounts = { D4:{ Nord:0, Sud:0 }, D5:{ Nord:0, Sud:0, Est:0, Ouest:0 } };
   const systemOnlyCounts = Object.fromEntries(LEAGUE_DIVISIONS.map(item => [item.id, 0]));
+  const playerIds = new Set();
 
   for (const club of list) {
     const id = String(club?.id || '').trim();
@@ -44,6 +45,18 @@ export function auditClubCatalog(clubs = []) {
     }
     if (roster.length > capacity || roster.length > 12) {
       addIssue(issues, 'error', 'roster-over-capacity', { clubId:id, rosterSize:roster.length, capacity });
+    }
+    const humanPlayers = roster.filter(player => player?.playerType === 'human');
+    if (humanPlayers.length > 7) addIssue(issues, 'error', 'human-player-limit-exceeded', { clubId:id, humanPlayers:humanPlayers.length, maximum:7 });
+    for (const player of roster) {
+      const playerId = String(player?.id || '').trim();
+      if (!playerId) addIssue(issues, 'error', 'player-id-missing', { clubId:id });
+      else if (playerIds.has(playerId)) addIssue(issues, 'error', 'duplicate-player-id', { clubId:id, playerId });
+      else playerIds.add(playerId);
+      if (!['human','system'].includes(player?.playerType)) addIssue(issues, 'error', 'invalid-player-type', { clubId:id, playerId });
+      if (player?.playerType === 'human' && club.humanAdmission === 'system-only') addIssue(issues, 'error', 'human-player-in-system-only-club', { clubId:id, playerId });
+      if (player?.playerType === 'system' && player?.controlStatus !== 'system') addIssue(issues, 'error', 'system-player-control-conflict', { clubId:id, playerId });
+      if (player?.playerType === 'human' && !['human','automated'].includes(player?.controlStatus)) addIssue(issues, 'error', 'human-player-control-invalid', { clubId:id, playerId });
     }
     if (roster.length) {
       const baseline = DIVISION_AVERAGES[division];

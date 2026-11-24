@@ -30,6 +30,8 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     potential: Math.max(1, Math.min(99, Number(player?.potential) || safeRating)),
     potentialBand: ['standard','good','high','exceptional'].includes(player?.potentialBand) ? player.potentialBand : 'standard',
     loyalty: normalizePlayerLoyalty(player?.loyalty),
+    playerType: player?.playerType === 'human' ? 'human' : 'system',
+    controlStatus: player?.playerType === 'human' ? (player?.controlStatus === 'automated' ? 'automated' : 'human') : 'system',
     preferredFoot: player?.preferredFoot === 'left' ? 'left' : 'right',
     archetype: cleanText(player?.archetype, 'Joueur polyvalent', 40),
     appearance: player?.appearance && typeof player.appearance === 'object'
@@ -189,6 +191,7 @@ export class ClubManager {
             id: safeId(p.id), name: cleanText(p.name, 'Joueur', 36), nationality: /^[A-Z]{2}$/.test(p.nationality || '') ? p.nationality : club.countryCode,
             age: Number.isInteger(p.age) ? Math.max(16, Math.min(45, p.age)) : 24,
             role: ['GK','DEF','MID','FWD'].includes(p.role) ? p.role : 'MID', number: Number.isInteger(p.number) ? Math.max(1, Math.min(99,p.number)) : 1,
+            playerType: ['human','system'].includes(p.playerType) ? p.playerType : (club.roster.some(seed => seed.id === safeId(p.id)) ? 'system' : 'human'), controlStatus: p.playerType === 'human' && p.controlStatus === 'automated' ? 'automated' : (p.playerType === 'human' ? 'human' : 'system'),
             rating: Math.max(1, Math.min(99, Number(p.rating) || 50)), potential: Math.max(1, Math.min(99, Number(p.potential) || Number(p.rating) || 50)), potentialBand: ['standard','good','high','exceptional'].includes(p.potentialBand) ? p.potentialBand : 'standard', attributes: normalizePlayerAttributes(p.attributes, Number(p.rating) || 50), loyalty: normalizePlayerLoyalty(p.loyalty),
             preferredFoot: p.preferredFoot === 'left' ? 'left' : 'right', archetype: cleanText(p.archetype, 'Joueur polyvalent', 40),
             appearance: p.appearance && typeof p.appearance === 'object' ? { skinTone: ['light','olive','tan','medium','brown','dark','deep'].includes(p.appearance.skinTone) ? p.appearance.skinTone : 'medium', bodyBuild: ['lean','athletic','strong'].includes(p.appearance.bodyBuild) ? p.appearance.bodyBuild : 'athletic', hairStyle: ['short','curly','afro','fade','shaved','braids','twists','wavy'].includes(p.appearance.hairStyle) ? p.appearance.hairStyle : 'short', hairColor: ['dark','brown','blond','black'].includes(p.appearance.hairColor) ? p.appearance.hairColor : 'dark', kitColors: p.appearance.kitColors && ['primary','secondary','accent'].every(key => /^#[0-9a-f]{6}$/i.test(p.appearance.kitColors[key] || '')) ? { ...p.appearance.kitColors } : null, kitDesign: ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'].includes(p.appearance.kitDesign) ? p.appearance.kitDesign : 'central', kitVariant: p.appearance.kitVariant === 'goalkeeper' ? 'goalkeeper' : 'outfield', faceShape: ['oval','round','angular','long','square'].includes(p.appearance.faceShape) ? p.appearance.faceShape : 'oval', eyeShape: ['almond','round','deep-set','hooded'].includes(p.appearance.eyeShape) ? p.appearance.eyeShape : 'almond' } : null
@@ -235,7 +238,10 @@ export class ClubManager {
     if (!club || !id) return { ok: false, reason: 'invalid-player' };
     if ([...this.clubs.values()].some(item => item.roster.some(existing => existing.id === id))) return { ok: false, reason: 'already-registered' };
     if (club.roster.length >= club.capacity) return { ok: false, reason: 'roster-full' };
-    const normalized = normalizeRosterPlayer({ ...player, id }, club, club.roster.length);
+    const playerType = player?.playerType === 'system' ? 'system' : 'human';
+    if (playerType === 'human' && club.humanAdmission === 'system-only') return { ok: false, reason: 'human-admission-closed' };
+    if (playerType === 'human' && club.roster.filter(item => item.playerType === 'human').length >= 7) return { ok: false, reason: 'human-player-limit' };
+    const normalized = normalizeRosterPlayer({ ...player, playerType, id }, club, club.roster.length);
     normalized.number = availableShirtNumber(club, normalized.number);
     if (!normalized.number) return { ok: false, reason: 'shirt-numbers-full' };
     club.roster.push(normalized);
@@ -248,7 +254,7 @@ export class ClubManager {
     const index = club.roster.findIndex(existing => existing.id === id);
     if (index < 0) return { ok: false, reason: 'player-not-found' };
     if ([...this.clubs.values()].some(other => other.id !== club.id && other.roster.some(existing => existing.id === id))) return { ok: false, reason: 'duplicate-player' };
-    const updated = normalizeRosterPlayer({ ...club.roster[index], ...player, id }, club, index);
+    const updated = normalizeRosterPlayer({ ...club.roster[index], ...player, playerType: club.roster[index].playerType, id }, club, index);
     const requestedNumber = Number(updated.number);
     if (club.roster.some(existing => existing.id !== id && existing.number === requestedNumber)) return { ok: false, reason: 'shirt-number-taken' };
     if (JSON.stringify(club.roster[index]) !== JSON.stringify(updated)) {
@@ -269,12 +275,24 @@ export class ClubManager {
     if (to.roster.some(player => player.id === id)) return { ok: false, reason: 'already-registered' };
     if (to.roster.length >= to.capacity) return { ok: false, reason: 'roster-full' };
     const player = from.roster[sourceIndex];
+    if (player.playerType === 'human' && to.humanAdmission === 'system-only') return { ok: false, reason: 'human-admission-closed' };
+    if (player.playerType === 'human' && to.roster.filter(item => item.playerType === 'human').length >= 7) return { ok: false, reason: 'human-player-limit' };
     const assignedNumber = availableShirtNumber(to, player.number);
     if (!assignedNumber) return { ok: false, reason: 'shirt-numbers-full' };
     from.roster.splice(sourceIndex, 1);
     to.roster.push({ ...player, number: assignedNumber, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
     this.saveSeason();
     return { ok: true, fromRosterSize: from.roster.length, toRosterSize: to.roster.length, number: assignedNumber };
+  }
+
+  setPlayerControlStatus(clubId, playerId, status) {
+    const club = this.clubs.get(safeId(clubId));
+    const player = club?.roster.find(item => item.id === safeId(playerId));
+    if (!player || !['human','automated'].includes(status)) return { ok:false, reason:'invalid-control-status' };
+    if (player.playerType !== 'human' && status !== 'automated') return { ok:false, reason:'system-player-control-fixed' };
+    const next = player.playerType === 'human' ? status : 'system';
+    if (player.controlStatus !== next) { player.controlStatus = next; this.saveSeason(); }
+    return { ok:true, player:clonePlayer(player) };
   }
 
   removePlayer(clubId, playerId) {

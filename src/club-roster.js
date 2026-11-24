@@ -157,6 +157,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set() } = 
       : Math.max(15, Math.min(70, Math.round((100 - clubLoyalty) * 0.72 + random() * 18)));
     roster.push({
       id: `${club.id}-ai-${String(index + 1).padStart(2,'0')}`,
+      playerType: 'system', controlStatus: 'system',
       name, nationality: code, age, role, number: index + 1,
       rating: overall, potential: talent.potential, potentialBand: talent.potentialBand, attributes,
       loyalty: { clubLoyalty, transferWillingness, departurePolicy },
