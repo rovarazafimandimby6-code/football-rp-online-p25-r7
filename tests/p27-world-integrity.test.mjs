@@ -22,7 +22,7 @@ const cleanWorld=()=>({
 test('P27 intégrité monde : accepte un ensemble cohérent de clubs, contrats, finances et compétitions',()=>{
  const result=auditP27World(cleanWorld());
  assert.equal(result.ok,true,JSON.stringify(result.errors));
- assert.equal(result.counts.clubs,1);
+ assert.equal(result.counts.clubs,2);
  assert.equal(result.counts.financeEntries,1);
  assert.equal(result.counts.completedFixtures,1);
 });
