@@ -167,6 +167,7 @@ let selectedClubId = null;
 let playerLibraryLimit = 24;
 let playerLibraryProfiles = [];
 let selectedPlayerProfile = null;
+let playerCareerRequestSequence = 0;
 let playerProfileReturnPage = 'players';
 let preferences = { duration: 5, quality: 'auto', cameraMode: 'player', cameraZoom: 55, nameDisplay: 'standard' };
 try {
@@ -180,6 +181,44 @@ try {
 
 const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58, colors: club.colors });
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+
+async function loadPlayerCareer(player) {
+  const target = document.getElementById('player-career-stats');
+  if (!target) return;
+  const sequence = ++playerCareerRequestSequence;
+  const playerId = player?.careerPlayerId;
+  if (!playerId) {
+    target.innerHTML = '<b>Statistiques non disponibles</b><p>Cette fiche ne possède pas encore d’identifiant sportif relié aux matchs du serveur.</p>';
+    return;
+  }
+  try {
+    const response = await fetch(`/api/players/${encodeURIComponent(playerId)}/career`, { headers: { accept: 'application/json' }, cache: 'no-store' });
+    if (sequence !== playerCareerRequestSequence || selectedPlayerProfile !== player) return;
+    if (response.status === 404) {
+      target.innerHTML = '<b>Aucun match enregistré</b><p>Ce joueur n’a pas encore participé à un match enregistré sur le serveur.</p>';
+      return;
+    }
+    if (!response.ok) throw new Error('CAREER_UNAVAILABLE');
+    const payload = await response.json();
+    const career = payload?.career;
+    if (!career?.player || sequence !== playerCareerRequestSequence || selectedPlayerProfile !== player) return;
+    const totals = career.totals || {};
+    const count = key => Math.max(0, Number(totals[key]) || 0);
+    const minutes = Math.floor(count('minutesPlayedMs') / 60000);
+    const matches = Array.isArray(career.matches) ? career.matches.slice().reverse() : [];
+    const resultLabel = value => value === 'win' ? 'Victoire' : value === 'draw' ? 'Nul' : 'Défaite';
+    target.innerHTML = `<div class="player-career-stat-grid">
+      <span><b>${count('matches')}</b><small>MATCHS</small></span><span><b>${minutes}</b><small>MINUTES</small></span>
+      <span><b>${count('goals')}</b><small>BUTS</small></span><span><b>${count('assists')}</b><small>PASSES DÉC.</small></span>
+      <span><b>${count('shots')}</b><small>TIRS</small></span><span><b>${count('passes')}</b><small>PASSES</small></span>
+      <span><b>${count('wins')}</b><small>VICTOIRES</small></span><span><b>${career.averageRating ?? '—'}</b><small>NOTE MOY.</small></span>
+    </div>${matches.length ? `<div class="player-career-match-history"><h3>Derniers matchs enregistrés</h3>${matches.slice(0,8).map(match=>`<article><b>${resultLabel(match.result)}</b><span>${escapeHTML(match.teamName || player.clubName)} · vs ${escapeHTML(match.opponent || 'Adversaire')}</span><small>${Math.floor((Number(match.minutesPlayedMs)||0)/60000)} min · note ${match.rating ?? '—'} · ${Number(match.stats?.goals)||0} but(s)</small></article>`).join('')}</div>` : ''}`;
+  } catch (error) {
+    if (sequence !== playerCareerRequestSequence || selectedPlayerProfile !== player) return;
+    target.innerHTML = '<b>Parcours temporairement indisponible</b><p>Impossible de récupérer les statistiques du serveur. Réessaie lorsque la connexion sera rétablie.</p>';
+  }
+}
 
 function renderPage(page = 'home') {
   syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
@@ -254,7 +293,7 @@ function renderPage(page = 'home') {
     mountAvatarPreview(p);
   } else if (page === 'players') {
     const rosterPlayers=clubs.listClubs().flatMap(club=>club.roster.map(player=>({...player,clubId:club.id,clubName:club.name,clubDivision:club.division})));
-    playerLibraryProfiles = rosterPlayers;
+    playerLibraryProfiles = rosterPlayers.map(player => ({...player,careerPlayerId:`club-${player.clubId}-${player.id}`}));
     const roleNames={GK:'Gardien',DEF:'Défenseur',MID:'Milieu',FWD:'Attaquant'};
     const average=rosterPlayers.length?Math.round(rosterPlayers.reduce((sum,p)=>sum+p.rating,0)/rosterPlayers.length):0;
     playerLibraryLimit=24;
@@ -300,9 +339,10 @@ function renderPage(page = 'home') {
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PARCOURS EN CLUB</span><h2>Historique des clubs</h2></div></div><div class="player-career-timeline"><div class="player-career-timeline-item"><i></i><div><b>${escapeHTML(player.clubName)}</b><span>Club actuel · ${escapeHTML(player.clubDivision)}</span><small>Présence dans l'effectif local</small></div><strong>ACTUEL</strong></div></div><p class="notice">Les anciens clubs et dates de transfert apparaîtront lorsqu'ils seront enregistrés par le système de mercato.</p></section>
       </div>
       <div class="player-career-columns">
-        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">STATISTIQUES OFFICIELLES</span><h2>Matchs · buts · passes</h2></div></div><div class="player-career-empty"><b>Statistiques non disponibles</b><p>Aucun rapport de match individuel n'est encore associé à ce joueur. Les buts, passes décisives, apparitions et minutes seront affichés après leur enregistrement officiel.</p></div></section>
+        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">STATISTIQUES OFFICIELLES</span><h2>Matchs · buts · passes</h2></div></div><div class="player-career-empty" id="player-career-stats"><b>Chargement du parcours sportif…</b><p>Recherche des matchs validés sur le serveur.</p></div></section>
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PALMARÈS</span><h2>Coupes & trophées</h2></div></div><div class="player-career-empty"><b>Palmarès à construire</b><p>Aucun titre n'est attribué automatiquement. Les coupes et distinctions apparaîtront après les compétitions réellement disputées et leurs résultats validés.</p></div></section>
       </div>`;
+    loadPlayerCareer(player);
   } else if (page === 'clubs') {
     const divisionLabels = { D1: 'D1 · ÉLITE', D2: 'D2 · PROFESSIONNEL', D3: 'D3 · RÉGIONAL', AMATEUR: 'AMATEUR' };
     const nationalityNames = { MG:'Madagascar', FR:'France', SN:'Sénégal', BR:'Brésil', ES:'Espagne', AR:'Argentine', PT:'Portugal', JP:'Japon', NG:'Nigeria', IT:'Italie', GB:'Angleterre', KE:'Kenya' };
@@ -313,7 +353,7 @@ function renderPage(page = 'home') {
     subtitle.textContent = selectedClub ? `${selectedClub.city} · ${selectedClub.country} · ${divisionLabels[selectedClub.division]}` : 'Clubs fictifs internationaux et malgaches · effectifs IA persistants.';
     if (selectedClub) {
       const roster = selectedClub.roster.slice().sort((a,b) => ({GK:0,DEF:1,MID:2,FWD:3}[a.role]-({GK:0,DEF:1,MID:2,FWD:3}[b.role]) || b.rating-a.rating));
-      playerLibraryProfiles = roster.map(player => ({...player,clubId:selectedClub.id,clubName:selectedClub.name,clubDivision:selectedClub.division}));
+      playerLibraryProfiles = roster.map(player => ({...player,clubId:selectedClub.id,clubName:selectedClub.name,clubDivision:selectedClub.division,careerPlayerId:`club-${selectedClub.id}-${player.id}`}));
       const average = roster.length ? Math.round(roster.reduce((sum,p)=>sum+p.rating,0)/roster.length) : 0;
       content.innerHTML = `<button class="text-cta" data-action="back-clubs">← RETOUR AUX CLUBS</button><section class="club-detail-hero">${crest(selectedClub)}<div><span class="eyebrow">${divisionLabels[selectedClub.division]}</span><h2>${escapeHTML(selectedClub.name)}</h2><p>${escapeHTML(selectedClub.city)} · ${escapeHTML(selectedClub.country)}</p><div class="club-detail-stats"><span><b>${selectedClub.rating}</b><small>NOTE CLUB</small></span><span><b>${roster.length}</b><small>JOUEURS</small></span><span><b>${average}</b><small>MOYENNE EFFECTIF</small></span><span><b>${selectedClub.reputation}</b><small>RÉPUTATION</small></span></div></div></section><section class="competition-panel roster-panel"><div class="panel-heading"><div><span class="eyebrow">EFFECTIF COMPLET</span><h2>Effectif · ${roster.length} joueurs</h2></div><span class="local-tag">${selectedClub.control==='open'?'CLUB DISPONIBLE':selectedClub.control==='player'?'VOTRE CLUB':'CLUB IA'}</span></div><div class="roster-filters"><label>Rechercher un joueur<input id="roster-search" type="search" placeholder="Nom du joueur…" autocomplete="off"></label><label>Filtrer par poste<select id="roster-role"><option value="all">Tous les postes</option><option value="GK">Gardiens</option><option value="DEF">Défenseurs</option><option value="MID">Milieux</option><option value="FWD">Attaquants</option></select></label></div><div class="roster-table-wrap"><table class="roster-table"><thead><tr><th>#</th><th>JOUEUR</th><th>NATIONALITÉ</th><th>ÂGE</th><th>POSTE</th><th>NOTE</th><th>POTENTIEL</th><th>VIT.</th><th>TIR</th><th>PAS.</th><th>DÉF.</th><th>END.</th><th>CTR.</th></tr></thead><tbody id="club-roster-rows">${roster.map((player,index)=>`<tr role="button" tabindex="0" aria-label="Ouvrir le profil de ${escapeHTML(player.name)}" data-player-profile="${index}" data-profile-origin="clubs" data-player-row data-name="${escapeHTML(player.name.toLowerCase())}" data-role="${player.role}"><td>${player.number}</td><td><b>${escapeHTML(player.name)}</b><small>${escapeHTML(player.archetype)}</small></td><td><span class="nationality-cell">${escapeHTML(nationalityNames[player.nationality]||player.nationality)}</span></td><td>${player.age}</td><td>${roleNames[player.role]||player.role}</td><td><b class="player-rating">${player.rating}</b></td><td>${player.potential}</td><td>${player.attributes?.pace ?? player.rating}</td><td>${player.attributes?.shooting ?? player.rating}</td><td>${player.attributes?.passing ?? player.rating}</td><td>${player.attributes?.defense ?? player.rating}</td><td>${player.attributes?.stamina ?? player.rating}</td><td>${player.attributes?.control ?? player.rating}</td></tr>`).join('')}</tbody></table><p class="roster-empty hidden" id="roster-empty">Aucun joueur ne correspond à ces filtres.</p></div></section>${selectedClub.control==='open'?`<button class="primary-cta" data-action="take-club" data-club="${escapeHTML(selectedClub.id)}">REPRENDRE CE CLUB</button>`:''}<p class="notice">Les profils et identités sont fictifs. Les notes et potentiels sont des valeurs de jeu, pas des évaluations de personnes réelles.</p>`;
     } else {

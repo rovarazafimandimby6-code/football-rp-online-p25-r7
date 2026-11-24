@@ -90,3 +90,18 @@ test('P27: le tableau de match affiche les écussons SVG propres aux deux clubs'
   assert.match(main, /onlineTeams\?\.blue\?\.id/);
   assert.match(css, /#board \.club-crest-svg/);
 });
+
+test('P27: les bots des clubs utilisent une identité stable reliée aux fiches du roster', () => {
+  const manager = new RoomManager();
+  const created = manager.create({ blueClubId: 'fianarantsoa-athletic', redClubId: 'antananarivo-fc' });
+  manager.join(created.id, { displayName: 'Testeur', preferredTeam: 'blue' });
+  const state = manager.get(created.id);
+  const blueBot = state.players.find(player => player.team === 'blue' && player.isBot);
+  const rosterPlayer = manager.rooms.get(created.id).teams.blue.roster.find(player => player.id === 'fianarantsoa-athletic-ai-02');
+  assert.ok(blueBot);
+  assert.ok(rosterPlayer);
+  assert.equal(blueBot.name, rosterPlayer.name);
+  assert.equal(blueBot.careerPlayerId, `club-fianarantsoa-athletic-${rosterPlayer.id}`);
+  assert.equal(blueBot.role, rosterPlayer.role);
+  assert.equal(state.teams.blue.roster, undefined);
+});

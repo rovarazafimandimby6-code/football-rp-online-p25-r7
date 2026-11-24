@@ -80,12 +80,14 @@ export class RoomManager {
       while (count < 5 && room.players.size < 20) {
         const usedSlots = new Set([...room.players.values()].filter(p => p.team === team).map(p => p.slot));
         const slot = [0,1,2,3,4].find(value => !usedSlots.has(value)) ?? count;
-        const id = `bot-${team}-${randomBytes(5).toString('hex')}`;
+        const club = room.teams[team];
+        const rosterPlayer = club?.roster?.[slot] || null;
+        const id = rosterPlayer ? `bot-${team}-${rosterPlayer.id}` : `bot-${team}-${randomBytes(5).toString('hex')}`;
         room.players.set(id, {
-          id, token: null, name: `${team === 'blue' ? 'Académie bleue' : 'Académie rouge'} ${slot + 1}`,
+          id, token: null, careerPlayerId: rosterPlayer && club ? `club-${club.id}-${rosterPlayer.id}` : null, name: rosterPlayer?.name || `${team === 'blue' ? 'Académie bleue' : 'Académie rouge'} ${slot + 1}`,
           team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
           z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
-          role: ['GK', 'DEF', 'MID', 'FWD', 'FWD'][slot] || 'MID', isBot: true,
+          role: rosterPlayer?.role || ['GK', 'DEF', 'MID', 'FWD', 'FWD'][slot] || 'MID', isBot: true,
           isOnPitch: true, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
           input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0,
           connected: true, controlMode: 'ai', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
@@ -359,7 +361,7 @@ export class RoomManager {
   finalizeResult(room) {
     if (room.result) return room.result;
     const players = [...room.players.values()].map(player => ({
-      playerId: player.id, careerPlayerId: player.accountId ? `human-${createHash('sha256').update(player.accountId).digest('hex').slice(0,32)}` : (room.teams[player.team]?.id ? `club-${room.teams[player.team].id}-slot-${player.slot}` : null), name: player.name, team: player.team, role: player.role,
+      playerId: player.id, careerPlayerId: player.careerPlayerId || (player.accountId ? `human-${createHash('sha256').update(player.accountId).digest('hex').slice(0,32)}` : null), name: player.name, team: player.team, role: player.role,
       isBot: player.isBot === true, minutesPlayedMs: Math.round(Number(player.matchTimePlayedMs) || 0),
       stats: { passes: player.stats?.passes || 0, completedPasses: player.stats?.completedPasses || 0, shots: player.stats?.shots || 0, tackles: player.stats?.tackles || 0, goals: player.stats?.goals || 0, assists: player.stats?.assists || 0, saves: player.stats?.saves || 0, interceptions: player.stats?.interceptions || 0 },
     }));

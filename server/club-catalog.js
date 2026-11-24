@@ -22,8 +22,10 @@ export function resolveMatchClub(id) {
 }
 
 export function cloneMatchTeams(teams) {
-  return {
-    blue: teams?.blue ? { ...teams.blue, colors: [...teams.blue.colors] } : null,
-    red: teams?.red ? { ...teams.red, colors: [...teams.red.colors] } : null,
+  const publicTeam = team => {
+    if (!team) return null;
+    const { roster, ...identity } = team;
+    return { ...identity, colors: [...team.colors] };
   };
+  return { blue: publicTeam(teams?.blue), red: publicTeam(teams?.red) };
 }
