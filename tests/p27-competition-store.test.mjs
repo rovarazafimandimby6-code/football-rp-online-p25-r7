@@ -243,9 +243,10 @@ test('P27 coupe : audit vérifie que le vainqueur de chaque barrage rejoint le t
  const cup=f.store.activeSeason.competitions.find(item=>item.type==='cup');
  const first=cup.fixtures.find(item=>item.round===1);
  assert.equal(f.store.recordFixtureResult(first.id,{roomId:'cup-audit-prelim',homeGoals:2,awayGoals:0}).ok,true);
- const target=cup.fixtures.find(item=>item.round===2&&item.status==='scheduled'&&(!item.homeClubId||!item.awayClubId));
+ const winner=first.result.home>first.result.away?first.homeClubId:first.awayClubId;
+ const target=cup.fixtures.find(item=>item.round===2&&(item.homeClubId===winner||item.awayClubId===winner));
  assert.ok(target);
- target.homeClubId=first.awayClubId;
+ if(target.homeClubId===winner)target.homeClubId=first.awayClubId;else target.awayClubId=first.awayClubId;
  const audit=f.store.snapshot().cupAudit;
  assert.equal(audit.ok,false);
  assert.equal(audit.reason,'cup-preliminary-advancement-mismatch');
@@ -257,9 +258,11 @@ test('P27 coupe : audit vérifie la transmission des vainqueurs entre les tours'
    assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:`cup-advance-${round}-${fixture.id}`,homeGoals:2,awayGoals:1}).ok,true);
  }
  const feeder=cup.fixtures.find(item=>item.round===2&&item.status==='completed');
- const target=cup.fixtures.find(item=>item.round===3&&item.status==='scheduled');
+ const winner=feeder.result.home>feeder.result.away?feeder.homeClubId:feeder.awayClubId;
+ const loser=feeder.result.home>feeder.result.away?feeder.awayClubId:feeder.homeClubId;
+ const target=cup.fixtures.find(item=>item.round===3&&(item.homeClubId===winner||item.awayClubId===winner));
  assert.ok(feeder&&target);
- target.homeClubId=feeder.awayClubId;
+ if(target.homeClubId===winner)target.homeClubId=loser;else target.awayClubId=loser;
  const audit=f.store.snapshot().cupAudit;
  assert.equal(audit.ok,false);
  assert.equal(audit.reason,'cup-round-advancement-mismatch');
