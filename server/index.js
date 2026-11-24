@@ -123,7 +123,8 @@ const server = http.createServer(async (req, res) => {
         financeAccounts:clubFinance.store.listAccounts(),
         financeJournal:clubFinance.transferJournal,
         competitionState:competitionStore.state,
-        resultArchive:resultStore.readAll()
+        resultArchive:resultStore.readAll(),
+        playerCareerState:careerStore.state
       });
       return json(res, audit.ok ? 200 : 409, audit);
     }
