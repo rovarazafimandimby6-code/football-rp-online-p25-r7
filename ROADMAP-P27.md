@@ -1065,4 +1065,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Refuser les dates de clôture négatives, décimales ou non sûres.
 - [x] Refuser une transition si la saison courante n'est pas active.
 - [x] Conserver la transaction atomique et le contrôle des 20 montées / 20 descentes.
-- [ ] Validation complète GitHub Actions.
+- [x] Validation complète GitHub Actions : 688/688 tests réussis, contrôle syntaxique réussi (workflow 45466633422).
+
+
+### Validation automatisée — lots 108 à 111
+- [x] Workflow [P27 validation — run 45466633422](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45466633422) réussi.
+- [x] Suite complète : **688/688 tests réussis**.
+- [x] Contrôle syntaxique JavaScript/MJS réussi.
+- [x] Une régression de compatibilité de code d'erreur dans l'audit de Coupe a été détectée par CI, corrigée, puis revalidée.
+- [x] Les tests de chronologie couvrent le rechargement d'une archive sur deux saisons et la détection d'un identifiant dupliqué.
