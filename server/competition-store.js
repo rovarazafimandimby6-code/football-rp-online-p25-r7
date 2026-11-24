@@ -426,6 +426,41 @@ export class JsonCompetitionStore {
       ...record, trophies:clone(record.trophies), seasonIds:[...record.seasonIds]
     })).sort((a,b) => a.clubName.localeCompare(b.clubName));
   }
+  auditHistoricalRecords(records = this.clubHistoricalRecords()) {
+    const fail = (reason, details = {}) => ({ ok:false, reason, ...details });
+    if (!Array.isArray(records) || records.length !== this.clubs.size)
+      return fail('historical-record-count-mismatch', { expected:this.clubs.size, actual:records?.length ?? null });
+    const ids = new Set();
+    const completedSeasonIds = new Set(this.state.seasons.filter(season => season.status === 'completed').map(season => season.id));
+    for (const record of records) {
+      if (!record?.clubId || ids.has(record.clubId) || !this.clubs.has(record.clubId))
+        return fail('historical-club-identity-invalid', { clubId:record?.clubId || null });
+      ids.add(record.clubId);
+      if (!Number.isSafeInteger(record.seasonsParticipated) || record.seasonsParticipated < 0 ||
+          !Array.isArray(record.seasonIds) || new Set(record.seasonIds).size !== record.seasonIds.length ||
+          record.seasonsParticipated !== record.seasonIds.length)
+        return fail('historical-season-count-invalid', { clubId:record.clubId });
+      if (!Number.isSafeInteger(record.matches) || record.matches < 0 ||
+          !Number.isSafeInteger(record.wins) || !Number.isSafeInteger(record.draws) || !Number.isSafeInteger(record.losses) ||
+          record.wins + record.draws + record.losses !== record.matches)
+        return fail('historical-match-totals-invalid', { clubId:record.clubId });
+      for (const field of ['goalsFor','goalsAgainst','promotions','relegations','competitions','leagueTitles','cupTitles']) {
+        if (!Number.isSafeInteger(record[field]) || record[field] < 0)
+          return fail('historical-counter-invalid', { clubId:record.clubId, field });
+      }
+      if (!Array.isArray(record.trophies) || record.trophies.length !== record.leagueTitles + record.cupTitles)
+        return fail('historical-trophy-count-invalid', { clubId:record.clubId });
+      for (const trophy of record.trophies) {
+        if (trophy.clubId !== record.clubId || !completedSeasonIds.has(trophy.seasonId))
+          return fail('historical-trophy-reference-invalid', { clubId:record.clubId, seasonId:trophy.seasonId || null });
+      }
+      if (record.seasonIds.some(id => !this.state.seasons.some(season => season.id === id)))
+        return fail('historical-season-reference-invalid', { clubId:record.clubId });
+    }
+    if (ids.size !== this.clubs.size)
+      return fail('historical-club-coverage-incomplete', { expected:this.clubs.size, actual:ids.size });
+    return { ok:true, clubs:records.length, completedSeasons:completedSeasonIds.size };
+  }
   headToHead(clubAId, clubBId) {
     const a = clean(clubAId, 80), b = clean(clubBId, 80);
     if (!a || !b || a === b || !this.clubs.has(a) || !this.clubs.has(b)) return null;
@@ -454,6 +489,7 @@ export class JsonCompetitionStore {
     const cupAudit = auditCupBracket(season.competitions.find(item=>item.type==='cup'));
     const timelineAudit = auditSeasonTimeline(this.state);
     const archiveAudit = auditSeasonArchives(this.state);
-    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit,cupAudit,timelineAudit,archiveAudit};
+    const historicalAudit = this.auditHistoricalRecords();
+    return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies),movementPreview,scheduleAudit,cupAudit,timelineAudit,archiveAudit,historicalAudit};
   }
 }
