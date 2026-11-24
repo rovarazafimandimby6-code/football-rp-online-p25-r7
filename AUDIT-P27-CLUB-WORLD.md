@@ -2,8 +2,8 @@
 
 Date de vérification : 24 novembre 2026  
 Branche : `p27-dev`  
-Commit audité : `f43eed2632f5e8887919fdf1d06da3d23c9ff517`  
-Workflow : [GitHub Actions 45395141760](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45395141760)
+Commit code audité : `df0ac49d769ddfdd37f42646852c33229c9614f5`  
+Workflow : [GitHub Actions 45397509144](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45397509144)
 
 ## Résultat de l'audit
 
@@ -41,12 +41,24 @@ Le calendrier des neuf groupes est audité : 1 306 rencontres de championnat en 
 
 Les réponses publiques ne contiennent ni effectifs détaillés, ni contrats privés. Les listes et fiches lisent les affectations de la saison active ; les changements de division sont donc reflétés après une transition de saison. Les équipes de match reprennent également la division et la conférence courantes.
 
+Le catalogue public expose également `managementType` (`human` ou `system`) sans exposer l'identifiant du gestionnaire. L'interface applique les marqueurs discrets approuvés : point vert pour un club dirigé par un joueur, point rouge pour un club dirigé par le système. Le statut d'admission des joueurs reste une information distincte de la direction du club.
+
+## Intégration dans l'interface du jeu
+
+- L'écran **Clubs** charge les 156 fiches publiques en deux pages, contrôle l'unicité et la complétude, puis affiche les cinq divisions et les conférences.
+- Recherche, filtres par division, conférence et pays, ainsi que tri des clubs.
+- Les fiches conservent l'accès à l'effectif local sans publier les contrats privés.
+- Si le serveur est indisponible, l'écran conserve le catalogue local et signale clairement que les affectations peuvent être anciennes.
+- L'écran **Compétitions** charge les neuf groupes, classements, calendriers, résultats terminés et aperçu de la Coupe des Clubs depuis `GET /api/competitions`.
+- Le rendu des mouvements de fin de saison est étiqueté comme proposition non approuvée.
+- Les libellés visibles utilisent « Joueur du système » et « Club dirigé par le système » ; l'abréviation « IA » a été retirée de l'interface principale.
+
 ## Validation CI
 
-- **512 tests réussis**
+- **524 tests réussis**
 - **0 échec**
 - Contrôle de syntaxe JavaScript exécuté avec succès
-- Run : [45395141760](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45395141760)
+- Run : [45397509144](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45397509144)
 
 ## Décisions qui restent à approuver
 
@@ -54,10 +66,10 @@ Ces éléments ne sont pas verrouillés par cet audit :
 
 1. Le barème de promotions/relégations demeure une proposition de politique. L'aperçu calcule les mouvements et la transition valide les capacités, mais le barème n'est pas déclaré définitivement approuvé.
 2. Le calendrier actuel est en aller simple. Le passage à un aller-retour doublerait le nombre de rencontres de championnat ; il n'a pas été activé sans décision explicite.
-3. L'API du catalogue est intégrée et testée. Une page graphique dédiée au catalogue des clubs dans l'interface du jeu et une validation visuelle sur appareil Android ne sont pas couvertes par cette validation serveur.
+3. L'interface des clubs et des compétitions est maintenant reliée au serveur et couverte par les tests automatisés. Une vérification visuelle sur appareil Android réel reste à effectuer.
 
 ## Conclusion
 
-Le **catalogue de 156 clubs, la structure des cinq divisions, les neuf groupes, l'affectation géographique, les calendriers, les contrôles d'intégrité et l'API publique** sont intégrés et validés automatiquement sur `p27-dev`.
+Le **catalogue de 156 clubs, la structure des cinq divisions, les neuf groupes, l'affectation géographique, les calendriers, les contrôles d'intégrité, l'API publique et les écrans Clubs/Compétitions** sont intégrés et validés automatiquement sur `p27-dev`.
 
 Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne certifie pas l'ensemble du jeu P27, l'expérience graphique mobile, les performances Android ni les décisions sportives qui restent à approuver.
