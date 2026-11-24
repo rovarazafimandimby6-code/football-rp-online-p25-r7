@@ -13,11 +13,12 @@ test('P27 rotations serveur : un joueur authentifié fait entrer un réserviste 
   const incoming = [...room.players.values()].find(player => player.team === joined.team && player.isOnPitch === false && player.isBot);
   assert.ok(outgoing);
   assert.ok(incoming);
+  const outgoingSlot = outgoing.slot;
   const result = manager.rotate(created.id, joined.token, { outgoingId: outgoing.id, incomingId: incoming.id });
   assert.equal(result.rotated, true);
   assert.equal(room.players.get(outgoing.id).isOnPitch, false);
   assert.equal(room.players.get(incoming.id).isOnPitch, true);
-  assert.equal(room.players.get(incoming.id).slot, outgoing.slot);
+  assert.equal(room.players.get(incoming.id).slot, outgoingSlot);
   assert.equal([...room.players.values()].filter(player => player.team === joined.team && player.isOnPitch !== false).length, 5);
 });
 
