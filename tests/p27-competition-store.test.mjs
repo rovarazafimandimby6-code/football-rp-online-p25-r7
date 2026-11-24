@@ -525,3 +525,39 @@ test('P27 calendrier : refuse un statut incohérent ou un résultat prématuré'
   assert.equal(auditLeagueSchedule(league).reason,'scheduled-fixture-has-result');
  }finally{f.cleanup();}
 });
+
+
+test('P27 championnat : recalcule le classement depuis les rencontres terminées',()=>{
+ const f=setup();
+ try {
+  const league=f.store.activeSeason.competitions.find(item=>item.type==='league'&&item.division==='D4'&&item.conference==='A');
+  const fixture=league.fixtures[0];
+  fixture.status='completed';fixture.result={home:2,away:1};
+  const home=league.standings.find(row=>row.id===fixture.homeClubId);
+  const away=league.standings.find(row=>row.id===fixture.awayClubId);
+  home.played++;home.wins++;home.goalsFor+=2;home.goalsAgainst++;home.points+=3;
+  away.played++;away.losses++;away.goalsFor++;away.goalsAgainst+=2;
+  assert.equal(auditLeagueSchedule(league).ok,true);
+  home.points++;
+  const mismatch=auditLeagueSchedule(league);
+  assert.equal(mismatch.ok,false);
+  assert.equal(mismatch.reason,'league-standings-fixture-mismatch');
+  assert.equal(mismatch.field,'points');
+ } finally {f.cleanup();}
+});
+
+test('P27 championnat : refuse un score terminé hors limites même si le classement est modifié',()=>{
+ const f=setup();
+ try {
+  const league=f.store.activeSeason.competitions.find(item=>item.type==='league'&&item.division==='D4'&&item.conference==='A');
+  const fixture=league.fixtures[0];
+  fixture.status='completed';fixture.result={home:100,away:0};
+  const home=league.standings.find(row=>row.id===fixture.homeClubId);
+  const away=league.standings.find(row=>row.id===fixture.awayClubId);
+  home.played++;home.wins++;home.goalsFor+=100;home.points+=3;
+  away.played++;away.losses++;away.goalsAgainst+=100;
+  const result=auditLeagueSchedule(league);
+  assert.equal(result.ok,false);
+  assert.equal(result.reason,'completed-fixture-result-invalid');
+ } finally {f.cleanup();}
+});
