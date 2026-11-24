@@ -249,7 +249,8 @@ export class ClubManager {
             // Refresh only generated identity fields; retain the saved sporting progression.
             return { ...player, name: seeded.name, nationality: seeded.nationality, appearance: seeded.appearance, attributes: seeded.attributes ? { ...seeded.attributes } : normalizePlayerAttributes(null, seeded.rating) };
           });
-          const mergedRoster = new Map(club.roster.map(player => [player.id, player]));
+          const releasedIds = new Set((Array.isArray(saved.releasedPlayers) ? saved.releasedPlayers : []).map(item => safeId(item?.player?.id)).filter(Boolean));
+          const mergedRoster = new Map(club.roster.filter(player => !releasedIds.has(player.id)).map(player => [player.id, player]));
           for (const player of migratedRoster) mergedRoster.set(player.id, player);
           club.roster = [...mergedRoster.values()].slice(0, club.capacity);
         }
