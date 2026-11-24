@@ -1074,3 +1074,33 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Contrôle syntaxique JavaScript/MJS réussi.
 - [x] Une régression de compatibilité de code d'erreur dans l'audit de Coupe a été détectée par CI, corrigée, puis revalidée.
 - [x] Les tests de chronologie couvrent le rechargement d'une archive sur deux saisons et la détection d'un identifiant dupliqué.
+
+
+### Lot 112 — audit d'attribution des trophées archivés
+- [x] Vérifier que chaque trophée référence une compétition de la même saison.
+- [x] Vérifier que le club récompensé est le champion déclaré et un participant de la compétition.
+- [x] Refuser les trophées dupliqués et les dates d'attribution invalides.
+- [x] Exiger le trophée d'une compétition terminée lorsqu'un champion est déclaré.
+
+### Lot 113 — cohérence des mouvements historiques
+- [x] Vérifier l'unicité des clubs dans les mouvements archivés.
+- [x] Vérifier la contiguïté des divisions et la cohérence montée/relégation.
+- [x] Contrôler les quotas historiques de 20 promotions et 20 relégations.
+- [x] Tester les agrégats cumulés sur trois transitions successives.
+
+### Lot 114 — exposition de l'audit des archives
+- [x] Ajouter `archiveAudit` au snapshot du store de compétitions.
+- [x] Conserver les données archivées existantes sans réécriture automatique.
+- [x] Ajouter un test négatif sur l'attribution d'un trophée au mauvais club.
+
+### Lot 115 — rechargement pluri-saisons
+- [x] Étendre le scénario de trois renouvellements avec rechargement du store.
+- [x] Vérifier 156 clubs et les capacités D1–D5 et conférences après chaque saison.
+- [x] Vérifier les 40 mouvements par saison et les cumuls de 60 montées / 60 descentes.
+- [x] Vérifier les audits d'archives après trois saisons terminées.
+
+### Validation automatisée — lots 112 à 115
+- [x] Workflow [P27 validation — run 45467520264](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45467520264) réussi sur le commit de code.
+- [x] Suite complète : **689/689 tests réussis**.
+- [x] Contrôle syntaxique JavaScript/MJS réussi.
+- [ ] Revalider le commit de documentation consolidé.
