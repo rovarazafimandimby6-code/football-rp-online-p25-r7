@@ -106,6 +106,29 @@ test('P27 lot 85 : annule le déplacement si la sauvegarde du roster échoue pui
  } finally {f.cleanup();}
 });
 
+test('P27 lot 100 : bloque un second transfert tant que la saga précédente du joueur est en attente',()=>{
+ const f=setup();
+ try {
+  f.setFailFinance(true);
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService});
+  const firstRequest={id:'ai-transfer-pending-first',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:1000};
+  const first=service.transfer(firstRequest);
+  assert.equal(first.ok,false);
+  assert.equal(first.pending,true);
+  const overlap=service.transfer({id:'ai-transfer-pending-second',fromClubId:'club-b',toClubId:'club-a',playerId:'system-player-1',fee:1100});
+  assert.equal(overlap.ok,false);
+  assert.equal(overlap.reason,'player-transfer-pending');
+  assert.equal(overlap.transferId,firstRequest.id);
+  f.setFailFinance(false);
+  assert.equal(service.processPending().ok,true);
+  const second=service.transfer({id:'ai-transfer-sequential-second',fromClubId:'club-b',toClubId:'club-a',playerId:'system-player-1',fee:1100});
+  assert.equal(second.ok,true);
+  assert.equal(f.manager.getClub('club-a').roster.filter(p=>p.id==='system-player-1').length,1);
+  assert.equal(f.manager.getClub('club-b').roster.some(p=>p.id==='system-player-1'),false);
+  assert.equal(service.transfer(firstRequest).alreadyCompleted,true);
+ } finally {f.cleanup();}
+});
+
 test('P27 lot 97 : reprend les trois checkpoints financiers d’un transfert IA sans double écriture',()=>{
  for (const failureCall of [1,2,3]) {
   const f=setup();
