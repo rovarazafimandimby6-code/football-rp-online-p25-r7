@@ -22,7 +22,7 @@ test('P27 catalogue UI : affiche les cinq divisions et les conférences D4/D5',(
 test('P27 catalogue UI : distingue les clubs à admission ouverte des clubs réservés au système',()=>{
   assert.match(main,/humanAdmission==='system-only'/);
   assert.match(main,/ADMISSION OUVERTE/);
-  assert.match(main,/RÉSERVÉ AU SYSTÈME/);
+  assert.match(main,/RÉSERVÉ AUX JOUEURS DU SYSTÈME/);
 });
 
 test('P27 catalogue UI : conserve le catalogue local si le serveur est indisponible',()=>{
