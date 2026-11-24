@@ -403,6 +403,7 @@ test('P27 intégrité carrière : tolère temporairement un effectif absent si l
  const input=cleanWorld();
  input.transferState.careers[0].playerId='human-pending';
  input.transferState.careers[0].contract.playerId='human-pending';
+ input.transferState.events=[{id:'event-pending',type:'signing',playerId:'human-pending'}];
  input.transferState.rosterSync=[{
   id:'roster-event-pending',eventId:'event-pending',playerId:'human-pending',action:'upsert',clubId:'club-a',
   contract:{status:'active',playerId:'human-pending',clubId:'club-a',salary:100},status:'pending',attempts:0,
