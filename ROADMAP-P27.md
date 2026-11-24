@@ -499,3 +499,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Tester le parcours complet de la coupe : 155 rencontres, progression des vainqueurs, finale et attribution unique du trophée.
 - [x] Validation GitHub Actions sur le commit `814732e34f8ae6f448810aab631917feeba86dcc` : 420/420 tests réussis, 0 échec ; vérification syntaxique JavaScript réussie.
 - Limite : le tableau et son moteur de progression sont testés côté serveur ; l'automatisation du calendrier réel, les dates des rencontres et la présentation complète des compétitions dans l'interface restent à développer.
+
+
+### Lot 44 — fondations éditoriales des identités de clubs (intégré, contenu à valider)
+- [x] Générer pour chacun des 156 clubs une fiche éditoriale stable : origine fictive, année de fondation indicative, archétype identitaire, philosophie sportive et culture des supporters.
+- [x] Distinguer six archétypes et quatre types d'origine, dont les clubs issus d'une fusion fictive.
+- [x] Marquer explicitement toutes les fiches générées comme brouillons éditoriaux afin de ne pas présenter des histoires non validées comme un canon officiel.
+- [x] Ne créer aucune rivalité active automatiquement ; le statut reste « non attribué » tant qu'une relation n'est pas renseignée explicitement.
+- [x] Préserver et cloner les métadonnées de lore dans le gestionnaire de clubs.
+- [x] Ajouter des tests sur la couverture des 156 clubs, la stabilité des données, les statuts provisoires et la conservation des rivalités explicites.
+- Limite : les biographies, les fusions nommées, les dates historiques définitives et les rivalités restent à écrire/valider club par club ; les champs générés constituent une base de travail, pas une histoire officielle.

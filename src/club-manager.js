@@ -1,6 +1,7 @@
 import { generateClubRoster } from './club-roster.js';
 import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './league-structure.js';
 import { generateClubCharacteristics, generateClubRecruitmentProfile, generateClubStrategicProfile, balanceClubRosterQuality } from './club-profile.js';
+import { generateClubLore } from './p27-club-lore.js';
 import { P27_EXPANSION_CLUBS } from './p27-club-expansion.js';
 
 const safeId = value => String(value ?? '').trim().slice(0, 48);
@@ -14,7 +15,7 @@ const normalizePlayerLoyalty = loyalty => ({
   departurePolicy: ['no-normal-exit','reluctant','balanced','ambitious'].includes(loyalty?.departurePolicy) ? loyalty.departurePolicy : 'balanced'
 });
 const clonePlayer = player => ({ ...player, loyalty: player.loyalty ? { ...player.loyalty } : null, attributes: player.attributes ? { ...player.attributes } : null, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
-const cloneClub = club => ({ ...club, location: club.location ? { ...club.location } : null, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, strategicProfile: club.strategicProfile ? { ...club.strategicProfile, competitiveVariance: { ...club.strategicProfile.competitiveVariance } } : null, recruitmentProfile: club.recruitmentProfile ? { ...club.recruitmentProfile, nationalityCodes: [...(club.recruitmentProfile.nationalityCodes || [])] } : null, roster: club.roster.map(clonePlayer) });
+const cloneClub = club => ({ ...club, location: club.location ? { ...club.location } : null, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, strategicProfile: club.strategicProfile ? { ...club.strategicProfile, competitiveVariance: { ...club.strategicProfile.competitiveVariance } } : null, clubLore: club.clubLore ? { ...club.clubLore, rivalries: (club.clubLore.rivalries || []).map(item => ({ ...item })) } : null, recruitmentProfile: club.recruitmentProfile ? { ...club.recruitmentProfile, nationalityCodes: [...(club.recruitmentProfile.nationalityCodes || [])] } : null, roster: club.roster.map(clonePlayer) });
 
 const normalizeRosterPlayer = (player, club, index = 0) => {
   const rating = Number(player?.rating);
@@ -149,6 +150,7 @@ export class ClubManager {
       normalized.recruitmentProfile = generateClubRecruitmentProfile({ ...input, id, division: normalized.division, countryCode: normalized.countryCode, humanAdmission: normalized.humanAdmission });
       normalized.humanAdmission = normalized.recruitmentProfile.humanAdmission;
       normalized.strategicProfile = generateClubStrategicProfile({ ...normalized, ...input });
+      normalized.clubLore = input.clubLore && typeof input.clubLore === 'object' ? { ...generateClubLore({ ...normalized, ...input }), ...input.clubLore, rivalries: Array.isArray(input.clubLore.rivalries) ? input.clubLore.rivalries.filter(item => item && typeof item.clubId === 'string').map(item => ({ clubId:item.clubId, type:String(item.type || 'sporting'), status:item.status === 'active' ? 'active' : 'proposed' })) : [] } : generateClubLore({ ...normalized, ...input });
       if (normalized.humanAdmission === 'system-only') normalized.control = 'ai';
       normalized.roster = seedDefaultRosters ? balanceClubRosterQuality(
         generateClubRoster({ ...normalized, recruitmentProfile: normalized.recruitmentProfile }, { size: Math.min(normalized.initialRosterSize, normalized.capacity), usedNames: globallyUsedNames }),

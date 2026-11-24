@@ -10,6 +10,30 @@ import { resolveMatchClub } from '../server/club-catalog.js';
 import { DEFAULT_CLUBS } from '../src/club-manager.js';
 import { P27_EXPANSION_CLUBS } from '../src/p27-club-expansion.js';
 
+import { generateClubLore, P27_CLUB_LORE_ARCHETYPES, P27_CLUB_LORE_ORIGINS } from '../src/p27-club-lore.js';
+import { ClubManager } from '../src/club-manager.js';
+
+test('P27 identité : les 156 clubs possèdent une fiche éditoriale stable et explicitement provisoire',()=>{
+  assert.equal(DEFAULT_CLUBS.length,156);
+  const manager=new ClubManager(DEFAULT_CLUBS,null,'p27-lore-catalog-test');
+  const clubs=manager.listClubs();
+  assert.equal(clubs.length,156);
+  assert.ok(clubs.every(club=>club.clubLore?.contentStatus==='generated-draft'));
+  assert.ok(clubs.every(club=>P27_CLUB_LORE_ARCHETYPES.some(item=>item.id===club.clubLore.identityArchetype)));
+  assert.ok(clubs.every(club=>P27_CLUB_LORE_ORIGINS.includes(club.clubLore.originType)));
+  assert.ok(clubs.every(club=>club.clubLore.rivalryStatus==='unassigned'&&club.clubLore.rivalries.length===0));
+  assert.ok(new Set(clubs.map(club=>club.clubLore.foundedYear)).size>1);
+  assert.deepEqual(generateClubLore(clubs[0]),generateClubLore(clubs[0]));
+});
+
+test('P27 identité : une rivalité explicite est conservée sans en inventer automatiquement',()=>{
+  const clubs=new ClubManager([{id:'lore-custom',name:'Lore Custom',city:'Tana',clubLore:{rivalries:[{clubId:'other-club',type:'geographic',status:'active'}]}}],null,'p27-lore-custom-test');
+  const club=clubs.getClub('lore-custom');
+  assert.equal(club.clubLore.rivalries.length,1);
+  assert.deepEqual(club.clubLore.rivalries[0],{clubId:'other-club',type:'geographic',status:'active'});
+  assert.equal(clubs.listClubs()[0].clubLore.rivalries.length,1);
+});
+
 test('P27: les salons associent uniquement des clubs fictifs connus du catalogue', () => {
   const manager = new RoomManager();
   const created = manager.create({ blueClubId: 'fianarantsoa-athletic', redClubId: 'antananarivo-fc' });
