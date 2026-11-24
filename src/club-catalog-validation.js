@@ -19,7 +19,7 @@ export function auditClubCatalog(clubs = []) {
   const names = new Map();
   const stadiums = new Map();
   const divisionCounts = Object.fromEntries(LEAGUE_DIVISIONS.map(item => [item.id, 0]));
-  const conferenceCounts = { D4:{ Nord:0, Sud:0 }, D5:{ Nord:0, Sud:0, Est:0, Ouest:0 } };
+  const conferenceCounts = { D4:{ A:0, B:0 }, D5:{ A:0, B:0, C:0, D:0 } };
   const systemOnlyCounts = Object.fromEntries(LEAGUE_DIVISIONS.map(item => [item.id, 0]));
   const playerIds = new Set();
   const quality = { named:0, located:0, stadiums:0, visualIdentities:0, rated:0, budgeted:0, rostered:0 };
