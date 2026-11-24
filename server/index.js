@@ -11,6 +11,7 @@ import { JsonProgressionStore } from './progression-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
+import { P27SystemTransferService } from './system-transfer-service.js';
 import { JsonClubRosterStorage } from './club-roster-storage.js';
 import { processPendingRosterSync } from './roster-sync-service.js';
 import { P27ClubWorldService } from './club-world-service.js';
@@ -54,6 +55,10 @@ function syncPendingHumanRosters() {
 const startupRosterSync = syncPendingHumanRosters();
 if (startupRosterSync.processed.length) process.stdout.write(`P27 human roster sync recovered: ${startupRosterSync.processed.length} operation(s)\\n`);
 const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs:[...serverClubManager.clubs.values()], transferStore });
+const systemTransferDirectory = process.env.SYSTEM_TRANSFERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'system-transfers');
+const systemTransfers = new P27SystemTransferService(systemTransferDirectory, { clubManager:serverClubManager, financeService:clubFinance });
+const recoveredSystemTransfers = systemTransfers.processPending();
+if (recoveredSystemTransfers.processed) process.stdout.write(`P27 AI transfer recovery: ${recoveredSystemTransfers.processed} operation(s) processed\\n`);
 function configuredSystemWageBudgets() {
   try {
     const parsed = JSON.parse(process.env.P27_SYSTEM_WEEKLY_WAGE_BUDGETS || '{}');
@@ -120,6 +125,16 @@ const server = http.createServer(async (req, res) => {
         resultArchive:resultStore.readAll()
       });
       return json(res, audit.ok ? 200 : 409, audit);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/admin/system-transfers') {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
+      const body = await readBody(req);
+      const result = systemTransfers.transfer({
+        id:body.id, fromClubId:body.fromClubId, toClubId:body.toClubId,
+        playerId:body.playerId, fee:body.fee
+      });
+      return json(res, result.ok ? 200 : (result.pending ? 202 : 409), result);
     }
     if (req.method === 'GET' && url.pathname === '/api/rooms') return json(res, 200, { rooms: manager.list() });
     if (req.method === 'GET' && url.pathname === '/api/players/library') {
