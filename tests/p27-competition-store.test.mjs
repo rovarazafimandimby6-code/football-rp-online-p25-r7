@@ -466,3 +466,38 @@ test('P27 match officiel : peut réessayer la finalisation si la validation du r
   assert.equal(saves,2);
  }finally{f.cleanup();}
 });
+
+
+test('P27 compétitions : restaure le classement en mémoire si l’écriture du résultat échoue',()=>{
+ const f=setup();try{
+  const league=f.store.snapshot().competitions.find(c=>c.type==='league');
+  const fixture=league.fixtures[0];
+  const persist=f.store.persist.bind(f.store);
+  f.store.persist=()=>{throw new Error('disk unavailable');};
+  assert.throws(()=>f.store.recordFixtureResult(fixture.id,{roomId:'atomic-result-room',homeGoals:3,awayGoals:1}),/disk unavailable/);
+  assert.equal(f.store.getFixture(fixture.id).status,'scheduled');
+  assert.equal(f.store.snapshot().competitions.find(c=>c.id===league.id).standings.reduce((sum,row)=>sum+row.played,0),0);
+  f.store.persist=persist;
+  assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'atomic-result-room',homeGoals:3,awayGoals:1}).ok,true);
+  assert.equal(f.store.getFixture(fixture.id).status,'completed');
+ }finally{f.cleanup();}
+});
+
+test('P27 saisons : annule en mémoire les mouvements si la sauvegarde de transition échoue',()=>{
+ const f=setup();try{
+  for(const competition of f.store.activeSeason.competitions) competition.status='completed';
+  finishPromotionPlayoffs(f.store);
+  const preview=f.store.previewSeasonMovements();
+  assert.equal(preview.ok,true);
+  const before=[...f.store.clubs.values()].map(club=>[club.id,club.division,club.conference]);
+  const persist=f.store.persist.bind(f.store);
+  f.store.persist=()=>{throw new Error('disk unavailable');};
+  assert.throws(()=>f.store.finalizeSeason({nextSeasonId:'atomic-next-season',movements:preview.movements,completedAt:2000}),/disk unavailable/);
+  assert.equal(f.store.activeSeason.id,'test-season');
+  assert.deepEqual([...f.store.clubs.values()].map(club=>[club.id,club.division,club.conference]),before);
+  assert.equal(f.store.seasonHistory().length,1);
+  f.store.persist=persist;
+  assert.equal(f.store.finalizeSeason({nextSeasonId:'atomic-next-season',movements:preview.movements,completedAt:2000}).ok,true);
+  assert.equal(f.store.activeSeason.id,'atomic-next-season');
+ }finally{f.cleanup();}
+});
