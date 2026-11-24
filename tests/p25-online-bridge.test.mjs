@@ -105,6 +105,7 @@ test('P27 banc : le joueur humain perd ses commandes et passe en caméra spectat
   f.controls.setBenchMode = value => benchChanges.push(value);
   const bridge = new OnlineMatchBridge({ ...f, camera, now: () => 1000 });
   bridge.bindJoin({ playerId: 'human-1' });
+  const originalHumanAvatar = f.players.find(player => player.team === 'blue' && player.slotIndex === 0);
   bridge.applyState({ sequence: 1, phase: 'playing', players: [
     { id: 'human-1', team: 'blue', slot: 0, isOnPitch: false, x: 0, z: 0, vx: 0, vz: 0, facing: 0 }
   ], ball: null });
@@ -145,5 +146,6 @@ test('P27 rotations synchronisées : le contrôle unique suit le joueur qui chan
     {id:'reserve-1',team:'blue',slot:0,x:1,z:1,vx:0,vz:0,facing:0,isOnPitch:true}
   ], ball:null });
   assert.equal(f.players.filter(player => player.isControlled).length, 1);
-  assert.equal(f.players.find(player => player.isControlled).slotIndex, 5);
+  assert.equal(f.players.find(player => player.isControlled), originalHumanAvatar);
+  assert.equal(originalHumanAvatar.slotIndex, 5);
 });

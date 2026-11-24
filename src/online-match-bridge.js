@@ -58,7 +58,7 @@ export class OnlineMatchBridge {
   _resolvePlayer(serverPlayer) {
     const key = `${serverPlayer.team}:${serverPlayer.slot}`;
     let local = this.remoteIds.get(serverPlayer.id);
-    if (local && local.team === serverPlayer.team && local.slotIndex === serverPlayer.slot) return local;
+    if (local && local.team === serverPlayer.team) return local;
     local = this.players.find(player => player.team === serverPlayer.team && player.slotIndex === serverPlayer.slot);
     if (local) this.remoteIds.set(serverPlayer.id, local);
     if (!local && this.onResolveMissingPlayer) {
