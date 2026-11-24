@@ -30,6 +30,14 @@ test('P27 conférences : les clubs D4/D5 portent une affectation explicite indé
   assert.ok(regionalClubs.every(club=>conferenceForClub(club)===club.conference));
 });
 
+test('P27 catalogue : les villes restent descriptives sans coordonnées ni classement automatique',()=>{
+  assert.ok(DEFAULT_CLUBS.every(club=>!Object.hasOwn(club,'latitude')&&!Object.hasOwn(club,'longitude')&&!Object.hasOwn(club,'coordinates')));
+  const regional=DEFAULT_CLUBS.filter(club=>club.division==='D4'||club.division==='D5');
+  assert.equal(regional.length,96);
+  assert.ok(regional.every(club=>['A','B','C','D'].includes(club.conference)));
+  assert.ok(DEFAULT_CLUBS.every(club=>typeof club.city==='string'&&club.city.length>0));
+});
+
 test('P27 audit profils : les 156 clubs ont leurs caractéristiques, stratégie, recrutement et lore', () => {
   const audit = auditClubRuntimeProfiles(new ClubManager().listClubs());
   assert.equal(audit.complete, true, JSON.stringify(audit.issues.slice(0, 20)));
