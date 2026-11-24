@@ -286,6 +286,25 @@ test('P27 intégrité monde : relie une carrière humaine à son unique inscript
  assert.equal(result.warnings.some(item=>item.code==='CAREER_PLAYER_NOT_IN_ROSTER'),false);
 });
 
+test('P27 intégrité monde : compare le salaire, le club, le joueur et l’échéance du contrat inscrit à la carrière',()=>{
+ const input=cleanWorld();
+ const career=input.transferState.careers[0];
+ career.playerId='human-contract-a';
+ career.contract.playerId='human-contract-a';
+ input.clubs[0].roster.push({id:'human-contract-a',number:2,playerType:'human',contract:{
+  status:'active',clubId:'club-a',playerId:'human-contract-a',salary:100,weeklyWage:100,
+  signedAt:career.contract.signedAt,expiresAt:career.contract.expiresAt
+ }});
+ assert.equal(auditP27World(input).ok,true);
+ input.clubs[0].roster[1].contract.salary=125;
+ input.clubs[0].roster[1].contract.weeklyWage=125;
+ input.clubs[0].roster[1].contract.expiresAt='2028-01-01T00:00:00.000Z';
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('CAREER_ROSTER_CONTRACT_SALARY_MISMATCH'));
+ assert.ok(codes.includes('CAREER_ROSTER_CONTRACT_EXPIRY_MISMATCH'));
+});
+
 test('P27 intégrité monde : signale une carrière active absente de l’effectif sans bloquer les anciens mondes',()=>{
  const input=cleanWorld();
  input.transferState.careers[0].playerId='human-account-missing';
