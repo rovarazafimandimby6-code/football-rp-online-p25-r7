@@ -108,6 +108,32 @@ test('P27 intégrité mercato IA : détecte une écriture financière sans outbo
  assert.ok(result.errors.some(item=>item.code==='SYSTEM_TRANSFER_FINANCE_OUTBOX_MISSING'));
 });
 
+test('P27 intégrité financière : détecte une écriture débit/crédit présente avant son checkpoint outbox',()=>{
+ const input=cleanWorld();
+ input.clubs[1].roster.push({id:'player-b',number:2,playerType:'system',contract:{status:'active',clubId:'club-b',playerId:'player-b'}});
+ input.financeAccounts=[
+  {clubId:'club-a',openingBalance:100,balance:80,entries:[
+   {id:'wage-1',category:'wages',amount:10,direction:'expense',createdAt:1000},
+   {id:'transfer-fee-out-ai-ledger-ahead-debit',category:'transfer-expense',amount:10,direction:'expense',createdAt:1001}
+  ]},
+  {clubId:'club-b',openingBalance:100,balance:110,entries:[
+   {id:'transfer-fee-in-ai-ledger-ahead-credit',category:'transfer-income',amount:10,direction:'income',createdAt:1001}
+  ]}
+ ];
+ input.systemTransferState={version:1,transfers:[
+  {id:'ai-ledger-ahead-debit',playerId:'player-a',fromClubId:'club-a',toClubId:'club-b',fee:10,createdAt:1001,status:'pending'},
+  {id:'ai-ledger-ahead-credit',playerId:'player-b',fromClubId:'club-b',toClubId:'club-a',fee:10,createdAt:1001,status:'pending'}
+ ]};
+ input.financeJournal={transfers:[
+  {id:'ai-ledger-ahead-debit',fromClubId:'club-b',toClubId:'club-a',fee:10,status:'pending',debitPosted:false,creditPosted:false},
+  {id:'ai-ledger-ahead-credit',fromClubId:'club-a',toClubId:'club-b',fee:10,status:'pending',debitPosted:false,creditPosted:false}
+ ]};
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('TRANSFER_FINANCE_DEBIT_UNEXPECTED_ENTRY'));
+ assert.ok(codes.includes('TRANSFER_FINANCE_CREDIT_UNEXPECTED_ENTRY'));
+});
+
 test('P27 clubs : synchronise les divisions et conférences officielles après transition',()=>{
  const club={id:'club-a',division:'D2',conference:null};
  const manager={clubs:new Map([['club-a',club]]),saveSeason:()=>true};
