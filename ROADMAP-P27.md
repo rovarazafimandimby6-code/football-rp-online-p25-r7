@@ -1231,3 +1231,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 160 : documenter les sondes pour l'orchestrateur et les exigences de délai d'arrêt. Rappeler que SIGKILL, coupure électrique, perte de volume et multi-instance ne sont pas couverts par un arrêt gracieux.
 - [x] Validation GitHub Actions : [run 45481037985](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45481037985), **729/729 tests réussis**, contrôle préflight et syntaxe JavaScript/MJS réussis.
 - [ ] Essais hébergeur et appareil Android restent externes au dépôt ; aucune candidate, release ou publication n'est déclarée.
+
+### Lots 161–164 — réduction des écritures disque multi-salons
+- [x] Lot 161 : ajouter `JsonRoomStore.saveMany()` ; valider tout le lot avant écriture, vérifier le plafond global, puis remplacer atomiquement le fichier avec l'ensemble des checkpoints.
+- [x] Lot 162 : regrouper les checkpoints périodiques collectés pendant un tick de `RoomManager` en une seule écriture, au lieu d'une réécriture complète du fichier par salon.
+- [x] Lot 163 : utiliser le même chemin groupé pour le flush d'arrêt ; conserver les sauvegardes immédiates des mutations importantes (`create`, `join`, rotations, etc.).
+- [x] Lot 164 : tester l'écriture unique pour plusieurs matchs, l'absence de sauvegarde partielle sur lot invalide, le respect du plafond et la remontée d'échec au shutdown.
+- [x] Validation GitHub Actions : [run 45482046537](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45482046537), **732/732 tests réussis**, préflight et contrôle syntaxique réussis.
+- Gain attendu : pour un tick où plusieurs salons atteignent leur échéance, une seule sérialisation/écriture du fichier commun au lieu d'une écriture par salon. Aucun chiffre de débit ou de capacité en production n'est revendiqué sans benchmark sur l'hébergeur cible.
+- Limite : les checkpoints restent un fichier JSON partagé et une seule instance serveur ; cette optimisation ne fournit ni verrouillage multi-processus, ni réplication, ni garantie de volume durable.
