@@ -19,6 +19,7 @@ export function resolveMatchClub(id) {
     rating: club.rating,
     colors: Object.freeze([...club.colors]),
     stadium: club.stadium,
+    roster: club.roster.map(player => ({ ...player, attributes: player.attributes ? { ...player.attributes } : null })),
   });
 }
 
