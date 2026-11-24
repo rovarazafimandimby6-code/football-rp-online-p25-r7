@@ -11,14 +11,14 @@ test('P27 intégrité des groupes : chaque membre conserve sa division et sa con
     const store=new JsonCompetitionStore(directory,{seasonId:'membership-audit'});
     const snapshot=store.snapshot();
     assert.equal(snapshot.scheduleAudit.ok,true,JSON.stringify(snapshot.scheduleAudit.errors));
-    const d4=store.activeSeason.competitions.find(item=>item.division==='D4'&&item.conference==='Nord');
-    assert.ok(d4.members.every(member=>member.division==='D4'&&member.conference==='Nord'));
+    const d4=store.activeSeason.competitions.find(item=>item.division==='D4'&&item.conference==='A');
+    assert.ok(d4.members.every(member=>member.division==='D4'&&member.conference==='A'));
     const changed=d4.members[0];
     changed.division='D5';
     let audit=store.snapshot().scheduleAudit;
     assert.ok(audit.errors.some(item=>item.reason==='member-division-mismatch'&&item.clubId===changed.id));
     changed.division='D4';
-    changed.conference='Sud';
+    changed.conference='B';
     audit=store.snapshot().scheduleAudit;
     assert.ok(audit.errors.some(item=>item.reason==='member-conference-mismatch'&&item.clubId===changed.id));
   } finally {
