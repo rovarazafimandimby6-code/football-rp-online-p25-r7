@@ -27,6 +27,23 @@ test('P27 intégrité monde : accepte un ensemble cohérent de clubs, contrats, 
  assert.equal(result.counts.completedFixtures,1);
 });
 
+test('P27 intégrité contrats IA : détecte un contrat actif expiré encore inscrit',()=>{
+ const input=cleanWorld();
+ input.clubs[0].roster[0].contract.expiresAt='2020-01-01T00:00:00.000Z';
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='SYSTEM_CONTRACT_EXPIRED_STILL_REGISTERED'&&item.playerId==='player-a'));
+});
+
+test('P27 intégrité contrats IA : refuse une archive de fin de contrat qui conserve un contrat actif',()=>{
+ const input=cleanWorld();
+ input.clubs[0].releasedPlayers=[{
+  player:{id:'expired-archive-player',playerType:'system',contract:{status:'active',clubId:'club-a',playerId:'expired-archive-player'}},
+  releasedAt:'2026-01-01T00:00:00.000Z',reason:'contract-not-renewed'
+ }];
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='EXPIRED_SYSTEM_PLAYER_ARCHIVE_HAS_ACTIVE_CONTRACT'));
+});
+
 test('P27 intégrité monde : détecte les doublons d’effectif et les écarts de grand livre',()=>{
  const input=cleanWorld();
  input.clubs[0].roster.push({id:'player-a',number:1,playerType:'human'});
