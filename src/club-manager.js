@@ -296,6 +296,86 @@ export class ClubManager {
     this.saveSeason(); return { ok: true, rosterSize: club.roster.length, number: normalized.number };
   }
 
+  syncHumanCareer({ playerId, clubId = null, previousClubId = null, contract = null, name = 'Joueur humain', reason = 'contract-change' } = {}) {
+    const id = safeId(playerId);
+    if (!id || !id.startsWith('human-')) return { ok:false, reason:'invalid-human-player-id' };
+    const target = clubId ? this.clubs.get(safeId(clubId)) : null;
+    if (clubId && !target) return { ok:false, reason:'target-club-not-found' };
+    const memberships = [...this.clubs.values()].flatMap(item => item.roster.filter(player => player.id === id).map(player => ({ club:item, player })));
+    if (memberships.length > 1) return { ok:false, reason:'duplicate-human-membership' };
+    if (memberships.length && memberships[0].player.playerType !== 'human') return { ok:false, reason:'player-id-owned-by-system' };
+    if (memberships.length && previousClubId && memberships[0].club.id !== previousClubId && memberships[0].club.id !== clubId)
+      return { ok:false, reason:'previous-club-mismatch' };
+    if (target) {
+      const existing = memberships[0] || null;
+      if (existing?.club === target) {
+        const nextContract = contract && contract.status === 'active' ? {
+          ...contract, playerId:id, clubId:target.id,
+          salary:Math.max(0, Math.floor(Number(contract.salary) || 0)),
+          weeklyWage:Math.max(0, Math.floor(Number(contract.salary) || 0))
+        } : existing.player.contract;
+        const snapshot = clonePlayer(existing.player);
+        existing.player.contract = nextContract ? { ...nextContract } : existing.player.contract;
+        if (!this.saveSeason()) { existing.club.roster[existing.club.roster.findIndex(player => player.id === id)] = snapshot; return { ok:false, reason:'roster-persistence-failed' }; }
+        return { ok:true, action:'updated', clubId:target.id, playerId:id };
+      }
+      if (target.humanAdmission === 'system-only') return { ok:false, reason:'human-admission-closed' };
+      if (target.roster.length >= target.capacity) return { ok:false, reason:'roster-full' };
+      const targetHumanCount = target.roster.filter(player => player.playerType === 'human' && player.id !== id).length;
+      if (targetHumanCount >= 7) return { ok:false, reason:'human-player-limit' };
+      const assignedNumber = availableShirtNumber(target, existing?.player.number ?? 1, id);
+      if (!assignedNumber) return { ok:false, reason:'shirt-numbers-full' };
+      const snapshots = new Map([...this.clubs.values()].map(item => [item.id, {
+        roster:item.roster.map(clonePlayer),
+        releasedPlayers:(item.releasedPlayers || []).map(entry => ({ ...entry, player:clonePlayer(entry.player) }))
+      }]));
+      if (existing) {
+        existing.club.roster = existing.club.roster.filter(player => player.id !== id);
+        existing.club.releasedPlayers.push({ player:clonePlayer(existing.player), releasedAt:new Date().toISOString(), reason:'transferred' });
+        existing.club.releasedPlayers = existing.club.releasedPlayers.slice(-100);
+      }
+      const source = existing?.player || {};
+      const normalized = normalizeRosterPlayer({
+        ...source, id, name:cleanText(name, source.name || 'Joueur humain', 36),
+        playerType:'human', controlStatus:'human',
+        contract:contract && contract.status === 'active' ? {
+          ...contract, playerId:id, clubId:target.id,
+          salary:Math.max(0, Math.floor(Number(contract.salary) || 0)),
+          weeklyWage:Math.max(0, Math.floor(Number(contract.salary) || 0))
+        } : null
+      }, target, target.roster.length);
+      normalized.number = assignedNumber;
+      target.roster.push(normalized);
+      if (!this.saveSeason()) {
+        for (const item of this.clubs.values()) {
+          const snapshot = snapshots.get(item.id);
+          item.roster = snapshot.roster;
+          item.releasedPlayers = snapshot.releasedPlayers;
+        }
+        return { ok:false, reason:'roster-persistence-failed' };
+      }
+      return { ok:true, action:existing ? 'transferred' : 'registered', fromClubId:existing?.club.id || previousClubId || null, clubId:target.id, playerId:id, number:assignedNumber, reason };
+    }
+    if (!memberships.length) return { ok:true, action:'already-released', playerId:id };
+    const existing = memberships[0];
+    const snapshots = new Map([...this.clubs.values()].map(item => [item.id, {
+      roster:item.roster.map(clonePlayer),
+      releasedPlayers:(item.releasedPlayers || []).map(entry => ({ ...entry, player:clonePlayer(entry.player) }))
+    }]));
+    existing.club.roster = existing.club.roster.filter(player => player.id !== id);
+    existing.club.releasedPlayers.push({ player:clonePlayer(existing.player), releasedAt:new Date().toISOString(), reason:reason === 'contract-expired' ? 'contract-expired' : 'released' });
+    existing.club.releasedPlayers = existing.club.releasedPlayers.slice(-100);
+    if (!this.saveSeason()) {
+      for (const item of this.clubs.values()) {
+        const snapshot = snapshots.get(item.id);
+        item.roster = snapshot.roster;
+        item.releasedPlayers = snapshot.releasedPlayers;
+      }
+      return { ok:false, reason:'roster-persistence-failed' };
+    }
+    return { ok:true, action:'released', previousClubId:existing.club.id, playerId:id };
+  }
+
   updatePlayer(clubId, player) {
     const club = this.clubs.get(safeId(clubId)); const id = safeId(player?.id);
     if (!club || !id) return { ok: false, reason: 'invalid-player' };
