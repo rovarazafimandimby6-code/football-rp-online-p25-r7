@@ -762,3 +762,11 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Recharger le magasin après l'échec et confirmer que l'ancienne saison reste la seule saison active.
 - [ ] Exécuter la suite CI complète sur le commit consolidé.
 
+
+
+## Clôture technique de la phase 1 — audit final renforcé
+- [x] Vérifier les catégories comptables autorisées, les montants plafonnés et les horodatages des écritures.
+- [x] Détecter les comptes financiers manquants pour les clubs du catalogue lorsque le grand livre est initialisé.
+- [x] Détecter les identifiants de fixture dupliqués entre plusieurs saisons, pas uniquement à l'intérieur d'une saison.
+- [x] Contrôler la structure du championnat d'une saison P27 : 9 groupes de ligue et 1 892 rencontres de ligue.
+- [ ] Dernière validation CI de la branche consolidée ; les limites multi-fichiers, archives historiques limitées et essais Android restent explicitement documentées.
