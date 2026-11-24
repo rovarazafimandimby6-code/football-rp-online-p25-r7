@@ -326,9 +326,13 @@ export function auditP27World({
     if (record.debitPosted && (!debit || debit.account.clubId !== record.fromClubId ||
         debit.entry.direction !== 'expense' || debit.entry.category !== 'transfer-expense' || debit.entry.amount !== record.fee))
       errors.push({ code:'TRANSFER_FINANCE_DEBIT_CHECKPOINT_MISMATCH', eventId:record.id });
+    if (!record.debitPosted && debit)
+      errors.push({ code:'TRANSFER_FINANCE_DEBIT_UNEXPECTED_ENTRY', eventId:record.id });
     if (record.creditPosted && (!credit || credit.account.clubId !== record.toClubId ||
         credit.entry.direction !== 'income' || credit.entry.category !== 'transfer-income' || credit.entry.amount !== record.fee))
       errors.push({ code:'TRANSFER_FINANCE_CREDIT_CHECKPOINT_MISMATCH', eventId:record.id });
+    if (!record.creditPosted && credit)
+      errors.push({ code:'TRANSFER_FINANCE_CREDIT_UNEXPECTED_ENTRY', eventId:record.id });
     if (record.status === 'completed' && (!record.debitPosted || !record.creditPosted))
       errors.push({ code:'TRANSFER_FINANCE_COMPLETION_INVALID', eventId:record.id });
     if (record.status !== 'completed' || !record.debitPosted || !record.creditPosted) pendingTransferSettlements++;
