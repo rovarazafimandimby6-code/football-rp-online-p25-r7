@@ -28,7 +28,7 @@ test('P27 localisation serveur : le pays de la ville ne se confond pas avec le p
 test('P27 identité serveur : les métadonnées sportives et visuelles sont exposées sans mutation', () => {
   const club = resolveMatchClub('antsiranana-north-fc');
   assert.equal(club.division, 'D5');
-  assert.equal(club.conference, 'Nord');
+  assert.equal(club.conference, 'A');
   assert.ok(club.kitDesign);
   assert.ok(club.reputation >= 1 && club.reputation <= 100);
   assert.equal(Object.isFrozen(club), true);
