@@ -17,6 +17,15 @@ test('P27 API HTTP : catalogue consultable, filtrable et protégé contre les fi
     assert.equal(all.clubs.length,100);
     assert.ok(all.clubs.every(club=>!Object.hasOwn(club,'roster')));
 
+    const structureResponse=await fetch(base+'/api/league-structure');
+    assert.equal(structureResponse.status,200);
+    const structure=await structureResponse.json();
+    assert.equal(structure.complete,true);
+    assert.equal(structure.currentClubCount,156);
+    assert.deepEqual(structure.divisionCounts,{D1:16,D2:20,D3:24,D4:32,D5:64});
+    assert.deepEqual(structure.conferenceCounts.D4,{Nord:16,Sud:16});
+    assert.deepEqual(structure.conferenceCounts.D5,{Nord:16,Sud:16,Est:16,Ouest:16});
+
     const conferenceResponse=await fetch(base+'/api/clubs?division=D4&conference=Nord');
     assert.equal(conferenceResponse.status,200);
     const conference=await conferenceResponse.json();

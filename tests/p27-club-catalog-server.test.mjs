@@ -35,3 +35,13 @@ test('P27 identité serveur : les métadonnées sportives et visuelles sont expo
   assert.equal(Object.isFrozen(club.colors), true);
   assert.throws(() => resolveMatchClub('unknown-club'), /INVALID_CLUB/);
 });
+
+test('P27 catalogue serveur : les affectations de saison actualisent les divisions dans les équipes de match', () => {
+  const club=DEFAULT_CLUBS.find(item=>item.id==='antsiranana-north-fc');
+  const updated={...club,division:'D4',conference:'Nord'};
+  const resolved=resolveMatchClub(club.id,new Map([[club.id,updated]]));
+  assert.equal(resolved.division,'D4');
+  assert.equal(resolved.conference,'Nord');
+  assert.equal(resolved.name,club.name);
+  assert.equal(resolved.roster.length,resolveMatchClub(club.id).roster.length);
+});

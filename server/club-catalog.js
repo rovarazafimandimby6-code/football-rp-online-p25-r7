@@ -75,11 +75,15 @@ const catalogManager = new ClubManager(DEFAULT_CLUBS, null, 'server-match-catalo
 const catalog = new Map(catalogManager.listClubs().map(club => [club.id, club]));
 
 /** Return a server-owned, immutable identity snapshot for a known fictional club. */
-export function resolveMatchClub(id) {
+export function resolveMatchClub(id, currentAssignments = null) {
   if (id === undefined || id === null || id === '') return null;
   if (typeof id !== 'string' || id.length > 48) throw new Error('INVALID_CLUB');
-  const club = catalog.get(id);
-  if (!club) throw new Error('INVALID_CLUB');
+  const baseClub = catalog.get(id);
+  if (!baseClub) throw new Error('INVALID_CLUB');
+  const current = currentAssignments instanceof Map
+    ? currentAssignments.get(id)
+    : Array.isArray(currentAssignments) ? currentAssignments.find(item=>item?.id===id) : null;
+  const club = current ? { ...baseClub, division:current.division || baseClub.division, conference:current.conference ?? null } : baseClub;
   return Object.freeze({
     id: club.id,
     name: club.name,

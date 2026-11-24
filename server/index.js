@@ -135,7 +135,19 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { loggedOut: true });
     }
     if (req.method === 'GET' && url.pathname === '/api/league-structure') {
-      return json(res, 200, { divisions: LEAGUE_DIVISIONS, conferences: CONFERENCE_NAMES, totalClubs: TOTAL_LEAGUE_CLUBS });
+      const clubs=[...competitionStore.clubs.values()];
+      const divisionCounts=Object.fromEntries(LEAGUE_DIVISIONS.map(item=>[item.id,clubs.filter(club=>club.division===item.id).length]));
+      const conferenceCounts={
+        D4:Object.fromEntries(CONFERENCE_NAMES.D4.map(name=>[name,clubs.filter(club=>club.division==='D4'&&club.conference===name).length])),
+        D5:Object.fromEntries(CONFERENCE_NAMES.D5.map(name=>[name,clubs.filter(club=>club.division==='D5'&&club.conference===name).length]))
+      };
+      const complete=clubs.length===TOTAL_LEAGUE_CLUBS &&
+        LEAGUE_DIVISIONS.every(item=>divisionCounts[item.id]===item.targetClubs) &&
+        [...Object.values(conferenceCounts.D4),...Object.values(conferenceCounts.D5)].every(count=>count===16);
+      return json(res,200,{
+        divisions:LEAGUE_DIVISIONS,conferences:CONFERENCE_NAMES,totalClubs:TOTAL_LEAGUE_CLUBS,
+        currentClubCount:clubs.length,divisionCounts,conferenceCounts,complete
+      });
     }
     if (req.method === 'GET' && url.pathname === '/api/competitions') {
       return json(res, 200, competitionStore.snapshot());

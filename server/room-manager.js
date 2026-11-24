@@ -20,8 +20,8 @@ export class RoomManager {
   }
 
   create({ name = 'Match rapide', durationMinutes = 5, blueClubId = null, redClubId = null, competitionFixtureId = null } = {}) {
-    const blueClub = resolveMatchClub(blueClubId);
-    const redClub = resolveMatchClub(redClubId);
+    const blueClub = resolveMatchClub(blueClubId, this.competitionStore?.clubs);
+    const redClub = resolveMatchClub(redClubId, this.competitionStore?.clubs);
     if (Boolean(blueClub) !== Boolean(redClub)) throw new Error('INVALID_CLUB_MATCHUP');
     if (blueClub && redClub && blueClub.id === redClub.id) throw new Error('INVALID_CLUB_MATCHUP');
     let competitionFixture = null;
