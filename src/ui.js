@@ -104,24 +104,41 @@ export class UIManager {
     }, this.listenerOptions);
   }
 
-  setBenchStatus(players, localPlayerId) {
+  setBenchStatus(players, localPlayerId, phase = 'playing', rotationRequests = []) {
     const local = players.find(player => player.id === localPlayerId);
     if (!local) return;
     if (!this.benchStatusEl) {
       const panel = document.createElement('div');
       panel.id = 'bench-status';
       panel.setAttribute('role', 'status');
-      panel.style.cssText = 'position:absolute;left:50%;top:15%;transform:translateX(-50%);z-index:18;max-width:min(88vw,520px);padding:9px 14px;border-radius:10px;background:rgba(8,13,20,.88);border:1px solid rgba(255,255,255,.2);color:#fff;font:700 12px/1.4 system-ui,sans-serif;text-align:center;letter-spacing:.04em;pointer-events:none;';
+      panel.style.cssText = 'position:absolute;left:50%;top:15%;transform:translateX(-50%);z-index:18;max-width:min(88vw,520px);padding:9px 14px;border-radius:10px;background:rgba(8,13,20,.92);border:1px solid rgba(255,255,255,.2);color:#fff;font:700 12px/1.4 system-ui,sans-serif;text-align:center;letter-spacing:.04em;pointer-events:none;';
+      const message = document.createElement('div');
+      message.dataset.benchMessage = 'true';
+      panel.appendChild(message);
+      const requestButton = document.createElement('button');
+      requestButton.type = 'button';
+      requestButton.textContent = 'DEMANDER À ENTRER';
+      requestButton.style.cssText = 'pointer-events:auto;margin-top:9px;padding:9px 14px;border:1px solid rgba(255,255,255,.35);border-radius:8px;background:#e6b84a;color:#171717;font:800 11px system-ui,sans-serif;letter-spacing:.04em;';
+      requestButton.addEventListener('click', () => this.callbacks.onRequestEntry?.(), this.listenerOptions);
+      panel.appendChild(requestButton);
+      this.benchStatusMessageEl = message;
+      this.benchRequestButton = requestButton;
       document.querySelector('main')?.appendChild(panel);
       this.benchStatusEl = panel;
     }
     const reserves = players.filter(player => player.team === local.team && player.isOnPitch === false);
     if (local.isOnPitch === false) {
       this.benchStatusEl.hidden = false;
-      this.benchStatusEl.textContent = `SUR LE BANC · ${reserves.length} RÉSERVISTE(S) · EN ATTENTE D’UNE ENTRÉE EN JEU`;
+      const pending = rotationRequests.some(request => request.playerId === localPlayerId);
+      this.benchStatusMessageEl.textContent = pending
+        ? `DEMANDE ENREGISTRÉE · ${reserves.length} RÉSERVISTE(S) · EN ATTENTE D’UN ARRÊT DE JEU`
+        : `SUR LE BANC · ${reserves.length} RÉSERVISTE(S) · EN ATTENTE D’UNE ENTRÉE EN JEU`;
+      this.benchRequestButton.hidden = pending || phase === 'fulltime' || phase === 'lobby';
+      this.benchRequestButton.disabled = pending || phase === 'fulltime' || phase === 'lobby';
     } else {
       this.benchStatusEl.hidden = true;
-      this.benchStatusEl.textContent = '';
+      this.benchStatusMessageEl.textContent = '';
+      this.benchRequestButton.hidden = true;
     }
   }
 

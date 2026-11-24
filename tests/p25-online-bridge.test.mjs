@@ -151,3 +151,16 @@ test('P27 rotations synchronisées : le contrôle unique suit le joueur qui chan
   assert.equal(bridge.remoteIds.get('human-1'), originalHumanAvatar);
   assert.equal(originalHumanAvatar.slotIndex, 5);
 });
+
+
+test('P27 banc : transmet une demande d'entrée uniquement depuis le banc', async () => {
+  const f = fixture();
+  let requests = 0;
+  f.client.requestEntry = async () => { requests++; return { queued: true }; };
+  const bridge = new OnlineMatchBridge({ ...f, now: () => 1000 });
+  bridge.bindJoin({ playerId: 'human-1' });
+  assert.equal(await bridge.requestEntry(), false);
+  bridge.setLocalBenchState(true, 'blue');
+  assert.equal(await bridge.requestEntry(), true);
+  assert.equal(requests, 1);
+});

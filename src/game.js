@@ -108,7 +108,7 @@ export class Game {
           this.match.timeLeft = Math.max(0, ((state.durationMs || 300000) - (state.elapsedMs || 0)) / 1000);
           const controlled = this.players.find(player => player.isControlled);
           if (controlled) this.activePlayer = controlled;
-          this.ui?.setBenchStatus?.(state.players || [], callbacks.onlineJoinResult.playerId);
+          this.ui?.setBenchStatus?.(state.players || [], callbacks.onlineJoinResult.playerId, state.phase, state.rotationRequests || []);
           if (state.phase === 'fulltime') this.match.phase = 'fulltime';
           else if (state.phase === 'halftime') this.match.phase = 'halftime';
           else if (state.phase === 'playing') this.match.phase = 'playing';
@@ -123,6 +123,14 @@ export class Game {
 
     this.ui = new UIManager(this.players, {
       onTogglePause: () => this.togglePause(),
+      onRequestEntry: async () => {
+        try {
+          const result = await this.onlineBridge?.requestEntry();
+          if (result?.queued) this.ui?.setStatus?.('DEMANDE D’ENTRÉE ENREGISTRÉE');
+        } catch (error) {
+          this.ui?.setStatus?.(`ENTRÉE : ${String(error?.message || 'demande impossible').slice(0, 42)}`);
+        }
+      },
       onOpenStats: () => this.ui.renderStats(this.match),
       onDuration: (minutes) => {
         const changed = this.match.setDurationMinutes(minutes);

@@ -130,6 +130,17 @@ export class OnlineMatchBridge {
     }
   }
 
+  async requestEntry() {
+    if (this.disposed || !this.localServerId || this.localOnPitch) return false;
+    try {
+      const result = await this.client.requestEntry();
+      return result?.queued === true;
+    } catch (error) {
+      this.onError?.(error);
+      throw error;
+    }
+  }
+
   async sendControls(at = this.now()) {
     if (this.disposed || !this.localServerId || !this.controls || !this.localOnPitch || this.lastState?.phase !== 'playing' || at < this.nextReconnectAt || at - this.lastInputAt < this.inputIntervalMs) return false;
     this.lastInputAt = at;
