@@ -77,6 +77,18 @@ Le barème P27 est désormais intégré et déclaré approuvé. Il conserve les 
 
 Le moteur conserve les résultats et archives des barrages, vérifie les listes de mouvements par rapport à l'aperçu approuvé, refuse les transitions prématurées et contrôle les capacités des neuf groupes. Un test automatise trois renouvellements consécutifs, avec rechargement du stockage et contrôle des 156 identifiants, des divisions, des conférences, des calendriers et de la Coupe.
 
+
+## Administration sécurisée du renouvellement de saison
+
+- Le renouvellement serveur est exposé par `POST /api/admin/competitions/season/finalize`.
+- L'accès exige `Authorization: Bearer <P27_ADMIN_TOKEN>`. Le secret doit contenir au moins 32 octets ; sa comparaison utilise `timingSafeEqual`.
+- Si le secret n'est pas configuré ou trop court, l'endpoint répond `503 ADMIN_TOKEN_NOT_CONFIGURED`. Un jeton incorrect reçoit `401 ADMIN_UNAUTHORIZED`.
+- Le client ne fournit jamais le barème des mouvements : le serveur calcule lui-même l'aperçu approuvé, puis transmet ces mouvements à `finalizeSeason`. Les saisons incomplètes ou les barrages non terminés sont refusés.
+- Configurer `P27_ADMIN_TOKEN` uniquement dans les variables d'environnement du serveur d'hébergement. Ne jamais le committer, le placer dans le code client ou l'exposer dans une réponse API.
+- Exemple de corps JSON : `{"nextSeasonId":"2027-28"}`.
+
+Le circuit de fin de match officiel a également été durci : un résultat de salle n'est désormais marqué comme finalisé qu'après acceptation et persistance du résultat dans le moteur de compétition. Si cette écriture échoue temporairement, la salle conserve l'état `fulltime` sans résultat et le tick serveur suivant retente l'enregistrement. Un test couvre l'échec transitoire puis la réussite au tick suivant.
+
 ## Validation CI
 
 - **539 tests réussis**
