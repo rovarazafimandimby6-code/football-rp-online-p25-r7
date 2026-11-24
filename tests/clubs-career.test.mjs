@@ -355,8 +355,8 @@ test('P27 catalogue: l’audit identifie les divisions, conférences et réserva
   assert.equal(audit.expectedTotal, 156);
   assert.equal(audit.complete, true);
   assert.deepEqual(audit.divisionCounts, { D1:16, D2:20, D3:24, D4:32, D5:64 });
-  assert.deepEqual(audit.conferenceCounts.D4, { Nord:16, Sud:16 });
-  assert.deepEqual(audit.conferenceCounts.D5, { Nord:16, Sud:16, Est:16, Ouest:16 });
+  assert.deepEqual(audit.conferenceCounts.D4, { A:16, B:16 });
+  assert.deepEqual(audit.conferenceCounts.D5, { A:16, B:16, C:16, D:16 });
   assert.ok(Object.values(audit.systemOnlyCounts).every(count => count >= 1));
   assert.equal(audit.errors.length, 0);
   assert.equal(audit.warnings.length, 0);
@@ -386,10 +386,10 @@ test('clubs: chaque club starter possède une implantation principale structuré
   assert.equal(clubs.getClub('manparis-sporting').location.city, 'Manchester');
 });
 
-test('géographie: la ville principale structurée prime sur le libellé historique composite', async () => {
+test('conférences: les affectations explicites priment sur les villes descriptives', async () => {
   const { conferenceForClub } = await import('../src/league-structure.js');
-  assert.equal(conferenceForClub({ division:'D5', city:'Ville inconnue / Nairobi', location:{ city:'Antsiranana' } }), 'Nord');
-  assert.equal(conferenceForClub({ division:'D5', city:'Nairobi / Antananarivo' }), 'Est');
+  assert.equal(conferenceForClub({ division:'D5', city:'Ville inconnue / Nairobi', location:{ city:'Antsiranana' }, conference:'A' }), 'A');
+  assert.equal(conferenceForClub({ division:'D5', city:'Nairobi / Antananarivo' }), null);
   assert.equal(conferenceForClub({ division:'D5', city:'Ville inconnue' }), null);
 });
 
