@@ -595,11 +595,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Contrôler les ressources, les coûts, les plafonds d'attributs et les identifiants d'attribut côté serveur.
 - [x] Refuser les actions non autorisées et les demandes de modification arbitraire de progression.
 - [x] Exposer des routes authentifiées de lecture et d'action ; les réponses retournent le nouvel état officiel.
-- Limite : le client local conserve encore ses anciens outils d'entraînement hors ligne ; l'interface de migration et de bascule complète vers le mode connecté reste à finaliser.
+- [x] Ajouter dans l'écran Compte les commandes connectées +1 PT et pratique +1/80 crédits, désactivées si les ressources sont insuffisantes ; afficher le retour serveur après chaque action.
+- Limite : le client local conserve encore ses anciens outils d'entraînement hors ligne ; la bascule complète des sessions invitées vers le mode connecté reste à finaliser.
 
 ### Lot 54 — tableau de bord de progression officielle (intégré)
 - [x] Ajouter au compte le niveau, l'expérience, les crédits et les points d'entraînement serveur.
 - [x] Afficher les six attributs officiels avec leur plafond de 99.
 - [x] Charger l'état depuis la route authentifiée ; ne pas afficher les valeurs locales comme progression compétitive officielle.
 - [x] Couvrir les récompenses, la persistance, les actions d'entraînement et la protection API par des tests.
-- Limite : le tableau de bord est en lecture ; les contrôles tactiles d'entraînement connectés et la transition guidée depuis les sauvegardes locales restent à intégrer.
+- [x] Relier les boutons d'amélioration de chaque attribut aux routes d'entraînement autoritaires et actualiser le tableau de bord après réponse serveur.
+- Limite : la transition guidée depuis les sauvegardes locales reste à intégrer ; aucune ancienne monnaie ou progression locale n'est importée automatiquement.
