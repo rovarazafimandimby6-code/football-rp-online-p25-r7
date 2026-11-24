@@ -26,6 +26,20 @@ test('P27 identité : les 156 clubs possèdent une fiche éditoriale stable et e
   assert.deepEqual(generateClubLore(clubs[0]),generateClubLore(clubs[0]));
 });
 
+test('P27 identité : les fiches éditoriales et rivalités explicites survivent au rechargement',()=>{
+  const values=new Map();
+  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value))};
+  const source=[{id:'lore-persist-a',name:'Lore A',city:'Tana',clubLore:{contentStatus:'approved',originType:'fictional-merger',foundedYear:1998,originSummary:'Histoire validée par la direction.',identityArchetype:'heritage',identityLabel:'Club de tradition',sportingPhilosophy:'Transmission.',supporterCulture:'Fidélité.',rivalries:[{clubId:'lore-persist-b',type:'historical',status:'active'}]}},{id:'lore-persist-b',name:'Lore B',city:'Toamasina'}];
+  const first=new ClubManager(source,storage,'lore-persist-test');
+  assert.equal(first.saveSeason(),true);
+  const restored=new ClubManager(source,storage,'lore-persist-test');
+  const lore=restored.getClub('lore-persist-a').clubLore;
+  assert.equal(lore.contentStatus,'approved');
+  assert.equal(lore.foundedYear,1998);
+  assert.equal(lore.originSummary,'Histoire validée par la direction.');
+  assert.deepEqual(lore.rivalries,[{clubId:'lore-persist-b',type:'historical',status:'active'}]);
+});
+
 test('P27 identité : une rivalité explicite est conservée sans en inventer automatiquement',()=>{
   const clubs=new ClubManager([{id:'lore-custom',name:'Lore Custom',city:'Tana',clubLore:{rivalries:[{clubId:'other-club',type:'geographic',status:'active'}]}}],null,'p27-lore-custom-test');
   const club=clubs.getClub('lore-custom');
