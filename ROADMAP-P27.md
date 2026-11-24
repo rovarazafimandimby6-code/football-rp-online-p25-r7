@@ -866,8 +866,10 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Vérifier le type système, le contrat actif, les clubs, les divisions D1–D5, l'unicité du joueur et la capacité de l'effectif.
 - [x] Relier le règlement au journal financier existant : le club acheteur est débité et le club vendeur crédité ; les identifiants comptables restent déterministes.
 - [x] Préserver la séparation entre budgets mercato et soldes comptables.
-- [ ] Ajouter/valider les tests d'intégration avec le véritable grand livre, les pannes de persistance du roster/outbox et la reprise complète en CI.
-- [ ] Définir et intégrer les critères sportifs de sélection automatique des transferts IA et la simulation déterministe du marché.
+- [x] Ajouter des tests de règlement avec le véritable grand livre, reprise financière après redémarrage et rollback en cas d'échec de persistance du roster.
+- [x] Ajouter une simulation déterministe du marché IA, fondée sur les besoins de poste, les effectifs, la proximité de division et la capacité financière comptable ; fenêtre identifiée et plafond de transferts.
+- [x] Exposer la simulation par route administrateur authentifiée `POST /api/admin/system-transfers/simulate`.
+- [ ] Valider l'ensemble en CI et compléter les scénarios de panne entre chaque checkpoint du journal comptable.
 
 - [ ] Ajouter une simulation de marché déterministe et des tests de reprise.
 
@@ -883,7 +885,9 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 #### Lot 87 — cycle de vie des contrats IA (socle existant, extension à compléter)
 - [x] Réutiliser les fonctions existantes de renouvellement, expiration, refus selon budget salarial et recrutement de remplacement.
 - [x] Enregistrer explicitement les refus sportifs de renouvellement dans le contrat IA, les conserver après rechargement, libérer le joueur à échéance et recruter un remplaçant pour restaurer l'effectif cible.
-- [ ] Étendre l'audit détaillé aux contrats IA expirés, aux archives de joueurs libres et aux contrats recréés après recrutement.
+- [x] Auditer les contrats IA actifs dont l'échéance est dépassée et les archives de fin de contrat qui conservent à tort un contrat actif.
+- [x] Ajouter les tests négatifs correspondants ; conserver les tests existants de refus sportif, expiration, archivage et recrutement d'un remplaçant.
+- [ ] Ajouter un scénario persistant complet de recrutement d'un joueur libre IA suivi d'un redémarrage et d'un nouvel audit d'intégrité.
 
 #### Lot 88 — registre et recrutement des joueurs IA libres (intégré)
 - [x] Construire le recrutement à partir des archives de joueurs libérés, en choisissant le dernier état connu et en évitant les doublons d'effectif.
