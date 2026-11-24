@@ -841,3 +841,10 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Vérifier qu'une échéance de salaire antérieure à un transfert reste imputée à l'ancien club et que l'échéance suivante est imputée au nouveau club.
 - [x] Valider la suite CI complète : **639/639 tests réussis, 0 échec**, contrôle de syntaxe JavaScript réussi ; commit testé `86adf37d749d97db89c84a9fa9892f46d4bd720b`, run [45447220340](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45447220340).
 - Limite : la paie humaine conserve son modèle actuel d'événements de carrière et de réconciliation idempotente ; les budgets du mercato et les soldes des grands livres comptables restent séparés. La saga carrière/effectif est rejouable, mais n'est pas une transaction ACID distribuée.
+
+
+### Lots 77–80 — audit paie, transferts et intégrité financière (en cours d'intégration)
+- [x] Lot 77 : contrôle des événements de salaire humain — carrière source, club de paiement, montant, nombre de périodes et horodatage.
+- [x] Lot 78 : contrôle des écritures du journal de paie — rejet des références sans événement métier source.
+- [x] Lot 79 : tests de non-régression couvrant les événements de paie orphelins, les clubs inconnus et les montants/dates invalides.
+- [ ] Lot 80 : validation CI complète sur la branche P27 et audit des résultats.
