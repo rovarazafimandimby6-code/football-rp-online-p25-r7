@@ -55,6 +55,13 @@ export class OnlineMatchBridge {
     this.localTeam = team || this.localTeam || null;
   }
 
+  setPreferredCameraMode(mode) {
+    if (!['player', 'broadcast', 'spectator', 'touchline', 'close', 'tactical'].includes(mode)) return false;
+    this.normalCameraMode = mode;
+    if (this.localOnPitch) this.camera?.setMode?.(mode);
+    return true;
+  }
+
   _resolvePlayer(serverPlayer) {
     const key = `${serverPlayer.team}:${serverPlayer.slot}`;
     let local = this.remoteIds.get(serverPlayer.id);
