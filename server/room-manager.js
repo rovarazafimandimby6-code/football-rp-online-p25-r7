@@ -46,15 +46,31 @@ export class RoomManager {
     }
   }
 
-  persistAllRooms() {
-    let saved = 0;
-    const failed = [];
-    for (const room of this.rooms.values()) {
-      if (!['lobby', 'playing', 'halftime'].includes(room.phase)) continue;
-      if (this.persistRoom(room)) saved++;
-      else failed.push({ roomId: room.id, reason: room.checkpointError || 'ROOM_CHECKPOINT_FAILED' });
+  persistRooms(rooms) {
+    const active = rooms.filter(room => ['lobby', 'playing', 'halftime'].includes(room.phase));
+    if (!active.length) return { saved: 0, failed: [] };
+    if (!this.roomStore) return { saved: active.length, failed: [] };
+    try {
+      const snapshots = active.map(room => this.serializeRoom(room));
+      this.roomStore.saveMany(snapshots);
+      const savedAt = this.now();
+      for (const room of active) {
+        this.lastCheckpointAt.set(room.id, savedAt);
+        delete room.checkpointError;
+      }
+      return { saved: active.length, failed: [] };
+    } catch (error) {
+      const reason = String(error?.message || 'ROOM_CHECKPOINT_FAILED').slice(0, 160);
+      for (const room of active) {
+        room.checkpointError = reason;
+        process.stderr.write(`P27 room checkpoint failed (${room.id}): ${reason}\\n`);
+      }
+      return { saved: 0, failed: active.map(room => ({ roomId: room.id, reason })) };
     }
-    return { saved, failed };
+  }
+
+  persistAllRooms() {
+    return this.persistRooms([...this.rooms.values()]);
   }
 
   restoreCheckpoints() {
@@ -354,6 +370,7 @@ export class RoomManager {
   tick(deltaSeconds) {
     const dt = clamp(Number.isFinite(deltaSeconds) ? deltaSeconds : 0, 0, 0.05);
     const now = this.now();
+    const checkpointRooms = [];
     for (const [id, room] of this.rooms) {
       const pendingOfficialResult = room.phase === 'fulltime' && !room.result;
       const roomExpired = now - room.updatedAt > this.roomTtlMs && room.phase !== 'playing' && room.phase !== 'halftime' && !pendingOfficialResult;
@@ -402,7 +419,7 @@ export class RoomManager {
         }
         for (const event of room.events) if (!Number.isSafeInteger(event.id)) event.id = room.nextEventId++;
         room.sequence++;
-        if (now - (this.lastCheckpointAt.get(id) ?? 0) >= 1_000) this.persistRoom(room);
+        if (now - (this.lastCheckpointAt.get(id) ?? 0) >= 1_000) checkpointRooms.push(room);
         continue;
       }
       if (room.phase !== 'playing') { room.lastTickAt = now; continue; }
@@ -459,8 +476,9 @@ export class RoomManager {
       }
       for (const event of room.events) if (!Number.isSafeInteger(event.id)) event.id = room.nextEventId++;
       room.sequence++;
-      if (now - (this.lastCheckpointAt.get(id) ?? 0) >= 1_000) this.persistRoom(room);
+      if (now - (this.lastCheckpointAt.get(id) ?? 0) >= 1_000) checkpointRooms.push(room);
     }
+    if (checkpointRooms.length) this.persistRooms(checkpointRooms);
   }
 
   tryFinalizeResult(room) {
