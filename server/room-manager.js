@@ -275,6 +275,10 @@ export class RoomManager {
       if (now - room.updatedAt > this.roomTtlMs && room.phase !== 'playing' && room.phase !== 'halftime' || allPlayersExpired) {
         this.rooms.delete(id); continue;
       }
+      if (room.phase === 'fulltime') {
+        if (!room.result) this.tryFinalizeResult(room);
+        continue;
+      }
       for (const p of room.players.values()) {
         if (!p.isBot && p.connected && now - p.lastSeen > this.disconnectGraceMs) {
           p.connected = false; p.controlMode = 'ai'; p.aiControlled = true; p.disconnectedAt = now; p.input = { x: 0, z: 0, sprint: false };
@@ -325,7 +329,7 @@ export class RoomManager {
       const halfMs = maxMs / 2;
       if (room.elapsedMs >= maxMs) {
         room.elapsedMs = maxMs; room.phase = 'fulltime';
-        this.finalizeResult(room);
+        this.tryFinalizeResult(room);
         for (const p of room.players.values()) p.input = { x: 0, z: 0, sprint: false };
       } else if (room.elapsedMs >= halfMs && room.period === 1) {
         room.elapsedMs = halfMs;
@@ -353,7 +357,7 @@ export class RoomManager {
           room.attackDirection.blue *= -1;
           room.attackDirection.red *= -1;
           resetRoomBall(room);
-          if (room.elapsedMs >= maxMs) { room.elapsedMs = maxMs; room.phase = 'fulltime'; this.finalizeResult(room); }
+          if (room.elapsedMs >= maxMs) { room.elapsedMs = maxMs; room.phase = 'fulltime'; this.tryFinalizeResult(room); }
         }
       }
       if (room.phase === 'playing') {
@@ -363,6 +367,17 @@ export class RoomManager {
       }
       for (const event of room.events) if (!Number.isSafeInteger(event.id)) event.id = room.nextEventId++;
       room.sequence++;
+    }
+  }
+
+  tryFinalizeResult(room) {
+    try {
+      this.finalizeResult(room);
+      delete room.finalizationError;
+      return true;
+    } catch (error) {
+      room.finalizationError = String(error?.message || 'RESULT_FINALIZATION_FAILED').slice(0, 160);
+      return false;
     }
   }
 
