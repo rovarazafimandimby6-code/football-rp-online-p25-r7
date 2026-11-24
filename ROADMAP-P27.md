@@ -876,8 +876,8 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 
 #### Lot 87 — cycle de vie des contrats IA (socle existant, extension à compléter)
 - [x] Réutiliser les fonctions existantes de renouvellement, expiration, refus selon budget salarial et recrutement de remplacement.
-- [ ] Compléter la décision de départ des joueurs IA qui refusent un renouvellement, puis organiser leur remplacement selon les besoins sportifs.
-- [ ] Auditer les contrats IA expirés, les archives de joueurs libres et les contrats recréés après recrutement.
+- [x] Enregistrer explicitement les refus sportifs de renouvellement dans le contrat IA, les conserver après rechargement, libérer le joueur à échéance et recruter un remplaçant pour restaurer l'effectif cible.
+- [ ] Étendre l'audit détaillé aux contrats IA expirés, aux archives de joueurs libres et aux contrats recréés après recrutement.
 
 #### Lot 88 — registre et recrutement des joueurs IA libres (intégré)
 - [x] Construire le recrutement à partir des archives de joueurs libérés, en choisissant le dernier état connu et en évitant les doublons d'effectif.
@@ -896,4 +896,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Ajouter des tests positifs et négatifs sur les prêts et les doublons d'archives libres.
 
 - [x] Validation CI consolidée de cette étape : **654/654 tests réussis, 0 échec**, contrôle syntaxique JavaScript réussi ; commit testé 3b2f0315a72ebc0da3ec032f16850f79a903feef, run https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45454346081.
-- Limites : le mercato des joueurs IA entre clubs (lot 85) et les décisions complètes de refus/départ de contrats IA (lot 87) restent à développer. Les prêts actuels portent sur les carrières humaines ; ils ne constituent pas encore un système de prêts IA. Aucun déploiement ni test Android physique n'a été effectué.
+- Limites : le mercato des joueurs IA entre clubs (lot 85) reste à développer ; l'audit approfondi des contrats IA expirés et des recrutements est encore incomplet (lot 87). Les prêts actuels portent sur les carrières humaines ; ils ne constituent pas encore un système de prêts IA. Aucun déploiement ni test Android physique n'a été effectué.
+
+
+- [x] Extension lot 87 : validation CI complète après traçage des refus de renouvellement IA et recrutement du remplaçant : **655/655 tests réussis, 0 échec**, contrôle syntaxique réussi ; commit testé 80c67bc3ef0e008f57c8c306178b8ea5c981bec6, run https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45454925657.
