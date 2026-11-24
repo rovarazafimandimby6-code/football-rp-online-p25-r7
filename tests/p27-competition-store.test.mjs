@@ -445,10 +445,13 @@ test('P27 match officiel : peut réessayer la finalisation si la validation du r
    if(attempts===1)return {ok:false,reason:'temporary-storage-rejection'};
    return record(...args);
   };
-  assert.throws(()=>manager.finalizeResult(room),/temporary-storage-rejection/);
+  room.phase='fulltime';
+  manager.tick(0.05);
   assert.equal(room.result,null);
+  assert.equal(room.finalizationError,'temporary-storage-rejection');
   assert.equal(f.store.getFixture(fixture.id).status,'scheduled');
-  const result=manager.finalizeResult(room);
+  manager.tick(0.05);
+  const result=room.result;
   assert.equal(result.competition.fixtureId,fixture.id);
   assert.deepEqual(result.competition.result,{home:2,away:1,finalizedAt:5000});
   assert.equal(f.store.getFixture(fixture.id).status,'completed');
