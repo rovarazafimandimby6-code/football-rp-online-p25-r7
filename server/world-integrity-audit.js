@@ -44,6 +44,23 @@ export function auditP27World({
     const humans = roster.filter(player => player?.playerType === 'human').length;
     if (humans > 7) errors.push({ code:'HUMAN_ROSTER_LIMIT_EXCEEDED', clubId:club.id, count:humans });
   }
+  const freeAgentArchive = new Map();
+  for (const club of catalogue) {
+    for (const entry of Array.isArray(club.releasedPlayers) ? club.releasedPlayers : []) {
+      const playerId = safeText(entry?.player?.id);
+      if (!playerId || entry.reason === 'transferred' || rosterIds.has(playerId)) continue;
+      if (!freeAgentArchive.has(playerId)) freeAgentArchive.set(playerId, []);
+      freeAgentArchive.get(playerId).push({ clubId:club.id, releasedAt:entry.releasedAt || null });
+    }
+  }
+  let duplicateFreeAgentSnapshots = 0;
+  for (const [playerId, records] of freeAgentArchive) {
+    if (records.length > 1) {
+      duplicateFreeAgentSnapshots += records.length - 1;
+      warnings.push({ code:'FREE_AGENT_ARCHIVE_DUPLICATE_SNAPSHOTS', playerId, snapshots:records.length });
+    }
+  }
+
   if (Number.isInteger(expectedClubCount) && catalogue.length !== expectedClubCount) {
     warnings.push({ code:'CLUB_CATALOGUE_SIZE_MISMATCH', expected:expectedClubCount, actual:catalogue.length });
   }
@@ -144,6 +161,22 @@ export function auditP27World({
     }
     if (active && !clubById.has(career.clubId)) errors.push({ code:'CAREER_REFERENCES_UNKNOWN_CLUB', accountId:career.accountId, clubId:career.clubId });
     if (active && career.contract.playerId && career.playerId && career.contract.playerId !== career.playerId) errors.push({ code:'CAREER_CONTRACT_PLAYER_MISMATCH', accountId:career.accountId, playerId:career.playerId, contractPlayerId:career.contract.playerId });
+    if (active && career.contract.loan?.status === 'active') {
+      const loan = career.contract.loan;
+      const parent = loan.parentContract;
+      if (!clubById.has(loan.parentClubId) || loan.parentClubId === career.clubId ||
+          !parent || parent.status !== 'active' || parent.clubId !== loan.parentClubId ||
+          !Number.isFinite(Date.parse(loan.startedAt)) || !Number.isFinite(Date.parse(loan.expiresAt)) ||
+          Date.parse(loan.expiresAt) <= Date.parse(loan.startedAt) ||
+          Date.parse(loan.expiresAt) > Date.parse(parent.expiresAt))
+        errors.push({ code:'CAREER_LOAN_TERMS_INVALID', accountId:career.accountId, playerId:career.playerId });
+      const membership = (rosterPlayersById.get(career.playerId) || [])[0];
+      if (membership && (membership.clubId !== career.clubId ||
+          membership.player?.contract?.loan?.status !== 'active' ||
+          membership.player.contract.loan.parentClubId !== loan.parentClubId ||
+          Date.parse(membership.player.contract.loan.expiresAt) !== Date.parse(loan.expiresAt)))
+        errors.push({ code:'CAREER_LOAN_ROSTER_MISMATCH', accountId:career.accountId, playerId:career.playerId });
+    }
     if (active && (!Number.isSafeInteger(career.contract.salary) || career.contract.salary < 0))
       errors.push({ code:'CAREER_CONTRACT_SALARY_INVALID', accountId:career.accountId });
     if (active && (!Number.isFinite(Date.parse(career.contract.signedAt)) ||
@@ -408,7 +441,7 @@ export function auditP27World({
     errors,
     warnings,
     counts:{
-      clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,
+      clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,\n      freeAgents:freeAgentArchive.size, duplicateFreeAgentSnapshots,
       careers:careers.length, pendingRosterSync, completedRosterSync, financeAccounts:asList(financeAccounts).length,
       financeEntries, financeBalanceTotal, pendingTransferSettlements, pendingPlayerWages, seasons:seasons.length, fixtures, completedFixtures, archivedResults:asList(resultArchive).length
     }
