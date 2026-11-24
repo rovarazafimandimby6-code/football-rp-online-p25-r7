@@ -27,7 +27,7 @@ test('P27 saisons : archive les trophées et ouvre une saison suivante avec des 
   assert.equal(next.find(c=>c.id==='2027-28-league-D1').members.length,16);
   assert.equal(next.find(c=>c.id==='2027-28-league-D2').members.length,20);
   const history=f.store.seasonHistory();assert.equal(history.length,2);assert.equal(history[0].status,'completed');assert.equal(history[0].trophies.length,1);assert.equal(history[0].movements.length,2);
-  const restored=new JsonCompetitionStore(f.directory,{seasonId:'ignored'});assert.equal(restored.activeSeason.id,'2027-28');assert.equal(restored.seasonHistory()[0].trophies.length,1);
+  const restored=new JsonCompetitionStore(f.directory,{seasonId:'ignored'});assert.equal(restored.activeSeason.id,'2027-28');assert.equal(restored.seasonHistory()[0].trophies.length,1);assert.equal(restored.clubs.get(d1).division,'D2');assert.equal(restored.clubs.get(d2).division,'D1');
 }finally{f.cleanup();}});
 test('P27 saisons : rejette les mouvements qui cassent les divisions ou les conférences',()=>{const f=setup();try{
   for(const competition of f.store.activeSeason.competitions)competition.status='completed';

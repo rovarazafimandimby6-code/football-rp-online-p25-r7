@@ -529,3 +529,5 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Contrôler les quotas exacts D1–D5 et les seize clubs par conférence en D4/D5 avant toute transition.
 - [x] Persister et restaurer le cycle de saisons.
 - Limite : le nombre de promus/relégués et les critères de classement des barrages restent à décider ; aucune promotion automatique n'est appliquée.
+
+- Correctif de persistance : les affectations de division et de conférence sont sauvegardées dans le catalogue et restaurées au redémarrage pour que les saisons successives conservent les mouvements précédents.

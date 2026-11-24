@@ -83,6 +83,7 @@ export class JsonCompetitionStore {
     this.clubs = new Map(clubs.map(club => [club.id,{...club}]));
     this.now = now; mkdirSync(this.directory,{recursive:true});
     this.state = this.read() || { version:1, seasons:[createSeason(seasonId,clubs,this.now())] };
+    if (Array.isArray(this.state.clubAssignments)) this.clubs = new Map(this.state.clubAssignments.map(club => [club.id,{...club}]));
     if (!this.state.seasons.length) this.state.seasons.push(createSeason(seasonId,clubs,this.now()));
     if (!this.read()) this.persist();
   }
@@ -182,6 +183,7 @@ export class JsonCompetitionStore {
     current.completedAt = completedAt;
     current.movements = movements.map(item => ({ clubId:clean(item.clubId,80), fromDivision:this.clubs.get(clean(item.clubId,80)).division, toDivision:item.toDivision, toConference:item.toConference || null }));
     this.clubs = nextClubs;
+    this.state.clubAssignments = [...nextClubs.values()].map(club => ({...club}));
     const nextSeason = createSeason(nextId,[...nextClubs.values()],completedAt);
     this.state.seasons.push(nextSeason);
     this.persist();
