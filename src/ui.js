@@ -104,42 +104,90 @@ export class UIManager {
     }, this.listenerOptions);
   }
 
-  setBenchStatus(players, localPlayerId, phase = 'playing', rotationRequests = []) {
+  setBenchStatus(players, localPlayerId, phase = 'playing', rotationRequests = [], rotationAvailable = false) {
     const local = players.find(player => player.id === localPlayerId);
     if (!local) return;
     if (!this.benchStatusEl) {
       const panel = document.createElement('div');
       panel.id = 'bench-status';
-      panel.setAttribute('role', 'status');
-      panel.style.cssText = 'position:absolute;left:50%;top:15%;transform:translateX(-50%);z-index:18;max-width:min(88vw,520px);padding:9px 14px;border-radius:10px;background:rgba(8,13,20,.92);border:1px solid rgba(255,255,255,.2);color:#fff;font:700 12px/1.4 system-ui,sans-serif;text-align:center;letter-spacing:.04em;pointer-events:none;';
+      panel.setAttribute('role', 'group');
+      panel.setAttribute('aria-label', 'Effectif et remplacements');
+      panel.style.cssText = 'position:absolute;left:12px;top:12%;z-index:18;width:min(88vw,330px);max-height:42vh;overflow:auto;padding:10px 12px;border-radius:10px;background:rgba(8,13,20,.94);border:1px solid rgba(255,255,255,.2);color:#fff;font:700 11px/1.4 system-ui,sans-serif;letter-spacing:.03em;pointer-events:auto;';
       const message = document.createElement('div');
       message.dataset.benchMessage = 'true';
       panel.appendChild(message);
       const requestButton = document.createElement('button');
       requestButton.type = 'button';
       requestButton.textContent = 'DEMANDER À ENTRER';
-      requestButton.style.cssText = 'pointer-events:auto;margin-top:9px;padding:9px 14px;border:1px solid rgba(255,255,255,.35);border-radius:8px;background:#e6b84a;color:#171717;font:800 11px system-ui,sans-serif;letter-spacing:.04em;';
+      requestButton.style.cssText = 'margin-top:8px;width:100%;padding:9px 10px;border:1px solid rgba(255,255,255,.35);border-radius:8px;background:#e6b84a;color:#171717;font:800 11px system-ui,sans-serif;';
       requestButton.addEventListener('click', () => this.callbacks.onRequestEntry?.(), this.listenerOptions);
       panel.appendChild(requestButton);
+      const rotationBox = document.createElement('div');
+      rotationBox.style.cssText = 'display:grid;gap:6px;margin-top:8px;';
+      const outgoingSelect = document.createElement('select');
+      outgoingSelect.setAttribute('aria-label', 'Joueur sortant');
+      const incomingSelect = document.createElement('select');
+      incomingSelect.setAttribute('aria-label', 'Joueur entrant');
+      for (const select of [outgoingSelect, incomingSelect]) select.style.cssText = 'width:100%;padding:8px;border-radius:7px;background:#17202b;color:#fff;border:1px solid rgba(255,255,255,.22);font:600 11px system-ui,sans-serif;';
+      const rotateButton = document.createElement('button');
+      rotateButton.type = 'button';
+      rotateButton.textContent = 'EFFECTUER LE REMPLACEMENT';
+      rotateButton.style.cssText = 'padding:9px 10px;border:1px solid rgba(255,255,255,.3);border-radius:8px;background:#2d684b;color:#fff;font:800 10px system-ui,sans-serif;';
+      rotateButton.addEventListener('click', async () => {
+        const outgoingId = outgoingSelect.value, incomingId = incomingSelect.value;
+        if (!outgoingId || !incomingId) return;
+        rotateButton.disabled = true;
+        try { await this.callbacks.onRotate?.(outgoingId, incomingId); }
+        finally { rotateButton.disabled = false; }
+      }, this.listenerOptions);
+      rotationBox.append(outgoingSelect, incomingSelect, rotateButton);
+      panel.appendChild(rotationBox);
+      document.querySelector('main')?.appendChild(panel);
       this.benchStatusMessageEl = message;
       this.benchRequestButton = requestButton;
-      document.querySelector('main')?.appendChild(panel);
+      this.benchRotationBox = rotationBox;
+      this.benchOutgoingSelect = outgoingSelect;
+      this.benchIncomingSelect = incomingSelect;
+      this.benchRotateButton = rotateButton;
       this.benchStatusEl = panel;
     }
     const reserves = players.filter(player => player.team === local.team && player.isOnPitch === false);
+    const starters = players.filter(player => player.team === local.team && player.isOnPitch !== false);
+    const pending = rotationRequests.some(request => request.playerId === localPlayerId);
+    this.benchStatusEl.hidden = phase === 'lobby' || phase === 'fulltime';
     if (local.isOnPitch === false) {
-      this.benchStatusEl.hidden = false;
-      const pending = rotationRequests.some(request => request.playerId === localPlayerId);
       this.benchStatusMessageEl.textContent = pending
         ? `DEMANDE ENREGISTRÉE · ${reserves.length} RÉSERVISTE(S) · EN ATTENTE D’UN ARRÊT DE JEU`
-        : `SUR LE BANC · ${reserves.length} RÉSERVISTE(S) · EN ATTENTE D’UNE ENTRÉE EN JEU`;
+        : `SUR LE BANC · ${reserves.length} RÉSERVISTE(S) · ${starters.length} SUR LE TERRAIN`;
       this.benchRequestButton.hidden = pending || phase === 'fulltime' || phase === 'lobby';
       this.benchRequestButton.disabled = pending || phase === 'fulltime' || phase === 'lobby';
-    } else {
-      this.benchStatusEl.hidden = true;
-      this.benchStatusMessageEl.textContent = '';
-      this.benchRequestButton.hidden = true;
+      this.benchRotationBox.hidden = true;
+      return;
     }
+    this.benchStatusMessageEl.textContent = `VOTRE ÉQUIPE · ${starters.length}/5 SUR LE TERRAIN · ${reserves.length} RÉSERVISTE(S)`;
+    this.benchRequestButton.hidden = true;
+    const outgoing = starters.filter(player => player.isBot === true);
+    const incoming = reserves.filter(player => player.isBot === true);
+    const canRotate = rotationAvailable && outgoing.length > 0 && incoming.length > 0;
+    this.benchRotationBox.hidden = !canRotate;
+    this.benchOutgoingSelect.replaceChildren();
+    this.benchIncomingSelect.replaceChildren();
+    const addOptions = (select, rows, emptyLabel) => {
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = emptyLabel;
+      select.appendChild(placeholder);
+      for (const player of rows) {
+        const option = document.createElement('option');
+        option.value = player.id;
+        option.textContent = `${player.name} · ${player.role || 'Joueur'}`;
+        select.appendChild(option);
+      }
+    };
+    addOptions(this.benchOutgoingSelect, outgoing, 'Joueur à remplacer');
+    addOptions(this.benchIncomingSelect, incoming, 'Réserviste à faire entrer');
+    this.benchRotateButton.disabled = !canRotate;
+    if (!canRotate && rotationAvailable) this.benchStatusMessageEl.textContent += ' · Aucun remplacement IA disponible';
   }
 
   setStatus(text) {
