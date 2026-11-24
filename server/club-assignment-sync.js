@@ -20,7 +20,8 @@ export function syncClubAssignments({ clubManager, competitionStore } = {}) {
       updated++;
     }
   }
-  if (!updated) return { ok:true, updated:0 };
+  // Persist even when memory is already aligned: a previous save may have failed,
+  // leaving the in-memory assignments correct but the roster file stale.
   if (!clubManager.saveSeason()) {
     // Keep the in-memory world aligned with the authoritative competition store.
     // The next server boot retries persistence from the competition assignment file.
