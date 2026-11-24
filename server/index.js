@@ -36,8 +36,14 @@ const rosterDirectory = process.env.CLUB_ROSTERS_DIR || path.join(path.dirname(f
 const serverClubManager = new ClubManager(DEFAULT_CLUBS, new JsonClubRosterStorage(rosterDirectory), 'p27-server-club-rosters');
 // Competition assignments are authoritative after a season rollover; restore them
 // into the roster/finance world before any service reads club divisions.
+let assignmentSyncPending = false;
 const startupAssignmentSync = syncClubAssignments({ clubManager:serverClubManager, competitionStore });
-if (!startupAssignmentSync.ok) throw new Error(`P27_CLUB_ASSIGNMENT_SYNC_FAILED:${startupAssignmentSync.reason}`);
+if (!startupAssignmentSync.ok) {
+  if (startupAssignmentSync.reason !== 'club-assignment-persistence-pending')
+    throw new Error(`P27_CLUB_ASSIGNMENT_SYNC_FAILED:${startupAssignmentSync.reason}`);
+  assignmentSyncPending = true;
+  process.stderr.write('P27 club assignment persistence pending; automatic retry scheduled\\n');
+}
 const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs:[...serverClubManager.clubs.values()], transferStore });
 function configuredSystemWageBudgets() {
   try {
@@ -305,6 +311,19 @@ const server = http.createServer(async (req, res) => {
 });
 
 const tick = setInterval(() => manager.tick(0.05), 50);
+const assignmentSyncTick = setInterval(() => {
+  if (!assignmentSyncPending) return;
+  try {
+    const result = syncClubAssignments({ clubManager:serverClubManager, competitionStore });
+    if (result.ok) {
+      assignmentSyncPending = false;
+      process.stdout.write('P27 club assignment persistence recovered\\n');
+    } else if (result.reason !== 'club-assignment-persistence-pending') {
+      process.stderr.write(`P27 club assignment retry blocked: ${result.reason}\\n`);
+    }
+  } catch (error) { process.stderr.write(`P27 club assignment retry failed: ${error.message}\\n`); }
+}, 60 * 1000);
+assignmentSyncTick.unref();
 const clubWorldTick = setInterval(() => {
   try {
     const result = clubWorld.tick();
