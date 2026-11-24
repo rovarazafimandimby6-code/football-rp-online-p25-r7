@@ -6,7 +6,7 @@ test('P27 admin : exige un secret configuré d’au moins 32 octets',()=>{
  assert.equal(isAdminTokenConfigured('a'.repeat(32)),true);
  assert.equal(isAdminTokenConfigured('a'.repeat(31)),false);
  assert.equal(isAdminTokenConfigured(''),false);
- assert.equal(isAdminTokenConfigured(undefined),false);
+ assert.equal(isAdminTokenConfigured(null),false);
 });
 
 test('P27 admin : compare le jeton sans accepter une valeur différente ou absente',()=>{
@@ -15,5 +15,5 @@ test('P27 admin : compare le jeton sans accepter une valeur différente ou absen
  assert.equal(isValidAdminToken(secret+'x',secret),false);
  assert.equal(isValidAdminToken(secret.slice(1),secret),false);
  assert.equal(isValidAdminToken('',secret),false);
- assert.equal(isValidAdminToken(secret,undefined),false);
+ assert.equal(isValidAdminToken(secret,null),false);
 });
