@@ -499,7 +499,7 @@ function renderPage(page = 'home') {
     title.textContent = 'Compte joueur';
     subtitle.textContent = 'Connectez votre identité persistante pour retrouver votre carrière sur plusieurs sessions.';
     const account = accountClient.account;
-    content.innerHTML = account ? `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ PERSISTANTE</span><h2>${escapeHTML(account.displayName || account.username)}</h2></div><span class="local-tag">CONNECTÉ</span></div><p class="notice">Compte : @${escapeHTML(account.username)} · Créé le ${new Date(account.createdAt).toLocaleDateString('fr-FR')}</p><div class="training-controls"><button class="small-action" data-action="account-refresh">ACTUALISER LA SESSION</button><button class="small-action" data-action="account-sync-profile">SYNCHRONISER LE PROFIL</button><button class="text-cta" data-action="account-logout">SE DÉCONNECTER</button></div><p class="notice">Identité et apparence synchronisées sur le compte. Progression, attributs et monnaie restent conservés localement pour éviter de faire confiance à des valeurs compétitives envoyées par le client.</p><p class="notice" id="account-status" aria-live="polite">Votre compte sera associé aux prochains matchs en ligne. Les statistiques officielles sont enregistrées par le serveur.</p><div id="account-career-stats" class="quick-grid"><p class="notice">Chargement de votre carrière serveur…</p></div></section>` : `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">COMPTE FOOTBALL RP ONLINE</span><h2>Retrouver sa carrière</h2></div><span class="local-tag">INVITÉ</span></div><p class="notice">Créez un compte ou connectez-vous. Votre compte sera automatiquement lié aux prochains matchs en ligne et à leurs résultats confirmés par le serveur.</p><div class="editor-grid"><label>Nom d'utilisateur<input id="account-username" maxlength="20" autocomplete="username" placeholder="ex. rova_27"></label><label>Nom affiché<input id="account-display-name" maxlength="24" autocomplete="nickname" placeholder="Votre nom joueur"></label><label>Mot de passe<input id="account-password" type="password" minlength="10" autocomplete="current-password" placeholder="10 caractères minimum"></label></div><div class="training-controls"><button class="primary-cta" data-action="account-login">SE CONNECTER</button><button class="small-action" data-action="account-register">CRÉER UN COMPTE</button></div><p class="notice" id="account-status" aria-live="polite">Le mot de passe est transmis uniquement à l'API sécurisée du serveur ; ne le partagez jamais.</p></section>`;
+    content.innerHTML = account ? `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ PERSISTANTE</span><h2>${escapeHTML(account.displayName || account.username)}</h2></div><span class="local-tag">CONNECTÉ</span></div><p class="notice">Compte : @${escapeHTML(account.username)} · Créé le ${new Date(account.createdAt).toLocaleDateString('fr-FR')}</p><div class="training-controls"><button class="small-action" data-action="account-refresh">ACTUALISER LA SESSION</button><button class="small-action" data-action="account-sync-profile">ENREGISTRER LE PROFIL EN LIGNE</button><button class="small-action" data-action="account-restore-profile">RESTAURER LE PROFIL EN LIGNE</button><button class="text-cta" data-action="account-logout">SE DÉCONNECTER</button></div><p class="notice">Identité et apparence synchronisées sur le compte. Progression, attributs et monnaie restent conservés localement pour éviter de faire confiance à des valeurs compétitives envoyées par le client.</p><p class="notice" id="account-status" aria-live="polite">Votre compte sera associé aux prochains matchs en ligne. Les statistiques officielles sont enregistrées par le serveur.</p><div id="account-career-stats" class="quick-grid"><p class="notice">Chargement de votre carrière serveur…</p></div></section>` : `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">COMPTE FOOTBALL RP ONLINE</span><h2>Retrouver sa carrière</h2></div><span class="local-tag">INVITÉ</span></div><p class="notice">Créez un compte ou connectez-vous. Votre compte sera automatiquement lié aux prochains matchs en ligne et à leurs résultats confirmés par le serveur.</p><div class="editor-grid"><label>Nom d'utilisateur<input id="account-username" maxlength="20" autocomplete="username" placeholder="ex. rova_27"></label><label>Nom affiché<input id="account-display-name" maxlength="24" autocomplete="nickname" placeholder="Votre nom joueur"></label><label>Mot de passe<input id="account-password" type="password" minlength="10" autocomplete="current-password" placeholder="10 caractères minimum"></label></div><div class="training-controls"><button class="primary-cta" data-action="account-login">SE CONNECTER</button><button class="small-action" data-action="account-register">CRÉER UN COMPTE</button></div><p class="notice" id="account-status" aria-live="polite">Le mot de passe est transmis uniquement à l'API sécurisée du serveur ; ne le partagez jamais.</p></section>`;
     if (account) void loadAccountCareerSummary();
   } else if (page === 'mercato') {
     career.refreshContractStatus();
@@ -749,10 +749,17 @@ async function submitAccountForm(action) {
     else if (action === 'refresh') await accountClient.refresh();
     else if (action === 'sync-profile') {
       await accountClient.saveProfile(profileStore.profile);
-      if (status) status.textContent = 'Identité et apparence synchronisées. Progression et attributs locaux inchangés.';
       renderPage('account');
       const refreshedStatus = document.getElementById('account-status');
-      if (refreshedStatus) refreshedStatus.textContent = 'Identité et apparence synchronisées. Progression et attributs locaux inchangés.';
+      if (refreshedStatus) refreshedStatus.textContent = 'Identité et apparence enregistrées sur le compte. Progression et attributs locaux inchangés.';
+      return;
+    } else if (action === 'restore-profile') {
+      const result = await accountClient.getProfile();
+      if (!result?.profile) throw new Error('NO_CLOUD_PROFILE');
+      profileStore.save({ ...profileStore.profile, identity: result.profile.identity, appearance: result.profile.appearance });
+      renderPage('account');
+      const refreshedStatus = document.getElementById('account-status');
+      if (refreshedStatus) refreshedStatus.textContent = 'Identité et apparence restaurées depuis le compte. Progression, attributs et monnaie locaux préservés.';
       return;
     }
     else if (action === 'logout') await accountClient.logout();
@@ -786,6 +793,8 @@ menu.addEventListener('click', event => {
     submitAccountForm('refresh');
   } else if (action === 'account-sync-profile') {
     submitAccountForm('sync-profile');
+  } else if (action === 'account-restore-profile') {
+    submitAccountForm('restore-profile');
   } else if (action === 'account-logout') {
     submitAccountForm('logout');
   } else if (action === 'online-menu') {
