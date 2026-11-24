@@ -998,3 +998,21 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Préserver la lecture d'anciens snapshots d'audit où les compteurs de tentative n'étaient pas exposés.
 - [x] Ajouter des tests négatifs sur les tentatives invalides et les clôtures sans date.
 - [ ] Valider la CI complète et vérifier les snapshots historiques réels avant toute migration de stockage.
+
+
+### Lot 103 — checkpoint explicite des tentatives en échec
+- [x] Ne plus retourner le motif métier d'échec si la sauvegarde des métadonnées de reprise a elle-même échoué.
+- [x] Retourner `outbox-persistence-failed` et conserver l'état durable précédemment connu lorsque le checkpoint ne peut pas être écrit.
+- [x] Ajouter un test ciblé de ce chemin de panne.
+- [ ] Exécuter la suite complète et valider en CI.
+
+### Lot 104 — protection contre la perte silencieuse d'un outbox corrompu
+- [x] Vérifier qu'un JSON d'outbox invalide provoque une erreur explicite au démarrage.
+- [x] Vérifier que le contenu brut corrompu reste intact et n'est pas remplacé par un outbox vide.
+- [x] Ne pas automatiser de restauration ou de quarantaine sans stratégie de sauvegarde vérifiée.
+- [ ] Tester la récupération opérationnelle à partir d'une sauvegarde réelle avant d'ajouter une procédure automatique.
+
+### Lot 105 — rapprochement des soldes après mouvements successifs
+- [x] Tester deux transferts successifs du même joueur avec le grand livre JSON réel.
+- [x] Vérifier les soldes nets attendus et l'unicité de chacune des quatre écritures de débit/crédit.
+- [ ] Exécuter les tests et la CI complète.
