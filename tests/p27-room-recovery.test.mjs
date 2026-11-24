@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { JsonRoomStore } from '../server/room-store.js';
+import { JsonResultStore } from '../server/result-store.js';
 import { RoomManager } from '../server/room-manager.js';
 
 function temporaryDirectory(prefix) { return mkdtempSync(path.join(os.tmpdir(), prefix)); }
@@ -124,5 +125,24 @@ test('P27 salons persistés : le plafond de salons refuse une nouvelle sauvegard
     store.save(snapshot('room-one'));
     assert.throws(() => store.save(snapshot('room-two')), /ROOM_STORE_CAPACITY_EXCEEDED/);
     assert.deepEqual(store.readAll().map(room => room.id), ['room-one']);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('P27 salons persistés : un checkpoint ancien est supprimé si le résultat final existe déjà', () => {
+  const directory = temporaryDirectory('p27-room-finalized-');
+  try {
+    const roomStore = new JsonRoomStore(path.join(directory, 'rooms'));
+    const resultStore = new JsonResultStore(path.join(directory, 'results'));
+    roomStore.save({
+      id: 'room-already-finalized', phase: 'playing', elapsedMs: 100_000, updatedAt: 1,
+      score: { blue: 1, red: 0 }, players: [],
+    });
+    resultStore.save({
+      roomId: 'room-already-finalized', phase: 'fulltime', finalizedAt: 2,
+      score: { blue: 1, red: 0 }, teams: { blue: { id: 'club-a' }, red: { id: 'club-b' } },
+    });
+    const manager = new RoomManager({ now: () => 3, roomStore, resultStore });
+    assert.equal(manager.rooms.has('room-already-finalized'), false);
+    assert.deepEqual(roomStore.readAll(), []);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
