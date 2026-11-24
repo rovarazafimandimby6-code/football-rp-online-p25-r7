@@ -86,8 +86,10 @@ test('P27 contrats IA : recrutement d’un joueur libre persiste après redémar
  const source=manager.getClub('antananarivo-fc');
  const target=manager.getClub('toamasina-united');
  const player=source.roster.find(item=>item.playerType==='system');
- assert.ok(player);
+ const targetPlayer=target.roster.find(item=>item.playerType==='system');
+ assert.ok(player&&targetPlayer);
  assert.equal(manager.removePlayer(source.id,player.id),true);
+ assert.equal(manager.removePlayer(target.id,targetPlayer.id),true);
  const now=Date.UTC(2027,5,1);
  const signed=manager.signFreeAgent(target.id,player.id,{now});
  assert.equal(signed.ok,true);
