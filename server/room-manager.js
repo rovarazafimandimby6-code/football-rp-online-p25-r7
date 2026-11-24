@@ -9,12 +9,13 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Authoritative in-memory 5v5 room manager. One input stream controls one avatar. */
 export class RoomManager {
-  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, careerStore = null, competitionStore = null } = {}) {
+  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, careerStore = null, progressionStore = null, competitionStore = null } = {}) {
     this.now = now;
     this.roomTtlMs = roomTtlMs;
     this.disconnectGraceMs = disconnectGraceMs;
     this.resultStore = resultStore;
     this.careerStore = careerStore;
+    this.progressionStore = progressionStore;
     this.competitionStore = competitionStore;
     this.rooms = new Map();
   }
@@ -411,7 +412,6 @@ export class RoomManager {
       committedResult = Object.freeze({ ...finalizedResult, competition: { fixtureId: room.competitionFixtureId, result: competitionResult.fixture.result } });
     }
     this.resultStore?.save(committedResult);
-    room.result = committedResult;
     room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
     if (this.careerStore) {
       for (const player of performance.players) {
@@ -432,6 +432,14 @@ export class RoomManager {
         if (livePlayer?.accountId && !player.isBot) this.careerStore.recordMatch(livePlayer.accountId, careerInput);
       }
     }
+    for (const player of performance.players) {
+      const livePlayer = room.players.get(player.playerId);
+      if (!livePlayer?.accountId || player.isBot || player.minutesPlayedMs < 15_000) continue;
+      const outcome = blue === red ? 'draw' : (player.team === (blue > red ? 'blue' : 'red') ? 'win' : 'loss');
+      this.progressionStore?.grantMatchReward(livePlayer.accountId, { matchId: room.id, result: outcome, minutesPlayedMs: player.minutesPlayedMs, rating: player.rating });
+    }
+    room.result = committedResult;
+    room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });
     return room.result;
   }
 
