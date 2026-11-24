@@ -89,19 +89,19 @@ test('P27 monde persistant : la paie réelle règle le contrat expiré sans fact
     const departing=club.roster[0];
     club.roster=[departing];
     club.releasedPlayers=[];
-    assert.equal(clubManager.setSystemPlayerContractTerm(club.id,departing.id,{signedAt:start,durationWeeks:1}).ok,true);
+    assert.equal(clubManager.setSystemPlayerContractTerm(club.id,departing.id,{signedAt:start-14*86400000,durationWeeks:4}).ok,true);
     const weeklyWage=departing.contract.weeklyWage;
     const financeService=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
     const world=new P27ClubWorldService({clubManager,financeService,now:()=>now});
     now=start+14*86400000;
     const result=world.tick();
     assert.equal(result.ok,true);
-    assert.equal(result.finance.systemWages.posted,1);
+    assert.equal(result.finance.systemWages.posted,2);
     assert.equal(result.finance.systemWages.unpaid,0);
-    assert.equal(financeService.store.getAccount(club.id).totalExpenses,weeklyWage);
+    assert.equal(financeService.store.getAccount(club.id).totalExpenses,weeklyWage*2);
     assert.equal(club.roster.length,club.initialRosterSize);
     assert.ok(club.roster.every(player=>player.contract.signedAt===new Date(now).toISOString()));
     assert.equal(world.tick().finance.systemWages.posted,0);
-    assert.equal(financeService.store.getAccount(club.id).totalExpenses,weeklyWage);
+    assert.equal(financeService.store.getAccount(club.id).totalExpenses,weeklyWage*2);
   } finally { rmSync(directory,{recursive:true,force:true}); }
 });
