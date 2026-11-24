@@ -855,3 +855,45 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 82 : élever en erreur l'absence d'effectif lorsqu'aucune commande outbox valide n'explique l'écart.
 - [x] Lot 83 : tests de non-régression pour l'orphelin contractuel et la fenêtre de reprise saga.
 - [x] Lot 84 : CI complète réussie — 643/643 tests, 0 échec, contrôle syntaxique réussi (run 45449493916, commit 7682af3f6499621a2da4ed485e4e000335addb09).
+
+
+### Lots 85–90 — mercato IA, prêts et bibliothèque centrale (en cours)
+
+#### Lot 85 — mouvements de mercato des joueurs IA (à traiter)
+- [ ] Définir les critères sportifs et contractuels de départ/transfert des joueurs IA.
+- [ ] Relier toute indemnité au service financier et à son journal rejouable ; ne pas modifier directement les soldes comptables.
+- [ ] Contrôler capacité, identité unique, division, contrat et historique avant/après transfert.
+- [ ] Ajouter une simulation de marché déterministe et des tests de reprise.
+
+#### Lot 86 — prêts humains persistants (intégré, CI validée)
+- [x] Ajouter des offres de prêt avec fenêtre de mercato, durée bornée et expiration de l'offre.
+- [x] Conserver le contrat parent et son échéance ; le prêt ne peut jamais dépasser la durée restante du contrat.
+- [x] Synchroniser le joueur vers le club emprunteur par l'outbox existante.
+- [x] Retourner automatiquement le joueur au club parent à la fin du prêt, ou le libérer si le contrat parent expire avant.
+- [x] Restaurer les prêts après redémarrage et rendre les événements d'historique uniques.
+- [x] Exposer les opérations de prêt via les routes authentifiées /api/loan/offers.
+- [x] Ajouter des tests sur acceptation, retour après redémarrage, expiration du contrat parent et refus des durées invalides.
+
+#### Lot 87 — cycle de vie des contrats IA (socle existant, extension à compléter)
+- [x] Réutiliser les fonctions existantes de renouvellement, expiration, refus selon budget salarial et recrutement de remplacement.
+- [ ] Compléter la décision de départ des joueurs IA qui refusent un renouvellement, puis organiser leur remplacement selon les besoins sportifs.
+- [ ] Auditer les contrats IA expirés, les archives de joueurs libres et les contrats recréés après recrutement.
+
+#### Lot 88 — registre et recrutement des joueurs IA libres (intégré)
+- [x] Construire le recrutement à partir des archives de joueurs libérés, en choisissant le dernier état connu et en évitant les doublons d'effectif.
+- [x] Créer un nouveau contrat rattaché au club recruteur, avec trace du club précédent et de la date de signature.
+- [x] Bloquer les identifiants déjà inscrits et exclure les carrières humaines de ce flux.
+
+#### Lot 89 — bibliothèque centrale des joueurs (intégré, API)
+- [x] Agréger les joueurs des effectifs et les joueurs libres archivés sans doublons.
+- [x] Filtrer par club, division, poste, type humain/IA, statut actif/libre/prêté, âge et note.
+- [x] Ajouter recherche insensible aux accents, tri et pagination bornée.
+- [x] Exposer le répertoire en lecture seule via GET /api/players/library, avec facettes de clubs, divisions et statuts.
+
+#### Lot 90 — audit transversal mercato/effectifs/contrats (intégré)
+- [x] Compter les joueurs libres uniques et signaler les archives de joueurs libres dupliquées sans confondre les archives de transfert.
+- [x] Vérifier les liens du prêt actif : club parent, contrat parent, échéances et inscription du joueur dans le club emprunteur.
+- [x] Ajouter des tests positifs et négatifs sur les prêts et les doublons d'archives libres.
+
+- [x] Validation CI consolidée de cette étape : **654/654 tests réussis, 0 échec**, contrôle syntaxique JavaScript réussi ; commit testé 3b2f0315a72ebc0da3ec032f16850f79a903feef, run https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45454346081.
+- Limites : le mercato des joueurs IA entre clubs (lot 85) et les décisions complètes de refus/départ de contrats IA (lot 87) restent à développer. Les prêts actuels portent sur les carrières humaines ; ils ne constituent pas encore un système de prêts IA. Aucun déploiement ni test Android physique n'a été effectué.
