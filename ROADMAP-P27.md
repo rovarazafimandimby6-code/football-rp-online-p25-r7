@@ -905,7 +905,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Ajouter des tests positifs et négatifs sur les prêts et les doublons d'archives libres.
 
 - [x] Validation CI consolidée de cette étape : **654/654 tests réussis, 0 échec**, contrôle syntaxique JavaScript réussi ; commit testé 3b2f0315a72ebc0da3ec032f16850f79a903feef, run https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45454346081.
-- Limites : le mercato des joueurs IA entre clubs (lot 85) reste à développer ; l'audit approfondi des contrats IA expirés et des recrutements est encore incomplet (lot 87). Les prêts actuels portent sur les carrières humaines ; ils ne constituent pas encore un système de prêts IA. Aucun déploiement ni test Android physique n'a été effectué.
+- État consolidé après les lots 85–92 : le moteur de simulation du mercato IA et l'audit de son outbox sont désormais intégrés sur `p27-dev`, sous réserve de validation CI. Le cycle des contrats IA et le recrutement des joueurs libres disposent des contrôles ajoutés au lot 87. Les prêts restent limités aux carrières humaines ; aucun système de prêts IA n'est déclaré. Aucun déploiement ni test Android physique n'a été effectué.
 
 
 - [x] Extension lot 87 : validation CI complète après traçage des refus de renouvellement IA et recrutement du remplaçant : **655/655 tests réussis, 0 échec**, contrôle syntaxique réussi ; commit testé 80c67bc3ef0e008f57c8c306178b8ea5c981bec6, run https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45454925657.
@@ -926,3 +926,9 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Exiger pour un transfert terminé la présence du joueur chez l'acheteur et un règlement financier complet avec les rôles comptables inversés (acheteur débité, vendeur crédité).
 - [x] Ajouter les tests d'attente légitime, de clôture incohérente et d'identifiant dupliqué.
 - [ ] Valider la suite complète en CI et compléter les scénarios de panne entre checkpoints.
+
+
+#### Lot 93 — réconciliation des écritures du mercato IA
+- [x] Détecter les écritures du journal de transferts qui ne correspondent ni à un événement de transfert humain ni à une commande outbox IA.
+- [x] Ajouter un test de non-régression pour une écriture financière IA orpheline.
+- [ ] Valider la suite complète en CI.
