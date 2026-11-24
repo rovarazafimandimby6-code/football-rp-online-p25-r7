@@ -1222,3 +1222,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] CI : exécuter aussi le préflight avec un jeton factice réservé au workflow, jamais un secret de production ; [run 45479692939](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45479692939), **726/726 tests réussis**, préflight CLI réussi et syntaxe vérifiée.
 - [ ] Lot 156 (validation externe) : configurer le véritable secret administrateur dans l'hébergeur, vérifier la persistance durable de chaque volume, puis exécuter la recette sur le ZTE Blade A33+ ; ces actions nécessitent l'accès au panneau et au téléphone, elles ne sont pas certifiées par le dépôt.
 - Limites : les checkpoints sont des instantanés locaux atomiques, pas une réplication distribuée ; la garantie de reprise dépend d'un disque persistant et de sauvegardes côté hébergeur. Une panne pendant la toute dernière fenêtre d'environ une seconde peut faire rejouer les dernières actions depuis le dernier checkpoint. Aucune release ni aucun déploiement n'est créé.
+
+
+### Lots 157–160 — cycle de vie serveur et sondes de disponibilité
+- [x] Lot 157 : ajouter `RoomManager.persistAllRooms()` pour sauvegarder explicitement tous les salons en cours et retourner un rapport structuré des échecs.
+- [x] Lot 158 : implémenter `shutdownP27Server()` ; arrêter les minuteries, cesser d'accepter les nouvelles requêtes, attendre la fermeture HTTP puis sauvegarder les checkpoints actifs. Brancher le cycle sur `SIGTERM` et `SIGINT` sans appeler `process.exit()`.
+- [x] Lot 159 : distinguer `GET /health` (liveness) et `GET /readyz` (readiness). La disponibilité vérifie le secret administrateur et l'écriture des onze stockages, sans exposer le secret ni les chemins. Ajouter des tests de disponibilité nominale, secret absent, stockage inaccessible, flush des salons et remontée des erreurs de sauvegarde.
+- [x] Lot 160 : documenter les sondes pour l'orchestrateur et les exigences de délai d'arrêt. Rappeler que SIGKILL, coupure électrique, perte de volume et multi-instance ne sont pas couverts par un arrêt gracieux.
+- [x] Validation GitHub Actions : [run 45481037985](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45481037985), **729/729 tests réussis**, contrôle préflight et syntaxe JavaScript/MJS réussis.
+- [ ] Essais hébergeur et appareil Android restent externes au dépôt ; aucune candidate, release ou publication n'est déclarée.
