@@ -220,6 +220,8 @@ export function auditP27World({
   const transferEventIds = new Set();
   const transferEventById = new Map(transferEvents.filter(event => event?.type === 'transfer' && safeText(event.id)).map(event => [event.id,event]));
   const salaryEventById = new Map(transferEvents.filter(event => event?.type === 'salary-payment' && safeText(event.id)).map(event => [event.id,event]));
+  const careerByPlayer = new Map(careers.filter(career => safeText(career?.playerId)).map(career => [career.playerId,career]));
+
   for (const event of transferEvents) {
     if (!safeText(event?.id) || transferEventIds.has(event.id)) errors.push({ code:'TRANSFER_EVENT_ID_INVALID_OR_DUPLICATE', eventId:event?.id || null });
     transferEventIds.add(event?.id);
@@ -227,6 +229,16 @@ export function auditP27World({
       if (!clubById.has(event.fromClubId) || !clubById.has(event.toClubId) || event.fromClubId === event.toClubId)
         errors.push({ code:'TRANSFER_EVENT_CLUB_LINK_INVALID', eventId:event.id, fromClubId:event.fromClubId || null, toClubId:event.toClubId || null });
       if (!Number.isSafeInteger(event.fee) || event.fee < 0) errors.push({ code:'TRANSFER_EVENT_FEE_INVALID', eventId:event.id });
+    }
+    if (event?.type === 'salary-payment') {
+      if (!safeText(event.playerId) || !careerByPlayer.has(event.playerId))
+        errors.push({ code:'SALARY_EVENT_CAREER_LINK_INVALID', eventId:event.id, playerId:event.playerId || null });
+      if (!clubById.has(event.clubId))
+        errors.push({ code:'SALARY_EVENT_CLUB_LINK_INVALID', eventId:event.id, clubId:event.clubId || null });
+      if (!Number.isSafeInteger(event.amount) || event.amount <= 0 ||
+          !Number.isSafeInteger(event.periods) || event.periods <= 0 ||
+          !Number.isFinite(Number(event.at)))
+        errors.push({ code:'SALARY_EVENT_AMOUNT_OR_DATE_INVALID', eventId:event.id });
     }
   }
   const financeEntryById = new Map();
@@ -287,6 +299,7 @@ export function auditP27World({
     const event = salaryEventById.get(record.id);
     if (event && (record.clubId !== event.clubId || record.amount !== event.amount))
       errors.push({ code:'PLAYER_WAGE_JOURNAL_EVENT_MISMATCH', eventId:record.id });
+    if (!event) errors.push({ code:'PLAYER_WAGE_JOURNAL_EVENT_MISSING', eventId:record.id });
     if (!clubById.has(record.clubId) || !Number.isSafeInteger(record.amount) || record.amount <= 0 ||
         typeof record.posted !== 'boolean')
       errors.push({ code:'PLAYER_WAGE_JOURNAL_RECORD_INVALID', eventId:record.id });
