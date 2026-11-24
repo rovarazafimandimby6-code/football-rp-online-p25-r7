@@ -320,7 +320,7 @@ test('P27 intégrité monde : audite les commandes outbox d’effectif et compte
  input.transferState.rosterSync=[{
   id:'roster-command-a',playerId:'human-account-a',action:'upsert',clubId:'club-a',previousClubId:null,
   contract:{status:'active',playerId:'human-account-a',clubId:'club-a',salary:100},
-  status:'pending',attempts:2
+  status:'pending',attempts:2,createdAt:'2027-01-01T00:00:00.000Z'
  }];
  const result=auditP27World(input);
  assert.equal(result.ok,true,JSON.stringify(result.errors));
@@ -331,11 +331,19 @@ test('P27 intégrité monde : audite les commandes outbox d’effectif et compte
 test('P27 intégrité monde : rejette les commandes outbox dupliquées ou incohérentes',()=>{
  const input=cleanWorld();
  const entry={id:'roster-command-a',playerId:'human-account-a',action:'upsert',clubId:'club-a',
-  contract:{status:'active',playerId:'human-account-a',clubId:'club-b',salary:100},status:'pending',attempts:0};
+  contract:{status:'active',playerId:'human-account-a',clubId:'club-b',salary:100},status:'pending',attempts:0,createdAt:'2027-01-01T00:00:00.000Z'};
  input.transferState.careers[0].playerId='human-account-a';
  input.transferState.rosterSync=[entry,{...entry}];
  const result=auditP27World(input);
  const codes=result.errors.map(item=>item.code);
  assert.ok(codes.includes('ROSTER_SYNC_ID_INVALID_OR_DUPLICATE'));
  assert.ok(codes.includes('ROSTER_SYNC_UPSERT_LINK_INVALID'));
+});
+
+test('P27 intégrité monde : refuse une commande outbox sans carrière source',()=>{
+ const input=cleanWorld();
+ input.transferState.rosterSync=[{id:'roster-orphan',eventId:'event-orphan',playerId:'human-orphan',action:'release',clubId:null,status:'pending',attempts:0,createdAt:'2027-01-01T00:00:00.000Z'}];
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='ROSTER_SYNC_CAREER_LINK_MISSING'));
+ assert.ok(result.errors.some(item=>item.code==='ROSTER_SYNC_EVENT_MISSING'));
 });
