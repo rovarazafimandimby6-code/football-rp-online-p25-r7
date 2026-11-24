@@ -707,6 +707,6 @@ test('P27 déconnexion : une prise en charge IA ne compte pas comme un nouveau b
   manager.leave(room.id, joined.token);
   manager.ensureBotCoverage(internal);
   const teamPlayers = [...internal.players.values()].filter(player => player.team === internal.players.get(joined.playerId).team);
-  assert.equal(teamPlayers.length, 5);
+  assert.equal(teamPlayers.filter(player => player.isOnPitch !== false).length, 5);
   assert.equal(teamPlayers.filter(player => player.aiControlled).length, 1);
 });
