@@ -714,7 +714,9 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 ### Lot 67 — fiabilité des compétitions et des résultats (en cours)
 - [x] Annuler les mutations en mémoire si la sauvegarde d’un résultat ou d’une transition échoue.
 - [x] Couvrir le rollback du classement, du tableau et des affectations de clubs par des tests de panne.
-- [ ] Ajouter une vérification systématique des classements calculés à partir des rencontres terminées.
+- [x] Recalculer les statistiques (matchs, victoires, nuls, défaites, buts, points) à partir des rencontres terminées et comparer chaque ligne du classement.
+- [x] Refuser les scores de championnat supérieurs à 99 buts dans l’audit du calendrier.
+- [x] Ajouter des tests qui détectent un classement altéré et un score hors limites.
 - [ ] Renforcer les contrôles de cohérence entre les calendriers, les rencontres officielles et les archives de résultats.
 
 ### Lot 68 — cohérence des saisons et des affectations de clubs (en cours)
