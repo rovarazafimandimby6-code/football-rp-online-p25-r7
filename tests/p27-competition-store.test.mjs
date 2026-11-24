@@ -36,3 +36,23 @@ test('P27 saisons : rejette les mouvements qui cassent les divisions ou les conf
   assert.equal(f.store.finalizeSeason({nextSeasonId:'bad-hop',movements:[{clubId:d1,toDivision:'D3'}]}).reason,'movement-must-be-adjacent-division');
   assert.equal(f.store.finalizeSeason({nextSeasonId:'bad-conference',movements:[{clubId:d1,toDivision:'D2'},{clubId:f.store.activeSeason.competitions.find(c=>c.id==='test-season-league-D2').members[0].id,toDivision:'D1'}]}).ok,true);
 }finally{f.cleanup();}});
+
+test('P27 palmarès : agrège les saisons, les titres et les bilans sans dupliquer les matchs',()=>{
+ const f=setup();try{
+  const league=f.store.snapshot().competitions.find(c=>c.id==='test-season-league-D1');
+  const fixture=league.fixtures[0];
+  assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'history-room',homeGoals:2,awayGoals:1,finalizedAt:1200}).ok,true);
+  const home=fixture.homeClubId, away=fixture.awayClubId;
+  f.store.activeSeason.trophies.push({id:'history-title',competitionId:'test-season-league-D1',competitionName:'Premier League',clubId:home,clubName:f.store.clubs.get(home).name,awardedAt:1300});
+  f.store.persist();
+  const restored=new JsonCompetitionStore(f.directory,{seasonId:'ignored'});
+  const records=new Map(restored.clubHistoricalRecords().map(item=>[item.clubId,item]));
+  assert.equal(records.get(home).matches,1);assert.equal(records.get(home).wins,1);
+  assert.equal(records.get(home).goalsFor,2);assert.equal(records.get(home).leagueTitles,1);
+  assert.equal(records.get(home).seasonsParticipated,1);
+  assert.equal(records.get(away).losses,1);assert.equal(records.get(away).goalsAgainst,2);
+  const duel=restored.headToHead(home,away);
+  assert.equal(duel.matches,1);assert.equal(duel.clubAWins+duel.clubBWins,1);
+  assert.equal(restored.headToHead(home,home),null);
+ }finally{f.cleanup();}
+});

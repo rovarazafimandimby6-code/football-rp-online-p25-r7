@@ -210,6 +210,100 @@ export class JsonCompetitionStore {
       movements:clone(season.movements || [])
     }));
   }
+  clubHistoricalRecords() {
+    const records = new Map([...this.clubs.values()].map(club => [club.id, {
+      clubId:club.id, clubName:club.name, seasonsParticipated:0,
+      leagueTitles:0, cupTitles:0, trophies:[], bestLeaguePosition:null,
+      promotions:0, relegations:0, matches:0, wins:0, draws:0, losses:0,
+      goalsFor:0, goalsAgainst:0, competitions:0, seasonIds:[]
+    }]));
+    const meetings = new Map();
+    for (const season of this.state.seasons) {
+      const participated = new Set();
+      for (const competition of season.competitions || []) {
+        const names = new Map((competition.members || []).map(member => [member.id, member.name]));
+        for (const row of competition.standings || []) names.set(row.id, row.name);
+        for (const member of competition.members || []) participated.add(member.id);
+        for (const row of competition.standings || []) {
+          participated.add(row.id);
+          const record = records.get(row.id);
+          if (record && competition.type === 'league') {
+            const position = (competition.standings || []).findIndex(item => item.id === row.id) + 1;
+            if (position > 0 && (record.bestLeaguePosition === null || position < record.bestLeaguePosition))
+              record.bestLeaguePosition = position;
+          }
+        }
+        for (const fixture of competition.fixtures || []) {
+          if (fixture.status !== 'completed' || !fixture.result ||
+              !fixture.homeClubId || !fixture.awayClubId) continue;
+          const home = records.get(fixture.homeClubId), away = records.get(fixture.awayClubId);
+          const hg = fixture.result.home, ag = fixture.result.away;
+          if (!home || !away || !Number.isSafeInteger(hg) || !Number.isSafeInteger(ag)) continue;
+          participated.add(home.clubId); participated.add(away.clubId);
+          for (const record of [home, away]) { record.matches++; record.competitions++; }
+          home.goalsFor += hg; home.goalsAgainst += ag;
+          away.goalsFor += ag; away.goalsAgainst += hg;
+          if (hg > ag) { home.wins++; away.losses++; }
+          else if (ag > hg) { away.wins++; home.losses++; }
+          else { home.draws++; away.draws++; }
+          const pair = [fixture.homeClubId, fixture.awayClubId].sort();
+          const key = pair.join('|');
+          if (!meetings.has(key)) meetings.set(key, { clubAId:pair[0], clubBId:pair[1], matches:0, clubAWins:0, draws:0, clubBWins:0, goalsA:0, goalsB:0 });
+          const duel = meetings.get(key); duel.matches++;
+          const aGoals = fixture.homeClubId === pair[0] ? hg : ag;
+          const bGoals = fixture.homeClubId === pair[1] ? hg : ag;
+          duel.goalsA += aGoals; duel.goalsB += bGoals;
+          if (aGoals > bGoals) duel.clubAWins++;
+          else if (bGoals > aGoals) duel.clubBWins++;
+          else duel.draws++;
+        }
+      }
+      for (const clubId of participated) {
+        const record = records.get(clubId);
+        if (record && !record.seasonIds.includes(season.id)) {
+          record.seasonsParticipated++;
+          record.seasonIds.push(season.id);
+        }
+      }
+      for (const trophy of season.trophies || []) {
+        const record = records.get(trophy.clubId);
+        if (!record) continue;
+        record.trophies.push({ ...trophy, seasonId:season.id });
+        if (trophy.competitionId?.includes('-cup')) record.cupTitles++;
+        else record.leagueTitles++;
+      }
+      for (const movement of season.movements || []) {
+        const record = records.get(movement.clubId);
+        if (!record) continue;
+        const order = { D1:1, D2:2, D3:3, D4:4, D5:5 };
+        if (order[movement.toDivision] < order[movement.fromDivision]) record.promotions++;
+        if (order[movement.toDivision] > order[movement.fromDivision]) record.relegations++;
+      }
+    }
+    return [...records.values()].map(record => ({
+      ...record, trophies:clone(record.trophies), seasonIds:[...record.seasonIds]
+    })).sort((a,b) => a.clubName.localeCompare(b.clubName));
+  }
+  headToHead(clubAId, clubBId) {
+    const a = clean(clubAId, 80), b = clean(clubBId, 80);
+    if (!a || !b || a === b || !this.clubs.has(a) || !this.clubs.has(b)) return null;
+    const pair = [a,b].sort();
+    const record = new Map(this.clubHistoricalRecords().map(item => [item.clubId,item]));
+    const meetings = { matches:0, clubAWins:0, draws:0, clubBWins:0, goalsA:0, goalsB:0 };
+    for (const season of this.state.seasons) for (const competition of season.competitions || [])
+      for (const fixture of competition.fixtures || []) {
+        if (fixture.status !== 'completed' || !fixture.result ||
+            ![fixture.homeClubId,fixture.awayClubId].includes(a) ||
+            ![fixture.homeClubId,fixture.awayClubId].includes(b)) continue;
+        const aGoals = fixture.homeClubId === a ? fixture.result.home : fixture.result.away;
+        const bGoals = fixture.homeClubId === b ? fixture.result.home : fixture.result.away;
+        meetings.matches++; meetings.goalsA += aGoals; meetings.goalsB += bGoals;
+        if (aGoals > bGoals) meetings.clubAWins++;
+        else if (bGoals > aGoals) meetings.clubBWins++;
+        else meetings.draws++;
+      }
+    return { clubAId:a, clubAName:record.get(a)?.clubName, clubBId:b, clubBName:record.get(b)?.clubName, ...meetings };
+  }
   snapshot() {
     const season=this.activeSeason;
     return {season:{id:season.id,status:season.status,startedAt:season.startedAt},competitions:season.competitions.map(item=>({...clone(item),fixtures:item.fixtures.map(f=>({...f}))})),trophies:clone(season.trophies)};
