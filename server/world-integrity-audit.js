@@ -166,7 +166,7 @@ export function auditP27World({
       const parent = loan.parentContract;
       if (!clubById.has(loan.parentClubId) || loan.parentClubId === career.clubId ||
           !parent || parent.status !== 'active' || parent.clubId !== loan.parentClubId ||
-          !Number.isFinite(Date.parse(loan.startedAt)) || !Number.isFinite(Date.parse(loan.expiresAt)) ||
+          !Number.isFinite(Date.parse(loan.startedAt)) || !Number.isFinite(Date.parse(loan.expiresAt)) || !Number.isFinite(Date.parse(parent.expiresAt)) ||
           Date.parse(loan.expiresAt) <= Date.parse(loan.startedAt) ||
           Date.parse(loan.expiresAt) > Date.parse(parent.expiresAt))
         errors.push({ code:'CAREER_LOAN_TERMS_INVALID', accountId:career.accountId, playerId:career.playerId });
@@ -441,7 +441,8 @@ export function auditP27World({
     errors,
     warnings,
     counts:{
-      clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,\n      freeAgents:freeAgentArchive.size, duplicateFreeAgentSnapshots,
+      clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,
+      freeAgents:freeAgentArchive.size, duplicateFreeAgentSnapshots,
       careers:careers.length, pendingRosterSync, completedRosterSync, financeAccounts:asList(financeAccounts).length,
       financeEntries, financeBalanceTotal, pendingTransferSettlements, pendingPlayerWages, seasons:seasons.length, fixtures, completedFixtures, archivedResults:asList(resultArchive).length
     }
