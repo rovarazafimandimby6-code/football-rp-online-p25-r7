@@ -721,6 +721,8 @@ test("P27 demande d'entrée depuis le banc : mise en file puis rotation serveur 
   const requester = internal.players.get(joined.playerId);
   requester.isOnPitch = false;
   requester.controlMode = 'bench';
+  const promotedReserve = [...internal.players.values()].find(player => player.team === requester.team && player.isBot && player.isOnPitch === false);
+  promotedReserve.isOnPitch = true;
   const activeHuman = [...internal.players.values()].find(player => player.team === requester.team && player.id !== requester.id && !player.isBot && player.connected);
   if (activeHuman) activeHuman.isOnPitch = true;
   const activeBotsBefore = [...internal.players.values()].filter(player => player.team === requester.team && player.isBot && player.isOnPitch !== false);

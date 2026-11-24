@@ -153,7 +153,7 @@ test('P27 rotations synchronisées : le contrôle unique suit le joueur qui chan
 });
 
 
-test('P27 banc : transmet une demande d'entrée uniquement depuis le banc', async () => {
+test("P27 banc : transmet une demande d'entrée uniquement depuis le banc", async () => {
   const f = fixture();
   let requests = 0;
   f.client.requestEntry = async () => { requests++; return { queued: true }; };
