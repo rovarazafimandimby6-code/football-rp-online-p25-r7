@@ -333,9 +333,15 @@ export class ClubManager {
       appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null
     };
     if (transferred.playerType === 'system') {
-      transferred.contract = createSystemPlayerContract({
-        clubId: to.id, playerId: transferred.id, division: to.division, rating: transferred.rating
-      });
+      transferred.contract = {
+        ...createSystemPlayerContract({
+          clubId: to.id, playerId: transferred.id, division: to.division, rating: transferred.rating
+        }),
+        ...(Number.isSafeInteger(player.contract?.reviewCount) ? { reviewCount: Math.max(0, player.contract.reviewCount) } : {}),
+        ...(typeof player.contract?.reviewedAt === 'string' ? { reviewedAt: player.contract.reviewedAt } : {}),
+        transferredAt: new Date().toISOString(),
+        previousClubId: from.id
+      };
     } else if (transferred.contract?.status === 'active') {
       transferred.contract = {
         ...transferred.contract,

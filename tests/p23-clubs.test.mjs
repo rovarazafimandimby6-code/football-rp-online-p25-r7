@@ -203,3 +203,30 @@ test('P27 contrats : refuse une révision salariale pour joueur humain ou contra
  assert.equal(manager.reviewSystemPlayerContract(club.id,'human-review-test',{now:1}).reason,'not-system-player');
  assert.equal(manager.reviewSystemPlayerContract(club.id,'unknown',{now:1}).reason,'player-not-found');
 });
+
+test('P27 contrats : une modification de note actualise le salaire système sans effacer les révisions',()=>{
+ const storage=memoryStorage();
+ const manager=new ClubManager(undefined,storage,'p27-contract-rating-review');
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster[0];
+ manager.reviewSystemPlayerContract(club.id,player.id,{now:Date.UTC(2027,0,1)});
+ const updated=manager.updatePlayer(club.id,{...player,rating:Math.min(99,player.rating+5)});
+ assert.equal(updated.ok,true);
+ assert.equal(updated.player.contract.weeklyWage,calculateSystemWeeklyWage({division:club.division,rating:updated.player.rating}));
+ assert.equal(updated.player.contract.reviewCount,1);
+ assert.equal(updated.player.contract.reviewedAt,'2027-01-01T00:00:00.000Z');
+});
+test('P27 contrats : un transfert conserve lhistorique de révision et trace le club précédent',()=>{
+ const manager=new ClubManager();
+ const from='antananarivo-fc',to='tulear-sunrise';
+ const player=manager.getClub(from).roster[0];
+ manager.reviewSystemPlayerContract(from,player.id,{now:Date.UTC(2027,0,1)});
+ const target=manager.getClub(to);
+ manager.removePlayer(to,target.roster[0].id);
+ assert.equal(manager.transferPlayer(from,to,player.id).ok,true);
+ const moved=manager.getClub(to).roster.find(item=>item.id===player.id);
+ assert.equal(moved.contract.reviewCount,1);
+ assert.equal(moved.contract.reviewedAt,'2027-01-01T00:00:00.000Z');
+ assert.equal(moved.contract.previousClubId,from);
+ assert.ok(Number.isFinite(Date.parse(moved.contract.transferredAt)));
+});
