@@ -699,7 +699,9 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Restaurer l’état mémoire des sponsors si l’écriture échoue.
 - [x] Rendre transactionnels les résultats de rencontres, l’avancement des tableaux et la clôture de saison dans le stockage des compétitions.
 - [x] Préserver l’identité des objets de compétition pendant les transactions réussies pour ne pas invalider les références actives.
-- [ ] Ajouter un journal de coordination/récupération pour les opérations qui modifient réellement plusieurs fichiers indépendants (transfert, effectif, grand livre et contrat).
+- [x] Ajouter un journal durable de coordination/récupération pour les indemnités de transfert entre les deux grands livres : intention persistée avant exécution, checkpoints débit/crédit, reprise après redémarrage et identifiants d’écriture déterministes.
+- [x] Tester une panne entre l’écriture du débit et son checkpoint, puis vérifier la reprise sans double débit.
+- [ ] Étendre ce coordinateur aux opérations qui modifient réellement plusieurs domaines indépendants (transfert, effectif, grand livre et contrat) ; le journal actuel couvre uniquement la réconciliation financière des transferts.
 
 ### Lot 66 — cohérence des finances et de la masse salariale (en cours)
 - [x] Refuser de réinitialiser silencieusement un calendrier de paie corrompu ; le serveur échoue explicitement plutôt que d’effacer les arriérés.
