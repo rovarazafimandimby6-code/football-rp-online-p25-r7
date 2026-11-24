@@ -1208,3 +1208,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [ ] Configuration réelle de `P27_ADMIN_TOKEN` par l'administrateur de l'hébergement ; impossible à confirmer depuis le dépôt.
 - [ ] Exécution de la recette sur appareil Android physique ; non simulable par GitHub Actions.
 - Limite : les tests de stores et d'API sont automatisés ; ils ne constituent pas une validation de déploiement ni un essai physique.
+
+### Lots 153–156 — sécurité statique, reprise et préparation candidate (en cours)
+- [x] Lot 153 : compléter la protection des fichiers statiques contre les liens symboliques pointant hors de la racine applicative ; la résolution réelle du chemin est désormais contrôlée avant lecture.
+- [x] Ajouter un test HTTP qui tente de lire un fichier extérieur au dépôt via un lien symbolique exposé dans la racine publique.
+- [x] Lot 154 : ajouter des tests de l'archive des résultats pour le rechargement après redémarrage, le remplacement idempotent d'un résultat, la rétention maximale, la pagination et le refus explicite d'un JSON corrompu.
+- [ ] Lot 155 : terminer l'audit de reprise globale. Constat à traiter : les salons et matchs en cours sont conservés en mémoire dans server/room-manager.js ; les résultats terminés sont persistés, mais un redémarrage serveur interrompt les matchs actifs. Ne pas présenter cela comme une reprise de match après panne.
+- [ ] Lot 156 : produire une version candidate seulement après décision sur la persistance des matchs actifs, configuration réelle du secret administrateur et recette Android.
+- [ ] CI complète sur les nouveaux tests et contrôle de syntaxe.
+- Limite : aucune validation de déploiement ni d'appareil physique dans cette étape ; aucune release ni aucun déploiement ne sont créés.
