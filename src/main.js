@@ -720,6 +720,18 @@ async function startMatch(online = null) {
   }
 }
 
+async function submitAccountTraining(action, attribute) {
+  const status = document.getElementById('account-status');
+  if (status) status.textContent = 'Entraînement envoyé au serveur…';
+  try {
+    const result = action === 'account-train' ? await accountClient.trainAttribute(attribute, 1) : await accountClient.practiceAttribute(attribute, 1);
+    await loadAccountProgressionSummary();
+    if (status) status.textContent = result.ok === false ? 'Entraînement refusé : ressources insuffisantes ou attribut au plafond.' : 'Attribut amélioré et progression enregistrée sur le serveur.';
+  } catch (error) {
+    if (status) status.textContent = `Entraînement impossible : ${String(error?.message || error).slice(0, 90)}`;
+  }
+}
+
 async function loadAccountProgressionSummary() {
   const host = document.getElementById('account-progression-stats');
   if (!host || !accountClient.token) return;
@@ -729,7 +741,7 @@ async function loadAccountProgressionSummary() {
     const p = payload?.progression || {};
     const attrs = p.attributes || {};
     const names = { pace:'Vitesse', shooting:'Tir', passing:'Passe', defense:'Défense', stamina:'Endurance', control:'Contrôle' };
-    const attributeRows = Object.entries(names).map(([key,label]) => `<div class="list-row"><b>${label}</b><span>${Math.max(1,Math.min(99,Number(attrs[key])||1))}/99</span></div>`).join('');
+    const attributeRows = Object.entries(names).map(([key,label]) => `<div class="list-row"><b>${label}</b><span>${Math.max(1,Math.min(99,Number(attrs[key])||1))}/99</span><span class="training-controls"><button class="small-action" data-action="account-train" data-attribute="${key}" ${Number(p.trainingPoints)<1?'disabled':''}>+1 PT</button><button class="small-action" data-action="account-practice" data-attribute="${key}" ${Number(p.coins)<80?'disabled':''}>+1 · 80 CR</button></span></div>`).join('');
     host.innerHTML = `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PROGRESSION SERVEUR</span><h3>Niveau ${Math.max(1,Math.min(99,Number(p.level)||1))}</h3></div><span class="local-tag">${Math.max(0,Number(p.coins)||0)} CRÉDITS</span></div><div class="quick-grid"><div class="quick-card"><b>${Math.max(0,Number(p.experience)||0)}</b><small>EXPÉRIENCE</small></div><div class="quick-card"><b>${Math.max(0,Number(p.trainingPoints)||0)}</b><small>POINTS D'ENTRAÎNEMENT</small></div></div><h4>Attributs officiels</h4>${attributeRows}</section>`;
   } catch (error) {
     if (host.isConnected) host.innerHTML = `<p class="notice">Progression serveur indisponible : ${escapeHTML(String(error?.message || error).slice(0,80))}</p>`;
@@ -813,6 +825,8 @@ menu.addEventListener('click', event => {
     submitAccountForm('restore-profile');
   } else if (action === 'account-logout') {
     submitAccountForm('logout');
+  } else if (action === 'account-train' || action === 'account-practice') {
+    submitAccountTraining(action, event.target.closest('[data-attribute]')?.dataset.attribute || '');
   } else if (action === 'online-menu') {
     document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MULTIJOUEUR · SERVEUR AUTORITAIRE</span><h2>Rejoindre un match en ligne</h2><p>Crée un salon ou rejoins un salon actif. Les déplacements, actions et le ballon sont validés par le serveur.</p><label>Nom affiché<input id="online-name" maxlength="20" value="${escapeHTML(profileStore.profile.identity.displayName)}"></label><div class="training-controls"><button class="primary-cta" data-action="create-online">CRÉER UN SALON</button><button class="small-action" data-action="refresh-online">ACTUALISER LES SALONS</button></div><label>Code du salon<input id="online-room-id" maxlength="12" placeholder="Code à 12 caractères" autocapitalize="characters"></label><button class="primary-cta" data-action="join-online">REJOINDRE CE SALON</button><div id="online-room-list" class="fixture-list"><p class="notice">Chargement des salons…</p></div><p class="notice" id="online-status" aria-live="polite">Le serveur doit être démarré et accessible sur cette adresse.</p><button class="text-cta" data-page="home">Retour</button></div>`;
     refreshOnlineRooms();
