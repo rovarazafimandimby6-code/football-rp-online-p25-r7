@@ -7,8 +7,8 @@ test('P27 pyramide : cinq championnats totalisent 156 places', () => {
     ['D1', 'Premier League', 16],
     ['D2', 'Ligue 2', 20],
     ['D3', 'National League', 24],
-    ['D4', 'Regional League', 32],
-    ['D5', 'Challenger League', 64]
+    ['D4', 'Challenger League', 32],
+    ['D5', 'Regional League', 64]
   ]);
   assert.equal(TOTAL_LEAGUE_CLUBS, 156);
 });
@@ -20,7 +20,7 @@ test('P27 conférences : noms français et effectifs cohérents', () => {
   assert.equal(CONFERENCE_NAMES.D5.length * 16, 64);
 });
 
-test('P27 migration : l’ancienne division amateur est reconnue comme Challenger League', () => {
+test('P27 migration : l’ancienne division amateur est reconnue comme Regional League', () => {
   assert.equal(normalizeDivision('AMATEUR'), 'D5');
   assert.equal(normalizeConference('D5', 'Nord'), 'Nord');
   assert.equal(normalizeConference('D4', 'Est'), null);

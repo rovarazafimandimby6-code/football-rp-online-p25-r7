@@ -2,8 +2,8 @@ export const LEAGUE_DIVISIONS = Object.freeze([
   { id: 'D1', name: 'Premier League', level: 1, targetClubs: 16, description: 'Le championnat d’élite' },
   { id: 'D2', name: 'Ligue 2', level: 2, targetClubs: 20, description: 'Le deuxième niveau national' },
   { id: 'D3', name: 'National League', level: 3, targetClubs: 24, description: 'Le troisième niveau national' },
-  { id: 'D4', name: 'Regional League', level: 4, targetClubs: 32, description: 'Deux conférences régionales de seize clubs', conferences: Object.freeze(['Nord', 'Sud']) },
-  { id: 'D5', name: 'Challenger League', level: 5, targetClubs: 64, description: 'Quatre conférences régionales de seize clubs', conferences: Object.freeze(['Nord', 'Sud', 'Est', 'Ouest']) }
+  { id: 'D4', name: 'Challenger League', level: 4, targetClubs: 32, description: 'Deux conférences régionales de seize clubs', conferences: Object.freeze(['Nord', 'Sud']) },
+  { id: 'D5', name: 'Regional League', level: 5, targetClubs: 64, description: 'Quatre conférences régionales de seize clubs', conferences: Object.freeze(['Nord', 'Sud', 'Est', 'Ouest']) }
 ]);
 
 export const CONFERENCE_NAMES = Object.freeze({
