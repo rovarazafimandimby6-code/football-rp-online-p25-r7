@@ -33,18 +33,31 @@ export class JsonRoomStore {
   }
 
   save(snapshot) {
-    if (!snapshot || typeof snapshot.id !== 'string' || !snapshot.id ||
-        !['lobby', 'playing', 'halftime'].includes(snapshot.phase) ||
-        !Array.isArray(snapshot.players) || !snapshot.score ||
-        !Number.isSafeInteger(snapshot.score.blue) || snapshot.score.blue < 0 ||
-        !Number.isSafeInteger(snapshot.score.red) || snapshot.score.red < 0 ||
-        !Number.isFinite(snapshot.elapsedMs) || snapshot.elapsedMs < 0) throw new Error('INVALID_ROOM_CHECKPOINT');
+    this.saveMany([snapshot]);
+    return snapshot;
+  }
+
+  saveMany(snapshots) {
+    if (!Array.isArray(snapshots) || snapshots.length === 0) return 0;
+    const incoming = new Map();
+    for (const snapshot of snapshots) {
+      if (!snapshot || typeof snapshot.id !== 'string' || !snapshot.id ||
+          !['lobby', 'playing', 'halftime'].includes(snapshot.phase) ||
+          !Array.isArray(snapshot.players) || !snapshot.score ||
+          !Number.isSafeInteger(snapshot.score.blue) || snapshot.score.blue < 0 ||
+          !Number.isSafeInteger(snapshot.score.red) || snapshot.score.red < 0 ||
+          !Number.isFinite(snapshot.elapsedMs) || snapshot.elapsedMs < 0 ||
+          incoming.has(snapshot.id)) throw new Error('INVALID_ROOM_CHECKPOINT');
+      incoming.set(snapshot.id, JSON.parse(JSON.stringify(snapshot)));
+    }
     const existing = this.readAll();
-    if (!existing.some(room => room.id === snapshot.id) && existing.length >= this.maxRooms) throw new Error('ROOM_STORE_CAPACITY_EXCEEDED');
-    const rooms = existing.filter(room => room.id !== snapshot.id);
-    rooms.push(JSON.parse(JSON.stringify(snapshot)));
+    const existingIds = new Set(existing.map(room => room.id));
+    const newIds = [...incoming.keys()].filter(id => !existingIds.has(id));
+    if (existing.length + newIds.length > this.maxRooms) throw new Error('ROOM_STORE_CAPACITY_EXCEEDED');
+    const rooms = existing.filter(room => !incoming.has(room.id));
+    rooms.push(...incoming.values());
     rooms.sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
-    const temporary = `${this.file}.${process.pid}.${randomUUID()}.tmp`;
+    const temporary = this.file + '.' + process.pid + '.' + randomUUID() + '.tmp';
     try {
       writeFileSync(temporary, JSON.stringify({ version: 1, rooms }), { mode: 0o600 });
       renameSync(temporary, this.file);
@@ -52,7 +65,7 @@ export class JsonRoomStore {
       try { unlinkSync(temporary); } catch {}
       throw error;
     }
-    return snapshot;
+    return incoming.size;
   }
 
   delete(roomId) {
