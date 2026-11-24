@@ -117,3 +117,37 @@ export function balanceClubRosterQuality(roster = [], club = {}) {
   }
   return balanced;
 }
+
+
+const DIVISION_STRENGTH_BASES = Object.freeze({ D1:75, D2:68, D3:61.5, D4:55.5, D5:49 });
+const STRATEGIC_PRESTIGE = Object.freeze([
+  { min:86, tier:'iconic' }, { min:72, tier:'renowned' }, { min:55, tier:'established' }, { min:0, tier:'local' }
+]);
+const STRATEGIC_STRENGTH = Object.freeze([
+  { delta:7, tier:'title-contender' }, { delta:3, tier:'strong' }, { delta:-3, tier:'competitive' }, { delta:-Infinity, tier:'underdog' }
+]);
+/** Sporting status, prestige and finances remain independent. */
+export function generateClubStrategicProfile(club = {}) {
+  const division = DIVISION_STRENGTH_BASES[club.division] ? club.division : 'D5';
+  const baseline = DIVISION_STRENGTH_BASES[division];
+  const rating = clamp(Number(club.rating) || baseline);
+  const reputation = clamp(Number(club.reputation) || 40);
+  const budget = Math.max(0, Number(club.budget) || 0);
+  const random = randomFor(hashSeed(`fpro-p27-strategy:${club.id || club.name || 'club'}`));
+  const prestigeTier = STRATEGIC_PRESTIGE.find(item => reputation >= item.min).tier;
+  const delta = rating - baseline;
+  const strengthTier = STRATEGIC_STRENGTH.find(item => delta >= item.delta).tier;
+  const ambition = division === 'D1'
+    ? (delta >= 5 ? 'title' : delta >= 0 ? 'top-half' : 'stability')
+    : division === 'D2' || division === 'D3'
+      ? (delta >= 5 ? 'promotion' : delta >= 0 ? 'playoffs' : 'stability')
+      : (delta >= 5 ? 'promotion' : delta >= 0 ? 'upper-table' : 'survival');
+  const cultureRoll = random();
+  const loyaltyCulture = cultureRoll < 0.22 ? 'strong' : cultureRoll < 0.75 ? 'balanced' : 'fluid';
+  const financialTier = budget >= 4000000 ? 'major' : budget >= 1800000 ? 'upper' : budget >= 800000 ? 'standard' : 'modest';
+  return Object.freeze({
+    prestigeTier, strengthTier, ambition, financialTier, loyaltyCulture,
+    divisionBaseline: baseline, ratingOffset: Math.round(delta * 10) / 10,
+    competitiveVariance: Object.freeze({ formImpact:true, injuriesImpact:true, tacticsImpact:true, upsetPossible:true })
+  });
+}

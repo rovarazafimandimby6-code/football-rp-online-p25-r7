@@ -317,3 +317,32 @@ test('P27 catalogue: le premier club D4 est réservé au système si la division
   assert.equal(clubs.getClub('d4-beta').humanAdmission, 'open');
   assert.equal(clubs.takeOver('d4-alpha', 'human-d4').reason, 'club-not-available');
 });
+
+
+test('P27 clubs: prestige, puissance, ambition et finances restent des dimensions séparées', async () => {
+  const { generateClubStrategicProfile } = await import('../src/club-profile.js');
+  const prestigiousModest = generateClubStrategicProfile({ id:'prestige-modest', division:'D1', rating:73, reputation:92, budget:300000 });
+  const wealthyUnderdog = generateClubStrategicProfile({ id:'wealthy-underdog', division:'D5', rating:43, reputation:35, budget:5000000 });
+  assert.equal(prestigiousModest.prestigeTier, 'iconic');
+  assert.equal(prestigiousModest.strengthTier, 'competitive');
+  assert.equal(wealthyUnderdog.financialTier, 'major');
+  assert.equal(wealthyUnderdog.strengthTier, 'underdog');
+  assert.equal(wealthyUnderdog.competitiveVariance.upsetPossible, true);
+});
+
+test('P27 joueurs: les profils de fidélité couvrent les joueurs fidèles, mobiles et presque intransférables', async () => {
+  const { generateClubRoster } = await import('../src/club-roster.js');
+  const roster = Array.from({ length:40 }, (_, index) => generateClubRoster({ id:`loyalty-spectrum-${index}`, division:'D2', rating:68 }, { size:12 })).flat();
+  assert.ok(roster.every(player => player.loyalty.clubLoyalty >= 0 && player.loyalty.clubLoyalty <= 100));
+  assert.ok(roster.every(player => player.loyalty.transferWillingness >= 0 && player.loyalty.transferWillingness <= 100));
+  assert.ok(roster.some(player => player.loyalty.departurePolicy === 'no-normal-exit'));
+  assert.ok(roster.some(player => player.loyalty.departurePolicy === 'ambitious'));
+});
+
+test('P27 clubs: un club réservé au système ne reste jamais marqué comme disponible à la reprise', () => {
+  const clubs = new ClubManager();
+  const reserved = clubs.getClub('nairobi-tana-academy');
+  assert.equal(reserved.humanAdmission, 'system-only');
+  assert.equal(reserved.control, 'ai');
+  assert.equal(clubs.takeOver('nairobi-tana-academy','human-reserved').reason, 'club-not-available');
+});

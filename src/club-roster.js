@@ -146,10 +146,20 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set() } = 
       FR: ['light','light','light','tan','medium','brown'], GB: ['light','light','tan','medium','brown'], IT: ['light','light','tan','medium','brown'], ES: ['light','light','tan','medium','brown'], PT: ['light','light','tan','medium','brown'], AR: ['light','light','tan','medium','brown'],
       JP: ['light','light','light','tan','medium'], MA: ['light','olive','olive','tan','medium'], DZ: ['light','olive','olive','tan','medium'], TN: ['light','olive','olive','tan','medium']
     })[code] || ['light','tan','medium','brown']), random);
+    const loyaltyRoll = random();
+    const clubLoyalty = Math.max(5, Math.min(100, Math.round(35 + random() * 60 + (club.strategicProfile?.loyaltyCulture === 'strong' ? 8 : 0))));
+    const departurePolicy = loyaltyRoll < 0.025 ? 'no-normal-exit'
+      : loyaltyRoll < 0.18 ? 'reluctant'
+      : loyaltyRoll < 0.82 ? 'balanced' : 'ambitious';
+    const transferWillingness = departurePolicy === 'no-normal-exit' ? Math.min(8, 100 - clubLoyalty)
+      : departurePolicy === 'reluctant' ? Math.min(28, 100 - clubLoyalty)
+      : departurePolicy === 'ambitious' ? Math.max(55, 100 - clubLoyalty)
+      : Math.max(15, Math.min(70, Math.round((100 - clubLoyalty) * 0.72 + random() * 18)));
     roster.push({
       id: `${club.id}-ai-${String(index + 1).padStart(2,'0')}`,
       name, nationality: code, age, role, number: index + 1,
       rating: overall, potential: talent.potential, potentialBand: talent.potentialBand, attributes,
+      loyalty: { clubLoyalty, transferWillingness, departurePolicy },
       preferredFoot: random() < 0.28 ? 'left' : 'right',
       archetype,
       appearance: {
