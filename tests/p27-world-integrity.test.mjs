@@ -121,8 +121,8 @@ test('P27 intégrité monde : contrôle les budgets et identités du catalogue m
  const input=cleanWorld();
  input.transferState.clubs=[
   {id:'club-a',budget:100000},
-  {id:'club-a',budget:-1},
-  {id:'unknown-club',budget:100}
+  {id:'club-a',budget:100000},
+  {id:'unknown-club',budget:-1}
  ];
  const result=auditP27World(input);
  const codes=result.errors.map(item=>item.code);
@@ -146,9 +146,9 @@ test('P27 intégrité monde : détecte contrats actifs invalides et comptes fina
 
 test('P27 intégrité monde : refuse les identifiants de saison et de compétition dupliqués',()=>{
  const input=cleanWorld();
- const season=structuredClone(input.competitionState.seasons[0]);
- season.competitions[0].id='league-a';
- input.competitionState.seasons.push(season);
+ const season=input.competitionState.seasons[0];
+ season.competitions.push(structuredClone(season.competitions[0]));
+ input.competitionState.seasons.push({...structuredClone(season),id:'season-b'});
  const result=auditP27World(input);
  const codes=result.errors.map(item=>item.code);
  assert.ok(codes.includes('SEASON_ID_INVALID_OR_DUPLICATE'));
