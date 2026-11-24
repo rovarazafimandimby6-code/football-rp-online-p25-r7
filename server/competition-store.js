@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from '
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { DEFAULT_CLUBS } from '../src/club-manager.js';
+import { getCompetitionGroups, conferenceForClub } from '../src/league-structure.js';
 
 const clean = (value, max = 64) => String(value ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max);
 const scoreValue = value => Number.isSafeInteger(value) && value >= 0 && value <= 99 ? value : null;
@@ -9,23 +10,39 @@ const clone = value => JSON.parse(JSON.stringify(value));
 
 function createSeason(seasonId, clubs, now) {
   const season = { id: seasonId, status: 'active', startedAt: now, competitions: [], trophies: [] };
-  for (const division of ['D1','D2','D3','AMATEUR']) {
-    const members = clubs.filter(club => club.division === division).map(club => ({ id: club.id, name: club.name }));
+  for (const group of getCompetitionGroups()) {
+    const members = clubs
+      .filter(club => club.division === group.division && (!group.conference || conferenceForClub(club) === group.conference))
+      .map(club => ({ id: club.id, name: club.name }));
     const fixtures = [];
     const rotation = members.map(member => member.id);
     const scheduled = rotation.length % 2 ? [...rotation, null] : [...rotation];
     const rounds = Math.max(0, scheduled.length - 1);
+    const groupKey = group.conference ? `-${group.conference.toLocaleUpperCase('fr')}` : '';
+    const competitionId = `${seasonId}-league-${group.division}${groupKey}`;
     for (let round = 1; round <= rounds; round++) {
       for (let match = 0; match < scheduled.length / 2; match++) {
         let home = scheduled[match], away = scheduled[scheduled.length - 1 - match];
         if (!home || !away) continue;
         if ((round + match) % 2) [home, away] = [away, home];
-        fixtures.push({ id: `${seasonId}-${division}-R${round}-M${match+1}`, competitionId: `${seasonId}-league-${division}`, type: 'league', round, homeClubId: home, awayClubId: away, status: 'scheduled', result: null, roomId: null });
+        fixtures.push({ id: `${seasonId}-${group.division}${groupKey}-R${round}-M${match+1}`, competitionId, type: 'league', round, homeClubId: home, awayClubId: away, status: 'scheduled', result: null, roomId: null });
       }
       const last = scheduled.pop();
       scheduled.splice(1, 0, last);
     }
-    season.competitions.push({ id: `${seasonId}-league-${division}`, type: 'league', name: `Championnat · ${division}`, division, status: 'active', members, fixtures, standings: members.map(club => ({ ...club, played:0, wins:0, draws:0, losses:0, goalsFor:0, goalsAgainst:0, points:0 })) });
+    season.competitions.push({
+      id: competitionId,
+      type: 'league',
+      name: group.competitionName,
+      leagueName: group.leagueName,
+      division: group.division,
+      conference: group.conference,
+      status: members.length > 1 ? 'active' : 'pending-population',
+      members,
+      targetClubCount: group.conference ? 16 : ({ D1: 16, D2: 20, D3: 24 }[group.division]),
+      fixtures,
+      standings: members.map(club => ({ ...club, played:0, wins:0, draws:0, losses:0, goalsFor:0, goalsAgainst:0, points:0 }))
+    });
   }
   const cupMembers = clubs.map(club => ({ id: club.id, name: club.name })).sort((a,b) => a.id.localeCompare(b.id));
   const cupFixtures = [];

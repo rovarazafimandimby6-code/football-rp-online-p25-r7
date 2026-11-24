@@ -8,6 +8,7 @@ import { JsonAccountStore } from './account-store.js';
 import { JsonCareerStore } from './career-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
+import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/league-structure.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
@@ -94,6 +95,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/accounts/logout') {
       accountStore.revoke(bearer(req));
       return json(res, 200, { loggedOut: true });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/league-structure') {
+      return json(res, 200, { divisions: LEAGUE_DIVISIONS, conferences: CONFERENCE_NAMES, totalClubs: TOTAL_LEAGUE_CLUBS });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/competitions') {
+      return json(res, 200, competitionStore.snapshot());
     }
     if (req.method === 'GET' && url.pathname === '/api/results') {
       const rawLimit = url.searchParams.get('limit');

@@ -1,4 +1,5 @@
 import { generateClubRoster } from './club-roster.js';
+import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './league-structure.js';
 
 const safeId = value => String(value ?? '').trim().slice(0, 48);
 const safeCount = value => Number.isFinite(Number(value)) && Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 5 ? Number(value) : null;
@@ -47,12 +48,7 @@ const club = (id, name, city, country, countryCode, division, rating, control, c
   id, name, city, country, countryCode, division, rating, control, colors, stadium, reputation, budget, capacity: 15
 });
 
-export const DIVISIONS = Object.freeze([
-  { id: 'D1', name: 'Première division', level: 1, description: 'Élite nationale et clubs les plus réputés' },
-  { id: 'D2', name: 'Deuxième division', level: 2, description: 'Clubs professionnels en progression' },
-  { id: 'D3', name: 'Division régionale', level: 3, description: 'Clubs compétitifs et semi-professionnels' },
-  { id: 'AMATEUR', name: 'Championnat amateur', level: 4, description: 'Clubs locaux et projets émergents' }
-]);
+export const DIVISIONS = LEAGUE_DIVISIONS;
 
 export const DEFAULT_CLUBS = Object.freeze([
   club('antananarivo-fc','Antananarivo Crown FC','Antananarivo / Madrid','Madagascar · Espagne','MG','D1',76,'ai',['#1769aa','#092e55','#f3d36a'],'Stade des Hautes-Terres',82,4200000),
@@ -74,7 +70,7 @@ export const DEFAULT_CLUBS = Object.freeze([
   club('morondava-lagoon','Morondava Lagoon','Morondava','Madagascar','MG','AMATEUR',51,'open',['#278c9b','#14515d','#d8f0e8'],'Stade du Baobab',45,360000),
   club('nairobi-tana-academy','Nairobi-Tana Academy','Nairobi / Antananarivo','Kenya · Madagascar','MG','AMATEUR',52,'open',['#526f3e','#273c24','#e3d7a4'],'Academy Field',47,390000),
   club('antsiranana-north-fc','Antsiranana North FC','Antsiranana','Madagascar','MG','AMATEUR',50,'open',['#3976a8','#1e3f68','#f0d477'],'Stade du Nord',44,340000)
-]);
+].map(item => item.division === 'AMATEUR' ? ({ ...item, division: 'D5', conference: ({ 'tulear-sunrise': 'Sud', 'morondava-lagoon': 'Ouest', 'nairobi-tana-academy': 'Est', 'antsiranana-north-fc': 'Nord' })[item.id] }) : item));
 
 export class ClubManager {
   constructor(clubs = DEFAULT_CLUBS, storage, storageKey = COMPETITION_KEY) {
@@ -94,7 +90,8 @@ export class ClubManager {
         city: cleanText(input.city, '', 48),
         country: cleanText(input.country, 'Madagascar', 48),
         countryCode: /^[A-Z]{2}$/.test(input.countryCode || '') ? input.countryCode : 'MG',
-        division: DIVISIONS.some(item => item.id === input.division) ? input.division : 'AMATEUR',
+        division: normalizeDivision(input.division),
+        conference: normalizeConference(normalizeDivision(input.division), input.conference),
         stadium: cleanText(input.stadium, 'Stade municipal', 56),
         control: input.control === 'open' ? 'open' : 'ai',
         rating: Number.isFinite(Number(input.rating)) ? Math.max(1, Math.min(99, Math.round(Number(input.rating)))) : 50,
