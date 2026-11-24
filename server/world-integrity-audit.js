@@ -114,6 +114,18 @@ export function auditP27World({
         const membership = memberships[0];
         if (membership.clubId !== career.clubId) errors.push({ code:'CAREER_ROSTER_CLUB_MISMATCH', accountId:career.accountId, playerId:career.playerId, careerClubId:career.clubId, rosterClubId:membership.clubId });
         if (membership.player?.playerType !== 'human') errors.push({ code:'CAREER_ROSTER_TYPE_MISMATCH', accountId:career.accountId, playerId:career.playerId, rosterPlayerType:membership.player?.playerType || null });
+        const rosterContract = membership.player?.contract;
+        if (rosterContract?.status === 'active') {
+          if (rosterContract.clubId && rosterContract.clubId !== career.clubId)
+            errors.push({ code:'CAREER_ROSTER_CONTRACT_CLUB_MISMATCH', accountId:career.accountId, playerId:career.playerId, careerClubId:career.clubId, rosterContractClubId:rosterContract.clubId });
+          if (rosterContract.playerId && rosterContract.playerId !== career.playerId)
+            errors.push({ code:'CAREER_ROSTER_CONTRACT_PLAYER_MISMATCH', accountId:career.accountId, playerId:career.playerId, rosterContractPlayerId:rosterContract.playerId });
+          const rosterSalary = rosterContract.salary ?? rosterContract.weeklyWage;
+          if (rosterSalary !== undefined && rosterSalary !== career.contract.salary)
+            errors.push({ code:'CAREER_ROSTER_CONTRACT_SALARY_MISMATCH', accountId:career.accountId, playerId:career.playerId, careerSalary:career.contract.salary, rosterSalary });
+          if (rosterContract.expiresAt && Date.parse(rosterContract.expiresAt) !== Date.parse(career.contract.expiresAt))
+            errors.push({ code:'CAREER_ROSTER_CONTRACT_EXPIRY_MISMATCH', accountId:career.accountId, playerId:career.playerId });
+        }
       } else if (!active && memberships.some(item => item.player?.playerType === 'human')) {
         warnings.push({ code:'INACTIVE_CAREER_PLAYER_STILL_REGISTERED', accountId:career.accountId, playerId:career.playerId, rosterClubIds:memberships.map(item => item.clubId) });
       }
