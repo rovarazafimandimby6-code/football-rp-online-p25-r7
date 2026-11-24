@@ -26,7 +26,7 @@ test('P27 mercato-finances : un transfert accepté est réconcilié et audité a
   const finance=new JsonClubFinanceService(financeDirectory,{clubs:DEFAULT_CLUBS,transferStore,now:()=>now});
   const settlement=finance.syncRecordedTransferFees();
   assert.equal(settlement.ok,true,JSON.stringify(settlement));
-  assert.equal(settlement.posted,2);
+  assert.equal(settlement.posted,2,JSON.stringify({event,settlement,clubs:[...finance.clubs.keys()],transferClubs:transferStore.state.clubs.filter(club=>[from.id,to.id].includes(club.id))}));
   const clubs=DEFAULT_CLUBS.map(club=>({...club,roster:[]}));
   const audit=()=>auditP27World({
    clubs,transferState:transferStore.state,financeAccounts:finance.store.listAccounts(),
