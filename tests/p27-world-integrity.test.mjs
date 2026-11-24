@@ -694,3 +694,45 @@ test('P27 intégrité monde : rapproche carrière et contrat réels après recha
   assert.equal(result.counts.playerCareers,1);
  } finally { rmSync(directory,{recursive:true,force:true}); }
 });
+
+
+test('P27 outbox : rapproche une synchronisation terminée avec son événement source après rechargement',()=>{
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-roster-outbox-audit-'));
+ try {
+  const now=Date.parse('2027-01-15T12:00:00.000Z');
+  const clubs=[
+   {id:'club-a',name:'Club A',division:'D1',conference:null,capacity:12,budget:100000,roster:[]},
+   {id:'club-b',name:'Club B',division:'D1',conference:null,capacity:12,budget:100000,roster:[]}
+  ];
+  let transfer=new JsonTransferStore(directory,{clubs,now:()=>now});
+  const signed=transfer.signContract('outbox-account',{clubId:'club-a',salary:1000,durationDays:180});
+  assert.equal(signed.ok,true);
+  const command=transfer.pendingRosterSync()[0];
+  assert.equal(transfer.completeRosterSync(command.id).ok,true);
+  transfer=new JsonTransferStore(directory,{clubs,now:()=>now});
+  const career=transfer.getCareer('outbox-account');
+  clubs[0].roster.push({id:career.playerId,playerType:'human',number:9,contract:{...career.contract}});
+  const result=auditP27World({clubs,transferState:transfer.state,expectedClubCount:2});
+  assert.equal(result.ok,true,JSON.stringify(result.errors));
+  assert.equal(result.counts.completedRosterSync,1);
+ } finally { rmSync(directory,{recursive:true,force:true}); }
+});
+
+test('P27 outbox : détecte une commande reliée au mauvais joueur ou au mauvais club cible',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-outbox-player';
+ input.transferState.events=[{
+  id:'event-outbox-mismatch',type:'signing',playerId:'different-player',
+  fromClubId:null,toClubId:'club-b'
+ }];
+ input.transferState.rosterSync=[{
+  id:'roster-event-outbox-mismatch',eventId:'event-outbox-mismatch',playerId:'human-outbox-player',
+  action:'upsert',clubId:'club-a',previousClubId:null,
+  contract:{status:'active',playerId:'human-outbox-player',clubId:'club-a',salary:100},
+  status:'pending',attempts:0,createdAt:'2027-01-01T00:00:00.000Z'
+ }];
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('ROSTER_SYNC_EVENT_PLAYER_MISMATCH'));
+ assert.ok(codes.includes('ROSTER_SYNC_EVENT_TARGET_CLUB_MISMATCH'));
+});
