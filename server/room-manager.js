@@ -34,7 +34,7 @@ export class RoomManager {
     return this.publicState(room);
   }
 
-  join(roomId, { displayName = 'Joueur', preferredTeam = 'auto', role = 'FWD' } = {}) {
+  join(roomId, { displayName = 'Joueur', preferredTeam = 'auto', role = null } = {}) {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('ROOM_NOT_FOUND');
     if (room.phase === 'fulltime') throw new Error('MATCH_ALREADY_FINISHED');
@@ -56,7 +56,7 @@ export class RoomManager {
       name: String(displayName).replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 20) || 'Joueur',
       team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
       z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
-      role: reserve && role === 'FWD' ? reserve.role : (['GK','DEF','MID','FWD'].includes(role) ? role : 'FWD'), isBot: false,
+      role: ['GK','DEF','MID','FWD'].includes(role) ? role : (['GK','DEF','MID','FWD','FWD'][slot] || 'FWD'), isBot: false,
       isOnPitch: true, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
       input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0, lastCallForPassAt: -Infinity, callForPassUntil: 0,
       connected: true, controlMode: 'human', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
@@ -65,7 +65,7 @@ export class RoomManager {
     room.players.set(player.id, player);
     this.ensureBotCoverage(room);
     room.updatedAt = this.now();
-    if (this.teamCounts(room).blue >= 3 && this.teamCounts(room).red >= 3) this.start(room);
+    if (this.teamCounts(room).blue >= 5 && this.teamCounts(room).red >= 5) this.start(room);
     return { token, playerId: player.id, team, slot, state: this.publicState(room) };
   }
 
