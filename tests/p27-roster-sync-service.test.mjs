@@ -118,7 +118,7 @@ test('P27 saga effectif : les commandes outbox survivent au redémarrage du merc
   const restartedStore=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
   assert.equal(restartedStore.pendingRosterSync().length,1);
   const result=processPendingRosterSync({transferStore:restartedStore,clubManager:f.clubManager});
-  assert.equal(result.ok,true);
+  assert.equal(result.ok,true,JSON.stringify(result));
   assert.equal(f.clubManager.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
   assert.equal(restartedStore.pendingRosterSync().length,0);
  }finally{f.cleanup();}
