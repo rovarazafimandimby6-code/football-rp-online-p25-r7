@@ -1,4 +1,4 @@
-import { createSystemPlayerContract, setSystemPlayerContractTerm, expireSystemPlayerContract } from './p27-player-contracts.js';
+import { createSystemPlayerContract, setSystemPlayerContractTerm, expireSystemPlayerContract, renewSystemPlayerContract } from './p27-player-contracts.js';
 import { generateClubRoster } from './club-roster.js';
 import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './league-structure.js';
 import { generateClubCharacteristics, generateClubRecruitmentProfile, generateClubStrategicProfile, balanceClubRosterQuality } from './club-profile.js';
@@ -371,6 +371,18 @@ export class ClubManager {
     player.contract = result.contract;
     this.saveSeason();
     return { ok:true, contract:{ ...player.contract } };
+  }
+
+  renewSystemPlayerContract(clubId, playerId, { now = Date.now(), durationWeeks, weeklyWage } = {}) {
+    const club = this.clubs.get(safeId(clubId));
+    const player = club?.roster.find(item => item.id === safeId(playerId));
+    if (!club || !player) return { ok:false, reason:'player-not-found' };
+    if (player.playerType !== 'system') return { ok:false, reason:'not-system-player' };
+    const result = renewSystemPlayerContract(player.contract, { now, durationWeeks, weeklyWage });
+    if (!result.ok) return result;
+    player.contract = result.contract;
+    this.saveSeason();
+    return { ok:true, contract:{ ...player.contract, termHistory:player.contract.termHistory.map(entry => ({ ...entry })) } };
   }
 
   expireSystemPlayerContracts({ now = Date.now() } = {}) {

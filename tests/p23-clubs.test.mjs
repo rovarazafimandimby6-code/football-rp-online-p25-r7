@@ -285,3 +285,41 @@ test('P27 contrats : un transfert conserve la durée et l’échéance du contra
  assert.equal(moved.contract.expiresAt,term.contract.expiresAt);
  assert.equal(moved.contract.clubId,to);
 });
+
+
+test('P27 contrats : renouvellement prolonge le terme sans créer de période vide et conserve l’historique',()=>{
+ const storage=memoryStorage();
+ const manager=new ClubManager(undefined,storage,'p27-contract-renewal');
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster[0];
+ const signedAt=Date.UTC(2027,0,1);
+ const initial=manager.setSystemPlayerContractTerm(club.id,player.id,{signedAt,durationWeeks:20});
+ const oldExpiry=Date.parse(initial.contract.expiresAt);
+ const renewed=manager.renewSystemPlayerContract(club.id,player.id,{now:signedAt+10*24*60*60*1000,durationWeeks:26});
+ assert.equal(renewed.ok,true);
+ assert.equal(renewed.contract.signedAt,initial.contract.signedAt);
+ assert.equal(renewed.contract.renewalCount,1);
+ assert.equal(renewed.contract.termHistory.length,1);
+ assert.equal(renewed.contract.termHistory[0].previousExpiresAt,initial.contract.expiresAt);
+ assert.equal(Date.parse(renewed.contract.expiresAt),oldExpiry+26*7*24*60*60*1000);
+ const restored=new ClubManager(undefined,storage,'p27-contract-renewal');
+ assert.equal(restored.getClub(club.id).roster[0].contract.renewalCount,1);
+ assert.equal(restored.getClub(club.id).roster[0].contract.termHistory.length,1);
+});
+test('P27 contrats : renouvellement refuse contrat sans échéance, expiré ou durée invalide',()=>{
+ const manager=new ClubManager();
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster[0];
+ assert.equal(manager.renewSystemPlayerContract(club.id,player.id,{now:1,durationWeeks:12}).reason,'contract-has-no-expiry');
+ manager.setSystemPlayerContractTerm(club.id,player.id,{signedAt:Date.UTC(2027,0,1),durationWeeks:4});
+ assert.equal(manager.renewSystemPlayerContract(club.id,player.id,{now:Date.UTC(2027,1,1),durationWeeks:12}).reason,'contract-expired');
+ assert.equal(manager.renewSystemPlayerContract(club.id,player.id,{now:Date.UTC(2027,0,2),durationWeeks:2}).reason,'invalid-duration');
+});
+test('P27 contrats : un contrat humain ne peut pas être renouvelé par le gestionnaire système',()=>{
+ const manager=new ClubManager();
+ const club=manager.getClub('antananarivo-fc');
+ manager.removePlayer(club.id,club.roster.at(-1).id);
+ const added=manager.addPlayer(club.id,{id:'human-renew-test',name:'Human Renew',playerType:'human',rating:60});
+ assert.equal(added.ok,true);
+ assert.equal(manager.renewSystemPlayerContract(club.id,'human-renew-test',{now:1,durationWeeks:12}).reason,'not-system-player');
+});

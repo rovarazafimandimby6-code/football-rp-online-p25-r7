@@ -50,3 +50,33 @@ export function expireSystemPlayerContract(contract, { now } = {}) {
   if (expiresAt > now) return { ok:false, reason:'contract-not-due', expiresAt };
   return { ok:true, contract:{ ...contract, status:'expired', expiredAt:new Date(now).toISOString() } };
 }
+
+
+export function renewSystemPlayerContract(contract, { now, durationWeeks, weeklyWage } = {}) {
+  if (!contract || contract.type !== 'system-roster' || contract.status !== 'active') return { ok:false, reason:'contract-not-active' };
+  if (!Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-time' };
+  if (!Number.isInteger(durationWeeks) || durationWeeks < SYSTEM_CONTRACT_MIN_WEEKS || durationWeeks > SYSTEM_CONTRACT_MAX_WEEKS) return { ok:false, reason:'invalid-duration' };
+  const currentExpiry = Date.parse(contract.expiresAt);
+  if (!Number.isFinite(currentExpiry)) return { ok:false, reason:'contract-has-no-expiry' };
+  if (now > currentExpiry) return { ok:false, reason:'contract-expired' };
+  const startAt = Math.max(now, currentExpiry);
+  const expiresAt = startAt + durationWeeks * WEEK_MS;
+  if (!Number.isSafeInteger(expiresAt)) return { ok:false, reason:'invalid-expiry' };
+  const wage = weeklyWage === undefined ? (contract.weeklyWage ?? contract.salary) : weeklyWage;
+  if (!Number.isSafeInteger(wage) || wage <= 0) return { ok:false, reason:'invalid-wage' };
+  return { ok:true, contract:{
+    ...contract,
+    weeklyWage:wage,
+    salary:wage,
+    durationWeeks,
+    expiresAt:new Date(expiresAt).toISOString(),
+    renewedAt:new Date(now).toISOString(),
+    renewalCount:Math.max(0, Number(contract.renewalCount) || 0) + 1,
+    termHistory:[...(Array.isArray(contract.termHistory) ? contract.termHistory : []), {
+      previousExpiresAt:contract.expiresAt,
+      renewedAt:new Date(now).toISOString(),
+      durationWeeks,
+      weeklyWage:wage
+    }].slice(-20)
+  } };
+}
