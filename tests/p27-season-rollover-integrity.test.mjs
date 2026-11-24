@@ -70,6 +70,7 @@ test('P27 renouvellement pluri-saisons : conserve 156 clubs et les capacités de
       assert.equal(restored.clubs.size,156);
       assert.equal(restored.snapshot().scheduleAudit.ok,true,JSON.stringify(restored.snapshot().scheduleAudit.errors));
       assert.equal(restored.snapshot().cupAudit.ok,true,JSON.stringify(restored.snapshot().cupAudit));
+      assert.equal(restored.snapshot().historicalAudit.ok,true,JSON.stringify(restored.snapshot().historicalAudit));
     }
     assert.equal(store.seasonHistory().filter(season=>season.status==='completed').length,3);
     const archiveAudit=store.snapshot().archiveAudit;
@@ -147,5 +148,40 @@ test('P27 audit des archives : refuse un trophée attribué au mauvais champion'
   store.activeSeason.status='completed';
   store.activeSeason.completedAt=2000;
   assert.equal(store.snapshot().archiveAudit.reason,'archive-trophy-champion-mismatch');
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
+
+test('P27 archives : détecte les classements arithmétiquement incohérents et les identités de mouvement altérées',()=>{
+ const directory=mkdtempSync(path.join(tmpdir(),'p27-archive-deep-audit-'));
+ try {
+  const store=new JsonCompetitionStore(directory,{seasonId:'2026-27',now:()=>1000});
+  for(const competition of store.activeSeason.competitions) competition.status='completed';
+  finishPromotionPlayoffs(store);
+  const preview=store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  assert.equal(store.finalizeSeason({nextSeasonId:'2027-28',movements:preview.movements,completedAt:2000}).ok,true);
+  const archived=store.state.seasons[0];
+  const league=archived.competitions.find(item=>item.type==='league');
+  league.standings[0].points++;
+  assert.equal(store.snapshot().archiveAudit.reason,'archive-league-table-arithmetic-invalid');
+  league.standings[0].points--;
+  archived.movements[0].clubName='Identité altérée';
+  assert.equal(store.snapshot().archiveAudit.reason,'archive-movement-source-identity-mismatch');
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
+test('P27 historique des clubs : vérifie les agrégats et refuse les statistiques incohérentes',()=>{
+ const directory=mkdtempSync(path.join(tmpdir(),'p27-historical-record-audit-'));
+ try {
+  const store=new JsonCompetitionStore(directory,{seasonId:'2026-27',now:()=>1000});
+  const records=store.clubHistoricalRecords();
+  assert.equal(store.auditHistoricalRecords(records).ok,true);
+  const altered=records.map(record=>({...record}));
+  altered[0].wins++;
+  assert.equal(store.auditHistoricalRecords(altered).reason,'historical-match-totals-invalid');
+  const duplicated=records.map(record=>({...record}));
+  duplicated[1].clubId=duplicated[0].clubId;
+  assert.equal(store.auditHistoricalRecords(duplicated).reason,'historical-club-identity-invalid');
  } finally {rmSync(directory,{recursive:true,force:true});}
 });
