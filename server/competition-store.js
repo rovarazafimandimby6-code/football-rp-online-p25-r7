@@ -284,7 +284,8 @@ export class JsonCompetitionStore {
         type:['promotion','relegation'].includes(item.type) ? item.type : null,
         finalPosition:Number.isSafeInteger(item.finalPosition) ? item.finalPosition : null,
         competitionId:clean(item.competitionId,96) || null,
-        competitionName:clean(item.competitionName,100) || null
+        competitionName:clean(item.competitionName,100) || null,
+        qualificationStage:item.qualificationStage==='playoff'?'playoff':'direct'
       };
     });
     this.clubs = nextClubs;
@@ -307,7 +308,7 @@ export class JsonCompetitionStore {
           : this.clubs.get(competition.championClubId)?.name || null,
         finalStandings:clone(competition.standings || []),
         results:(competition.fixtures || []).filter(fixture => fixture.status === 'completed').map(fixture => ({
-          fixtureId:fixture.id, round:fixture.round, homeClubId:fixture.homeClubId,
+          fixtureId:fixture.id, round:fixture.round, stage:fixture.stage||null, homeClubId:fixture.homeClubId,
           awayClubId:fixture.awayClubId, result:clone(fixture.result), roomId:fixture.roomId
         }))
       })),
