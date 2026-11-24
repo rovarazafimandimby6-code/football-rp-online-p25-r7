@@ -22,7 +22,7 @@ const D4_CITIES = {
     'Ambilobe','Ambanja','Nosy Be','Sambava','Antalaha','Andapa','Vohemar','Bealanana',
     'Befandriana Nord','Port-Berge','Mampikony','Mandritsara','Marovoay','Mitsinjo','Soalala','Antsohihy'
   ],
-  C: [
+  B: [
     'Antananarivo','Antsirabe','Fianarantsoa','Ambositra','Manakara','Mananjary','Farafangana','Vangaindrano',
     'Ihosy','Betroka','Taolagnaro','Toliara','Sakaraha','Morondava','Miandrivazo','Belo sur Tsiribihina'
   ]
@@ -36,7 +36,7 @@ const D5_CITIES = {
     'Toamasina','Fenerive-Est','Vatomandry','Mahanoro','Brickaville','Moramanga','Andasibe','Anosibe Anala',
     'Ambatondrazaka','Amparafaravola','Manakara','Mananjary','Farafangana','Vangaindrano','Nosy Varika'
   ],
-  Sud: [
+  C: [
     'Antsirabe','Fianarantsoa','Ambositra','Ihosy','Betroka','Taolagnaro','Sakaraha','Ampanihy',
     'Betioky','Bekily','Ambovombe','Amboasary','Tsihombe','Beloha','Ejeda'
   ],
