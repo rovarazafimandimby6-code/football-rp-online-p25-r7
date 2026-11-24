@@ -558,6 +558,7 @@ menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
   if (pageButton) { renderPage(pageButton.dataset.page); return; }
   const playerCard = event.target.closest('[data-player-profile]');
+  if (playerCard && event.target.closest('.player-card-details')) return;
   if (playerCard) { const index = Number(playerCard.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); return; }
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'players-load-more') { playerLibraryLimit += 24; filterPlayerLibrary(); }
