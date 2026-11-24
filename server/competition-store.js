@@ -45,13 +45,33 @@ function createSeason(seasonId, clubs, now) {
       standings: members.map(club => ({ ...club, played:0, wins:0, draws:0, losses:0, goalsFor:0, goalsAgainst:0, points:0 }))
     });
   }
-  const cupMembers = clubs.map(club => ({ id: club.id, name: club.name })).sort((a,b) => a.id.localeCompare(b.id));
+  const divisionOrder = { D1:1, D2:2, D3:3, D4:4, D5:5 };
+  const seededClubs = [...clubs].sort((a,b) =>
+    (divisionOrder[a.division] || 9) - (divisionOrder[b.division] || 9)
+    || Number(b.rating || 0) - Number(a.rating || 0)
+    || a.id.localeCompare(b.id)
+  );
+  const cupMembers = seededClubs.map(club => ({ id: club.id, name: club.name }));
   const cupFixtures = [];
-  for (let i = 0; i < cupMembers.length; i += 2) cupFixtures.push({ id: `${seasonId}-cup-r1-${i/2+1}`, competitionId: `${seasonId}-cup`, type:'cup', round:1, homeClubId:cupMembers[i].id, awayClubId:cupMembers[i+1].id, status:'scheduled', result:null, roomId:null });
-  let count = cupFixtures.length;
-  for (let round = 2; round <= 4; round++) {
+  const playInClubs = seededClubs.slice(100);
+  const byeClubs = seededClubs.slice(0, 100);
+  // 56 clubs play 28 preliminary ties; 100 seeded clubs receive a bye.
+  for (let i = 0; i < playInClubs.length; i += 2) {
+    cupFixtures.push({ id:`${seasonId}-cup-r1-${i/2+1}`, competitionId:`${seasonId}-cup`, type:'cup', round:1,
+      homeClubId:playInClubs[i].id, awayClubId:playInClubs[i+1].id, status:'scheduled', result:null, roomId:null });
+  }
+  // Round of 128: 36 ties are fully seeded, 28 await a preliminary winner.
+  for (let i = 0; i < 64; i++) {
+    const home = i < 36 ? byeClubs[i*2] : byeClubs[72 + i - 36];
+    const away = i < 36 ? byeClubs[i*2+1] : null;
+    cupFixtures.push({ id:`${seasonId}-cup-r2-${i+1}`, competitionId:`${seasonId}-cup`, type:'cup', round:2,
+      homeClubId:home?.id || null, awayClubId:away?.id || null, status:away ? 'scheduled' : 'waiting', result:null, roomId:null });
+  }
+  let count = 64;
+  for (let round = 3; round <= 8; round++) {
     count = Math.floor(count / 2);
-    for (let i = 0; i < count; i++) cupFixtures.push({ id: `${seasonId}-cup-r${round}-${i+1}`, competitionId: `${seasonId}-cup`, type:'cup', round, homeClubId:null, awayClubId:null, status:'waiting', result:null, roomId:null });
+    for (let i = 0; i < count; i++) cupFixtures.push({ id:`${seasonId}-cup-r${round}-${i+1}`, competitionId:`${seasonId}-cup`, type:'cup', round,
+      homeClubId:null, awayClubId:null, status:'waiting', result:null, roomId:null });
   }
   season.competitions.push({ id:`${seasonId}-cup`, type:'cup', name:'Coupe des Clubs', status:'active', members:cupMembers, fixtures:cupFixtures, championClubId:null });
   return season;
@@ -115,7 +135,7 @@ export class JsonCompetitionStore {
     const winnerId=fixture.result.home>fixture.result.away?fixture.homeClubId:fixture.awayClubId;
     const next=competition.fixtures.find(item=>item.round===fixture.round+1&&(!item.homeClubId||!item.awayClubId));
     if(next){if(!next.homeClubId) next.homeClubId=winnerId; else if(!next.awayClubId) next.awayClubId=winnerId; if(next.homeClubId&&next.awayClubId) next.status='scheduled';}
-    if(fixture.round===4){competition.status='completed';competition.championClubId=winnerId;const club=this.clubs.get(winnerId);if(club&&!this.activeSeason.trophies.some(item=>item.competitionId===competition.id))this.activeSeason.trophies.push({id:`${competition.id}-champion`,competitionId:competition.id,competitionName:competition.name,clubId:winnerId,clubName:club.name,awardedAt:fixture.result.finalizedAt});}
+    if(fixture.round===8){competition.status='completed';competition.championClubId=winnerId;const club=this.clubs.get(winnerId);if(club&&!this.activeSeason.trophies.some(item=>item.competitionId===competition.id))this.activeSeason.trophies.push({id:`${competition.id}-champion`,competitionId:competition.id,competitionName:competition.name,clubId:winnerId,clubName:club.name,awardedAt:fixture.result.finalizedAt});}
   }
   snapshot() {
     const season=this.activeSeason;

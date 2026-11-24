@@ -53,6 +53,7 @@ const PALETTE = [
   ['#397f8b','#174650','#e7d59b'],['#86524b','#4b292d','#e8c7a0'],['#6b6a36','#34351f','#e8d58d'],
   ['#5c5b9b','#302b5b','#e9d79a']
 ];
+const KIT_DESIGNS = ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'];
 const OFFSETS = [-4,-2,-1,0,1,2,3,4,0,1,-1,2,3,-3,1,0];
 const makeClub = (division, city, country, countryCode, conference, index, tierIndex) => {
   const brand = BRAND_FIRST[index % BRAND_FIRST.length] + ' ' + BRAND_SECOND[Math.floor(index / BRAND_FIRST.length) % BRAND_SECOND.length];
@@ -61,7 +62,8 @@ const makeClub = (division, city, country, countryCode, conference, index, tierI
   const baseline = ({D1:75,D2:68,D3:61.5,D4:55.5,D5:49})[division];
   const range = ({D1:[70,82],D2:[63,76],D3:[57,71],D4:[50,64],D5:[43,58]})[division];
   const rating = Math.max(range[0],Math.min(range[1],Math.round(baseline + OFFSETS[(index + tierIndex * 3) % OFFSETS.length])));
-  const palette = PALETTE[(index + tierIndex * 2) % PALETTE.length];
+  const palette = PALETTE[Math.floor(index / KIT_DESIGNS.length) % PALETTE.length];
+  const kitDesign = KIT_DESIGNS[index % KIT_DESIGNS.length];
   const systemOnly = division === 'D4' ? index % 8 === 0 : (index + tierIndex) % 9 === 0;
   const initialRosterSize = division === 'D1' ? 10 + (index % 3) : division === 'D2' ? 9 + (index % 3) : division === 'D3' ? 9 + (index % 3) : 8 + (index % 3);
   const budgetBase = ({D1:3600000,D2:1900000,D3:950000,D4:480000,D5:240000})[division];
@@ -69,7 +71,7 @@ const makeClub = (division, city, country, countryCode, conference, index, tierI
     id, name: brand + ' FC', city, location:{city,country,countryCode}, country, countryCode,
     division, ...(conference ? {conference} : {}),
     rating, control:systemOnly ? 'ai' : 'open', humanAdmission:systemOnly ? 'system-only' : 'open',
-    colors:palette, stadium:brand + ' Arena', reputation:Math.max(28,Math.min(94,Math.round(rating + 7 + OFFSETS[(index+4)%OFFSETS.length]))),
+    colors:palette, kitDesign, stadium:brand + ' Arena', reputation:Math.max(28,Math.min(94,Math.round(rating + 7 + OFFSETS[(index+4)%OFFSETS.length]))),
     budget:Math.round(budgetBase * (0.78 + ((index*7)%9)*0.075)), capacity:12, initialRosterSize
   };
 };

@@ -100,8 +100,11 @@ function nationalityPlan(club, count, random) {
     if (eligible.length) return shuffled(Array.from({ length: count }, (_, index) => eligible[index % eligible.length]), random);
   }
   const internationalCodes = Object.keys(NATIONAL_POOLS).filter(code => code !== homeCode);
-  const profile = NATIONALITY_PROFILES[club.id] || { [homeCode]: Math.ceil(count * 0.35), ...Object.fromEntries(internationalCodes.slice(0, 7).map(code => [code, 1])) };
-  const plan = Object.entries(profile).flatMap(([code, quota]) => Array(Math.max(0, quota)).fill(code));
+  const localShare = homeCode === 'MG' ? 0.72 : 0.35;
+  const localCount = Math.max(1, Math.min(count - 2, Math.round(count * localShare)));
+  const internationalCount = count - localCount;
+  const internationalPlan = Array.from({ length: internationalCount }, (_, index) => internationalCodes[index % internationalCodes.length]);
+  const plan = [...Array(localCount).fill(homeCode), ...internationalPlan];
   const fallback = Object.keys(NATIONAL_POOLS).filter(code => !plan.includes(code));
   while (plan.length < count) plan.push(pick(fallback.length ? fallback : Object.keys(NATIONAL_POOLS), random));
   return shuffled(plan.slice(0, count), random);
@@ -166,7 +169,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set() } = 
       appearance: {
         skinTone, bodyBuild,
         kitColors: role === 'GK' ? { primary: club.colors?.[2] || '#eaf4ff', secondary: club.colors?.[0] || '#2676f2', accent: club.colors?.[1] || '#123269' } : { primary: club.colors?.[0] || '#2676f2', secondary: club.colors?.[1] || '#123269', accent: club.colors?.[2] || '#eaf4ff' },
-        kitDesign: CLUB_KIT_DESIGNS[club.id] || 'central', kitVariant: role === 'GK' ? 'goalkeeper' : 'outfield',
+        kitDesign: CLUB_KIT_DESIGNS[club.id] || club.kitDesign || 'central', kitVariant: role === 'GK' ? 'goalkeeper' : 'outfield',
         hairStyle: pick((['JP','MA','DZ','TN'].includes(code) ? ['short','short','fade','wavy','curly','shaved'] : ['short','short','curly','afro','fade','shaved','braids','twists','wavy']), random),
         hairColor: pick(['dark','dark','brown','black','brown','blond'], random),
         faceShape: pick(['oval','round','angular','long','square'], random),
