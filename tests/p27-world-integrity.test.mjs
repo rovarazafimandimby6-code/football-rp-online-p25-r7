@@ -604,7 +604,7 @@ test('P27 intégrité monde : rapproche les carrières individuelles avec contra
  input.transferState.careers[0].contract.playerId='human-player-a';
  input.playerCareerState={playerCareers:[{
   playerId:'human-player-a',
-  totals:{matches:1,wins:1,draws:0,losses:0},
+  totals:{matches:1,minutesPlayedMs:90000,wins:1,draws:0,losses:0,goals:1,assists:0,shots:2,passes:8,completedPasses:7,tackles:0,interceptions:0,saves:0},
   matches:[{matchId:'career-match-1',result:'win',finalizedAt:1000,minutesPlayedMs:90000,
    stats:{goals:1,assists:0,shots:2,passes:8,completedPasses:7,tackles:0,interceptions:0,saves:0}}]
  }]};
@@ -620,7 +620,7 @@ test('P27 intégrité monde : détecte une carrière individuelle incohérente e
  input.transferState.careers[0].contract.playerId='another-player';
  input.playerCareerState={playerCareers:[{
   playerId:'human-player-b',
-  totals:{matches:2,wins:2,draws:0,losses:0},
+  totals:{matches:2,minutesPlayedMs:180000,wins:2,draws:0,losses:0,goals:0,assists:0,shots:0,passes:4,completedPasses:3,tackles:0,interceptions:0,saves:0},
   matches:[{matchId:'dup',result:'win',finalizedAt:1000,minutesPlayedMs:90000,stats:{goals:0,assists:0,shots:0,passes:2,completedPasses:3,tackles:0,interceptions:0,saves:0}},
    {matchId:'dup',result:'win',finalizedAt:1000,minutesPlayedMs:90000,stats:{goals:0,assists:0,shots:0,passes:2,completedPasses:0,tackles:0,interceptions:0,saves:0}}]
  }]};
@@ -630,4 +630,32 @@ test('P27 intégrité monde : détecte une carrière individuelle incohérente e
  assert.ok(codes.includes('PLAYER_CAREER_CONTRACT_CLUB_MISMATCH'));
  assert.ok(codes.includes('PLAYER_CAREER_MATCH_ID_INVALID_OR_DUPLICATE'));
  assert.ok(codes.includes('PLAYER_CAREER_PASS_TOTAL_INVALID'));
+});
+
+
+test('P27 intégrité carrière : vérifie la chronologie et la chaîne transferts-prêts',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].history=[
+  {id:'sign',type:'signing',at:100,clubId:'club-a'},
+  {id:'loan-start',type:'loan',at:200,fromClubId:'club-a',toClubId:'club-b'},
+  {id:'loan-return',type:'loan-return',at:300,fromClubId:'club-b',toClubId:'club-a'}
+ ];
+ assert.equal(auditP27World(input).ok,true);
+ input.transferState.careers[0].history[2].fromClubId='club-a';
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='CAREER_MOVEMENT_CHAIN_BROKEN'));
+});
+
+test('P27 intégrité carrière : détecte des totaux inférieurs aux matchs conservés',()=>{
+ const input=cleanWorld();
+ input.transferState.careers[0].playerId='human-player-c';
+ input.transferState.careers[0].contract.playerId='human-player-c';
+ input.playerCareerState={playerCareers:[{
+  playerId:'human-player-c',
+  totals:{matches:1,minutesPlayedMs:0,wins:1,draws:0,losses:0,goals:0,assists:0,shots:0,passes:0,completedPasses:0,tackles:0,interceptions:0,saves:0},
+  matches:[{matchId:'match-retained',result:'win',finalizedAt:1000,minutesPlayedMs:90000,
+   stats:{goals:0,assists:0,shots:0,passes:0,completedPasses:0,tackles:0,interceptions:0,saves:0}}]
+ }]};
+ const result=auditP27World(input);
+ assert.ok(result.errors.some(item=>item.code==='PLAYER_CAREER_TOTAL_BELOW_RETAINED_MATCHES'&&item.field==='minutesPlayedMs'));
 });
