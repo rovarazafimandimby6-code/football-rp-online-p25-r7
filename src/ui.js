@@ -25,6 +25,15 @@ export class UIManager {
     this.overlayStats = document.getElementById('overlay-stats');
     this.callbacks = callbacks;
     this.players = players;
+    this.cameraToggleButton = document.createElement('button');
+    this.cameraToggleButton.type = 'button';
+    this.cameraToggleButton.id = 'online-camera-toggle';
+    this.cameraToggleButton.textContent = 'VUE : TV';
+    this.cameraToggleButton.setAttribute('aria-label', 'Changer le mode de caméra en ligne');
+    this.cameraToggleButton.style.cssText = 'padding:8px 10px;border:1px solid rgba(255,255,255,.35);border-radius:8px;background:rgba(8,13,20,.88);color:#fff;font:800 10px system-ui,sans-serif;letter-spacing:.04em;';
+    this.cameraToggleButton.hidden = callbacks.isOnline !== true;
+    this.cameraToggleButton.addEventListener('click', () => callbacks.onToggleCamera?.(), this.listenerOptions);
+    document.getElementById('match-top-actions')?.appendChild(this.cameraToggleButton);
     this.pauseActionsEl = document.createElement('div');
     this.pauseActionsEl.className = 'pause-actions';
     this.overlay.querySelector('.overlay-card')?.appendChild(this.pauseActionsEl);
@@ -102,6 +111,11 @@ export class UIManager {
       const action = event.target.closest('[data-pause-action]')?.dataset.pauseAction;
       if (action) this.handlePauseAction(action, event.target.closest('[data-pause-action]'));
     }, this.listenerOptions);
+  }
+
+  setCameraModeLabel(mode) {
+    const labels = { player: 'VUE : JOUEUR', broadcast: 'VUE : TV', spectator: 'VUE : SPECTATEUR', touchline: 'VUE : TOUCHE', close: 'VUE : PROCHE', tactical: 'VUE : TACTIQUE' };
+    if (this.cameraToggleButton) this.cameraToggleButton.textContent = labels[mode] || 'VUE : TV';
   }
 
   setBenchStatus(players, localPlayerId, phase = 'playing', rotationRequests = [], rotationAvailable = false) {
