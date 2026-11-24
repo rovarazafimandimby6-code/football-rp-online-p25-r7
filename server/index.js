@@ -19,6 +19,7 @@ import { auditP27World } from './world-integrity-audit.js';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/league-structure.js';
 import { listPublicClubs, resolvePublicClub } from './club-catalog.js';
+import { listP27Players } from '../src/p27-player-library.js';
 import { isAdminTokenConfigured, isValidAdminToken } from './admin-auth.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
@@ -121,6 +122,26 @@ const server = http.createServer(async (req, res) => {
       return json(res, audit.ok ? 200 : 409, audit);
     }
     if (req.method === 'GET' && url.pathname === '/api/rooms') return json(res, 200, { rooms: manager.list() });
+    if (req.method === 'GET' && url.pathname === '/api/players/library') {
+      const number = key => url.searchParams.has(key) ? Number(url.searchParams.get(key)) : undefined;
+      const result = listP27Players({
+        clubs:serverClubManager.listClubs(),
+        filters:{
+          search:url.searchParams.get('q') || '',
+          clubId:url.searchParams.get('clubId') || '',
+          division:url.searchParams.get('division') || '',
+          role:url.searchParams.get('role') || '',
+          type:url.searchParams.get('type') || '',
+          status:url.searchParams.get('status') || '',
+          sort:url.searchParams.get('sort') || 'rating',
+          order:url.searchParams.get('order') || 'desc',
+          minRating:number('minRating'), maxRating:number('maxRating'),
+          minAge:number('minAge'), maxAge:number('maxAge'),
+          limit:number('limit'), offset:number('offset')
+        }
+      });
+      return json(res,200,result);
+    }
     if (req.method === 'GET' && url.pathname === '/api/clubs') {
       const rawLimit=url.searchParams.get('limit'), rawOffset=url.searchParams.get('offset');
       const limit=rawLimit===null?24:Number(rawLimit), offset=rawOffset===null?0:Number(rawOffset);
