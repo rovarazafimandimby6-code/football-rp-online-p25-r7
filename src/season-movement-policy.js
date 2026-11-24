@@ -112,12 +112,12 @@ export function calculateSeasonMovements({competitions=[],clubs=[],policy=DEFAUL
   for(const division of ['D1','D2','D3']){
     const {competition,rows}=tables.get(groupKey(division,null));
     if(division!=='D1'){
-      for(let i=0;i<3;i++)add(rows[i],division,null,'D'+(DIVISION_ORDER[division]-1),null,'promotion',i+1,competition,'direct');
+      for(let i=0;i<policy.nationalDirectPromotionSlots;i++)add(rows[i],division,null,'D'+(DIVISION_ORDER[division]-1),null,'promotion',i+1,competition,'direct');
       const winner=playoffWinner(division,null);
       const position=rows.findIndex(row=>row.id===winner.id)+1;
       add(winner,division,null,'D'+(DIVISION_ORDER[division]-1),null,'promotion',position,playoffs.get(groupKey(division,null)),'playoff');
     }
-    for(let i=0;i<4;i++){
+    for(let i=0;i<policy.nationalRelegationSlots;i++){
       const position=rows.length-i,row=rows[position-1];
       const targetDivision='D'+(DIVISION_ORDER[division]+1);
       let targetConference=null;
@@ -127,21 +127,23 @@ export function calculateSeasonMovements({competitions=[],clubs=[],policy=DEFAUL
   }
   for(const conference of ['A','B']){
     const {competition,rows}=tables.get(groupKey('D4',conference));
-    add(rows[0],'D4',conference,'D3',null,'promotion',1,competition,'direct');
+    for(let i=0;i<policy.d4DirectPromotionSlotsPerConference;i++)add(rows[i],'D4',conference,'D3',null,'promotion',i+1,competition,'direct');
     const winner=playoffWinner('D4',conference),position=rows.findIndex(row=>row.id===winner.id)+1;
     add(winner,'D4',conference,'D3',null,'promotion',position,playoffs.get(groupKey('D4',conference)),'playoff');
     const destinations=policy.d4ToD5Conference?.[conference];
-    if(!Array.isArray(destinations)||destinations.length!==2||destinations.some(item=>!['A','B','C','D'].includes(item)))return fail('d4-relegation-conference-policy-invalid',{conference});
-    for(let i=0;i<4;i++){
+    const relegationSlots=policy.d4RelegationSlotsPerConference;
+    if(!Array.isArray(destinations)||!destinations.length||destinations.some(item=>!['A','B','C','D'].includes(item))||relegationSlots%destinations.length!==0)return fail('d4-relegation-conference-policy-invalid',{conference});
+    const slotsPerDestination=relegationSlots/destinations.length;
+    for(let i=0;i<relegationSlots;i++){
       const position=rows.length-i;
-      add(rows[position-1],'D4',conference,'D5',destinations[Math.floor(i/2)],'relegation',position,competition,'direct');
+      add(rows[position-1],'D4',conference,'D5',destinations[Math.floor(i/slotsPerDestination)],'relegation',position,competition,'direct');
     }
   }
   for(const conference of ['A','B','C','D']){
     const {competition,rows}=tables.get(groupKey('D5',conference));
     const targetConference=policy.d5ToD4Conference?.[conference];
     if(!['A','B'].includes(targetConference))return fail('d5-promotion-conference-policy-invalid',{conference,targetConference});
-    add(rows[0],'D5',conference,'D4',targetConference,'promotion',1,competition,'direct');
+    for(let i=0;i<policy.d5DirectPromotionSlotsPerConference;i++)add(rows[i],'D5',conference,'D4',targetConference,'promotion',i+1,competition,'direct');
     const winner=playoffWinner('D5',conference),position=rows.findIndex(row=>row.id===winner.id)+1;
     add(winner,'D5',conference,'D4',targetConference,'promotion',position,playoffs.get(groupKey('D5',conference)),'playoff');
   }
