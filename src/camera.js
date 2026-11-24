@@ -31,7 +31,7 @@ export class BroadcastCamera {
   }
 
   setMode(mode) {
-    if (mode !== 'player' && !CAMERA_PRESETS[mode]) return false;
+    if (mode !== 'player' && mode !== 'bench' && !CAMERA_PRESETS[mode]) return false;
     this.mode = mode;
     this.camera.fov = CAMERA_PRESETS[mode]?.fov ?? 65;
     this.camera.updateProjectionMatrix();
@@ -39,6 +39,10 @@ export class BroadcastCamera {
   }
 
   update(ball, activePlayer, dt) {
+    if (this.mode === 'bench') {
+      this.updateBenchCamera(ball, activePlayer, dt);
+      return;
+    }
     if (this.mode === 'player') {
       this.updatePlayerCamera(ball, activePlayer, dt);
       return;
@@ -77,6 +81,27 @@ export class BroadcastCamera {
     this.lookTarget.y += (0.45 - this.lookTarget.y) * smooth;
     this.lookTarget.z += (focusZ - this.lookTarget.z) * smooth;
 
+    this.camera.position.copy(this.camPos);
+    this.camera.lookAt(this.lookTarget);
+    this.initialized = true;
+  }
+
+  /** Vue spectateur depuis la ligne de touche lorsque le joueur est remplaçant. */
+  updateBenchCamera(ball, player, dt) {
+    const side = player?.team === 'red' ? 1 : -1;
+    const focusX = Number.isFinite(ball?.pos?.x) ? ball.pos.x : 0;
+    const focusZ = Number.isFinite(ball?.pos?.z) ? ball.pos.z : 0;
+    const frameDelta = Number.isFinite(dt) ? THREE.MathUtils.clamp(dt, 0, 0.05) : 0;
+    const smooth = 1 - Math.exp(-2.8 * frameDelta);
+    const desiredX = THREE.MathUtils.clamp(focusX * 0.42, -15, 15);
+    const desiredY = 18;
+    const desiredZ = side * 37;
+    this.camPos.x += (desiredX - this.camPos.x) * smooth;
+    this.camPos.y += (desiredY - this.camPos.y) * smooth;
+    this.camPos.z += (desiredZ - this.camPos.z) * smooth;
+    this.lookTarget.x += (focusX - this.lookTarget.x) * smooth;
+    this.lookTarget.y += (0.45 - this.lookTarget.y) * smooth;
+    this.lookTarget.z += (focusZ - this.lookTarget.z) * smooth;
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.lookTarget);
     this.initialized = true;

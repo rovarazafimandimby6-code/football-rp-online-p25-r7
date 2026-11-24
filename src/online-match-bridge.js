@@ -4,12 +4,15 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Applies authoritative room snapshots to the local 3D match objects and forwards only this user's input. */
 export class OnlineMatchBridge {
-  constructor({ client, players, ball, controls, onState = null, onError = null, now = () => performance.now() } = {}) {
+  constructor({ client, players, ball, controls, camera = null, onState = null, onError = null, now = () => performance.now() } = {}) {
     if (!client || !Array.isArray(players) || !ball) throw new TypeError('ONLINE_BRIDGE_DEPENDENCIES_REQUIRED');
     this.client = client;
     this.players = players;
     this.ball = ball;
     this.controls = controls || null;
+    this.camera = camera || null;
+    this.normalCameraMode = this.camera?.mode || 'player';
+    this.localOnPitch = true;
     this.onState = onState;
     this.onError = onError;
     this.now = now;
@@ -37,10 +40,18 @@ export class OnlineMatchBridge {
     this.localServerId = playerId;
     const me = joinResult.state?.players?.find(player => player.id === playerId);
     if (me) {
+      this.setLocalBenchState(me.isOnPitch === false, me.team);
       const local = this.players.find(player => player.team === me.team && player.slotIndex === me.slot);
       if (local) local.isControlled = true;
     }
     return true;
+  }
+
+  setLocalBenchState(benched, team = null) {
+    this.localOnPitch = !benched;
+    this.controls?.setBenchMode?.(benched);
+    if (this.camera?.setMode) this.camera.setMode(benched ? 'bench' : this.normalCameraMode);
+    this.localTeam = team || this.localTeam || null;
   }
 
   _resolvePlayer(serverPlayer) {
@@ -63,6 +74,8 @@ export class OnlineMatchBridge {
       activeIds.add(remote.id);
       local.name = String(remote.name || local.name).slice(0, 20);
       local.isControlled = remote.id === this.localServerId;
+      local.isOnPitch = remote.isOnPitch !== false;
+      if (remote.id === this.localServerId) this.setLocalBenchState(remote.isOnPitch === false, remote.team);
       local.aiControlled = remote.aiControlled === true || remote.controlMode === 'ai';
       local.controlMode = local.aiControlled ? 'ai' : (remote.controlMode || 'human');
       local.stamina = Number.isFinite(remote.stamina) ? clamp(remote.stamina, 0, 1) : local.stamina;
@@ -109,7 +122,7 @@ export class OnlineMatchBridge {
   }
 
   async sendControls(at = this.now()) {
-    if (this.disposed || !this.localServerId || !this.controls || this.lastState?.phase !== 'playing' || at < this.nextReconnectAt || at - this.lastInputAt < this.inputIntervalMs) return false;
+    if (this.disposed || !this.localServerId || !this.controls || !this.localOnPitch || this.lastState?.phase !== 'playing' || at < this.nextReconnectAt || at - this.lastInputAt < this.inputIntervalMs) return false;
     this.lastInputAt = at;
     const move = this.controls.getMoveVector();
     let action = null;

@@ -85,7 +85,7 @@ export class Game {
     this.activePlayer.isControlled = true;
     this.onlineBridge = null;
     if (callbacks.onlineClient && callbacks.onlineJoinResult) {
-      this.onlineBridge = new OnlineMatchBridge({ client: callbacks.onlineClient, players: this.players, ball: this.ball, controls: this.controls,
+      this.onlineBridge = new OnlineMatchBridge({ client: callbacks.onlineClient, players: this.players, ball: this.ball, controls: this.controls, camera: this.cam,
         onError: (error) => this.ui?.setStatus?.(`RÉSEAU : ${String(error?.message || 'connexion interrompue').slice(0, 48)}`),
         onState: (state) => {
           this.match.blueScore = state.score?.blue ?? this.match.blueScore;

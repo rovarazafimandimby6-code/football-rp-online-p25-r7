@@ -95,3 +95,28 @@ test('P27 appel de balle en ligne : le pont transmet une demande tactile sans la
   assert.equal(f.sent[0].callForPass, true);
   assert.equal(f.sent[0].action, null);
 });
+
+
+test('P27 banc : le joueur humain perd ses commandes et passe en caméra spectateur', async () => {
+  const f = fixture();
+  const modes = [];
+  const benchChanges = [];
+  const camera = { mode: 'player', setMode(mode) { this.mode = mode; modes.push(mode); } };
+  f.controls.setBenchMode = value => benchChanges.push(value);
+  const bridge = new OnlineMatchBridge({ ...f, camera, now: () => 1000 });
+  bridge.bindJoin({ playerId: 'human-1' });
+  bridge.applyState({ sequence: 1, phase: 'playing', players: [
+    { id: 'human-1', team: 'blue', slot: 0, isOnPitch: false, x: 0, z: 0, vx: 0, vz: 0, facing: 0 }
+  ], ball: null });
+  assert.equal(bridge.localOnPitch, false);
+  assert.equal(camera.mode, 'bench');
+  assert.deepEqual(benchChanges, [true]);
+  assert.equal(await bridge.sendControls(1000), false);
+  assert.equal(f.sent.length, 0);
+  bridge.applyState({ sequence: 2, phase: 'playing', players: [
+    { id: 'human-1', team: 'blue', slot: 0, isOnPitch: true, x: 1, z: 0, vx: 0, vz: 0, facing: 0 }
+  ], ball: null });
+  assert.equal(bridge.localOnPitch, true);
+  assert.equal(camera.mode, 'player');
+  assert.deepEqual(benchChanges, [true, false]);
+});

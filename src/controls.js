@@ -18,10 +18,31 @@ export class ControlsManager {
     this.pendingCallForPass = false;
     this.callPressAt = 0;
     this.role = null;
+    this.benchMode = false;
     this.actionLabels = { shoot: document.querySelector('#shoot small'), pass: document.querySelector('#pass small'), defend: document.querySelector('#defend small') };
     this.bindJoystick();
     this.bindButtons();
     this.bindKeyboard();
+  }
+
+  setBenchMode(benched) {
+    const next = benched === true;
+    if (next === this.benchMode) return;
+    this.benchMode = next;
+    const root = document.getElementById('controls');
+    if (root) {
+      root.hidden = next;
+      root.setAttribute('aria-hidden', String(next));
+    }
+    if (next) {
+      this.keys.clear(); this.sprintHeld = false; this.passPressAt = 0;
+      this.pendingPass = null; this.pendingPress = false; this.pendingShoot = null;
+      this.pendingLob = false; this.pendingCallForPass = false;
+      this.joy.active = false; this.joy.pointerId = null; this.joy.x = 0; this.joy.z = 0;
+      this.stickBase?.classList.remove('on');
+      if (this.stickKnob) this.stickKnob.style.transform = 'translate(0px, 0px)';
+      document.querySelectorAll('.control.active').forEach(el => el.classList.remove('active'));
+    }
   }
 
   setRole(role) {
@@ -121,6 +142,7 @@ export class ControlsManager {
   }
 
   getMoveVector() {
+    if (this.benchMode) return { x: 0, z: 0 };
     let x = this.joy.x, z = this.joy.z;
     if (this.keys.has('ArrowLeft') || this.keys.has('KeyA')) x -= 1;
     if (this.keys.has('ArrowRight') || this.keys.has('KeyD')) x += 1;
