@@ -126,7 +126,7 @@ test('P23 clubs: migration des anciens effectifs remplace les identités IA obso
   assert.equal(player.rating, oldClubs.find(item => item.id === 'manparis-sporting').roster[2].rating);
   assert.deepEqual(player.attributes, legacy.getClub('manparis-sporting').roster[2].attributes);
   migrated.saveSeason();
-  assert.equal(JSON.parse(storage.getItem('p23-legacy')).version, 6);
+  assert.equal(JSON.parse(storage.getItem('p23-legacy')).version, 7);
 });
 
 test('P23 gameplay: les compositions 5v5 sélectionnent les meilleurs profils par poste et leurs attributs', async () => {
