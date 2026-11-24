@@ -1,7 +1,7 @@
 /**
  * Curated P27 expansion: 140 additional fictional clubs.
  * The 48 national-tier clubs extend D1-D3; the 92 regional clubs fill
- * D4/D5 with explicit geographic conferences. Names and identities are original.
+ * D4/D5 with explicit conference assignments. Names and identities are original.
  */
 const WORLD_CLUB_CITIES = [
   ['Glasgow','Royaume-Uni','GB'],['Liverpool','Royaume-Uni','GB'],['Bristol','Royaume-Uni','GB'],['Leeds','Royaume-Uni','GB'],
@@ -83,11 +83,11 @@ for (const [division, start, count] of [['D1',0,12],['D2',12,16],['D3',28,20]]) 
     clubs.push(makeClub(division,city,country,code,null,index++,division.charCodeAt(1)));
   }
 }
-for (const conference of ['Nord','Sud']) {
-  for (const city of D4_CITIES[conference]) clubs.push(makeClub('D4',city,'Madagascar','MG',conference,index++,conference==='Nord'?4:5));
+for (const conference of ['A','B']) {
+  for (const city of D4_CITIES[conference]) clubs.push(makeClub('D4',city,'Madagascar','MG',conference,index++,conference==='A'?4:5));
 }
-for (const conference of ['Nord','Est','Sud','Ouest']) {
-  for (const city of D5_CITIES[conference]) clubs.push(makeClub('D5',city,'Madagascar','MG',conference,index++,({Nord:6,Est:7,Sud:8,Ouest:9})[conference]));
+for (const conference of ['A','B','C','D']) {
+  for (const city of D5_CITIES[conference]) clubs.push(makeClub('D5',city,'Madagascar','MG',conference,index++,({A:6,B:7,C:8,D:9})[conference]));
 }
 export const P27_EXPANSION_CLUBS = Object.freeze(clubs.map(club => Object.freeze(club)));
 export const P27_EXPANSION_COUNTS = Object.freeze({
