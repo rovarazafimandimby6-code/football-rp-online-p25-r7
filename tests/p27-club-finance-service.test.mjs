@@ -207,6 +207,7 @@ test('P27 finances : le cycle global remonte un remboursement de prêt partiel',
   const service=new JsonClubFinanceService(directory,{clubs:[club],now:()=>now});
   service.store.openAccount(club.id,0);
   service.store.issueLoan(club.id,{id:'partial-loan',lender:'Caisse',principal:1000,totalRepayment:1200,durationWeeks:2,issuedAt:start});
+  service.store.post(club.id,{id:'partial-loan-spend',category:'other',amount:1000,direction:'expense'});
   service.store.post(club.id,{id:'partial-loan-funds',category:'other',amount:600,direction:'income'});
   now=start+15*86400000;
   const result=service.settleScheduledItems(now);

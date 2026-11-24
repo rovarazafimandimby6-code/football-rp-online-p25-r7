@@ -93,6 +93,7 @@ test('P27 finance : un remboursement partiel signale explicitement les échéanc
  const f=new ClubFinanceStore(null,'loan-partial');f.openAccount('club',0);
  const start=Date.UTC(2026,0,1);
  f.issueLoan('club',{id:'loan-partial',lender:'Caisse',principal:1000,totalRepayment:1200,durationWeeks:2,issuedAt:start});
+ f.post('club',{id:'partial-spend',category:'other',amount:1000,direction:'expense'});
  f.post('club',{id:'partial-funds',category:'other',amount:600,direction:'income'});
  const result=f.settleLoanRepayments('club',start+15*86400000);
  assert.equal(result.ok,false);
