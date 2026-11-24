@@ -523,6 +523,8 @@ export class RoomManager {
     const outgoing = room.players.get(String(outgoingId || ''));
     const incoming = room.players.get(String(incomingId || ''));
     if (!outgoing || !incoming || outgoing.team !== requester.team || incoming.team !== requester.team) throw new Error('INVALID_ROTATION_PAIR');
+    if (!outgoing.isBot && outgoing.id !== requester.id) throw new Error('OUTGOING_PLAYER_CONSENT_REQUIRED');
+    if (!incoming.isBot && incoming.id !== requester.id) throw new Error('INCOMING_PLAYER_CONSENT_REQUIRED');
     if (outgoing.isOnPitch === false || incoming.isOnPitch !== false) throw new Error('PLAYER_NOT_IN_EXPECTED_LIST');
     if (!outgoing.isBot && !outgoing.connected && !outgoing.aiControlled) throw new Error('OUTGOING_UNAVAILABLE');
     if (!incoming.isBot && !incoming.connected && !incoming.aiControlled) throw new Error('INCOMING_UNAVAILABLE');
