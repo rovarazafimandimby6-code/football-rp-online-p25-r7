@@ -859,7 +859,15 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 
 ### Lots 85–90 — mercato IA, prêts et bibliothèque centrale (en cours)
 
-#### Lot 85 — mouvements de mercato des joueurs IA (à traiter)
+#### Lot 85 — mouvements de mercato des joueurs IA (en cours d'intégration)
+- [x] Ajouter une saga durable dédiée aux transferts IA, avec identifiant idempotent, reprise après redémarrage et détection du déplacement déjà effectué.
+- [x] Exposer une route administrateur authentifiée `POST /api/admin/system-transfers`.
+- [x] Vérifier le type système, le contrat actif, les clubs, les divisions D1–D5, l'unicité du joueur et la capacité de l'effectif.
+- [x] Relier le règlement au journal financier existant : le club acheteur est débité et le club vendeur crédité ; les identifiants comptables restent déterministes.
+- [x] Préserver la séparation entre budgets mercato et soldes comptables.
+- [ ] Ajouter/valider les tests d'intégration avec le véritable grand livre, les pannes de persistance du roster/outbox et la reprise complète en CI.
+- [ ] Définir et intégrer les critères sportifs de sélection automatique des transferts IA et la simulation déterministe du marché.
+
 - [ ] Définir les critères sportifs et contractuels de départ/transfert des joueurs IA.
 - [ ] Relier toute indemnité au service financier et à son journal rejouable ; ne pas modifier directement les soldes comptables.
 - [ ] Contrôler capacité, identité unique, division, contrat et historique avant/après transfert.
