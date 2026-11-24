@@ -15,6 +15,7 @@ export class UIManager {
     this.staminaFillEl = document.getElementById('stamina-fill');
     this.activeNameEl = document.getElementById('active-player-name');
     this.playerGuidanceEl = document.getElementById('player-guidance');
+    this.benchStatusEl = null;
     this.fpsEl = document.getElementById('fps-badge');
 
     this.overlay = document.getElementById('overlay');
@@ -101,6 +102,27 @@ export class UIManager {
       const action = event.target.closest('[data-pause-action]')?.dataset.pauseAction;
       if (action) this.handlePauseAction(action, event.target.closest('[data-pause-action]'));
     }, this.listenerOptions);
+  }
+
+  setBenchStatus(players, localPlayerId) {
+    const local = players.find(player => player.id === localPlayerId);
+    if (!local) return;
+    if (!this.benchStatusEl) {
+      const panel = document.createElement('div');
+      panel.id = 'bench-status';
+      panel.setAttribute('role', 'status');
+      panel.style.cssText = 'position:absolute;left:50%;top:15%;transform:translateX(-50%);z-index:18;max-width:min(88vw,520px);padding:9px 14px;border-radius:10px;background:rgba(8,13,20,.88);border:1px solid rgba(255,255,255,.2);color:#fff;font:700 12px/1.4 system-ui,sans-serif;text-align:center;letter-spacing:.04em;pointer-events:none;';
+      document.querySelector('main')?.appendChild(panel);
+      this.benchStatusEl = panel;
+    }
+    const reserves = players.filter(player => player.team === local.team && player.isOnPitch === false);
+    if (local.isOnPitch === false) {
+      this.benchStatusEl.hidden = false;
+      this.benchStatusEl.textContent = `SUR LE BANC · ${reserves.length} RÉSERVISTE(S) · EN ATTENTE D’UNE ENTRÉE EN JEU`;
+    } else {
+      this.benchStatusEl.hidden = true;
+      this.benchStatusEl.textContent = '';
+    }
   }
 
   setStatus(text) {
@@ -365,6 +387,7 @@ Cette fiche décrit uniquement le footballeur contrôlé par vous.`;
   }
 
   dispose() {
+    this.benchStatusEl?.remove();
     this.abortController.abort();
     window.clearTimeout(this.statusTimer);
     this.pauseActionsEl?.remove();

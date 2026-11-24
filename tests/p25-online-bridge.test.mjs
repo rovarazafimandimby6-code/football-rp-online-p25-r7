@@ -120,3 +120,30 @@ test('P27 banc : le joueur humain perd ses commandes et passe en caméra spectat
   assert.equal(camera.mode, 'player');
   assert.deepEqual(benchChanges, [true, false]);
 });
+
+
+test('P27 rotations synchronisées : le contrôle unique suit le joueur qui change de slot', () => {
+  const f = fixture();
+  const created = [];
+  const bridge = new OnlineMatchBridge({
+    ...f, now: () => 1000,
+    onResolveMissingPlayer: remote => {
+      const player = { team: remote.team, slotIndex: remote.slot, isControlled: false, pos: {x:0,z:0}, vel:{x:0,z:0}, updateVisual(){} };
+      created.push(player);
+      return player;
+    }
+  });
+  bridge.bindJoin({ playerId: 'human-1' });
+  bridge.applyState({ sequence: 1, phase: 'playing', players: [
+    {id:'human-1',team:'blue',slot:0,x:0,z:0,vx:0,vz:0,facing:0,isOnPitch:true},
+    {id:'reserve-1',team:'blue',slot:5,x:1,z:1,vx:0,vz:0,facing:0,isOnPitch:false}
+  ], ball:null });
+  assert.equal(created.length, 1);
+  assert.equal(f.players.filter(player => player.isControlled).length, 1);
+  bridge.applyState({ sequence: 2, phase: 'playing', players: [
+    {id:'human-1',team:'blue',slot:5,x:0,z:0,vx:0,vz:0,facing:0,isOnPitch:false},
+    {id:'reserve-1',team:'blue',slot:0,x:1,z:1,vx:0,vz:0,facing:0,isOnPitch:true}
+  ], ball:null });
+  assert.equal(f.players.filter(player => player.isControlled).length, 1);
+  assert.equal(f.players.find(player => player.isControlled).slotIndex, 5);
+});

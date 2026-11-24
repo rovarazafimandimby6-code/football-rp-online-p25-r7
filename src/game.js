@@ -86,6 +86,19 @@ export class Game {
     this.onlineBridge = null;
     if (callbacks.onlineClient && callbacks.onlineJoinResult) {
       this.onlineBridge = new OnlineMatchBridge({ client: callbacks.onlineClient, players: this.players, ball: this.ball, controls: this.controls, camera: this.cam,
+        onResolveMissingPlayer: (remote) => {
+          const reserve = new Player({
+            id: remote.id, team: remote.team, slotIndex: remote.slot,
+            role: ['GK','DEF','MID','FWD'].includes(remote.role) ? remote.role : 'MID',
+            name: String(remote.name || 'Réserviste').slice(0, 20),
+            number: Number.isInteger(remote.slot) ? remote.slot + 1 : 12,
+            appearance: remote.team === 'blue' ? { kitColors: callbacks.homeKitColors } : { kitColors: callbacks.awayKitColors }
+          });
+          reserve.serverPlayerId = remote.id;
+          reserve.isOnPitch = remote.isOnPitch !== false;
+          this.sceneMgr.scene.add(reserve.visual.root);
+          return reserve;
+        },
         onError: (error) => this.ui?.setStatus?.(`RÉSEAU : ${String(error?.message || 'connexion interrompue').slice(0, 48)}`),
         onState: (state) => {
           this.match.blueScore = state.score?.blue ?? this.match.blueScore;
@@ -93,6 +106,9 @@ export class Game {
           this.match.period = state.period || 1;
           this.match.elapsedMatchTime = Math.max(0, (state.elapsedMs || 0) / 1000);
           this.match.timeLeft = Math.max(0, ((state.durationMs || 300000) - (state.elapsedMs || 0)) / 1000);
+          const controlled = this.players.find(player => player.isControlled);
+          if (controlled) this.activePlayer = controlled;
+          this.ui?.setBenchStatus?.(state.players || [], callbacks.onlineJoinResult.playerId);
           if (state.phase === 'fulltime') this.match.phase = 'fulltime';
           else if (state.phase === 'halftime') this.match.phase = 'halftime';
           else if (state.phase === 'playing') this.match.phase = 'playing';

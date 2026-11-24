@@ -4,13 +4,14 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Applies authoritative room snapshots to the local 3D match objects and forwards only this user's input. */
 export class OnlineMatchBridge {
-  constructor({ client, players, ball, controls, camera = null, onState = null, onError = null, now = () => performance.now() } = {}) {
+  constructor({ client, players, ball, controls, camera = null, onResolveMissingPlayer = null, onState = null, onError = null, now = () => performance.now() } = {}) {
     if (!client || !Array.isArray(players) || !ball) throw new TypeError('ONLINE_BRIDGE_DEPENDENCIES_REQUIRED');
     this.client = client;
     this.players = players;
     this.ball = ball;
     this.controls = controls || null;
     this.camera = camera || null;
+    this.onResolveMissingPlayer = onResolveMissingPlayer;
     this.normalCameraMode = this.camera?.mode || 'player';
     this.localOnPitch = true;
     this.onState = onState;
@@ -60,6 +61,11 @@ export class OnlineMatchBridge {
     if (local && local.team === serverPlayer.team && local.slotIndex === serverPlayer.slot) return local;
     local = this.players.find(player => player.team === serverPlayer.team && player.slotIndex === serverPlayer.slot);
     if (local) this.remoteIds.set(serverPlayer.id, local);
+    if (!local && this.onResolveMissingPlayer) {
+      local = this.onResolveMissingPlayer(serverPlayer) || null;
+      if (local && !this.players.includes(local)) this.players.push(local);
+    }
+    if (local) this.remoteIds.set(serverPlayer.id, local);
     return local || null;
   }
 
@@ -68,12 +74,15 @@ export class OnlineMatchBridge {
     this.sequence = state.sequence;
     const time = this.now() / 1000;
     const activeIds = new Set();
+    for (const player of this.players) player.isControlled = false;
     for (const remote of state.players || []) {
       const local = this._resolvePlayer(remote);
       if (!local || ![remote.x, remote.z, remote.vx, remote.vz, remote.facing].every(Number.isFinite)) continue;
       activeIds.add(remote.id);
       local.name = String(remote.name || local.name).slice(0, 20);
       local.isControlled = remote.id === this.localServerId;
+      local.serverPlayerId = remote.id;
+      local.slotIndex = remote.slot;
       local.isOnPitch = remote.isOnPitch !== false;
       if (remote.id === this.localServerId) this.setLocalBenchState(remote.isOnPitch === false, remote.team);
       local.aiControlled = remote.aiControlled === true || remote.controlMode === 'ai';
