@@ -533,3 +533,24 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - Correctif de persistance : les affectations de division et de conférence sont sauvegardées dans le catalogue et restaurées au redémarrage pour que les saisons successives conservent les mouvements précédents.
 
 - Extension de l'archive : conserver pour chaque compétition le classement final complet et les résultats de toutes les rencontres terminées, en plus du champion et du trophée.
+
+
+
+### Lot 47 — interface de compte persistant et liaison sécurisée aux salons (intégré)
+- [x] Ajouter un écran Compte joueur dans la navigation principale.
+- [x] Permettre l'inscription et la connexion avec le client de compte persistant déjà existant.
+- [x] Restaurer la session de compte locale et permettre son actualisation/révocation depuis l'interface.
+- [x] Transmettre le jeton de compte uniquement à la route de jonction du salon ; le serveur résout lui-même l'identifiant du compte.
+- [x] Conserver le jeton temporaire du salon séparé du jeton de compte persistant.
+- [x] Garder le mode invité fonctionnel sans transmettre de jeton de compte.
+- [x] Ajouter des tests couvrant la liaison de compte et le chemin invité.
+- Validation GitHub Actions sur le commit `65302007d418d842d2c8763b96a92cc478b1cd65` : 547/547 tests réussis, 0 échec ; contrôle syntaxique réussi.
+- Limite : le compte authentifie les prochains matchs en ligne ; la synchronisation complète du profil local, de l'apparence et de la progression d'entraînement n'est pas incluse.
+
+### Lot 48 — consultation de la carrière liée au compte (intégré)
+- [x] Afficher dans l'écran Compte les statistiques de carrière conservées par le serveur.
+- [x] Récupérer les données via la route authentifiée `GET /api/career`, sans accepter de statistiques soumises par le client.
+- [x] Présenter matchs, victoires, buts, passes décisives, distinctions et minutes jouées.
+- [x] Gérer proprement l'absence de session valide ou l'indisponibilité du serveur.
+- Validation GitHub Actions sur le commit `50697bc6e6b7d06d2a0b52e6a170f68b345e469f` : 547/547 tests réussis, 0 échec ; contrôle syntaxique réussi.
+- Limite : le tableau de bord serveur expose les statistiques des matchs en ligne liés au compte. Les sauvegardes locales de profil, d'attributs et d'entraînement ne sont pas encore migrées vers un stockage cloud.
