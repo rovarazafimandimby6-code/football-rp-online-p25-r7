@@ -228,6 +228,55 @@ async function loadPlayerCareer(player) {
   }
 }
 
+
+let publicClubDirectoryCache = new Map();
+let publicClubDirectoryRequest = 0;
+const publicDivisionNames = {D1:'Premier League',D2:'Ligue 2',D3:'National League',D4:'Challenger League',D5:'Regional League'};
+async function loadPublicClubDirectory() {
+  const requestId=++publicClubDirectoryRequest;
+  if(!document.getElementById('club-search')) return;
+  const status=document.getElementById('club-directory-status');
+  if(status) status.textContent='Synchronisation du catalogue de la saison active…';
+  try {
+    const fetchPage=async offset=>{
+      const response=await fetch('/api/clubs?limit=100&offset='+offset,{headers:{Accept:'application/json'}});
+      if(!response.ok) throw new Error('CATALOGUE_HTTP_'+response.status);
+      return response.json();
+    };
+    const pages=await Promise.all([fetchPage(0),fetchPage(100)]);
+    if(requestId!==publicClubDirectoryRequest || !document.getElementById('club-search')) return;
+    const items=[...(pages[0].clubs||[]),...(pages[1].clubs||[])];
+    if(pages[0].total!==156 || items.length!==156 || new Set(items.map(item=>item.id)).size!==156) throw new Error('CATALOGUE_INCOMPLETE');
+    publicClubDirectoryCache=new Map(items.map(item=>[item.id,item]));
+    const countrySelect=document.getElementById('club-country-filter');
+    if(countrySelect) countrySelect.innerHTML='<option value="all">Tous les pays</option>'+[...new Set(items.map(item=>item.country).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr')).map(value=>'<option value="'+escapeHTML(value)+'">'+escapeHTML(value)+'</option>').join('');
+    const overview=document.querySelector('.club-overview');
+    if(overview) overview.innerHTML='<div><b>156</b><span>CLUBS ACTIFS</span></div><div><b>5</b><span>DIVISIONS</span></div><div><b>9</b><span>GROUPES DE CHAMPIONNAT</span></div>';
+    const groups=['D1','D2','D3','D4','D5'].map(division=>({division,clubs:items.filter(item=>item.division===division)}));
+    const html=groups.map(group=>{
+      const cards=group.clubs.slice().sort((a,b)=>a.name.localeCompare(b.name,'fr')).map(club=>{
+        const conference=club.conference?'<span class="club-conference-tag">'+escapeHTML(club.conference)+'</span>':'';
+        const admission=club.humanAdmission==='system-only'?'RÉSERVÉ AU SYSTÈME':'ADMISSION OUVERTE';
+        return '<article class="club-card" data-club-card data-name="'+escapeHTML(club.name.toLocaleLowerCase('fr'))+'" data-location="'+escapeHTML((club.city+' '+club.country+' '+(club.stadium||'')).toLocaleLowerCase('fr'))+'" data-country="'+escapeHTML(club.country||'')+'" data-division="'+club.division+'" data-conference="'+escapeHTML(club.conference||'')+'" data-rating="'+Number(club.rating||0)+'" data-roster="0" data-reputation="'+Number(club.reputation||0)+'">'+
+          renderClubCrest({id:club.id,name:club.name,size:58,colors:club.colors})+
+          '<div class="club-card-copy"><div class="club-card-kickers"><span>'+club.division+'</span>'+conference+'</div><h3>'+escapeHTML(club.name)+'</h3><p>'+escapeHTML(club.city)+' · '+escapeHTML(club.country)+'</p><div class="club-meta-line"><span>Niveau '+Number(club.rating||0)+'</span><span>'+Number(club.reputation||0)+' réputation</span></div><small>'+admission+'</small><div class="club-stadium">'+escapeHTML(club.stadium||'Stade non renseigné')+'</div><button class="small-action" data-action="view-roster" data-club="'+escapeHTML(club.id)+'">OUVRIR LA FICHE DU CLUB</button></div></article>';
+      }).join('');
+      const conferenceSummary=group.division==='D4'?'Nord 16 · Sud 16':group.division==='D5'?'Nord 16 · Sud 16 · Est 16 · Ouest 16':'Compétition nationale';
+      return '<section class="club-division" data-division="'+group.division+'"><div class="club-division-heading"><div><span class="eyebrow">'+group.division+'</span><h2>'+publicDivisionNames[group.division]+'</h2><small>'+conferenceSummary+'</small></div><span class="division-count">'+group.clubs.length+' CLUBS</span></div><div class="club-grid">'+cards+'</div></section>';
+    }).join('');
+    document.querySelectorAll('.club-division').forEach(node=>node.remove());
+    const toolbar=document.querySelector('.club-discovery-toolbar');
+    if(toolbar) toolbar.insertAdjacentHTML('afterend',html);
+    if(status) status.textContent='Catalogue serveur synchronisé · divisions et conférences de la saison active.';
+    const counter=document.getElementById('club-filter-count');
+    if(counter) counter.textContent='156 clubs';
+  } catch(error) {
+    if(requestId!==publicClubDirectoryRequest) return;
+    const note=document.getElementById('club-directory-status');
+    if(note) note.textContent='Serveur indisponible : catalogue local de secours affiché. Les affectations peuvent ne pas refléter la saison active.';
+  }
+}
+
 function renderPage(page = 'home') {
   syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
   if (page !== 'results') resultsRequestSequence++;
@@ -352,15 +401,16 @@ function renderPage(page = 'home') {
       </div>`;
     loadPlayerCareer(player);
   } else if (page === 'clubs') {
-    const divisionLabels = { D1: 'D1 · ÉLITE', D2: 'D2 · PROFESSIONNEL', D3: 'D3 · RÉGIONAL', AMATEUR: 'AMATEUR' };
+    const divisionLabels = { D1: 'D1 · PREMIER LEAGUE', D2: 'D2 · LIGUE 2', D3: 'D3 · NATIONAL LEAGUE', D4: 'D4 · CHALLENGER LEAGUE', D5: 'D5 · REGIONAL LEAGUE', AMATEUR: 'AMATEUR' };
     const nationalityNames = { MG:'Madagascar', FR:'France', SN:'Sénégal', BR:'Brésil', ES:'Espagne', AR:'Argentine', PT:'Portugal', JP:'Japon', NG:'Nigeria', IT:'Italie', GB:'Angleterre', KE:'Kenya' };
     const roleNames = { GK:'Gardien', DEF:'Défenseur', MID:'Milieu', FWD:'Attaquant' };
     const allClubs = clubs.listClubs();
-    const selectedClub = selectedClubId ? clubs.getClub(selectedClubId) : null;
+    const localSelectedClub = selectedClubId ? clubs.getClub(selectedClubId) : null;
+    const selectedClub = selectedClubId ? { ...(localSelectedClub || {}), ...(publicClubDirectoryCache.get(selectedClubId) || {}) } : null;
     title.textContent = selectedClub ? selectedClub.name : 'Clubs & championnats';
-    subtitle.textContent = selectedClub ? `${selectedClub.city} · ${selectedClub.country} · ${divisionLabels[selectedClub.division]}` : 'Clubs fictifs internationaux et malgaches · effectifs IA persistants.';
+    subtitle.textContent = selectedClub ? `${selectedClub.city} · ${selectedClub.country} · ${divisionLabels[selectedClub.division]}${selectedClub.conference ? ' · CONFÉRENCE '+selectedClub.conference : ''}` : 'Clubs fictifs internationaux et malgaches · effectifs IA persistants.';
     if (selectedClub) {
-      const roster = selectedClub.roster.slice().sort((a,b) => ({GK:0,DEF:1,MID:2,FWD:3}[a.role]-({GK:0,DEF:1,MID:2,FWD:3}[b.role]) || b.rating-a.rating));
+      const roster = (selectedClub.roster || []).slice().sort((a,b) => ({GK:0,DEF:1,MID:2,FWD:3}[a.role]-({GK:0,DEF:1,MID:2,FWD:3}[b.role]) || b.rating-a.rating));
       playerLibraryProfiles = roster.map(player => ({...player,clubId:selectedClub.id,clubName:selectedClub.name,clubDivision:selectedClub.division,careerPlayerId:`club-${selectedClub.id}-${player.id}`}));
       const average = roster.length ? Math.round(roster.reduce((sum,p)=>sum+p.rating,0)/roster.length) : 0;
       content.innerHTML = `<button class="text-cta" data-action="back-clubs">← RETOUR AUX CLUBS</button><section class="club-detail-hero">${crest(selectedClub)}<div><span class="eyebrow">${divisionLabels[selectedClub.division]}</span><h2>${escapeHTML(selectedClub.name)}</h2><p>${escapeHTML(selectedClub.city)} · ${escapeHTML(selectedClub.country)}</p><div class="club-detail-stats"><span><b>${selectedClub.rating}</b><small>NOTE CLUB</small></span><span><b>${roster.length}</b><small>JOUEURS</small></span><span><b>${average}</b><small>MOYENNE EFFECTIF</small></span><span><b>${selectedClub.reputation}</b><small>RÉPUTATION</small></span></div></div></section><section class="competition-panel roster-panel"><div class="panel-heading"><div><span class="eyebrow">EFFECTIF COMPLET</span><h2>Effectif · ${roster.length} joueurs</h2></div><span class="local-tag">${selectedClub.control==='open'?'CLUB DISPONIBLE':selectedClub.control==='player'?'VOTRE CLUB':'CLUB IA'}</span></div><div class="roster-filters"><label>Rechercher un joueur<input id="roster-search" type="search" placeholder="Nom du joueur…" autocomplete="off"></label><label>Filtrer par poste<select id="roster-role"><option value="all">Tous les postes</option><option value="GK">Gardiens</option><option value="DEF">Défenseurs</option><option value="MID">Milieux</option><option value="FWD">Attaquants</option></select></label></div><div class="roster-table-wrap"><table class="roster-table"><thead><tr><th>#</th><th>JOUEUR</th><th>NATIONALITÉ</th><th>ÂGE</th><th>POSTE</th><th>NOTE</th><th>POTENTIEL</th><th>VIT.</th><th>TIR</th><th>PAS.</th><th>DÉF.</th><th>END.</th><th>CTR.</th></tr></thead><tbody id="club-roster-rows">${roster.map((player,index)=>`<tr role="button" tabindex="0" aria-label="Ouvrir le profil de ${escapeHTML(player.name)}" data-player-profile="${index}" data-profile-origin="clubs" data-player-row data-name="${escapeHTML(player.name.toLowerCase())}" data-role="${player.role}"><td>${player.number}</td><td><b>${escapeHTML(player.name)}</b><small>${escapeHTML(player.archetype)}</small></td><td><span class="nationality-cell">${escapeHTML(nationalityNames[player.nationality]||player.nationality)}</span></td><td>${player.age}</td><td>${roleNames[player.role]||player.role}</td><td><b class="player-rating">${player.rating}</b></td><td>${player.potential}</td><td>${player.attributes?.pace ?? player.rating}</td><td>${player.attributes?.shooting ?? player.rating}</td><td>${player.attributes?.passing ?? player.rating}</td><td>${player.attributes?.defense ?? player.rating}</td><td>${player.attributes?.stamina ?? player.rating}</td><td>${player.attributes?.control ?? player.rating}</td></tr>`).join('')}</tbody></table><p class="roster-empty hidden" id="roster-empty">Aucun joueur ne correspond à ces filtres.</p></div></section>${selectedClub.control==='open'?`<button class="primary-cta" data-action="take-club" data-club="${escapeHTML(selectedClub.id)}">REPRENDRE CE CLUB</button>`:''}<p class="notice">Les profils et identités sont fictifs. Les notes et potentiels sont des valeurs de jeu, pas des évaluations de personnes réelles.</p>`;
@@ -368,10 +418,12 @@ function renderPage(page = 'home') {
       content.innerHTML = `<div class="club-overview"><div><b>${allClubs.length}</b><span>CLUBS FONDATEURS</span></div><div><b>${allClubs.filter(c=>c.country.split('·').some(country=>country.trim()==='Madagascar')).length}</b><span>CLUBS AVEC ANCRAGE MALGACHE</span></div><div><b>${allClubs.reduce((n,c)=>n+c.roster.length,0)}</b><span>JOUEURS IA GÉNÉRÉS</span></div></div><div class="club-discovery-toolbar">
         <label class="club-search-field"><span>RECHERCHER UN CLUB</span><input id="club-search" type="search" placeholder="Nom, ville ou stade…" autocomplete="off"></label>
         <label><span>DIVISION</span><select id="club-division-filter"><option value="all">Toutes les divisions</option>${clubs.listDivisions().map(d=>`<option value="${escapeHTML(d.id)}">${escapeHTML(d.name)}</option>`).join('')}</select></label>
+        <label><span>CONFÉRENCE</span><select id="club-conference-filter"><option value="all">Toutes les conférences</option><option>Nord</option><option>Sud</option><option>Est</option><option>Ouest</option></select></label>
         <label><span>IDENTITÉ</span><select id="club-country-filter"><option value="all">Tous les pays</option>${[...new Set(allClubs.map(c=>c.country))].sort().map(country=>`<option value="${escapeHTML(country)}">${escapeHTML(country)}</option>`).join('')}</select></label>
         <label><span>TRI</span><select id="club-sort"><option value="rating">Niveau du club</option><option value="name">Nom A–Z</option><option value="roster">Taille de l’effectif</option><option value="reputation">Réputation</option></select></label>
         <span id="club-filter-count" class="club-filter-count">${allClubs.length} clubs</span>
-      </div>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.map(club=>`<article class="club-card" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}">${crest(club)}<div class="club-card-copy"><h3>${escapeHTML(club.name)}</h3><p>${escapeHTML(club.city)} · ${escapeHTML(club.country)}</p><div class="club-meta-line"><span>Niveau ${club.rating}</span><span>${club.roster.length} joueurs</span><span>${club.reputation} réputation</span></div><small>${club.control === 'open' ? 'OUVERT À LA REPRISE' : club.control === 'player' ? 'GÉRÉ PAR VOUS' : 'GÉRÉ PAR L’IA'}</small><div class="club-stadium">${escapeHTML(club.stadium)}</div><div class="club-roster-preview"><b>EFFECTIF · ${club.roster.length} JOUEURS</b><span>${club.roster.slice(0,3).map(player=>escapeHTML(player.name)).join(' · ')}${club.roster.length>3?' · …':''}</span></div><button class="small-action" data-action="view-roster" data-club="${escapeHTML(club.id)}">VOIR L’EFFECTIF COMPLET</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE CE CLUB</button>` : ''}</div></article>`).join('')}</div></section>`).join('')}<p class="notice">Les identités des clubs et joueurs sont fictives. Chaque effectif comprend une structure de 2 gardiens, 4 défenseurs, 4 milieux et 2 attaquants.</p>`;
+      </div>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.map(club=>`<article class="club-card" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}">${crest(club)}<div class="club-card-copy"><h3>${escapeHTML(club.name)}</h3><p>${escapeHTML(club.city)} · ${escapeHTML(club.country)}</p><div class="club-meta-line"><span>Niveau ${club.rating}</span><span>${club.roster.length} joueurs</span><span>${club.reputation} réputation</span></div><small>${club.control === 'open' ? 'OUVERT À LA REPRISE' : club.control === 'player' ? 'GÉRÉ PAR VOUS' : 'GÉRÉ PAR L’IA'}</small><div class="club-stadium">${escapeHTML(club.stadium)}</div><div class="club-roster-preview"><b>EFFECTIF · ${club.roster.length} JOUEURS</b><span>${club.roster.slice(0,3).map(player=>escapeHTML(player.name)).join(' · ')}${club.roster.length>3?' · …':''}</span></div><button class="small-action" data-action="view-roster" data-club="${escapeHTML(club.id)}">VOIR L’EFFECTIF COMPLET</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE CE CLUB</button>` : ''}</div></article>`).join('')}</div></section>`).join('')}<p class="notice">Catalogue local chargé · vérification de la saison active en cours.</p><p class="notice" id="club-directory-status" aria-live="polite">Synchronisation du catalogue…</p><p class="notice">Les identités des clubs et joueurs sont fictives. Les fiches publiques n’exposent pas les contrats privés.</p>`;
+      loadPublicClubDirectory();
     }
   } else if (page === 'competitions') {
     const rows = clubs.listDivisions();
@@ -831,9 +883,10 @@ menu.addEventListener('input',onPlayerLibraryFilter);
 menu.addEventListener('change',onPlayerLibraryFilter);
 
 const filterClubDiscovery = event => {
-  if (!['club-search','club-division-filter','club-country-filter','club-sort'].includes(event.target.id)) return;
+  if (!['club-search','club-division-filter','club-conference-filter','club-country-filter','club-sort'].includes(event.target.id)) return;
   const query=(document.getElementById('club-search')?.value||'').trim().toLocaleLowerCase('fr');
   const division=document.getElementById('club-division-filter')?.value||'all';
+  const conference=document.getElementById('club-conference-filter')?.value||'all';
   const country=document.getElementById('club-country-filter')?.value||'all';
   const sort=document.getElementById('club-sort')?.value||'rating';
   const groups=[...document.querySelectorAll('.club-division')];
@@ -848,6 +901,7 @@ const filterClubDiscovery = event => {
     for(const card of cards){
       const match=(card.dataset.name.includes(query)||card.dataset.location.includes(query))
         && (division==='all'||card.dataset.division===division)
+        && (conference==='all'||card.dataset.conference===conference)
         && (country==='all'||card.dataset.country===country);
       card.classList.toggle('hidden',!match);
       if(match) visible++;

@@ -1734,3 +1734,11 @@ html, body {
 .player-career-match-history article>span{font-size:.82rem}
 .player-career-match-history article>small{grid-column:2}
 @media(max-width:560px){.player-career-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* P27 — catalogue officiel des clubs, divisions et conférences */
+.club-card-kickers{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px}
+.club-card-kickers>span{display:inline-flex;align-items:center;padding:4px 7px;border:1px solid rgba(154,240,189,.2);border-radius:6px;background:rgba(154,240,189,.07);color:#bde9ca;font-size:8px;font-weight:900;letter-spacing:.07em}
+.club-card-kickers .club-conference-tag{border-color:rgba(240,201,119,.24);background:rgba(240,201,119,.08);color:#f0d69b}
+.club-division-heading small{display:block;margin-top:5px;color:#9fb7a6;font-size:9px;font-weight:800;letter-spacing:.06em}
+#club-directory-status{border-left:2px solid rgba(154,240,189,.45);padding-left:10px}
+@media(max-width:560px){.club-card-kickers>span{font-size:7px;padding:3px 6px}.club-division-heading small{font-size:8px}}
