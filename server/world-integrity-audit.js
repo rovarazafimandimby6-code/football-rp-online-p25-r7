@@ -386,6 +386,12 @@ export function auditP27World({
         !clubById.has(record.fromClubId) || !clubById.has(record.toClubId) ||
         record.fromClubId === record.toClubId)
       errors.push({ code:'SYSTEM_TRANSFER_OUTBOX_RECORD_INVALID', eventId:record.id });
+    if (!Number.isSafeInteger(record.attempts) || record.attempts < 0 || record.attempts > 1_000_000 ||
+        !(record.lastError === null || typeof record.lastError === 'string') ||
+        (record.lastAttemptAt !== undefined && (!Number.isSafeInteger(record.lastAttemptAt) || record.lastAttemptAt < 0)))
+      errors.push({ code:'SYSTEM_TRANSFER_OUTBOX_RETRY_METADATA_INVALID', eventId:record.id });
+    if (record.status === 'completed' && (!Number.isSafeInteger(record.completedAt) || record.completedAt < 0))
+      errors.push({ code:'SYSTEM_TRANSFER_OUTBOX_COMPLETION_DATE_INVALID', eventId:record.id });
     const memberships = rosterPlayersById.get(record.playerId) || [];
     if (memberships.length !== 1) {
       errors.push({ code:'SYSTEM_TRANSFER_PLAYER_MEMBERSHIP_INVALID', eventId:record.id, playerId:record.playerId, count:memberships.length });
