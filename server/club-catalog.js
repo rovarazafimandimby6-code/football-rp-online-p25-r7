@@ -2,7 +2,7 @@ import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, normalizeConference, conferenceForClub } from '../src/league-structure.js';
 
 const divisionOrder = new Map(LEAGUE_DIVISIONS.map((item,index)=>[item.id,index]));
-const conferenceOrder = { D4:['Nord','Sud'], D5:['Nord','Sud','Est','Ouest'] };
+const conferenceOrder = { D4:['A','B'], D5:['A','B','C','D'] };
 
 function publicClub(club) {
   return Object.freeze({
