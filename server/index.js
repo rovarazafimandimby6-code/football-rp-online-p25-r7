@@ -415,6 +415,10 @@ const server = http.createServer(async (req, res) => {
       let pathname;
       try { pathname = decodeURIComponent(url.pathname); } catch { return json(res, 400, { error: 'INVALID_PATH' }); }
       const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+      const segments = relative.split(/[\\/]+/).filter(Boolean);
+      const privateSegments = new Set(['data','server','tests','node_modules']);
+      if (segments.some(segment => segment.startsWith('.') || privateSegments.has(segment.toLowerCase())))
+        return json(res, 403, { error:'FORBIDDEN' });
       const target = path.resolve(APP_ROOT, relative);
       if (target !== APP_ROOT && !target.startsWith(APP_ROOT + path.sep)) return json(res, 403, { error: 'FORBIDDEN' });
       try {
