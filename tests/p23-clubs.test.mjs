@@ -210,7 +210,8 @@ test('P27 contrats : une modification de note actualise le salaire système sans
  const club=manager.getClub('antananarivo-fc');
  const player=club.roster[0];
  manager.reviewSystemPlayerContract(club.id,player.id,{now:Date.UTC(2027,0,1)});
- const updated=manager.updatePlayer(club.id,{...player,rating:Math.min(99,player.rating+5)});
+ const reviewedPlayer=manager.getClub(club.id).roster.find(item=>item.id===player.id);
+ const updated=manager.updatePlayer(club.id,{...reviewedPlayer,rating:Math.min(99,player.rating+5)});
  assert.equal(updated.ok,true);
  assert.equal(updated.player.contract.weeklyWage,calculateSystemWeeklyWage({division:club.division,rating:updated.player.rating}));
  assert.equal(updated.player.contract.reviewCount,1);
