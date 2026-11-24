@@ -93,7 +93,7 @@ test('P27 salons persistés : les identifiants de joueurs dupliqués invalident 
         { id: 'same-player', team: 'red', slot: 0 },
       ],
     });
-    assert.throws(() => new RoomManager({ roomStore: store }), /ROOM_STORE_CORRUPT/);
+    assert.throws(() => new RoomManager({ now: () => 2, roomStore: store }), /ROOM_STORE_CORRUPT/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
