@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const safeCount = value => Number.isFinite(Number(value)) ? Math.max(0, Math.min(1_000_000_000, Math.floor(Number(value)))) : 0;
 const safeRating = value => Number.isFinite(Number(value)) ? Math.round(Math.max(1, Math.min(10, Number(value))) * 10) / 10 : null;
-const clean = (value, max = 64) => String(value ?? '').replace(/[<>\\u0000-\\u001f]/g, '').trim().slice(0, max);
+const clean = (value, max = 64) => String(value ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max);
 const emptyTotals = () => ({ matches:0, minutesPlayedMs:0, wins:0, draws:0, losses:0, goals:0, assists:0, shots:0, passes:0, completedPasses:0, tackles:0, interceptions:0, saves:0, cleanSheets:0, playerOfMatch:0 });
 
 /** Account-keyed authoritative career history. Never accepts client-submitted match results. */
