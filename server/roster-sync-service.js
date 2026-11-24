@@ -19,7 +19,12 @@ export function processPendingRosterSync({ transferStore, clubManager, limit = 1
         failed.push({ id:entry.id, reason:result.reason });
         continue;
       }
-      transferStore.completeRosterSync(entry.id);
+      const checkpoint = transferStore.completeRosterSync(entry.id);
+      if (!checkpoint?.ok) {
+        transferStore.failRosterSync(entry.id, checkpoint?.reason || 'ROSTER_SYNC_CHECKPOINT_MISSING');
+        failed.push({ id:entry.id, reason:checkpoint?.reason || 'ROSTER_SYNC_CHECKPOINT_MISSING' });
+        continue;
+      }
       processed.push({ id:entry.id, playerId:entry.playerId, action:result.action, clubId:result.clubId || null });
     } catch (error) {
       try { transferStore.failRosterSync(entry.id, error); } catch {}
