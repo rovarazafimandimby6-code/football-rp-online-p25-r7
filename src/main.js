@@ -499,7 +499,8 @@ function renderPage(page = 'home') {
     title.textContent = 'Compte joueur';
     subtitle.textContent = 'Connectez votre identité persistante pour retrouver votre carrière sur plusieurs sessions.';
     const account = accountClient.account;
-    content.innerHTML = account ? `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ PERSISTANTE</span><h2>${escapeHTML(account.displayName || account.username)}</h2></div><span class="local-tag">CONNECTÉ</span></div><p class="notice">Compte : @${escapeHTML(account.username)} · Créé le ${new Date(account.createdAt).toLocaleDateString('fr-FR')}</p><div class="training-controls"><button class="small-action" data-action="account-refresh">ACTUALISER LA SESSION</button><button class="text-cta" data-action="account-logout">SE DÉCONNECTER</button></div><p class="notice" id="account-status" aria-live="polite">Votre compte sera associé aux prochains matchs en ligne. Les statistiques officielles sont enregistrées par le serveur.</p></section>` : `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">COMPTE FOOTBALL RP ONLINE</span><h2>Retrouver sa carrière</h2></div><span class="local-tag">INVITÉ</span></div><p class="notice">Créez un compte ou connectez-vous. Votre compte sera automatiquement lié aux prochains matchs en ligne et à leurs résultats confirmés par le serveur.</p><div class="editor-grid"><label>Nom d'utilisateur<input id="account-username" maxlength="20" autocomplete="username" placeholder="ex. rova_27"></label><label>Nom affiché<input id="account-display-name" maxlength="24" autocomplete="nickname" placeholder="Votre nom joueur"></label><label>Mot de passe<input id="account-password" type="password" minlength="10" autocomplete="current-password" placeholder="10 caractères minimum"></label></div><div class="training-controls"><button class="primary-cta" data-action="account-login">SE CONNECTER</button><button class="small-action" data-action="account-register">CRÉER UN COMPTE</button></div><p class="notice" id="account-status" aria-live="polite">Le mot de passe est transmis uniquement à l'API sécurisée du serveur ; ne le partagez jamais.</p></section>`;
+    content.innerHTML = account ? `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ PERSISTANTE</span><h2>${escapeHTML(account.displayName || account.username)}</h2></div><span class="local-tag">CONNECTÉ</span></div><p class="notice">Compte : @${escapeHTML(account.username)} · Créé le ${new Date(account.createdAt).toLocaleDateString('fr-FR')}</p><div class="training-controls"><button class="small-action" data-action="account-refresh">ACTUALISER LA SESSION</button><button class="text-cta" data-action="account-logout">SE DÉCONNECTER</button></div><p class="notice" id="account-status" aria-live="polite">Votre compte sera associé aux prochains matchs en ligne. Les statistiques officielles sont enregistrées par le serveur.</p><div id="account-career-stats" class="quick-grid"><p class="notice">Chargement de votre carrière serveur…</p></div></section>` : `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">COMPTE FOOTBALL RP ONLINE</span><h2>Retrouver sa carrière</h2></div><span class="local-tag">INVITÉ</span></div><p class="notice">Créez un compte ou connectez-vous. Votre compte sera automatiquement lié aux prochains matchs en ligne et à leurs résultats confirmés par le serveur.</p><div class="editor-grid"><label>Nom d'utilisateur<input id="account-username" maxlength="20" autocomplete="username" placeholder="ex. rova_27"></label><label>Nom affiché<input id="account-display-name" maxlength="24" autocomplete="nickname" placeholder="Votre nom joueur"></label><label>Mot de passe<input id="account-password" type="password" minlength="10" autocomplete="current-password" placeholder="10 caractères minimum"></label></div><div class="training-controls"><button class="primary-cta" data-action="account-login">SE CONNECTER</button><button class="small-action" data-action="account-register">CRÉER UN COMPTE</button></div><p class="notice" id="account-status" aria-live="polite">Le mot de passe est transmis uniquement à l'API sécurisée du serveur ; ne le partagez jamais.</p></section>`;
+    if (account) void loadAccountCareerSummary();
   } else if (page === 'mercato') {
     career.refreshContractStatus();
     career.refreshOfferStatuses();
@@ -716,6 +717,20 @@ async function startMatch(online = null) {
     shell.classList.add('hidden'); menu.classList.remove('hidden');
     const content = document.getElementById('menu-content');
     content.innerHTML = `<div class="error-card"><b>Impossible de lancer le match</b><p>${escapeHTML(error?.message || 'Erreur inconnue')}</p><button class="secondary-cta" data-page="home">RETOUR</button></div>`;
+  }
+}
+
+async function loadAccountCareerSummary() {
+  const host = document.getElementById('account-career-stats');
+  if (!host || !accountClient.token) return;
+  try {
+    const payload = await accountClient.request('/api/career', { auth: true });
+    if (!host.isConnected) return;
+    const totals = payload?.career?.totals || {};
+    const count = key => Number.isFinite(Number(totals[key])) ? Math.max(0, Math.floor(Number(totals[key]))) : 0;
+    host.innerHTML = `<div class="quick-card"><b>${count('matches')}</b><small>MATCHS EN LIGNE</small></div><div class="quick-card"><b>${count('wins')}</b><small>VICTOIRES</small></div><div class="quick-card"><b>${count('goals')}</b><small>BUTS</small></div><div class="quick-card"><b>${count('assists')}</b><small>PASSES DÉCISIVES</small></div><div class="quick-card"><b>${count('playerOfMatch')}</b><small>HOMMES DU MATCH</small></div><div class="quick-card"><b>${(Number(totals.minutesPlayedMs) / 60000 || 0).toFixed(0)}</b><small>MINUTES JOUÉES</small></div>`;
+  } catch (error) {
+    if (host.isConnected) host.innerHTML = `<p class="notice">Carrière serveur indisponible : ${escapeHTML(String(error?.message || error).slice(0, 80))}</p>`;
   }
 }
 
