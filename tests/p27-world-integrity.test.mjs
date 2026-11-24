@@ -413,3 +413,31 @@ test('P27 intégrité carrière : tolère temporairement un effectif absent si l
  assert.ok(!result.errors.some(item=>item.code==='CAREER_ACTIVE_PLAYER_ORPHANED'));
  assert.ok(result.warnings.some(item=>item.code==='CAREER_PLAYER_ROSTER_SYNC_PENDING'));
 });
+
+test('P27 intégrité prêts : vérifie le lien du contrat parent et du joueur inscrit au club emprunteur',()=>{
+ const input=cleanWorld();
+ const playerId='human-loan-player';
+ const parentContract={status:'active',clubId:'club-a',playerId,salary:100,signedAt:'2027-01-01T00:00:00.000Z',expiresAt:'2027-12-01T00:00:00.000Z'};
+ const loan={status:'active',parentClubId:'club-a',parentContract,startedAt:'2027-01-15T00:00:00.000Z',expiresAt:'2027-02-15T00:00:00.000Z'};
+ input.clubs[1].roster.push({id:playerId,playerType:'human',number:2,contract:{...parentContract,clubId:'club-b',loan}});
+ input.transferState.careers=[{accountId:'loan-account',playerId,clubId:'club-b',contract:{...parentContract,clubId:'club-b',loan}}];
+ const result=auditP27World(input);
+ assert.ok(!result.errors.some(item=>item.code.startsWith('CAREER_LOAN_')));
+ input.transferState.careers[0].contract.loan.parentClubId='missing-club';
+ assert.ok(auditP27World(input).errors.some(item=>item.code==='CAREER_LOAN_TERMS_INVALID'));
+});
+
+test('P27 intégrité mercato : compte les joueurs libres uniques et signale les archives dupliquées',()=>{
+ const input=cleanWorld();
+ input.clubs[0].releasedPlayers=[
+  {player:{id:'free-player',name:'Libre'},releasedAt:'2027-01-01T00:00:00.000Z',reason:'contract-expired'},
+  {player:{id:'moved-player',name:'Transféré'},releasedAt:'2027-01-02T00:00:00.000Z',reason:'transferred'}
+ ];
+ input.clubs[1].releasedPlayers=[
+  {player:{id:'free-player',name:'Libre'},releasedAt:'2027-01-03T00:00:00.000Z',reason:'released'}
+ ];
+ const result=auditP27World(input);
+ assert.equal(result.counts.freeAgents,1);
+ assert.equal(result.counts.duplicateFreeAgentSnapshots,1);
+ assert.ok(result.warnings.some(item=>item.code==='FREE_AGENT_ARCHIVE_DUPLICATE_SNAPSHOTS'&&item.playerId==='free-player'));
+});
