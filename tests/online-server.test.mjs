@@ -712,7 +712,7 @@ test('P27 déconnexion : une prise en charge IA ne compte pas comme un nouveau b
 });
 
 
-test('P27 demande d'entrée depuis le banc : mise en file puis rotation serveur au prochain arrêt', () => {
+test("P27 demande d'entrée depuis le banc : mise en file puis rotation serveur au prochain arrêt", () => {
   let now = 500_000;
   const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
   const room = manager.create();
@@ -740,7 +740,7 @@ test('P27 demande d'entrée depuis le banc : mise en file puis rotation serveur 
   assert.ok(manager.get(room.id).events.some(event => event.type === 'rotation-request-completed' && event.playerId === requester.id));
 });
 
-test('P27 demande d'entrée depuis le banc : refus d'un joueur encore sur le terrain', () => {
+test("P27 demande d'entrée depuis le banc : refus d'un joueur encore sur le terrain", () => {
   const manager = new RoomManager();
   const room = manager.create();
   const joined = manager.join(room.id);
