@@ -1706,3 +1706,19 @@ html, body {
 .form-chip.draw{border:1px solid rgba(235,190,83,.5);color:#f0cf7b}
 .form-chip.loss{border:1px solid rgba(238,105,105,.5);color:#f29b9b}
 .history-list>div{gap:8px}
+
+
+/* P27 — fiches de carrière consultables depuis les cartes joueurs */
+.player-library-card{cursor:pointer;position:relative;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+.player-library-card:hover,.player-library-card:focus-visible{transform:translateY(-2px);border-color:rgba(154,240,189,.58);box-shadow:0 12px 28px rgba(0,0,0,.22);outline:none}
+.player-library-card:after{content:"OUVRIR LA FICHE ↗";display:block;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09);font-size:9px;font-weight:900;letter-spacing:.1em;color:#9af0bd}
+.player-career-hero{display:flex;align-items:center;gap:20px;padding:22px;margin:12px 0 18px;border:1px solid rgba(154,240,189,.2);border-radius:18px;background:linear-gradient(115deg,rgba(25,75,49,.9),rgba(8,23,17,.88))}
+.player-career-avatar{width:112px;height:132px;flex:0 0 112px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-radius:14px;background:linear-gradient(145deg,#285c42,#101e18);border:1px solid rgba(255,255,255,.15)}
+.player-career-avatar span{font-size:11px;font-weight:900;color:#a9edc0}.player-career-avatar b{font-size:38px;letter-spacing:2px}
+.player-career-identity h2{margin:5px 0;font-size:clamp(22px,4vw,34px)}.player-career-identity p{margin:0;color:#b7c9bd}
+.player-career-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}.player-career-tags span{padding:6px 9px;border-radius:7px;background:rgba(255,255,255,.08);font-size:9px;font-weight:900;letter-spacing:.06em}
+.player-career-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
+.player-career-attributes{display:grid;gap:12px}.player-career-attributes>div{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;font-size:12px}.player-career-attributes i{grid-column:1/-1;height:6px;border-radius:8px;background:rgba(255,255,255,.09);overflow:hidden}.player-career-attributes em{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#42b979,#a0efbd)}
+.player-career-timeline{padding:8px 0}.player-career-timeline-item{display:grid;grid-template-columns:12px 1fr auto;gap:10px;align-items:start;padding:8px 0}.player-career-timeline-item>i{width:9px;height:9px;margin-top:5px;border-radius:50%;background:#9af0bd;box-shadow:0 0 0 4px rgba(154,240,189,.12)}.player-career-timeline-item>div{display:grid;gap:4px}.player-career-timeline-item span,.player-career-timeline-item small{color:#a8bdb0;font-size:11px}.player-career-timeline-item strong{font-size:9px;color:#9af0bd}
+.player-career-empty{padding:16px;border:1px dashed rgba(255,255,255,.18);border-radius:12px;background:rgba(255,255,255,.025)}.player-career-empty b{font-size:13px}.player-career-empty p{margin:7px 0 0;color:#a8bdb0;font-size:11px;line-height:1.55}
+@media(max-width:700px){.player-career-columns{grid-template-columns:1fr}.player-career-hero{align-items:flex-start;padding:14px;gap:12px}.player-career-avatar{width:78px;height:100px;flex-basis:78px}.player-career-avatar b{font-size:27px}.player-career-identity p{font-size:11px}}

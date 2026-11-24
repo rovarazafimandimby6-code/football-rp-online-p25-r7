@@ -165,6 +165,8 @@ function mountAvatarPreview(profile) {
 let selectedMatchup = { home: 'antananarivo-fc', away: 'toamasina-united' };
 let selectedClubId = null;
 let playerLibraryLimit = 24;
+let playerLibraryProfiles = [];
+let selectedPlayerProfile = null;
 let preferences = { duration: 5, quality: 'auto', cameraMode: 'player', cameraZoom: 55, nameDisplay: 'standard' };
 try {
   const saved = JSON.parse(localStorage.getItem('fpro-menu-preferences') || '{}');
@@ -251,6 +253,7 @@ function renderPage(page = 'home') {
     mountAvatarPreview(p);
   } else if (page === 'players') {
     const rosterPlayers=clubs.listClubs().flatMap(club=>club.roster.map(player=>({...player,clubId:club.id,clubName:club.name,clubDivision:club.division})));
+    playerLibraryProfiles = rosterPlayers;
     const roleNames={GK:'Gardien',DEF:'Défenseur',MID:'Milieu',FWD:'Attaquant'};
     const average=rosterPlayers.length?Math.round(rosterPlayers.reduce((sum,p)=>sum+p.rating,0)/rosterPlayers.length):0;
     playerLibraryLimit=24;
@@ -266,7 +269,7 @@ function renderPage(page = 'home') {
         <label><span>NOTE MIN.</span><select id="library-min-rating"><option value="0">Toutes</option><option value="60">60+</option><option value="70">70+</option><option value="80">80+</option></select></label>
       </div>
       <div class="player-library-resultline"><span id="library-count">${rosterPlayers.length} joueurs</span><span>DONNÉES ISSUES DES EFFECTIFS LOCAUX</span></div>
-      <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>`<article class="player-library-card" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
+      <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>`<article class="player-library-card" role="button" tabindex="0" aria-label="Ouvrir le profil de ${escapeHTML(player.name)}" data-player-profile="${index}" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
         <div class="player-card-top"><span class="player-card-number">#${player.number}</span><span class="player-card-role">${roleNames[player.role]||player.role}</span><b class="player-card-rating">${player.rating}</b></div>
         <div class="player-card-identity"><span class="player-card-monogram">${escapeHTML(player.name.split(/\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase())}</span><div><h3>${escapeHTML(player.name)}</h3><p>${escapeHTML(player.clubName)}</p></div></div>
         <div class="player-card-meta"><span>${escapeHTML(player.nationality)}</span><span>${player.age} ans</span><span>Pot. ${player.potential}</span></div>
@@ -277,6 +280,28 @@ function renderPage(page = 'home') {
       <p class="notice">Cette bibliothèque recense les joueurs actuellement présents dans les effectifs locaux connus. Les joueurs libres, les transferts et les prêts ne sont pas inventés : ils seront intégrés quand leurs statuts seront reliés à une source de données fiable.</p>
     </div>`;
     filterPlayerLibrary();
+  } else if (page === 'player-detail') {
+    const player = selectedPlayerProfile;
+    if (!player) { renderPage('players'); return; }
+    const roleNames = { GK:'Gardien', DEF:'Défenseur', MID:'Milieu', FWD:'Attaquant' };
+    const attributeNames = { pace:'Vitesse', shooting:'Finition', passing:'Passe', defense:'Défense', stamina:'Endurance', control:'Contrôle' };
+    const nationalityNames = { MG:'Madagascar', FR:'France', SN:'Sénégal', BR:'Brésil', ES:'Espagne', AR:'Argentine', PT:'Portugal', JP:'Japon', NG:'Nigeria', IT:'Italie', GB:'Angleterre', KE:'Kenya' };
+    title.textContent = player.name;
+    subtitle.textContent = 'Fiche joueur · identité, club actuel et parcours vérifié.';
+    const initials = player.name.split(/\\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase();
+    content.innerHTML = `<button class="text-cta" data-action="back-player-library">← RETOUR À LA BIBLIOTHÈQUE</button>
+      <section class="player-career-hero">
+        <div class="player-career-avatar"><span>#${player.number}</span><b>${escapeHTML(initials)}</b></div>
+        <div class="player-career-identity"><span class="eyebrow">${escapeHTML(player.clubDivision)} · ${escapeHTML(roleNames[player.role]||player.role)}</span><h2>${escapeHTML(player.name)}</h2><p>${escapeHTML(player.clubName)} · ${escapeHTML(nationalityNames[player.nationality]||player.nationality)} · ${player.age} ans</p><div class="player-career-tags"><span>NOTE ${player.rating}</span><span>POTENTIEL ${player.potential}</span><span>PIED ${player.preferredFoot==='left'?'GAUCHE':'DROIT'}</span></div></div>
+      </section>
+      <div class="player-career-columns">
+        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ SPORTIVE</span><h2>Profil technique</h2></div></div><div class="player-career-attributes">${Object.entries(attributeNames).map(([key,label])=>{const value=Number(player.attributes?.[key]??player.rating);return `<div><span>${label}</span><b>${value}</b><i><em style="width:${Math.max(0,Math.min(99,value))}%"></em></i></div>`;}).join('')}</div><p class="notice">${escapeHTML(player.archetype)} · Les attributs décrivent le joueur dans l'effectif actuel.</p></section>
+        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PARCOURS EN CLUB</span><h2>Historique des clubs</h2></div></div><div class="player-career-timeline"><div class="player-career-timeline-item"><i></i><div><b>${escapeHTML(player.clubName)}</b><span>Club actuel · ${escapeHTML(player.clubDivision)}</span><small>Présence dans l'effectif local</small></div><strong>ACTUEL</strong></div></div><p class="notice">Les anciens clubs et dates de transfert apparaîtront lorsqu'ils seront enregistrés par le système de mercato.</p></section>
+      </div>
+      <div class="player-career-columns">
+        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">STATISTIQUES OFFICIELLES</span><h2>Matchs · buts · passes</h2></div></div><div class="player-career-empty"><b>Statistiques non disponibles</b><p>Aucun rapport de match individuel n'est encore associé à ce joueur. Les buts, passes décisives, apparitions et minutes seront affichés après leur enregistrement officiel.</p></div></section>
+        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PALMARÈS</span><h2>Coupes & trophées</h2></div></div><div class="player-career-empty"><b>Palmarès à construire</b><p>Aucun titre n'est attribué automatiquement. Les coupes et distinctions apparaîtront après les compétitions réellement disputées et leurs résultats validés.</p></div></section>
+      </div>`;
   } else if (page === 'clubs') {
     const divisionLabels = { D1: 'D1 · ÉLITE', D2: 'D2 · PROFESSIONNEL', D3: 'D3 · RÉGIONAL', AMATEUR: 'AMATEUR' };
     const nationalityNames = { MG:'Madagascar', FR:'France', SN:'Sénégal', BR:'Brésil', ES:'Espagne', AR:'Argentine', PT:'Portugal', JP:'Japon', NG:'Nigeria', IT:'Italie', GB:'Angleterre', KE:'Kenya' };
@@ -532,8 +557,12 @@ async function startMatch(online = null) {
 menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
   if (pageButton) { renderPage(pageButton.dataset.page); return; }
+  const playerCard = event.target.closest('[data-player-profile]');
+  if (playerCard) { const index = Number(playerCard.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); return; }
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'players-load-more') { playerLibraryLimit += 24; filterPlayerLibrary(); }
+  else if (action === 'open-player-profile') { const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); }
+  else if (action === 'back-player-library') { selectedPlayerProfile = null; renderPage('players'); }
   else if (action === 'view-roster') { selectedClubId = event.target.closest('[data-club]')?.dataset.club || null; renderPage('clubs'); }
   else if (action === 'back-clubs') { selectedClubId = null; renderPage('clubs'); }
   else if (action === 'results-page') { renderResultsPage(Number(event.target.closest('[data-offset]')?.dataset.offset || 0)); }
