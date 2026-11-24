@@ -1,0 +1,121 @@
+const asList = value => value instanceof Map ? [...value.values()] : Array.isArray(value) ? value : [];
+const safeText = value => typeof value === 'string' && value.length > 0;
+const validScore = value => Number.isSafeInteger(value) && value >= 0 && value <= 99;
+
+/** Read-only consistency audit across the persistent P27 world stores. */
+export function auditP27World({
+  clubs = [], transferState = null, financeAccounts = [], competitionState = null,
+  expectedClubCount = 156
+} = {}) {
+  const errors = [], warnings = [];
+  const catalogue = asList(clubs);
+  const clubById = new Map();
+  const rosterIds = new Set();
+  let rosterPlayers = 0, humanPlayers = 0, systemPlayers = 0;
+  for (const club of catalogue) {
+    if (!safeText(club?.id)) { errors.push({ code:'CLUB_ID_MISSING' }); continue; }
+    if (clubById.has(club.id)) errors.push({ code:'CLUB_ID_DUPLICATE', clubId:club.id });
+    clubById.set(club.id, club);
+    const numbers = new Set();
+    const roster = Array.isArray(club.roster) ? club.roster : [];
+    if (roster.length > Number(club.capacity || 12)) errors.push({ code:'ROSTER_CAPACITY_EXCEEDED', clubId:club.id, count:roster.length, capacity:club.capacity });
+    for (const player of roster) {
+      rosterPlayers++;
+      if (!safeText(player?.id)) errors.push({ code:'PLAYER_ID_MISSING', clubId:club.id });
+      else if (rosterIds.has(player.id)) errors.push({ code:'PLAYER_REGISTERED_MULTIPLE_TIMES', playerId:player.id });
+      else rosterIds.add(player.id);
+      if (Number.isInteger(player?.number)) {
+        if (numbers.has(player.number)) errors.push({ code:'SHIRT_NUMBER_DUPLICATE', clubId:club.id, number:player.number });
+        numbers.add(player.number);
+      }
+      if (player?.playerType === 'human') humanPlayers++; else systemPlayers++;
+      if (player?.contract?.status === 'active' && player.contract.clubId !== club.id) {
+        errors.push({ code:'ROSTER_CONTRACT_CLUB_MISMATCH', clubId:club.id, playerId:player.id, contractClubId:player.contract.clubId });
+      }
+      if (player?.playerType === 'system' && player?.contract?.status === 'active' && player.contract.playerId !== player.id) {
+        errors.push({ code:'SYSTEM_CONTRACT_PLAYER_MISMATCH', clubId:club.id, playerId:player.id });
+      }
+    }
+    const humans = roster.filter(player => player?.playerType === 'human').length;
+    if (humans > 7) errors.push({ code:'HUMAN_ROSTER_LIMIT_EXCEEDED', clubId:club.id, count:humans });
+  }
+  if (Number.isInteger(expectedClubCount) && catalogue.length !== expectedClubCount) {
+    warnings.push({ code:'CLUB_CATALOGUE_SIZE_MISMATCH', expected:expectedClubCount, actual:catalogue.length });
+  }
+
+  const careers = Array.isArray(transferState?.careers) ? transferState.careers : [];
+  const accountIds = new Set();
+  for (const career of careers) {
+    if (!safeText(career?.accountId)) { errors.push({ code:'CAREER_ACCOUNT_ID_MISSING' }); continue; }
+    if (accountIds.has(career.accountId)) errors.push({ code:'CAREER_ACCOUNT_DUPLICATE', accountId:career.accountId });
+    accountIds.add(career.accountId);
+    const active = career.contract?.status === 'active';
+    if (active && (!career.clubId || career.clubId !== career.contract.clubId)) {
+      errors.push({ code:'CAREER_CONTRACT_LINK_MISMATCH', accountId:career.accountId, clubId:career.clubId, contractClubId:career.contract.clubId });
+    }
+    if (active && !clubById.has(career.clubId)) errors.push({ code:'CAREER_REFERENCES_UNKNOWN_CLUB', accountId:career.accountId, clubId:career.clubId });
+  }
+
+  let financeBalanceTotal = 0, financeEntries = 0;
+  for (const account of asList(financeAccounts)) {
+    if (!clubById.has(account?.clubId)) errors.push({ code:'FINANCE_ACCOUNT_UNKNOWN_CLUB', clubId:account?.clubId });
+    const ids = new Set();
+    let balance = account?.openingBalance;
+    if (!Number.isSafeInteger(balance) || balance < 0) {
+      errors.push({ code:'FINANCE_OPENING_BALANCE_INVALID', clubId:account?.clubId });
+      continue;
+    }
+    for (const entry of Array.isArray(account.entries) ? account.entries : []) {
+      financeEntries++;
+      if (!safeText(entry?.id) || ids.has(entry.id)) errors.push({ code:'FINANCE_ENTRY_ID_INVALID_OR_DUPLICATE', clubId:account.clubId, entryId:entry?.id || null });
+      ids.add(entry?.id);
+      if (!Number.isSafeInteger(entry?.amount) || entry.amount <= 0 || !['income','expense'].includes(entry.direction)) {
+        errors.push({ code:'FINANCE_ENTRY_INVALID', clubId:account.clubId, entryId:entry?.id || null });
+        continue;
+      }
+      balance += entry.direction === 'income' ? entry.amount : -entry.amount;
+    }
+    if (!Number.isSafeInteger(balance) || balance < 0 || balance !== account.balance) {
+      errors.push({ code:'FINANCE_BALANCE_MISMATCH', clubId:account.clubId, calculated:balance, stored:account.balance });
+    } else financeBalanceTotal += balance;
+  }
+
+  const seasons = Array.isArray(competitionState?.seasons) ? competitionState.seasons : [];
+  const activeSeasons = seasons.filter(season => season?.status === 'active');
+  if (seasons.length && activeSeasons.length !== 1) errors.push({ code:'ACTIVE_SEASON_COUNT_INVALID', count:activeSeasons.length });
+  let fixtures = 0, completedFixtures = 0;
+  for (const season of seasons) {
+    const fixtureIds = new Set();
+    for (const competition of Array.isArray(season.competitions) ? season.competitions : []) {
+      const memberIds = new Set();
+      for (const member of Array.isArray(competition.members) ? competition.members : []) {
+        if (!clubById.has(member?.id)) errors.push({ code:'COMPETITION_UNKNOWN_CLUB', seasonId:season.id, competitionId:competition.id, clubId:member?.id });
+        if (memberIds.has(member?.id)) errors.push({ code:'COMPETITION_MEMBER_DUPLICATE', seasonId:season.id, competitionId:competition.id, clubId:member?.id });
+        memberIds.add(member?.id);
+      }
+      for (const fixture of Array.isArray(competition.fixtures) ? competition.fixtures : []) {
+        fixtures++;
+        if (!safeText(fixture?.id) || fixtureIds.has(fixture.id)) errors.push({ code:'FIXTURE_ID_INVALID_OR_DUPLICATE', seasonId:season.id, fixtureId:fixture?.id || null });
+        fixtureIds.add(fixture?.id);
+        if (fixture.status === 'completed') {
+          completedFixtures++;
+          if (!validScore(fixture.result?.home) || !validScore(fixture.result?.away) ||
+              !memberIds.has(fixture.homeClubId) || !memberIds.has(fixture.awayClubId)) {
+            errors.push({ code:'COMPLETED_FIXTURE_INVALID', seasonId:season.id, competitionId:competition.id, fixtureId:fixture.id });
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    ok:errors.length === 0,
+    errors,
+    warnings,
+    counts:{
+      clubs:catalogue.length, rosterPlayers, humanPlayers, systemPlayers,
+      careers:careers.length, financeAccounts:asList(financeAccounts).length,
+      financeEntries, financeBalanceTotal, seasons:seasons.length, fixtures, completedFixtures
+    }
+  };
+}
