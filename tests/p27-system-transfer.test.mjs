@@ -141,6 +141,29 @@ test('P27 lot 85 : simulation du mercato IA déterministe, fondée sur les besoi
  } finally {rmSync(a,{recursive:true,force:true});rmSync(b,{recursive:true,force:true});rmSync(c,{recursive:true,force:true});}
 });
 
+test('P27 lot 85 : respecte l’horloge explicite de la fenêtre lors du contrôle du contrat',()=>{
+ const directory=mkdtempSync(path.join(os.tmpdir(),'p27-market-clock-'));
+ try {
+  const service=marketFixture(directory);
+  service.clubManager.getClub('market-seller').roster[0].contract.expiresAt='2027-12-31T00:00:00.000Z';
+  const result=service.simulateMarket({windowId:'autumn-2027',maxTransfers:1,now:Date.parse('2027-10-01T00:00:00.000Z')});
+  assert.equal(result.processed,1);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
+test('P27 lot 85 : ne compte pas les joueurs humains dans le seuil de réserve du vendeur IA',()=>{
+ const directory=mkdtempSync(path.join(os.tmpdir(),'p27-market-human-count-'));
+ try {
+  const service=marketFixture(directory);
+  const seller=service.clubManager.getClub('market-seller');
+  seller.roster.pop();
+  seller.roster.push({id:'human-forward',playerType:'human',role:'FWD',rating:90});
+  const result=service.simulateMarket({windowId:'human-count-2028',maxTransfers:1,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  assert.equal(result.evaluated,0);
+  assert.equal(result.processed,0);
+ } finally {rmSync(directory,{recursive:true,force:true});}
+});
+
 test('P27 lot 85 : refuse les carrières humaines, les indemnités invalides et les clubs inconnus',()=>{
  const f=setup();
  try {
