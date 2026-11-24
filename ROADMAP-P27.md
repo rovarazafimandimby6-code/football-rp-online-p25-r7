@@ -839,5 +839,5 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Vérifier qu'un renouvellement met à jour le salaire et l'échéance de l'effectif après reprise des deux stockages.
 - [x] Vérifier qu'une résiliation dont la commande outbox est encore en attente libère le joueur après redémarrage complet.
 - [x] Vérifier qu'une échéance de salaire antérieure à un transfert reste imputée à l'ancien club et que l'échéance suivante est imputée au nouveau club.
-- [ ] Valider la suite CI complète sur le commit consolidé et contrôler les journaux de workflow.
+- [x] Valider la suite CI complète : **639/639 tests réussis, 0 échec**, contrôle de syntaxe JavaScript réussi ; commit testé `86adf37d749d97db89c84a9fa9892f46d4bd720b`, run [45447220340](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45447220340).
 - Limite : la paie humaine conserve son modèle actuel d'événements de carrière et de réconciliation idempotente ; les budgets du mercato et les soldes des grands livres comptables restent séparés. La saga carrière/effectif est rejouable, mais n'est pas une transaction ACID distribuée.
