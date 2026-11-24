@@ -489,3 +489,13 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 
 - Ajustement complémentaire : profil de remplacement encore moins performant (déplacement à 70 % de la décision de base, dérive mesurée, visée jusqu'à environ 23°, probabilité d'exécution réduite pour passes/tirs/tacles). Les bots standards ne reçoivent pas ces pénalités.
 - Test complémentaire : vérification statistique sur un échantillon déterministe que les actions de l'IA moyenne restent hésitantes, sans basculer vers une exécution parfaite ou quasi nulle.
+
+
+### Lot 43 — catalogue complet des clubs et structure des compétitions (intégré, validation serveur)
+- [x] Corriger la nomenclature : D4 « Challenger League » (32 clubs, Nord/Sud) et D5 « Regional League » (64 clubs, Nord/Sud/Est/Ouest).
+- [x] Conserver les 16 clubs historiques et les 140 clubs fictifs d'expansion dans `DEFAULT_CLUBS`, soit 156 identités uniques réparties selon les quotas D1–D5.
+- [x] Vérifier que le catalogue serveur des matchs résout aussi les clubs d'expansion, et pas seulement les 16 clubs historiques.
+- [x] Renforcer les contrôles du tableau de la Coupe des Clubs : 156 inscrits, 56 clubs en tour préliminaire, 100 exemptions, puis 128 qualifiés.
+- [x] Tester le parcours complet de la coupe : 155 rencontres, progression des vainqueurs, finale et attribution unique du trophée.
+- [x] Validation GitHub Actions sur le commit `814732e34f8ae6f448810aab631917feeba86dcc` : 420/420 tests réussis, 0 échec ; vérification syntaxique JavaScript réussie.
+- Limite : le tableau et son moteur de progression sont testés côté serveur ; l'automatisation du calendrier réel, les dates des rencontres et la présentation complète des compétitions dans l'interface restent à développer.
