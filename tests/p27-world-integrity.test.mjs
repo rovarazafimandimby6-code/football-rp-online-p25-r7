@@ -94,3 +94,24 @@ test('P27 intégrité monde : détecte les fixtures rattachées à la mauvaise c
  assert.ok(codes.includes('FIXTURE_COMPETITION_LINK_MISMATCH'));
  assert.ok(codes.includes('FIXTURE_SELF_PLAY_INVALID'));
 });
+
+
+test('P27 clubs : refuse une synchronisation si le catalogue officiel est incomplet',()=>{
+ const club={id:'club-a',division:'D2',conference:null};
+ const manager={clubs:new Map([['club-a',club],['club-b',{id:'club-b',division:'D2',conference:null}]]),saveSeason:()=>true};
+ const competition={clubs:new Map([['club-a',{id:'club-a',division:'D1',conference:null}]])};
+ const result=syncClubAssignments({clubManager:manager,competitionStore:competition});
+ assert.equal(result.ok,false);
+ assert.equal(result.reason,'assignment-catalogue-mismatch');
+ assert.equal(club.division,'D2');
+});
+
+test('P27 clubs : refuse les identifiants dupliqués dans les affectations officielles',()=>{
+ const club={id:'club-a',division:'D2',conference:null};
+ const manager={clubs:new Map([['club-a',club]]),saveSeason:()=>true};
+ const competition={clubs:new Map([['club-a',{id:'club-a',division:'D1',conference:null}],['duplicate',{id:'club-a',division:'D1',conference:null}]])};
+ const result=syncClubAssignments({clubManager:manager,competitionStore:competition});
+ assert.equal(result.ok,false);
+ assert.equal(result.reason,'assignment-catalogue-mismatch');
+ assert.equal(club.division,'D2');
+});
