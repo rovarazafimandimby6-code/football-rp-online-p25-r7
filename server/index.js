@@ -101,6 +101,9 @@ const server = http.createServer(async (req, res) => {
       if (!isAdminTokenConfigured()) return json(res, 503, { error: 'ADMIN_TOKEN_NOT_CONFIGURED' });
       if (!isValidAdminToken(bearer(req))) return json(res, 401, { error: 'ADMIN_UNAUTHORIZED' });
       const body = await readBody(req);
+      if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.nextSeasonId !== 'string') {
+        return json(res, 400, { error: 'INVALID_SEASON_TRANSITION' });
+      }
       const preview = competitionStore.previewSeasonMovements();
       if (!preview.ok) return json(res, 409, { error: 'SEASON_MOVEMENTS_NOT_READY', reason: preview.reason });
       const result = competitionStore.finalizeSeason({ nextSeasonId: body.nextSeasonId, movements: preview.movements });
