@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { applyPlayerAction, stepRoomSimulation, resetRoomBall } from './simulation.js';
 import { resolveMatchClub, cloneMatchTeams } from './club-catalog.js';
 import { averageAiShouldAct, averageAiAim, averageAiMovement } from '../src/average-ai.js';
@@ -359,7 +359,7 @@ export class RoomManager {
   finalizeResult(room) {
     if (room.result) return room.result;
     const players = [...room.players.values()].map(player => ({
-      playerId: player.id, name: player.name, team: player.team, role: player.role,
+      playerId: player.id, careerPlayerId: player.accountId ? `human-${createHash('sha256').update(player.accountId).digest('hex').slice(0,32)}` : (room.teams[player.team]?.id ? `club-${room.teams[player.team].id}-slot-${player.slot}` : null), name: player.name, team: player.team, role: player.role,
       isBot: player.isBot === true, minutesPlayedMs: Math.round(Number(player.matchTimePlayedMs) || 0),
       stats: { passes: player.stats?.passes || 0, completedPasses: player.stats?.completedPasses || 0, shots: player.stats?.shots || 0, tackles: player.stats?.tackles || 0, goals: player.stats?.goals || 0, assists: player.stats?.assists || 0, saves: player.stats?.saves || 0, interceptions: player.stats?.interceptions || 0 },
     }));
@@ -381,11 +381,11 @@ export class RoomManager {
     if (this.careerStore) {
       for (const player of players) {
         const livePlayer = room.players.get(player.playerId);
-        if (!livePlayer?.accountId || player.isBot || player.minutesPlayedMs < 15_000) continue;
+        if (!player.careerPlayerId || player.minutesPlayedMs < 15_000) continue;
         const outcome = blue === red ? 'draw' : (player.team === (blue > red ? 'blue' : 'red') ? 'win' : 'loss');
         const teamName = room.teams[player.team]?.name || '';
         const opponentTeam = player.team === 'blue' ? 'red' : 'blue';
-        this.careerStore.recordMatch(livePlayer.accountId, {
+        const careerInput = {
           matchId: room.id, result: outcome, finalizedAt: room.result.finalizedAt,
           teamName, opponent: room.teams[opponentTeam]?.name || '', role: player.role,
           rating: player.rating, minutesPlayedMs: player.minutesPlayedMs,
