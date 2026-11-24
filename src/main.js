@@ -8,6 +8,7 @@ import { renderClubCrest } from './club-identity.js';
 import { Player } from './player.js';
 import { createMatchSquad } from './match-squad.js';
 import { OnlineMatchClient } from './online-client.js';
+import { OnlineAccountClient } from './online-account-client.js';
 import * as THREE from 'three';
 
 const shell = document.getElementById('game-shell');
@@ -63,7 +64,9 @@ const career = new CareerManager({ initialCoins: 2500, transferWindows: buildTra
 syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
 let game = null;
 let pendingOnlineMatch = null;
-const onlineClient = new OnlineMatchClient({ baseUrl: location.origin });
+const accountClient = new OnlineAccountClient({ baseUrl: location.origin });
+accountClient.restoreSession();
+const onlineClient = new OnlineMatchClient({ baseUrl: location.origin, accountTokenProvider: () => accountClient.token });
 let avatarPreview = null;
 function disposeAvatarPreview() {
   if (!avatarPreview) return;
@@ -492,6 +495,11 @@ function renderPage(page = 'home') {
   } else if (page === 'settings') {
     title.textContent = 'Paramètres'; subtitle.textContent = 'Préparez votre expérience de jeu.';
     content.innerHTML = `<div class="settings-card"><label>Caméra du match<select id="pref-camera"><option value="player" ${preferences.cameraMode==='player'?'selected':''}>Immersion joueur · adaptée au poste</option><option value="touchline" ${preferences.cameraMode==='touchline'?'selected':''}>Ligne de touche · latérale</option><option value="broadcast" ${preferences.cameraMode==='broadcast'?'selected':''}>Retransmission · oblique</option><option value="close" ${preferences.cameraMode==='close'?'selected':''}>Rapprochée · joueurs plus grands</option><option value="tactical" ${preferences.cameraMode==='tactical'?'selected':''}>Tactique · vue large</option></select></label><label>Zoom caméra · référence 55 %<input id="pref-zoom" type="range" min="0" max="100" value="${preferences.cameraZoom}"></label><label>Affichage des noms<select id="pref-names"><option value="standard" selected>Standard · joueur contrôlé + deux proches</option></select></label><label>Durée du match<select id="pref-duration"><option value="5" ${preferences.duration===5?'selected':''}>5 minutes · 2 × 2 min 30</option><option value="3" ${preferences.duration===3?'selected':''}>3 minutes · 2 × 1 min 30</option></select></label><label>Qualité graphique<select id="pref-quality"><option value="auto" ${preferences.quality==='auto'?'selected':''}>Automatique · recommandé</option><option value="low" ${preferences.quality==='low'?'selected':''}>Basse · appareils modestes</option><option value="medium" ${preferences.quality==='medium'?'selected':''}>Moyenne · recommandée</option><option value="high" ${preferences.quality==='high'?'selected':''}>Haute</option></select></label><button class="primary-cta" data-action="save-settings">ENREGISTRER</button></div><p class="notice">Les réglages graphiques s'appliquent au prochain lancement du match.</p>`;
+  } else if (page === 'account') {
+    title.textContent = 'Compte joueur';
+    subtitle.textContent = 'Connectez votre identité persistante pour retrouver votre carrière sur plusieurs sessions.';
+    const account = accountClient.account;
+    content.innerHTML = account ? `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ PERSISTANTE</span><h2>${escapeHTML(account.displayName || account.username)}</h2></div><span class="local-tag">CONNECTÉ</span></div><p class="notice">Compte : @${escapeHTML(account.username)} · Créé le ${new Date(account.createdAt).toLocaleDateString('fr-FR')}</p><div class="training-controls"><button class="small-action" data-action="account-refresh">ACTUALISER LA SESSION</button><button class="text-cta" data-action="account-logout">SE DÉCONNECTER</button></div><p class="notice" id="account-status" aria-live="polite">Votre compte sera associé aux prochains matchs en ligne. Les statistiques officielles sont enregistrées par le serveur.</p></section>` : `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">COMPTE FOOTBALL RP ONLINE</span><h2>Retrouver sa carrière</h2></div><span class="local-tag">INVITÉ</span></div><p class="notice">Créez un compte ou connectez-vous. Votre compte sera automatiquement lié aux prochains matchs en ligne et à leurs résultats confirmés par le serveur.</p><div class="editor-grid"><label>Nom d'utilisateur<input id="account-username" maxlength="20" autocomplete="username" placeholder="ex. rova_27"></label><label>Nom affiché<input id="account-display-name" maxlength="24" autocomplete="nickname" placeholder="Votre nom joueur"></label><label>Mot de passe<input id="account-password" type="password" minlength="10" autocomplete="current-password" placeholder="10 caractères minimum"></label></div><div class="training-controls"><button class="primary-cta" data-action="account-login">SE CONNECTER</button><button class="small-action" data-action="account-register">CRÉER UN COMPTE</button></div><p class="notice" id="account-status" aria-live="polite">Le mot de passe est transmis uniquement à l'API sécurisée du serveur ; ne le partagez jamais.</p></section>`;
   } else if (page === 'mercato') {
     career.refreshContractStatus();
     career.refreshOfferStatuses();
@@ -711,6 +719,23 @@ async function startMatch(online = null) {
   }
 }
 
+async function submitAccountForm(action) {
+  const status = document.getElementById('account-status');
+  const username = String(document.getElementById('account-username')?.value || '').trim().toLowerCase();
+  const password = String(document.getElementById('account-password')?.value || '');
+  const displayName = String(document.getElementById('account-display-name')?.value || profileStore.profile.identity.displayName).trim();
+  if (status) status.textContent = 'Traitement de la demande…';
+  try {
+    if (action === 'login') await accountClient.login({ username, password });
+    else if (action === 'register') await accountClient.register({ username, password, displayName });
+    else if (action === 'refresh') await accountClient.refresh();
+    else if (action === 'logout') await accountClient.logout();
+    renderPage('account');
+  } catch (error) {
+    if (status) status.textContent = `Opération impossible : ${String(error?.message || error).slice(0, 100)}`;
+  }
+}
+
 menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
   if (pageButton) { renderPage(pageButton.dataset.page); return; }
@@ -727,7 +752,15 @@ menu.addEventListener('click', event => {
   else if (action === 'show-result') { const roomId = event.target.closest('[data-room]')?.dataset.room; if (roomId) renderResultDetail(roomId); }
   else if (action === 'close-result') { document.getElementById('result-detail')?.replaceChildren(); }
   else if (action === 'retry-results') { renderResultsPage(0); }
-  else if (action === 'online-menu') {
+  else if (action === 'account-login') {
+    submitAccountForm('login');
+  } else if (action === 'account-register') {
+    submitAccountForm('register');
+  } else if (action === 'account-refresh') {
+    submitAccountForm('refresh');
+  } else if (action === 'account-logout') {
+    submitAccountForm('logout');
+  } else if (action === 'online-menu') {
     document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MULTIJOUEUR · SERVEUR AUTORITAIRE</span><h2>Rejoindre un match en ligne</h2><p>Crée un salon ou rejoins un salon actif. Les déplacements, actions et le ballon sont validés par le serveur.</p><label>Nom affiché<input id="online-name" maxlength="20" value="${escapeHTML(profileStore.profile.identity.displayName)}"></label><div class="training-controls"><button class="primary-cta" data-action="create-online">CRÉER UN SALON</button><button class="small-action" data-action="refresh-online">ACTUALISER LES SALONS</button></div><label>Code du salon<input id="online-room-id" maxlength="12" placeholder="Code à 12 caractères" autocapitalize="characters"></label><button class="primary-cta" data-action="join-online">REJOINDRE CE SALON</button><div id="online-room-list" class="fixture-list"><p class="notice">Chargement des salons…</p></div><p class="notice" id="online-status" aria-live="polite">Le serveur doit être démarré et accessible sur cette adresse.</p><button class="text-cta" data-page="home">Retour</button></div>`;
     refreshOnlineRooms();
   }
