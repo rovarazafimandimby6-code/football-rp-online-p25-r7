@@ -803,5 +803,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Restaurer l'état mémoire de l'effectif si sa sauvegarde locale échoue.
 - [x] Rejouer les commandes en attente au démarrage, après les opérations API et périodiquement ; une panne entre la sauvegarde du roster et le checkpoint outbox ne crée pas de doublon.
 - [x] Ajouter des tests de signature, transfert, résiliation, expiration, panne du stockage effectif et reprise après checkpoint manquant.
-- [ ] Valider la CI complète puis ajouter les contrôles d'intégrité du journal outbox (identifiants, statuts, liens de carrière et compteurs en attente).
+- [x] Ajouter les contrôles d'intégrité du journal outbox : identifiants uniques, statuts/actions autorisés, cohérence des liens joueur/contrat/club et compteur de commandes en attente.
 - Limite : saga rejouable et idempotente entre deux stockages JSON ; ce n'est pas une transaction ACID distribuée. Une opération de mercato peut être acceptée tandis que sa synchronisation d'effectif reste temporairement en attente, visible dans la réponse API et récupérée automatiquement.
+
+- [x] CI consolidée après la saga d'effectif et son audit : 629/629 tests réussis, 0 échec ; contrôle syntaxique JavaScript réussi (run `45443695649`, commit testé `0bc7c11e4ac298a847e4719d676b7baa99822799`).
