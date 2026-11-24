@@ -720,3 +720,27 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Resynchroniser les affectations après une clôture de saison réussie.
 - [x] Signaler explicitement une persistance d’affectations en attente sans masquer l’état en mémoire.
 - [ ] Ajouter une reprise contrôlée des synchronisations en attente et une validation de bout en bout sur plusieurs transitions de saison.
+
+
+### Lot 64 — audit croisé des relations joueur, club et transferts (renforcé)
+- [x] Détecter les identifiants de carrière joueur dupliqués.
+- [x] Vérifier la cohérence entre l'identité joueur de carrière et l'identité portée par le contrat actif.
+- [x] Vérifier les identifiants uniques des événements du mercato.
+- [x] Détecter les transferts qui référencent un club inconnu, le même club comme vendeur et acheteur, ou une indemnité invalide.
+- [x] Détecter les rencontres d'un club contre lui-même et les fixtures rattachées à une mauvaise compétition.
+- [x] Ajouter des tests négatifs sur ces incohérences.
+
+### Lot 67 — audit du calendrier et des résultats de championnat (renforcé)
+- [x] Vérifier le rattachement de chaque fixture à sa compétition.
+- [x] Refuser les statuts de fixture non reconnus dans un calendrier de championnat.
+- [x] Refuser un résultat déjà présent sur une fixture encore planifiée.
+- [x] Vérifier le format des scores des rencontres terminées.
+- [x] Ajouter des tests de non-régression sur les références et états incohérents.
+
+### Lot 68 — atomicité de la clôture et transition de saison (validée par test de panne)
+- [x] Confirmer que la clôture utilise la transaction du magasin de compétitions.
+- [x] Simuler une panne au moment de la persistance finale.
+- [x] Vérifier le rollback des divisions, conférences, saison active et archives en mémoire.
+- [x] Recharger le magasin après l'échec et confirmer que l'ancienne saison reste la seule saison active.
+- [ ] Exécuter la suite CI complète sur le commit consolidé.
+
