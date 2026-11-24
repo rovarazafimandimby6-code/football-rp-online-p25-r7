@@ -6,7 +6,17 @@ import path from 'node:path';
 import {JsonCompetitionStore} from '../server/competition-store.js';
 import {RoomManager} from '../server/room-manager.js';
 const setup=()=>{const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-competitions-'));return {directory,store:new JsonCompetitionStore(directory,{seasonId:'test-season',now:()=>1000}),cleanup:()=>rmSync(directory,{recursive:true,force:true})};};
-test('P27 compétitions : génère les neuf groupes de championnat et la coupe à élimination directe',()=>{const f=setup();try{const data=f.store.snapshot();assert.equal(data.competitions.filter(c=>c.type==='league').length,9);assert.equal(data.competitions.find(c=>c.division==='D4'&&c.conference==='Nord').name,'Challenger League · Conférence Nord');assert.deepEqual(data.competitions.filter(c=>c.division==='D5').map(c=>c.conference),['Nord','Sud','Est','Ouest']);assert.ok(data.competitions.filter(c=>c.type==='league').every(c=>c.status==='active'));assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').members.length,16);assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').fixtures.length,240);assert.equal(new Set(data.competitions.find(c=>c.id==='test-season-league-D1').fixtures.map(f=>f.round)).size,30);assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').matchFormat,'home-away');assert.equal(data.competitions.find(c=>c.id==='test-season-league-D4-NORD').fixtures.length,120);assert.equal(data.competitions.find(c=>c.type==='cup').fixtures.length,155);}finally{f.cleanup();}});
+const finishPromotionPlayoffs=store=>{
+ store.previewSeasonMovements();
+ for(const round of [1,2]){
+  const fixtures=store.activeSeason.competitions.filter(item=>item.type==='promotion-playoff').flatMap(item=>item.fixtures.filter(fixture=>fixture.round===round&&fixture.status==='scheduled'));
+  for(const fixture of fixtures){
+   const result=store.recordFixtureResult(fixture.id,{roomId:'test-'+fixture.id,homeGoals:2,awayGoals:1,finalizedAt:round*1000});
+   assert.equal(result.ok,true,JSON.stringify(result));
+  }
+ }
+};
+test('P27 compétitions : génère les neuf groupes de championnat et la coupe à élimination directe',()=>{const f=setup();try{const data=f.store.snapshot();assert.equal(data.competitions.filter(c=>c.type==='league').length,9);assert.equal(data.competitions.find(c=>c.division==='D4'&&c.conference==='A').name,'Challenger League · Conférence A');assert.deepEqual(data.competitions.filter(c=>c.division==='D5').map(c=>c.conference),['A','B','C','D']);assert.ok(data.competitions.filter(c=>c.type==='league').every(c=>c.status==='active'));assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').members.length,16);assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').fixtures.length,240);assert.equal(new Set(data.competitions.find(c=>c.id==='test-season-league-D1').fixtures.map(f=>f.round)).size,30);assert.equal(data.competitions.find(c=>c.id==='test-season-league-D1').matchFormat,'home-away');assert.equal(data.competitions.find(c=>c.id==='test-season-league-D4-A').fixtures.length,120);assert.equal(data.competitions.find(c=>c.type==='cup').fixtures.length,155);}finally{f.cleanup();}});
 test('P27 coupe : les 156 clubs sont engagés une seule fois dans le tableau initial',()=>{const f=setup();try{const cup=f.store.snapshot().competitions.find(c=>c.type==='cup');assert.equal(cup.members.length,156);assert.equal(new Set(cup.members.map(c=>c.id)).size,156);const preliminary=cup.fixtures.filter(x=>x.round===1);const main=cup.fixtures.filter(x=>x.round===2);assert.equal(preliminary.length,28);assert.equal(main.length,64);const preliminaryIds=preliminary.flatMap(x=>[x.homeClubId,x.awayClubId]);assert.equal(new Set(preliminaryIds).size,56);const byeIds=main.flatMap(x=>[x.homeClubId,x.awayClubId].filter(Boolean));assert.equal(byeIds.length,100);assert.equal(new Set(byeIds).size,100);assert.equal(preliminaryIds.some(id=>byeIds.includes(id)),false);assert.equal(main.filter(x=>x.status==='waiting').length,28);assert.equal(cup.fixtures.length,155);}finally{f.cleanup();}});
 test('P27 coupe : les 155 rencontres conduisent à un champion et un trophée',()=>{const f=setup();try{for(let round=1;round<=8;round++){const cup=f.store.snapshot().competitions.find(c=>c.type==='cup');const ready=cup.fixtures.filter(x=>x.round===round&&x.status==='scheduled');assert.equal(ready.length,[0,28,64,32,16,8,4,2,1][round]);for(let i=0;i<ready.length;i++){const result=f.store.recordFixtureResult(ready[i].id,{roomId:`cup-r${round}-${i}`,homeGoals:2,awayGoals:1,finalizedAt:round*1000+i});assert.equal(result.ok,true);}}const cup=f.store.snapshot().competitions.find(c=>c.type==='cup');assert.equal(cup.status,'completed');assert.ok(cup.championClubId);assert.equal(cup.fixtures.length,155);assert.ok(cup.fixtures.every(x=>x.status==='completed'));assert.equal(f.store.snapshot().trophies.filter(x=>x.competitionId===cup.id).length,1);}finally{f.cleanup();}});
 test('P27 compétitions : classement serveur idempotent et persistant',()=>{const f=setup();try{const league=f.store.snapshot().competitions.find(c=>c.id==='test-season-league-D1'),fixture=league.fixtures[0];assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'room-a',homeGoals:2,awayGoals:1,finalizedAt:200}).ok,true);assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'room-a',homeGoals:99,awayGoals:0,finalizedAt:201}).duplicate,true);assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'room-b',homeGoals:0,awayGoals:9}).reason,'fixture-already-completed');const table=f.store.snapshot().competitions.find(c=>c.id===league.id).standings;assert.equal(table.reduce((n,row)=>n+row.played,0),2);assert.equal(table.find(row=>row.id===fixture.homeClubId).points,3);const restored=new JsonCompetitionStore(f.directory,{seasonId:'test-season'});assert.equal(restored.getFixture(fixture.id).status,'completed');}finally{f.cleanup();}});
@@ -21,7 +31,7 @@ test('P27 saisons : archive les trophées et ouvre une saison suivante avec des 
     season.trophies.push({id:'test-trophy',competitionId:'test-season-league-D1',competitionName:'Premier League',clubId:season.competitions.find(c=>c.id==='test-season-league-D1').championClubId,clubName:'Champion test',awardedAt:900});
   const d1=season.competitions.find(c=>c.id==='test-season-league-D1').members[0].id;
   const d2=season.competitions.find(c=>c.id==='test-season-league-D2').members[0].id;
-  const result=f.store.finalizeSeason({nextSeasonId:'2027-28',completedAt:2000,movements:[{clubId:d1,toDivision:'D2'},{clubId:d2,toDivision:'D1'}]});
+  finishPromotionPlayoffs(f.store);const preview=f.store.previewSeasonMovements();const result=f.store.finalizeSeason({nextSeasonId:'2027-28',completedAt:2000,movements:preview.movements});
   assert.equal(result.ok,true);assert.equal(result.movements,2);assert.equal(f.store.activeSeason.id,'2027-28');
   assert.equal(f.store.activeSeason.status,'active');
   const next=f.store.snapshot().competitions;
@@ -33,8 +43,8 @@ test('P27 saisons : archive les trophées et ouvre une saison suivante avec des 
 test('P27 saisons : rejette les mouvements qui cassent les divisions ou les conférences',()=>{const f=setup();try{
   for(const competition of f.store.activeSeason.competitions)competition.status='completed';
   const d1=f.store.activeSeason.competitions.find(c=>c.id==='test-season-league-D1').members[0].id;
-  assert.equal(f.store.finalizeSeason({nextSeasonId:'bad-hop',movements:[{clubId:d1,toDivision:'D3'}]}).reason,'movement-must-be-adjacent-division');
-  assert.equal(f.store.finalizeSeason({nextSeasonId:'bad-conference',movements:[{clubId:d1,toDivision:'D2'},{clubId:f.store.activeSeason.competitions.find(c=>c.id==='test-season-league-D2').members[0].id,toDivision:'D1'}]}).ok,true);
+  finishPromotionPlayoffs(f.store);const preview=f.store.previewSeasonMovements();assert.equal(f.store.finalizeSeason({nextSeasonId:'bad-hop',movements:[{clubId:d1,toDivision:'D3'}]}).reason,'movement-list-does-not-match-approved-preview');
+  assert.equal(f.store.finalizeSeason({nextSeasonId:'bad-conference',movements:preview.movements.map(item=>item.clubId===d1?{...item,toConference:'Z'}:item)}).reason,'movement-list-does-not-match-approved-preview');
 }finally{f.cleanup();}});
 
 test('P27 palmarès : agrège les saisons, les titres et les bilans sans dupliquer les matchs',()=>{
@@ -61,14 +71,15 @@ test('P27 palmarès : agrège les saisons, les titres et les bilans sans dupliqu
 test('P27 mouvements : propose un barème complet et conserve exactement les quotas des divisions',()=>{
  const f=setup();try{
   for(const competition of f.store.activeSeason.competitions) if(competition.type==='league') competition.status='completed';
+  finishPromotionPlayoffs(f.store);
   const preview=f.store.previewSeasonMovements();
   assert.equal(preview.ok,true,JSON.stringify(preview));
-  assert.equal(preview.policy.status,'proposed');
-  assert.equal(preview.totalMovements,20);
-  assert.equal(preview.promotions,10);
-  assert.equal(preview.relegations,10);
+  assert.equal(preview.policy.status,'approved');
+  assert.equal(preview.totalMovements,40);
+  assert.equal(preview.promotions,20);
+  assert.equal(preview.relegations,20);
   assert.deepEqual(preview.divisionCounts,{D1:16,D2:20,D3:24,D4:32,D5:64});
-  assert.deepEqual(preview.conferenceCounts,{D4:{Nord:16,Sud:16},D5:{Nord:16,Sud:16,Est:16,Ouest:16}});
+  assert.deepEqual(preview.conferenceCounts,{D4:{A:16,B:16},D5:{A:16,B:16,C:16,D:16}});
   assert.equal(new Set(preview.movements.map(item=>item.clubId)).size,20);
  }finally{f.cleanup();}
 });
@@ -80,23 +91,24 @@ test('P27 mouvements : respecte les places nationales et les quatre conférences
    competition.status='completed';
    competition.standings=competition.standings.map((row,index)=>({...row,points:competition.standings.length-index,goalsFor:100-index,goalsAgainst:index}));
   }
+  finishPromotionPlayoffs(f.store);
   const preview=f.store.previewSeasonMovements();
   assert.equal(preview.ok,true,JSON.stringify(preview));
   const byDivision=(division,type)=>preview.movements.filter(item=>item.fromDivision===division&&item.type===type);
-  assert.equal(byDivision('D1','relegation').length,2);
-  assert.equal(byDivision('D2','promotion').length,2);
-  assert.equal(byDivision('D2','relegation').length,2);
-  assert.equal(byDivision('D3','promotion').length,2);
-  assert.equal(byDivision('D3','relegation').length,2);
-  assert.equal(byDivision('D4','promotion').length,2);
-  assert.equal(byDivision('D4','relegation').length,4);
-  assert.equal(byDivision('D5','promotion').length,4);
-  for(const conference of ['Nord','Sud','Est','Ouest']){
+  assert.equal(byDivision('D1','relegation').length,4);
+  assert.equal(byDivision('D2','promotion').length,4);
+  assert.equal(byDivision('D2','relegation').length,4);
+  assert.equal(byDivision('D3','promotion').length,4);
+  assert.equal(byDivision('D3','relegation').length,4);
+  assert.equal(byDivision('D4','promotion').length,4);
+  assert.equal(byDivision('D4','relegation').length,8);
+  assert.equal(byDivision('D5','promotion').length,8);
+  for(const conference of ['A','B','C','D']){
    const winner=byDivision('D5','promotion').find(item=>item.fromConference===conference);
    assert.ok(winner);
    assert.equal(winner.finalPosition,1);
   }
-  assert.deepEqual(byDivision('D4','relegation').map(item=>item.toConference).sort(),['Est','Nord','Ouest','Sud']);
+  assert.deepEqual(byDivision('D4','relegation').map(item=>item.toConference).sort(),['A','A','B','B','C','C','D','D']);
  }finally{f.cleanup();}
 });
 
@@ -104,7 +116,7 @@ test('P27 mouvements : ne calcule pas de promotions sur un championnat incomplet
  const f=setup();try{
   assert.equal(f.store.previewSeasonMovements().reason,'league-table-incomplete');
   for(const competition of f.store.activeSeason.competitions) if(competition.type==='league')competition.status='completed';
-  const d5=f.store.activeSeason.competitions.find(item=>item.division==='D5'&&item.conference==='Est');
+  const d5=f.store.activeSeason.competitions.find(item=>item.division==='D5'&&item.conference==='B');
   d5.standings.pop();
   assert.equal(f.store.previewSeasonMovements().reason,'league-table-incomplete');
  }finally{f.cleanup();}
@@ -114,10 +126,11 @@ test('P27 API snapshot : publie une prévision de mouvements seulement lorsque l
  const f=setup();try{
   assert.equal(f.store.snapshot().movementPreview,null);
   for(const competition of f.store.activeSeason.competitions) if(competition.type==='league')competition.status='completed';
+  finishPromotionPlayoffs(f.store);
   const snapshot=f.store.snapshot();
   assert.equal(snapshot.movementPreview.ok,true);
-  assert.equal(snapshot.movementPreview.totalMovements,20);
-  assert.equal(snapshot.movementPreview.policy.status,'proposed');
+  assert.equal(snapshot.movementPreview.totalMovements,40);
+  assert.equal(snapshot.movementPreview.policy.status,'approved');
  }finally{f.cleanup();}
 });
 
@@ -126,6 +139,7 @@ test('P27 saisons : applique la prévision validée et archive les détails de c
  const f=setup();try{
   for(const competition of f.store.activeSeason.competitions) if(competition.type==='league')competition.status='completed';
   for(const competition of f.store.activeSeason.competitions) if(competition.type==='cup')competition.status='completed';
+  finishPromotionPlayoffs(f.store);
   const preview=f.store.previewSeasonMovements();
   assert.equal(preview.ok,true,JSON.stringify(preview));
   const result=f.store.finalizeSeason({nextSeasonId:'2027-28',movements:preview.movements,completedAt:3000});
@@ -136,10 +150,10 @@ test('P27 saisons : applique la prévision validée et archive les détails de c
   assert.ok(archived.every(item=>item.clubName&&item.fromDivision&&item.toDivision&&item.type&&Number.isSafeInteger(item.finalPosition)&&item.competitionId));
   const promotions=archived.filter(item=>item.type==='promotion');
   const relegations=archived.filter(item=>item.type==='relegation');
-  assert.equal(promotions.length,10);
-  assert.equal(relegations.length,10);
-  assert.deepEqual(Object.fromEntries(['Nord','Sud'].map(conference=>[conference,f.store.clubs.size? [...f.store.clubs.values()].filter(club=>club.division==='D4'&&club.conference===conference).length:0])),{Nord:16,Sud:16});
-  assert.equal(f.store.activeSeason.competitions.find(item=>item.division==='D5'&&item.conference==='Est').members.length,16);
+  assert.equal(promotions.length,20);
+  assert.equal(relegations.length,20);
+  assert.deepEqual(Object.fromEntries(['A','B'].map(conference=>[conference,f.store.clubs.size? [...f.store.clubs.values()].filter(club=>club.division==='D4'&&club.conference===conference).length:0])),{A:16,B:16});
+  assert.equal(f.store.activeSeason.competitions.find(item=>item.division==='D5'&&item.conference==='B').members.length,16);
   const restored=new JsonCompetitionStore(f.directory,{seasonId:'ignored'});
   assert.equal(restored.seasonHistory()[0].movements[0].type!==undefined,true);
  }finally{f.cleanup();}
