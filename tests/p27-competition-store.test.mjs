@@ -325,3 +325,30 @@ test('P27 coupe : simule les 155 rencontres jusqu’au champion et au trophée',
  assert.equal(audit.championClubId,cup.championClubId);
  assert.ok(f.store.activeSeason.trophies.some(item=>item.competitionId===cup.id&&item.clubId===cup.championClubId));
 }finally{f.cleanup();}});
+
+
+test('P27 barrages : un nul impose une revanche et seul le vainqueur de la finale obtient la montée',()=>{
+ const f=setup();try{
+  for(const competition of f.store.activeSeason.competitions) if(competition.type==='league') competition.status='completed';
+  f.store.previewSeasonMovements();
+  const playoff=f.store.activeSeason.competitions.find(item=>item.type==='promotion-playoff'&&item.division==='D2');
+  const semifinal=playoff.fixtures.find(item=>item.round===1);
+  assert.equal(f.store.recordFixtureResult(semifinal.id,{roomId:'playoff-draw',homeGoals:1,awayGoals:1}).ok,true);
+  assert.equal(semifinal.status,'replay-required');
+  assert.equal(playoff.fixtures.find(item=>item.round===2).status,'waiting');
+  assert.equal(f.store.recordFixtureResult(semifinal.id,{roomId:'playoff-replay',homeGoals:2,awayGoals:1}).ok,true);
+  const other=playoff.fixtures.find(item=>item.round===1&&item.id!==semifinal.id);
+  assert.equal(f.store.recordFixtureResult(other.id,{roomId:'playoff-semi-2',homeGoals:2,awayGoals:0}).ok,true);
+  const final=playoff.fixtures.find(item=>item.round===2);
+  assert.equal(final.status,'scheduled');
+  assert.equal(f.store.recordFixtureResult(final.id,{roomId:'playoff-final',homeGoals:0,awayGoals:2}).ok,true);
+  assert.equal(playoff.status,'completed');
+  assert.equal(playoff.championClubId,final.awayClubId);
+  finishPromotionPlayoffs(f.store);
+  const preview=f.store.previewSeasonMovements();
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  const promotion=preview.movements.find(item=>item.fromDivision==='D2'&&item.type==='promotion'&&item.qualificationStage==='playoff');
+  assert.equal(promotion.clubId,final.awayClubId);
+  assert.ok(promotion.finalPosition>=4&&promotion.finalPosition<=7);
+ }finally{f.cleanup();}
+});
