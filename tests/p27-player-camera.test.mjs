@@ -71,3 +71,9 @@ test('P27 caméra RP : chaque poste conserve un recul distinct et un zoom borné
     assert.ok(Math.hypot(close.x, close.z) < Math.hypot(far.x, far.z));
   }
 });
+
+test('P27 caméra spectateur : mode panoramique distinct disponible dans les presets', () => {
+  assert.equal(resolveCameraMode('spectator'), 'spectator');
+  assert.equal(resolveCameraMode('bench'), 'bench');
+  assert.equal(resolveCameraMode('spectator'), 'spectator');
+});
