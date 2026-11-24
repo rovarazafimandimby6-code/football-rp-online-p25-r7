@@ -1026,3 +1026,11 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Limiter la vérification stricte à un catalogue complet de 156 clubs afin de préserver les audits partiels.
 - [x] Ajouter les tests positifs et négatifs de la structure.
 - [ ] Comparer au catalogue réel de bootstrap P27 et exécuter la suite complète en CI.
+
+
+### Lot 107 — alignement des tris de catalogue sur les conférences approuvées
+- [x] Remplacer les anciennes clés de tri cardinales par les identifiants D4 A/B et D5 A/B/C/D.
+- [x] Ajouter un test de tri du catalogue public vérifiant l'ordre explicite des groupes.
+- [x] Remplacer un ancien scénario de test utilisant « Nord » par l'identifiant A.
+- [x] Fonder le contrôle d'intégrité des quotas sur les 156 entrées réelles de `DEFAULT_CLUBS`, sans fabriquer un catalogue parallèle.
+- [ ] Exécuter la suite complète et valider en CI.
