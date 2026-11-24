@@ -18,6 +18,6 @@ test('P27 banc : applique une rotation uniquement pendant une fenêtre serveur a
 
 test('P27 banc : refuse une rotation sans session joueur',async()=>{
  const bridge=new OnlineMatchBridge({client:{rotate:async()=>({rotated:true})},players:[],ball:{}});
- await assert.rejects(()=>bridge.rotatePlayers('out','in'),/false|NOT_JOINED/);
+ assert.equal(await bridge.rotatePlayers('out','in'),false);
  bridge.dispose();
 });
