@@ -40,3 +40,13 @@ test('P27 IA moyenne : une visée peut être franchement imparfaite sans devenir
   assert.ok(Math.abs(aim - facing) <= 0.40);
   assert.ok(Number.isFinite(aim));
 });
+
+test('P27 IA moyenne : les probabilités produisent des hésitations régulières, pas une IA parfaite', () => {
+  let acted = 0;
+  const sampleSize = 500;
+  for (let i = 0; i < sampleSize; i++) {
+    if (averageAiShouldAct({ id: `sample-${i}` }, 12_000, 'tackle', 0.40)) acted++;
+  }
+  const rate = acted / sampleSize;
+  assert.ok(rate > 0.32 && rate < 0.48, `taux observé inattendu : ${rate}`);
+});

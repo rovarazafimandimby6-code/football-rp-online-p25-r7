@@ -468,3 +468,4 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [ ] Vérifier la difficulté ressentie en match réel et ajuster les probabilités après essais Android.
 
 - Ajustement complémentaire : profil de remplacement encore moins performant (déplacement à 70 % de la décision de base, dérive mesurée, visée jusqu'à environ 23°, probabilité d'exécution réduite pour passes/tirs/tacles). Les bots standards ne reçoivent pas ces pénalités.
+- Test complémentaire : vérification statistique sur un échantillon déterministe que les actions de l'IA moyenne restent hésitantes, sans basculer vers une exécution parfaite ou quasi nulle.
