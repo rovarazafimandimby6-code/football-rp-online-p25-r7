@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { readFile, realpath } from 'node:fs/promises';
 import { JsonResultStore } from './result-store.js';
+import { JsonRoomStore } from './room-store.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
@@ -73,7 +74,9 @@ const clubWorld = new P27ClubWorldService({
   weeklyWageBudgets:configuredSystemWageBudgets()
 });
 const resultStore = new JsonResultStore(resultDirectory);
-const manager = new RoomManager({ resultStore, careerStore, progressionStore, competitionStore });
+const roomDirectory = process.env.ROOMS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rooms');
+const roomStore = new JsonRoomStore(roomDirectory);
+const manager = new RoomManager({ resultStore, roomStore, careerStore, progressionStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const accountAttempts = new Map();
