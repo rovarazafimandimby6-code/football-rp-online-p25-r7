@@ -1004,7 +1004,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Ne plus retourner le motif métier d'échec si la sauvegarde des métadonnées de reprise a elle-même échoué.
 - [x] Retourner `outbox-persistence-failed` et conserver l'état durable précédemment connu lorsque le checkpoint ne peut pas être écrit.
 - [x] Ajouter un test ciblé de ce chemin de panne.
-- [ ] Exécuter la suite complète et valider en CI.
+- [x] Exécuter la suite complète et valider en CI.
 
 ### Lot 104 — protection contre la perte silencieuse d'un outbox corrompu
 - [x] Vérifier qu'un JSON d'outbox invalide provoque une erreur explicite au démarrage.
@@ -1015,7 +1015,7 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 ### Lot 105 — rapprochement des soldes après mouvements successifs
 - [x] Tester deux transferts successifs du même joueur avec le grand livre JSON réel.
 - [x] Vérifier les soldes nets attendus et l'unicité de chacune des quatre écritures de débit/crédit.
-- [ ] Exécuter les tests et la CI complète.
+- [x] Exécuter les tests et la CI complète.
 
 
 ### Lot 106 — audit de la pyramide officielle des 156 clubs
@@ -1034,3 +1034,11 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Remplacer un ancien scénario de test utilisant « Nord » par l'identifiant A.
 - [x] Fonder le contrôle d'intégrité des quotas sur les 156 entrées réelles de `DEFAULT_CLUBS`, sans fabriquer un catalogue parallèle.
 - [ ] Exécuter la suite complète et valider en CI.
+
+
+### Validation automatisée consolidée — lots 103 à 107
+- [x] Workflow GitHub Actions `P27 validation` réussi : [run 45465605388](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45465605388).
+- [x] `npm test` terminé avec succès.
+- [x] Contrôle `node --check` réussi sur les fichiers JavaScript et MJS de `src`, `server` et `tests`.
+- [x] Contrôle des quotas du monde exécuté contre `DEFAULT_CLUBS`, la source canonique des 156 clubs.
+- Limite restante du lot 104 : aucune restauration automatique n'est activée ; une procédure basée sur une sauvegarde réelle doit être vérifiée avant d'en créer une.
