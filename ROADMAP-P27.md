@@ -605,3 +605,29 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Couvrir les récompenses, la persistance, les actions d'entraînement et la protection API par des tests.
 - [x] Relier les boutons d'amélioration de chaque attribut aux routes d'entraînement autoritaires et actualiser le tableau de bord après réponse serveur.
 - Limite : la transition guidée depuis les sauvegardes locales reste à intégrer ; aucune ancienne monnaie ou progression locale n'est importée automatiquement.
+
+
+### Lot 55 — caméra spectateur et bascule en match en ligne (intégré)
+- [x] Ajouter un mode panoramique spectateur distinct des quatre préréglages TV historiques.
+- [x] Exposer une commande de bascule rapide en match en ligne entre vue joueur, diffusion TV et spectateur.
+- [x] Conserver le mode caméra choisi lors des transitions terrain/banc ; la caméra de banc reste prioritaire pendant le remplacement.
+- [x] Ajouter le mode spectateur aux préférences persistantes et aux réglages de pause.
+- [x] Couvrir la résolution du mode et les transitions caméra/banc par des tests.
+- Limite : la vue spectateur est une caméra d'observation d'un match auquel le compte a déjà rejoint une équipe ; elle ne constitue pas encore un mode spectateur autonome sans joueur dans le salon.
+
+### Lot 56 — banc connecté et remplacements d'équipe (intégré)
+- [x] Afficher l'effectif de l'équipe, les titulaires et les réservistes dans le HUD en ligne.
+- [x] Permettre à un joueur sur le terrain de choisir un bot sortant et un bot entrant pendant une fenêtre de remplacement autorisée par le serveur.
+- [x] Publier explicitement l'état d'autorisation des remplacements depuis le serveur.
+- [x] Appliquer les changements via l'API de rotation existante et réconcilier immédiatement l'état de match.
+- [x] Empêcher un joueur de remplacer de force un coéquipier humain : le joueur humain concerné doit être lui-même demandeur.
+- [x] Conserver la demande personnelle d'entrée pour un joueur humain sur le banc.
+- Limite : les rotations manuelles exposées dans le HUD concernent les réservistes IA ; les changements entre humains passent par leur propre demande d'entrée.
+
+### Lot 57 — migration guidée des anciennes sauvegardes locales (intégré)
+- [x] Créer une sauvegarde locale intégrale avant toute migration, sans écraser la première sauvegarde de sécurité.
+- [x] Synchroniser uniquement l'identité et l'apparence vers le profil du compte.
+- [x] Préserver localement la progression, les attributs, les crédits et les identifiants de matchs historiques.
+- [x] Ne jamais importer les anciennes valeurs compétitives client dans la progression serveur autoritaire.
+- [x] Couvrir la sauvegarde, la non-réécriture et le filtrage des données migrées par des tests.
+- Limite : la migration n'importe pas les anciennes récompenses ni les statistiques locales dans le classement officiel ; celles-ci restent dans la sauvegarde locale de sécurité.
