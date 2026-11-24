@@ -435,10 +435,11 @@ test('P27 match officiel : peut réessayer la finalisation si la validation du r
  try{
   const fixture=f.store.snapshot().competitions.find(item=>item.type==='league').fixtures[0];
   let saves=0;
-  const manager=new RoomManager({competitionStore:f.store,resultStore:{save(){saves++;if(saves===1)throw new Error('temporary-result-store-rejection');}},now:()=>50000});
+  const manager=new RoomManager({competitionStore:f.store,resultStore:{save(){saves++;if(saves===1)throw new Error('temporary-result-store-rejection');}},roomTtlMs:1000,now:()=>50000});
   const roomState=manager.create({blueClubId:fixture.homeClubId,redClubId:fixture.awayClubId,competitionFixtureId:fixture.id});
   const room=manager.rooms.get(roomState.id);
   room.score={blue:2,red:1};
+  room.updatedAt=0;
   room.players.set('offline-test-player',{id:'offline-test-player',name:'Offline',team:'blue',role:'MID',isBot:false,connected:false,disconnectedAt:1,matchTimePlayedMs:0,stats:{passes:0,completedPasses:0,shots:0,tackles:0,goals:0,assists:0,saves:0,interceptions:0}});
   const record=f.store.recordFixtureResult.bind(f.store);
   let attempts=0;
