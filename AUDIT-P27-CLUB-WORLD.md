@@ -2,8 +2,8 @@
 
 Date de vérification : 24 novembre 2026  
 Branche : `p27-dev`  
-Commit code audité : `df0ac49d769ddfdd37f42646852c33229c9614f5`  
-Workflow : [GitHub Actions 45397509144](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45397509144)
+Commit code audité : `9662b1eeeeaeeba5aef25b2b38fd0666c24cbeb9`  
+Workflow : [GitHub Actions 45399367704](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45397509144)
 
 ## Résultat de l'audit
 
@@ -55,7 +55,7 @@ Le catalogue public expose également `managementType` (`human` ou `system`) san
 
 ## Validation CI
 
-- **Tests à revalider après la modification des calendriers**
+- **527 tests réussis**
 - **0 échec**
 - Contrôle de syntaxe JavaScript exécuté avec succès
 - Run : [45397509144](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45397509144)
@@ -65,8 +65,7 @@ Le catalogue public expose également `managementType` (`human` ou `system`) san
 Ces éléments ne sont pas verrouillés par cet audit :
 
 1. Le barème de promotions/relégations demeure une proposition de politique. L'aperçu calcule les mouvements et la transition valide les capacités, mais le barème n'est pas déclaré définitivement approuvé.
-2. Le format est désormais différencié : aller-retour en D1-D3 et aller simple en D4-D5. La Coupe conserve son élimination directe.
-3. L'interface des clubs et des compétitions est maintenant reliée au serveur et couverte par les tests automatisés. Une vérification visuelle sur appareil Android réel reste à effectuer.
+2. Une vérification visuelle et fonctionnelle sur appareil Android réel reste à effectuer.
 
 ## Conclusion
 
