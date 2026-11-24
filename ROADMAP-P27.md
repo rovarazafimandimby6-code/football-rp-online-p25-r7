@@ -1132,3 +1132,12 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Workflow [P27 validation — run 45468605705](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45468605705) réussi.
 - [x] Suite complète : **691/691 tests réussis**.
 - [x] Contrôle syntaxique JavaScript/MJS réussi.
+
+
+### Lots 120 à 123 — rapprochement des statistiques historiques
+- [x] Lot 120 : recalculer les compteurs historiques des clubs depuis les saisons, compétitions et rencontres archivées ; comparer les valeurs fournies aux valeurs sources.
+- [x] Lot 121 : vérifier les meilleures positions en championnat, les saisons participées et l'ordre chronologique des références.
+- [x] Lot 122 : vérifier la provenance exacte des trophées historiques, au-delà du simple nombre de titres.
+- [x] Lot 123 : ajouter des tests de falsification plausible après rechargement du store, sans modifier les archives sources.
+- [ ] Validation CI complète et contrôle syntaxique sur le commit consolidé.
+- Limite : les statistiques sont recalculées depuis les archives actuellement disponibles ; aucune statistique absente des résultats sources n'est inventée.
