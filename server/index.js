@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
 import { JsonCareerStore } from './career-store.js';
+import { JsonPlayerProfileStore } from './player-profile-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
@@ -19,6 +20,8 @@ import { isAdminTokenConfigured, isValidAdminToken } from './admin-auth.js';
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
 const careerStore = new JsonCareerStore(careerDirectory);
+const playerProfileDirectory = process.env.PLAYER_PROFILES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'player-profiles');
+const playerProfileStore = new JsonPlayerProfileStore(playerProfileDirectory);
 const competitionDirectory = process.env.COMPETITIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'competitions');
 const competitionStore = new JsonCompetitionStore(competitionDirectory);
 const transferDirectory = process.env.TRANSFERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'transfers');
@@ -133,6 +136,16 @@ const server = http.createServer(async (req, res) => {
       const offerAction = url.pathname.match(/^\/api\/transfer\/offers\/([a-z0-9-]{8,96})\/(accept|reject)$/i);
       if (req.method === 'POST' && offerAction) return json(res, 200, offerAction[2] === 'accept' ? transferStore.acceptOffer(account.id, offerAction[1]) : transferStore.rejectOffer(account.id, offerAction[1]));
       return json(res, 404, { error: 'NOT_FOUND' });
+    }
+    if (url.pathname === '/api/profile') {
+      const account = accountStore.resolve(bearer(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      if (req.method === 'GET') return json(res, 200, { profile: playerProfileStore.get(account.id) });
+      if (req.method === 'PUT') {
+        const body = await readBody(req);
+        if (!body || typeof body !== 'object' || Array.isArray(body) || !body.profile || typeof body.profile !== 'object' || Array.isArray(body.profile)) return json(res, 400, { error: 'INVALID_PROFILE' });
+        return json(res, 200, { profile: playerProfileStore.save(account.id, body.profile) });
+      }
     }
     if (req.method === 'GET' && url.pathname === '/api/career') {
       const account = accountStore.resolve(bearer(req));
