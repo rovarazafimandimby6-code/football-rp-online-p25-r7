@@ -13,6 +13,7 @@ import { JsonClubRosterStorage } from './club-roster-storage.js';
 import { P27ClubWorldService } from './club-world-service.js';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, TOTAL_LEAGUE_CLUBS } from '../src/league-structure.js';
+import { listPublicClubs, resolvePublicClub } from './club-catalog.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
@@ -78,6 +79,22 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { ok: true, service: 'football-rp-online-match-server', protocol: 1 });
   try {
     if (req.method === 'GET' && url.pathname === '/api/rooms') return json(res, 200, { rooms: manager.list() });
+    if (req.method === 'GET' && url.pathname === '/api/clubs') {
+      const rawLimit=url.searchParams.get('limit'), rawOffset=url.searchParams.get('offset');
+      const limit=rawLimit===null?24:Number(rawLimit), offset=rawOffset===null?0:Number(rawOffset);
+      return json(res,200,listPublicClubs({
+        clubs:[...competitionStore.clubs.values()],
+        division:url.searchParams.get('division') || undefined,
+        conference:url.searchParams.get('conference') || undefined,
+        search:url.searchParams.get('q') || '',
+        limit,offset
+      }));
+    }
+    const publicClubMatch=url.pathname.match(/^\/api\/clubs\/([a-z0-9-]{1,48})$/i);
+    if (req.method === 'GET' && publicClubMatch) {
+      const club=resolvePublicClub(publicClubMatch[1],[...competitionStore.clubs.values()]);
+      return club ? json(res,200,{club}) : json(res,404,{error:'CLUB_NOT_FOUND'});
+    }
     if (req.method === 'GET' && url.pathname === '/api/competitions') return json(res, 200, competitionStore.snapshot());
     if (req.method === 'POST' && (url.pathname === '/api/accounts/register' || url.pathname === '/api/accounts/login')) {
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'RATE_LIMIT' });
@@ -210,14 +227,14 @@ const tick = setInterval(() => manager.tick(0.05), 50);
 const clubWorldTick = setInterval(() => {
   try {
     const result = clubWorld.tick();
-    if (!result.ok) process.stderr.write(`P27 club world tick incomplete: ${result.reason || 'unknown'}\\n`);
-  } catch (error) { process.stderr.write(`P27 club world tick failed: ${error.message}\\n`); }
+    if (!result.ok) process.stderr.write(`P27 club world tick incomplete: ${result.reason || 'unknown'}\n`);
+  } catch (error) { process.stderr.write(`P27 club world tick failed: ${error.message}\n`); }
 }, 60 * 60 * 1000);
 clubWorldTick.unref();
 try {
   const result = clubWorld.tick();
-  if (!result.ok) process.stderr.write(`P27 club world startup tick incomplete: ${result.reason || 'unknown'}\\n`);
-} catch (error) { process.stderr.write(`P27 club world startup tick failed: ${error.message}\\n`); }
+  if (!result.ok) process.stderr.write(`P27 club world startup tick incomplete: ${result.reason || 'unknown'}\n`);
+} catch (error) { process.stderr.write(`P27 club world startup tick failed: ${error.message}\n`); }
 tick.unref();
 const port = Math.max(1, Math.min(65535, Number(process.env.PORT) || 8080));
 if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
