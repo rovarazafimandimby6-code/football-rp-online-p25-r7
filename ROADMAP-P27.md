@@ -782,4 +782,5 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Détecter les événements non journalisés, les règlements incomplets et les checkpoints incohérents sans bloquer artificiellement les transferts légitimes en attente.
 - [x] Appliquer le même contrôle aux salaires humains enregistrés dans le journal.
 - [x] Exposer les compteurs de règlements en attente dans l'audit monde administrateur.
+- [x] Ajouter un scénario de bout en bout : acceptation d'un transfert, débit/crédit, redémarrage des deux stockages et audit sans doublon.
 - [ ] Exécuter et valider la CI consolidée après intégration.
