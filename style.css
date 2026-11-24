@@ -1742,3 +1742,16 @@ html, body {
 .club-division-heading small{display:block;margin-top:5px;color:#9fb7a6;font-size:9px;font-weight:800;letter-spacing:.06em}
 #club-directory-status{border-left:2px solid rgba(154,240,189,.45);padding-left:10px}
 @media(max-width:560px){.club-card-kickers>span{font-size:7px;padding:3px 6px}.club-division-heading small{font-size:8px}}
+
+/* P27 — tableaux et calendriers officiels de la saison active */
+.server-season-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 18px}
+.server-season-overview>div{display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid rgba(154,240,189,.16);border-radius:10px;background:rgba(154,240,189,.045)}
+.server-season-overview b{font-size:20px;font-variant-numeric:tabular-nums;color:#e8f5eb}
+.server-season-overview span{font-size:8px;font-weight:900;letter-spacing:.09em;color:#9fb7a6}
+.server-fixture-preview{display:grid;gap:5px;margin-top:10px}
+.server-fixture-preview .fixture-row{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;font-size:9px}
+.server-fixture-preview .fixture-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.server-fixture-preview .fixture-row small{font-size:7px}
+.movement-preview{margin-top:16px;padding:13px;border:1px solid rgba(240,201,119,.2);border-radius:12px;background:rgba(240,201,119,.04)}
+.movement-preview p{color:#d6c7a6;font-size:11px;line-height:1.5}
+@media(max-width:560px){.server-season-overview b{font-size:17px}.server-season-overview>div{padding:9px}.server-fixture-preview .fixture-row{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:5px}.server-fixture-preview .fixture-row small{grid-column:1/-1;text-align:right}}

@@ -277,6 +277,42 @@ async function loadPublicClubDirectory() {
   }
 }
 
+
+let publicCompetitionRequest = 0;
+async function loadServerCompetitionOverview() {
+  const requestId=++publicCompetitionRequest;
+  const host=document.getElementById('menu-content');
+  if(!host || !host.querySelector('.competition-layout')) return;
+  try {
+    const response=await fetch('/api/competitions',{headers:{Accept:'application/json'}});
+    if(!response.ok) throw new Error('COMPETITIONS_HTTP_'+response.status);
+    const snapshot=await response.json();
+    if(requestId!==publicCompetitionRequest || !document.getElementById('menu-content')?.querySelector('.competition-layout')) return;
+    const leagues=(snapshot.competitions||[]).filter(item=>item.type==='league');
+    if(leagues.length!==9 || !snapshot.scheduleAudit?.ok || snapshot.scheduleAudit.fixtureCount!==1306) throw new Error('COMPETITION_SNAPSHOT_INCOMPLETE');
+    const order={D1:1,D2:2,D3:3,D4:4,D5:5};
+    const conferenceOrder={Nord:1,Sud:2,Est:3,Ouest:4};
+    leagues.sort((a,b)=>order[a.division]-order[b.division]||(conferenceOrder[a.conference]||0)-(conferenceOrder[b.conference]||0));
+    const groups=leagues.map(competition=>{
+      const members=new Map((competition.members||[]).map(member=>[member.id,member.name]));
+      const rows=(competition.standings||[]).map((row,index)=>'<tr><td>'+ (index+1) +'</td><td>'+escapeHTML(row.name||members.get(row.id)||row.id)+'</td><td>'+Number(row.played||0)+'</td><td>'+Number(row.wins||0)+'</td><td>'+Number(row.draws||0)+'</td><td>'+Number(row.losses||0)+'</td><td>'+Number(row.goalsFor||0)+'</td><td>'+Number(row.goalsAgainst||0)+'</td><td><b>'+Number(row.points||0)+'</b></td></tr>').join('');
+      const recent=(competition.fixtures||[]).filter(item=>item.status==='completed').sort((a,b)=>b.round-a.round).slice(0,3);
+      const next=(competition.fixtures||[]).filter(item=>item.status==='scheduled'&&item.homeClubId&&item.awayClubId).sort((a,b)=>a.round-b.round).slice(0,3);
+      const fixtures=recent.map(item=>'<div class="fixture-row"><span>'+escapeHTML(members.get(item.homeClubId)||item.homeClubId)+'</span><b>'+Number(item.result?.home||0)+' – '+Number(item.result?.away||0)+'</b><span>'+escapeHTML(members.get(item.awayClubId)||item.awayClubId)+'</span><small>J'+item.round+' · TERMINÉ</small></div>').join('')+
+        next.map(item=>'<div class="fixture-row"><span>'+escapeHTML(members.get(item.homeClubId)||item.homeClubId)+'</span><b>VS</b><span>'+escapeHTML(members.get(item.awayClubId)||item.awayClubId)+'</span><small>J'+item.round+' · À JOUER</small></div>').join('');
+      const groupName=competition.conference?'CONFÉRENCE '+competition.conference:'CHAMPIONNAT NATIONAL';
+      return '<section class="division-table-block"><div class="division-table-title"><b>'+competition.division+'</b><span>'+escapeHTML(competition.name)+' · '+groupName+'</span><small>'+competition.members.length+' clubs · '+competition.fixtures.length+' matchs</small></div><div class="table-scroll"><table class="standings-table"><thead><tr><th>#</th><th>CLUB</th><th>J</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>PTS</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="server-fixture-preview">'+(fixtures||'<p class="notice">Aucun résultat officiel ni rencontre jouée pour ce groupe.</p>')+'</div></section>';
+    }).join('');
+    const cup=(snapshot.competitions||[]).find(item=>item.type==='cup');
+    const movement=snapshot.movementPreview?.ok?'<section class="competition-panel movement-preview"><div class="panel-heading"><div><span class="eyebrow">FIN DE SAISON · APERÇU NON APPROUVÉ</span><h2>Mouvements proposés</h2></div><span class="local-tag">PROPOSITION</span></div><p>'+Number(snapshot.movementPreview.promotions)+' promotions · '+Number(snapshot.movementPreview.relegations)+' relégations. Le barème doit encore être validé avant son activation.</p></section>':'<p class="notice">Les mouvements de fin de saison apparaîtront lorsque les neuf championnats seront terminés. Le barème reste soumis à validation.</p>';
+    host.innerHTML='<div class="competition-layout"><section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">SAISON SERVEUR · '+escapeHTML(snapshot.season?.id||'')+'</span><h2>Classements officiels</h2></div><span class="local-tag">SYNCHRONISÉ</span></div><div class="server-season-overview"><div><b>156</b><span>CLUBS</span></div><div><b>9</b><span>GROUPES</span></div><div><b>'+Number(snapshot.scheduleAudit.fixtureCount)+'</b><span>RENCONTRES</span></div></div>'+groups+'</section><aside class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">COUPE NATIONALE</span><h2>Coupe des Clubs</h2></div></div><div class="server-season-overview"><div><b>'+Number(cup?.members?.length||0)+'</b><span>PARTICIPANTS</span></div><div><b>'+Number(cup?.fixtures?.length||0)+'</b><span>RENCONTRES DU TABLEAU</span></div></div><p class="notice">Le tableau progresse uniquement après validation des résultats des matchs.</p>'+movement+'</aside></div><p class="notice">Classements, calendriers et résultats chargés depuis le serveur de compétition. Les statistiques ne sont modifiées que par des résultats validés.</p>';
+  } catch(error) {
+    if(requestId!==publicCompetitionRequest) return;
+    const note=host.querySelector('.notice');
+    if(note) note.textContent='Serveur de compétition indisponible : le calendrier local de secours reste affiché. Les classements officiels ne sont pas synchronisés.';
+  }
+}
+
 function renderPage(page = 'home') {
   syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
   if (page !== 'results') resultsRequestSequence++;
@@ -430,6 +466,7 @@ function renderPage(page = 'home') {
     const fixtures = clubs.fixtures.slice().sort((a,b)=>new Date(a.scheduledAt)-new Date(b.scheduledAt));
     title.textContent = 'Compétitions'; subtitle.textContent = 'Première base locale de championnat : calendrier et classement.';
     content.innerHTML = `<div class="competition-layout"><section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">CHAMPIONNAT LOCAL</span><h2>Classement</h2></div><span class="local-tag">HORS LIGNE</span></div>${rows.map(division=>`<div class="division-table-block"><div class="division-table-title"><b>${escapeHTML(division.id)}</b><span>${escapeHTML(division.name)}</span></div><div class="table-scroll"><table class="standings-table"><thead><tr><th>#</th><th>CLUB</th><th>J</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>PTS</th></tr></thead><tbody>${clubs.standings(division.id).map((club,i)=>`<tr><td>${i+1}</td><td>${escapeHTML(club.name)}</td><td>${club.played}</td><td>${club.wins}</td><td>${club.draws}</td><td>${club.losses}</td><td>${club.goalsFor}</td><td>${club.goalsAgainst}</td><td><b>${club.points}</b></td></tr>`).join('')}</tbody></table></div></div>`).join('')}<p class="notice">Aucun résultat officiel n'est simulé : les points restent à zéro tant qu'aucun résultat n'est enregistré.</p></section><section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">SAISON DE DÉMONSTRATION</span><h2>Calendrier</h2></div><button class="small-action" data-action="create-schedule">GÉNÉRER</button></div>${fixtures.length ? `<div class="fixture-list">${fixtures.map(f=>{const h=clubs.getClub(f.homeClubId),a=clubs.getClub(f.awayClubId);return `<div class="fixture-row"><span>${escapeHTML(h?.name||'Club')}</span><b>${f.status==='completed'?`${f.result.home} – ${f.result.away}`:'VS'}</b><span>${escapeHTML(a?.name||'Club')}</span><small>${new Date(f.scheduledAt).toLocaleDateString('fr-FR')}</small></div>`}).join('')}</div>` : `<div class="empty-fixtures"><b>Aucun match programmé</b><p>Générez un calendrier aller simple distinct pour chaque division.</p></div>`}</section></div><p class="notice">Calendrier, effectifs et classement sauvegardés localement sur cet appareil. La compétition en ligne, la validation des résultats officiels et la synchronisation serveur ne sont pas encore disponibles.</p>`;
+    loadServerCompetitionOverview();
   } else if (page === 'results') {
     title.textContent = 'Résultats des matchs';
     subtitle.textContent = 'Historique officiel des rencontres terminées sur le serveur.';
