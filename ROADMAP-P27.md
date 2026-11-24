@@ -693,7 +693,8 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Exposer le diagnostic via `GET /api/admin/world-integrity`, protégé par le jeton administrateur.
 - [x] Ajouter des tests ciblés sur un monde cohérent et plusieurs corruptions de données.
 - [x] Refuser les synchronisations d’affectations si le catalogue officiel est incomplet ou contient des identifiants dupliqués.
-- [ ] Étendre l’audit aux invariants détaillés des mouvements, budgets et relations entre les trois catalogues de clubs.
+- [x] Contrôler les identifiants et budgets du catalogue mercato, les contrats actifs (salaire et dates), les comptes financiers dupliqués et les identifiants de saison/compétition.
+- [ ] Étendre l’audit aux invariants détaillés des mouvements et relations entre les trois catalogues de clubs.
 
 ### Lot 65 — fiabilité des transactions multi-stockages (en cours)
 - [x] Rendre atomiques en une seule sauvegarde les écritures de revenus sponsors et leurs compteurs d’échéances.
@@ -702,7 +703,9 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Préserver l’identité des objets de compétition pendant les transactions réussies pour ne pas invalider les références actives.
 - [x] Ajouter un journal durable de coordination/récupération pour les indemnités de transfert entre les deux grands livres : intention persistée avant exécution, checkpoints débit/crédit, reprise après redémarrage et identifiants d’écriture déterministes.
 - [x] Tester une panne entre l’écriture du débit et son checkpoint, puis vérifier la reprise sans double débit.
-- [ ] Étendre ce coordinateur aux opérations qui modifient réellement plusieurs domaines indépendants (transfert, effectif, grand livre et contrat) ; le journal actuel couvre uniquement la réconciliation financière des transferts.
+- [x] Étendre le journal durable aux salaires humains enregistrés dans le mercato, avec intention persistée, écriture déterministe, checkpoint et reprise après redémarrage.
+- [x] Tester la panne après écriture du salaire et avant checkpoint, puis vérifier la reprise sans double dépense.
+- [ ] Étendre ce coordinateur aux opérations qui modifient réellement plusieurs domaines indépendants (transfert, effectif, grand livre et contrat) ; les deux flux financiers (indemnités et salaires humains) sont désormais journalisés, mais pas encore l'ensemble du transfert contractuel multi-stockages.
 
 ### Lot 66 — cohérence des finances et de la masse salariale (en cours)
 - [x] Refuser de réinitialiser silencieusement un calendrier de paie corrompu ; le serveur échoue explicitement plutôt que d’effacer les arriérés.
