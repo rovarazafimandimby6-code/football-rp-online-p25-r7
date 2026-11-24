@@ -164,3 +164,34 @@ test('P27 saga effectif : refuse un checkpoint qui retourne un échec sans marqu
   assert.equal(f.clubManager.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
  }finally{f.cleanup();}
 });
+
+test('P27 saga effectif : redémarre les deux stockages avant reprise d’une signature en attente',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-roster-full-restart',{clubId:'club-a',salary:500,durationDays:365});
+  const restartedTransfers=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
+  const restartedClubs=new ClubManager(f.clubs,f.storage,'test-rosters');
+  assert.equal(restartedClubs.getClub('club-a').roster.some(player=>player.id===signed.career.playerId),false);
+  const result=processPendingRosterSync({transferStore:restartedTransfers,clubManager:restartedClubs});
+  assert.equal(result.ok,true,JSON.stringify(result));
+  assert.equal(restartedClubs.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
+  assert.equal(restartedTransfers.pendingRosterSync().length,0);
+ }finally{f.cleanup();}
+});
+
+test('P27 saga effectif : récupère après redémarrage lorsque le roster est persisté mais le checkpoint outbox ne l’est pas',()=>{
+ const f=setup();try{
+  const signed=f.transferStore.signContract('account-roster-crash-window',{clubId:'club-a',salary:500,durationDays:365});
+  const complete=f.transferStore.completeRosterSync.bind(f.transferStore);
+  f.transferStore.completeRosterSync=()=>{throw new Error('PROCESS_STOP_BEFORE_CHECKPOINT');};
+  const first=processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
+  assert.equal(first.ok,false);
+  assert.equal(f.clubManager.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
+  const restartedTransfers=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
+  const restartedClubs=new ClubManager(f.clubs,f.storage,'test-rosters');
+  const retry=processPendingRosterSync({transferStore:restartedTransfers,clubManager:restartedClubs});
+  assert.equal(retry.ok,true,JSON.stringify(retry));
+  assert.equal(restartedClubs.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
+  assert.equal(restartedTransfers.pendingRosterSync().length,0);
+  f.transferStore.completeRosterSync=complete;
+ }finally{f.cleanup();}
+});
