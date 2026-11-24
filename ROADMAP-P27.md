@@ -672,3 +672,41 @@ Périmètre : gestion de carrière locale sur l'appareil. Ce système n'est pas 
 - [x] Annuler ensemble le changement de club, le contrat, les événements et les budgets des deux clubs si l'écriture échoue.
 - [x] Garder l'offre en attente après un échec d'acceptation afin de permettre une nouvelle tentative sûre.
 - [x] Ajouter des tests de panne disque, de restauration des budgets et de reprise du transfert.
+
+
+## Phase 1 — fiabilité des données (lots 64 à 68)
+
+### Lot 64 — audit transversal de l’intégrité du monde (en cours)
+- [x] Ajouter un audit en lecture seule des identifiants de clubs et joueurs, des effectifs, des numéros, des contrats, des comptes financiers, des écritures et des rencontres archivées.
+- [x] Détecter les contrats de carrière liés à un club inconnu ou incohérent.
+- [x] Détecter les soldes de grand livre qui ne correspondent pas aux écritures.
+- [x] Exposer le diagnostic via `GET /api/admin/world-integrity`, protégé par le jeton administrateur.
+- [x] Ajouter des tests ciblés sur un monde cohérent et plusieurs corruptions de données.
+- [ ] Étendre l’audit aux invariants détaillés des classements, mouvements, budgets et relations entre les trois catalogues de clubs.
+
+### Lot 65 — fiabilité des transactions multi-stockages (en cours)
+- [x] Rendre atomiques en une seule sauvegarde les écritures de revenus sponsors et leurs compteurs d’échéances.
+- [x] Restaurer l’état mémoire des sponsors si l’écriture échoue.
+- [x] Rendre transactionnels les résultats de rencontres, l’avancement des tableaux et la clôture de saison dans le stockage des compétitions.
+- [x] Préserver l’identité des objets de compétition pendant les transactions réussies pour ne pas invalider les références actives.
+- [ ] Ajouter un journal de coordination/récupération pour les opérations qui modifient réellement plusieurs fichiers indépendants (transfert, effectif, grand livre et contrat).
+
+### Lot 66 — cohérence des finances et de la masse salariale (en cours)
+- [x] Refuser de réinitialiser silencieusement un calendrier de paie corrompu ; le serveur échoue explicitement plutôt que d’effacer les arriérés.
+- [x] Ne faire avancer le calendrier de paie en mémoire qu’après sa persistance.
+- [x] Garder les écritures de salaires idempotentes lorsqu’une écriture du calendrier échoue et qu’une nouvelle tentative est nécessaire.
+- [x] Ajouter des tests de panne, de reprise et de refus d’un calendrier corrompu.
+- [ ] Consolider les flux financiers des transferts humains et des contrats de joueurs dans le grand livre des clubs.
+- [ ] Finaliser les règles économiques : budgets, masse salariale, dépenses récurrentes et seuils de soutenabilité.
+
+### Lot 67 — fiabilité des compétitions et des résultats (en cours)
+- [x] Annuler les mutations en mémoire si la sauvegarde d’un résultat ou d’une transition échoue.
+- [x] Couvrir le rollback du classement, du tableau et des affectations de clubs par des tests de panne.
+- [ ] Ajouter une vérification systématique des classements calculés à partir des rencontres terminées.
+- [ ] Renforcer les contrôles de cohérence entre les calendriers, les rencontres officielles et les archives de résultats.
+
+### Lot 68 — cohérence des saisons et des affectations de clubs (en cours)
+- [x] Synchroniser au démarrage les divisions et conférences du gestionnaire d’effectifs depuis les affectations officielles du stockage des compétitions.
+- [x] Resynchroniser les affectations après une clôture de saison réussie.
+- [x] Signaler explicitement une persistance d’affectations en attente sans masquer l’état en mémoire.
+- [ ] Ajouter une reprise contrôlée des synchronisations en attente et une validation de bout en bout sur plusieurs transitions de saison.
