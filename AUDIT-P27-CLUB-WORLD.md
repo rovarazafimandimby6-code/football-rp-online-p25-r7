@@ -2,8 +2,8 @@
 
 Date de vérification : 24 novembre 2026  
 Branche : `p27-dev`  
-Commit audité : `bd93730349e1d5083e24f30bf46bfbe9e1db6bfc`  
-Workflow de référence : [GitHub Actions 45411900793](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45404323312)
+Commit audité : `aadf115011a8219461bd290f27294346db065c3c`  
+Workflow de référence : [GitHub Actions 45416868837](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45416868837)
 
 ## Résultat de l'audit
 
@@ -91,10 +91,10 @@ Le circuit de fin de match officiel a également été durci : un résultat de s
 
 ## Validation CI
 
-- La référence CI précédente a validé **539 tests**, sans échec, sur le commit audité à ce moment-là : [45411900793](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45411900793).
-- Depuis cette validation, des correctifs de finalisation des matchs, la protection du renouvellement de saison et trois tests supplémentaires ont été ajoutés sur `p27-dev`.
-- **La CI doit être relancée sur le dernier commit avant de déclarer ces ajouts validés.** Aucun statut CI exploitable n'est actuellement attaché au dernier commit consulté.
-- Ne pas reprendre le chiffre de 539 comme résultat de validation des derniers changements.
+- **545 tests réussis, 0 échec** sur le commit `aadf115011a8219461bd290f27294346db065c3c`.
+- Contrôle syntaxique JavaScript réussi sur tous les fichiers `src`, `server` et `tests`.
+- Workflow GitHub Actions terminé avec succès : [P27 validation — run 45416868837](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45416868837).
+- Le test de reprise vérifie maintenant aussi qu'une salle en attente de sauvegarde n'est pas supprimée par le délai d'expiration normal, même si tous ses joueurs sont déconnectés.
 
 ## Vérification restante
 
