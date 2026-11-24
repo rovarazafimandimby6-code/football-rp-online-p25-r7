@@ -33,6 +33,8 @@ test('P27 API HTTP : catalogue consultable, filtrable et protégé contre les fi
     assert.equal(leagueCompetitions.length,9);
     assert.equal(competitionSnapshot.scheduleAudit.ok,true);
     assert.equal(competitionSnapshot.scheduleAudit.fixtureCount,1892);
+    assert.equal(competitionSnapshot.cupAudit.ok,true);
+    assert.deepEqual({participants:competitionSnapshot.cupAudit.participants,preliminaryMatches:competitionSnapshot.cupAudit.preliminaryMatches,byes:competitionSnapshot.cupAudit.byes,rounds:competitionSnapshot.cupAudit.rounds,fixtures:competitionSnapshot.cupAudit.fixtures},{participants:156,preliminaryMatches:28,byes:100,rounds:8,fixtures:155});
     const expectedFormats={D1:['home-away',240],D2:['home-away',380],D3:['home-away',552],D4:['single-leg',120],D5:['single-leg',120]};
     for(const competition of leagueCompetitions){const [format,count]=expectedFormats[competition.division];assert.equal(competition.matchFormat,format);assert.equal(competition.fixtures.length,count);}
     assert.ok(leagueCompetitions.every(item=>item.standings.length===item.targetClubCount));
