@@ -21,3 +21,20 @@ test('P27 banc : refuse une rotation sans session joueur',async()=>{
  assert.equal(await bridge.rotatePlayers('out','in'),false);
  bridge.dispose();
 });
+
+test('P27 caméra en ligne : le mode spectateur préféré survit au passage sur le banc',()=>{
+ const modes=[];
+ const camera={mode:'player',setMode(mode){this.mode=mode;modes.push(mode);return true;}};
+ const bridge=new OnlineMatchBridge({client:{},players:[],ball:{},camera});
+ bridge.localServerId='human-1';
+ assert.equal(bridge.setPreferredCameraMode('spectator'),true);
+ assert.equal(camera.mode,'spectator');
+ bridge.setLocalBenchState(true,'blue');
+ assert.equal(camera.mode,'bench');
+ assert.equal(bridge.setPreferredCameraMode('broadcast'),true);
+ assert.equal(camera.mode,'bench');
+ bridge.setLocalBenchState(false,'blue');
+ assert.equal(camera.mode,'broadcast');
+ assert.equal(bridge.setPreferredCameraMode('invalid'),false);
+ bridge.dispose();
+});
