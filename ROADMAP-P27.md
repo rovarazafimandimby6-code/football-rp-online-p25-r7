@@ -737,7 +737,7 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Ne pas bloquer le démarrage sur une panne temporaire de sauvegarde des affectations lorsque le catalogue officiel est valide et déjà appliqué en mémoire.
 - [x] Réessayer la persistance des affectations en attente toutes les 60 secondes ; une nouvelle tentative persiste aussi les états déjà alignés en mémoire.
 - [x] Ajouter un test de reprise après panne temporaire de sauvegarde.
-- [ ] Valider de bout en bout plusieurs transitions de saison avec redémarrages et stockage réel.
+- [x] Valider trois transitions de saison consécutives avec stockage JSON réel, rechargement après chaque transition, 156 clubs, quotas 20/20, 9 ligues et coupe complète.
 
 
 ### Lot 64 — audit croisé des relations joueur, club et transferts (renforcé)
@@ -760,7 +760,7 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Simuler une panne au moment de la persistance finale.
 - [x] Vérifier le rollback des divisions, conférences, saison active et archives en mémoire.
 - [x] Recharger le magasin après l'échec et confirmer que l'ancienne saison reste la seule saison active.
-- [ ] Exécuter la suite CI complète sur le commit consolidé.
+- [x] Exécuter la suite CI complète sur le commit consolidé : 611/611 tests réussis, 0 échec ; contrôle syntaxique JavaScript réussi (run 45439960796).
 
 
 
@@ -769,4 +769,8 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Détecter les comptes financiers manquants pour les clubs du catalogue lorsque le grand livre est initialisé.
 - [x] Détecter les identifiants de fixture dupliqués entre plusieurs saisons, pas uniquement à l'intérieur d'une saison.
 - [x] Contrôler la structure du championnat d'une saison P27 : 9 groupes de ligue et 1 892 rencontres de ligue.
-- [ ] Dernière validation CI de la branche consolidée ; les limites multi-fichiers, archives historiques limitées et essais Android restent explicitement documentées.
+- [x] Dernière validation CI de la branche consolidée : 611/611 tests réussis, 0 échec ; contrôle syntaxique réussi (commit `9ff75d7a436e4c24ea26042eebb7b3d3a8fcfdf6`, run `45439960796`).\n- [x] Clarifier les limites restantes : pas d'ACID multi-fichiers sur les JSON ; les flux financiers transférés sont rejouables et journalisés, mais la saga complète transfert/effectif/contrat reste une extension séparée ; l'audit ne reconstitue jamais un résultat manquant ; les règles économiques non définies ne sont pas inventées ; les essais Android et la configuration `P27_ADMIN_TOKEN` restent à faire.
+
+
+## Décision de clôture — phase 1
+La validation automatisée de la phase 1 est consolidée. Les contrôles d'intégrité, les transactions locales par stockage, la réconciliation financière rejouable, les audits de calendrier/résultats et les transitions pluri-saisons sont couverts par la suite de tests. Les sujets explicitement listés comme limites ne sont pas déclarés terminés : ils exigent soit une décision économique produit, soit une évolution de coordination multi-stockages, soit des vérifications d'exploitation/appareil réel.
