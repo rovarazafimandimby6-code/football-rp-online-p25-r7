@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { DEFAULT_CLUBS } from '../src/club-manager.js';
 import { getCompetitionGroups, conferenceForClub } from '../src/league-structure.js';
-import { calculateSeasonMovements } from '../src/season-movement-policy.js';
+import { calculateSeasonMovements, createPromotionPlayoff, advancePromotionPlayoff, REQUIRED_PROMOTION_PLAYOFFS } from '../src/season-movement-policy.js';
 import { auditLeagueSchedules } from '../src/league-schedule-audit.js';
 import { auditCupBracket } from '../src/cup-bracket-audit.js';
 
@@ -174,6 +174,7 @@ export class JsonCompetitionStore {
       fixture.roomId=room; fixture.result={home,away,finalizedAt};
       fixture.status='completed';
       if(competition.type==='league') this.applyLeagueResult(competition,fixture);
+      else if(competition.type==='promotion-playoff') advancePromotionPlayoff(competition,fixture);
       else this.advanceCup(competition,fixture);
       this.persist(); return {ok:true,duplicate:false,fixture:clone(fixture)};
     }
@@ -198,16 +199,38 @@ export class JsonCompetitionStore {
     if(next){if(!next.homeClubId) next.homeClubId=winnerId; else if(!next.awayClubId) next.awayClubId=winnerId; if(next.homeClubId&&next.awayClubId) next.status='scheduled';}
     if(fixture.round===8){competition.status='completed';competition.championClubId=winnerId;const club=this.clubs.get(winnerId);if(club&&!this.activeSeason.trophies.some(item=>item.competitionId===competition.id))this.activeSeason.trophies.push({id:`${competition.id}-champion`,competitionId:competition.id,competitionName:competition.name,clubId:winnerId,clubName:club.name,awardedAt:fixture.result.finalizedAt});}
   }
+  ensurePromotionPlayoffs() {
+    const season=this.activeSeason;
+    let changed=false;
+    for(const [division,conference] of REQUIRED_PROMOTION_PLAYOFFS) {
+      const league=season.competitions.find(item=>item.type==='league'&&item.division===division&&(item.conference||null)===conference);
+      if(!league||league.status!=='completed')continue;
+      const existing=season.competitions.find(item=>item.type==='promotion-playoff'&&item.division===division&&(item.conference||null)===conference);
+      if(existing)continue;
+      season.competitions.push(createPromotionPlayoff({seasonId:season.id,division,conference,standings:league.standings}));
+      changed=true;
+    }
+    if(changed)this.persist();
+    return changed;
+  }
   previewSeasonMovements() {
-    const season = this.activeSeason;
-    const preview = calculateSeasonMovements({ competitions:season.competitions, clubs:[...this.clubs.values()] });
-    return { ...preview, seasonId:season.id, seasonStatus:season.status };
+    const season=this.activeSeason;
+    this.ensurePromotionPlayoffs();
+    const preview=calculateSeasonMovements({competitions:season.competitions,clubs:[...this.clubs.values()]});
+    return {...preview,seasonId:season.id,seasonStatus:season.status};
   }
   finalizeSeason({ nextSeasonId, movements = [], completedAt = this.now() } = {}) {
     const current = this.activeSeason;
     const nextId = clean(nextSeasonId, 48);
     if (!Array.isArray(movements)) return { ok:false, reason:'invalid-movement-list' };
     if (!nextId || !Number.isFinite(completedAt)) return { ok:false, reason:'invalid-season-transition' };
+    const approved=this.previewSeasonMovements();
+    if(!approved.ok)return {ok:false,reason:'season-movements-not-ready',details:approved.reason};
+    const expectedMoves=new Map(approved.movements.map(item=>[item.clubId,item]));
+    if(movements.length!==expectedMoves.size||movements.some(item=>{
+      const expected=expectedMoves.get(item?.clubId);
+      return !expected||item.toDivision!==expected.toDivision||(item.toConference||null)!==expected.toConference||item.type!==expected.type||item.finalPosition!==expected.finalPosition;
+    }))return {ok:false,reason:'movement-list-does-not-match-approved-preview'};
     if (this.state.seasons.some(season => season.id === nextId)) return { ok:false, reason:'season-already-exists' };
     if (current.competitions.some(competition => competition.status !== 'completed')) return { ok:false, reason:'season-competitions-incomplete' };
     const divisionOrder = { D1:1, D2:2, D3:3, D4:4, D5:5 };
@@ -221,8 +244,8 @@ export class JsonCompetitionStore {
       if (!divisionOrder[target] || Math.abs(divisionOrder[club.division] - divisionOrder[target]) !== 1)
         return { ok:false, reason:'movement-must-be-adjacent-division' };
       const conference = target === 'D4' || target === 'D5' ? clean(movement.toConference, 16) : null;
-      if ((target === 'D4' && !['Nord','Sud'].includes(conference)) ||
-          (target === 'D5' && !['Nord','Sud','Est','Ouest'].includes(conference)))
+      if ((target === 'D4' && !['A','B'].includes(conference)) ||
+          (target === 'D5' && !['A','B','C','D'].includes(conference)))
         return { ok:false, reason:'destination-conference-required' };
       club.division = target;
       club.conference = conference;
@@ -230,7 +253,7 @@ export class JsonCompetitionStore {
     }
     const targets = { D1:16, D2:20, D3:24, D4:32, D5:64 };
     const counts = Object.fromEntries(Object.keys(targets).map(division => [division,0]));
-    const conferenceCounts = { D4:{Nord:0,Sud:0}, D5:{Nord:0,Sud:0,Est:0,Ouest:0} };
+    const conferenceCounts = { D4:{A:0,B:0}, D5:{A:0,B:0,C:0,D:0} };
     for (const club of nextClubs.values()) {
       if (!Object.hasOwn(counts,club.division)) return { ok:false, reason:'invalid-club-division' };
       counts[club.division]++;
