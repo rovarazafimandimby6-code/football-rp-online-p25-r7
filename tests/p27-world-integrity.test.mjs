@@ -169,3 +169,29 @@ test('P27 clubs : reprend automatiquement une affectation après échec temporai
  assert.equal(retry.updated,0);
  assert.equal(attempts,2);
 });
+
+
+test('P27 intégrité résultats : rapproche les archives officielles avec les fixtures terminées',()=>{
+ const input=cleanWorld();
+ const fixture=input.competitionState.seasons[0].competitions[0].fixtures[0];
+ fixture.roomId='room-official-1';
+ input.resultArchive=[{roomId:'room-official-1',phase:'fulltime',score:{blue:1,red:0},finalizedAt:1000,
+  competition:{fixtureId:fixture.id,result:{home:1,away:0}}}];
+ assert.equal(auditP27World(input).ok,true);
+ input.resultArchive[0].score.blue=2;
+ const mismatch=auditP27World(input);
+ assert.ok(mismatch.errors.some(item=>item.code==='RESULT_ARCHIVE_FIXTURE_MISMATCH'));
+});
+
+test('P27 intégrité résultats : détecte les archives dupliquées et les fixtures inconnues',()=>{
+ const input=cleanWorld();
+ input.resultArchive=[
+  {roomId:'duplicate-room',phase:'fulltime',score:{blue:1,red:0},finalizedAt:1000,competition:{fixtureId:'missing-fixture'}},
+  {roomId:'duplicate-room',phase:'fulltime',score:{blue:1,red:0},finalizedAt:1001,competition:{fixtureId:'missing-fixture'}}
+ ];
+ const result=auditP27World(input);
+ const codes=result.errors.map(item=>item.code);
+ assert.ok(codes.includes('RESULT_ROOM_ID_INVALID_OR_DUPLICATE'));
+ assert.ok(codes.includes('RESULT_FIXTURE_ARCHIVE_DUPLICATE'));
+ assert.ok(codes.includes('RESULT_ARCHIVE_UNKNOWN_FIXTURE'));
+});
