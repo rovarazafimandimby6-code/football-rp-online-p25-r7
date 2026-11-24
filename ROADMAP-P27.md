@@ -848,3 +848,10 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 78 : contrôle des écritures du journal de paie — rejet des références sans événement métier source.
 - [x] Lot 79 : tests de non-régression couvrant les événements de paie orphelins, les clubs inconnus et les montants/dates invalides.
 - [ ] Lot 80 : validation CI complète sur la branche P27 et audit des résultats.
+
+
+### Lots 81–83 — intégrité des carrières humaines
+- [x] Lot 81 : distinguer un joueur humain réellement orphelin d'une synchronisation d'effectif encore en attente.
+- [x] Lot 82 : élever en erreur l'absence d'effectif lorsqu'aucune commande outbox valide n'explique l'écart.
+- [x] Lot 83 : tests de non-régression pour l'orphelin contractuel et la fenêtre de reprise saga.
+- [ ] Lot 84 : validation CI consolidée et vérification des résultats.
