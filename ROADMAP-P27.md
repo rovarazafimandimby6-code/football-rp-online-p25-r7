@@ -692,7 +692,8 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Détecter les soldes de grand livre qui ne correspondent pas aux écritures.
 - [x] Exposer le diagnostic via `GET /api/admin/world-integrity`, protégé par le jeton administrateur.
 - [x] Ajouter des tests ciblés sur un monde cohérent et plusieurs corruptions de données.
-- [ ] Étendre l’audit aux invariants détaillés des classements, mouvements, budgets et relations entre les trois catalogues de clubs.
+- [x] Refuser les synchronisations d’affectations si le catalogue officiel est incomplet ou contient des identifiants dupliqués.
+- [ ] Étendre l’audit aux invariants détaillés des mouvements, budgets et relations entre les trois catalogues de clubs.
 
 ### Lot 65 — fiabilité des transactions multi-stockages (en cours)
 - [x] Rendre atomiques en une seule sauvegarde les écritures de revenus sponsors et leurs compteurs d’échéances.
@@ -723,6 +724,7 @@ Limite : les deux grands livres restent deux fichiers distincts. L'idempotence r
 - [x] Synchroniser au démarrage les divisions et conférences du gestionnaire d’effectifs depuis les affectations officielles du stockage des compétitions.
 - [x] Resynchroniser les affectations après une clôture de saison réussie.
 - [x] Signaler explicitement une persistance d’affectations en attente sans masquer l’état en mémoire.
+- [x] Vérifier que la synchronisation des affectations n'accepte que des catalogues complets et à identifiants uniques.
 - [ ] Ajouter une reprise contrôlée des synchronisations en attente et une validation de bout en bout sur plusieurs transitions de saison.
 
 
