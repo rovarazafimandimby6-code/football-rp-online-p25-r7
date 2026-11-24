@@ -11,6 +11,7 @@ export function auditP27World({
   const catalogue = asList(clubs);
   const clubById = new Map();
   const rosterIds = new Set();
+  const rosterPlayersById = new Map();
   let rosterPlayers = 0, humanPlayers = 0, systemPlayers = 0;
   for (const club of catalogue) {
     if (!safeText(club?.id)) { errors.push({ code:'CLUB_ID_MISSING' }); continue; }
@@ -23,7 +24,11 @@ export function auditP27World({
       rosterPlayers++;
       if (!safeText(player?.id)) errors.push({ code:'PLAYER_ID_MISSING', clubId:club.id });
       else if (rosterIds.has(player.id)) errors.push({ code:'PLAYER_REGISTERED_MULTIPLE_TIMES', playerId:player.id });
-      else rosterIds.add(player.id);
+      else {
+        rosterIds.add(player.id);
+        if (!rosterPlayersById.has(player.id)) rosterPlayersById.set(player.id, []);
+        rosterPlayersById.get(player.id).push({ clubId:club.id, player });
+      }
       if (Number.isInteger(player?.number)) {
         if (numbers.has(player.number)) errors.push({ code:'SHIRT_NUMBER_DUPLICATE', clubId:club.id, number:player.number });
         numbers.add(player.number);
@@ -99,6 +104,20 @@ export function auditP27World({
       careerPlayerIds.add(career.playerId);
     }
     const active = career.contract?.status === 'active';
+    if (career.playerId) {
+      const memberships = rosterPlayersById.get(career.playerId) || [];
+      if (active && memberships.length === 0) {
+        warnings.push({ code:'CAREER_PLAYER_NOT_IN_ROSTER', accountId:career.accountId, playerId:career.playerId, clubId:career.clubId || null });
+      } else if (active && memberships.length > 1) {
+        errors.push({ code:'CAREER_PLAYER_ROSTER_DUPLICATE', accountId:career.accountId, playerId:career.playerId, count:memberships.length });
+      } else if (active && memberships.length === 1) {
+        const membership = memberships[0];
+        if (membership.clubId !== career.clubId) errors.push({ code:'CAREER_ROSTER_CLUB_MISMATCH', accountId:career.accountId, playerId:career.playerId, careerClubId:career.clubId, rosterClubId:membership.clubId });
+        if (membership.player?.playerType !== 'human') errors.push({ code:'CAREER_ROSTER_TYPE_MISMATCH', accountId:career.accountId, playerId:career.playerId, rosterPlayerType:membership.player?.playerType || null });
+      } else if (!active && memberships.some(item => item.player?.playerType === 'human')) {
+        warnings.push({ code:'INACTIVE_CAREER_PLAYER_STILL_REGISTERED', accountId:career.accountId, playerId:career.playerId, rosterClubIds:memberships.map(item => item.clubId) });
+      }
+    }
     if (active && (!career.clubId || career.clubId !== career.contract.clubId)) {
       errors.push({ code:'CAREER_CONTRACT_LINK_MISMATCH', accountId:career.accountId, clubId:career.clubId, contractClubId:career.contract.clubId });
     }
