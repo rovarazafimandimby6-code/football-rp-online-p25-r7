@@ -255,7 +255,8 @@ export function auditP27World({
   const rosterSyncIds = new Set();
   const rosterSyncEventIds = new Set();
   const careerByPlayerId = new Map(careers.filter(career => safeText(career?.playerId)).map(career => [career.playerId,career]));
-  const transferEventIdsForRoster = new Set(asList(transferState?.events).map(event => event?.id).filter(safeText));
+  const transferEventsForRoster = new Map(asList(transferState?.events).filter(event => safeText(event?.id)).map(event => [event.id,event]));
+  const transferEventIdsForRoster = new Set(transferEventsForRoster.keys());
   let pendingRosterSync = 0, completedRosterSync = 0;
   for (const entry of rosterSyncEntries) {
     if (!safeText(entry?.id) || rosterSyncIds.has(entry.id))
@@ -275,8 +276,23 @@ export function auditP27World({
       rosterSyncEventIds.add(entry.eventId);
       if (!entry.id.endsWith(entry.eventId))
         errors.push({ code:'ROSTER_SYNC_EVENT_LINK_INVALID', syncId:entry.id, eventId:entry.eventId });
-      if (entry.status === 'pending' && !transferEventIdsForRoster.has(entry.eventId))
+      const sourceEvent = transferEventsForRoster.get(entry.eventId);
+      if (!sourceEvent && entry.status === 'pending')
         errors.push({ code:'ROSTER_SYNC_EVENT_MISSING', syncId:entry.id, eventId:entry.eventId });
+      else if (!sourceEvent && entry.status === 'completed')
+        warnings.push({ code:'ROSTER_SYNC_COMPLETED_EVENT_ARCHIVED', syncId:entry.id, eventId:entry.eventId });
+      if (sourceEvent) {
+        const expectedAction = ['contract-termination','contract-expired'].includes(sourceEvent.type) ? 'release' :
+          ['signing','transfer','renewal','loan','loan-return'].includes(sourceEvent.type) ? 'upsert' : null;
+        if (sourceEvent.playerId !== entry.playerId)
+          errors.push({ code:'ROSTER_SYNC_EVENT_PLAYER_MISMATCH', syncId:entry.id, eventId:entry.eventId });
+        if (expectedAction && expectedAction !== entry.action)
+          errors.push({ code:'ROSTER_SYNC_EVENT_ACTION_MISMATCH', syncId:entry.id, eventId:entry.eventId, expectedAction, actualAction:entry.action });
+        if (sourceEvent.fromClubId !== undefined && (sourceEvent.fromClubId || null) !== (entry.previousClubId || null))
+          errors.push({ code:'ROSTER_SYNC_EVENT_SOURCE_CLUB_MISMATCH', syncId:entry.id, eventId:entry.eventId });
+        if (sourceEvent.toClubId !== undefined && (sourceEvent.toClubId || null) !== (entry.clubId || null))
+          errors.push({ code:'ROSTER_SYNC_EVENT_TARGET_CLUB_MISMATCH', syncId:entry.id, eventId:entry.eventId });
+      }
     }
     if (entry?.action === 'upsert' && (!safeText(entry.clubId) || entry.contract?.status !== 'active' ||
         entry.contract?.playerId !== entry.playerId || entry.contract?.clubId !== entry.clubId))
