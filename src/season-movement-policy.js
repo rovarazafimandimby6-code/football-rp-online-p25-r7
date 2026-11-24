@@ -99,7 +99,7 @@ export function calculateSeasonMovements({competitions=[],clubs=[],policy=DEFAUL
     if(!playoff||playoff.status!=='completed'||!playoff.championClubId)return fail('promotion-playoffs-incomplete',{division,conference});
     const table=tables.get(groupKey(division,conference));
     const champion=clubMap.get(playoff.championClubId);
-    if(!champion||!table.rows.slice(1,division==='D2'||division==='D3'?7:5).some(row=>row.id===playoff.championClubId))
+    if(!champion||!table.rows.slice(division==='D2'||division==='D3'?3:1,division==='D2'||division==='D3'?7:5).some(row=>row.id===playoff.championClubId))
       return fail('promotion-playoff-winner-invalid',{division,conference,clubId:playoff.championClubId});
     playoffs.set(groupKey(division,conference),playoff);
   }
