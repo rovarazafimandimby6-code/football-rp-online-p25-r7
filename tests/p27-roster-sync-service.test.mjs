@@ -272,6 +272,10 @@ test('P27 saga prêt : l’expiration du contrat parent libère le joueur depuis
 
 test('P27 saga prêt : une panne pendant le retour est reprise après redémarrage des deux stockages',()=>{
  const f=setup();try{
+  const durable=new JsonClubRosterStorage(f.directory);
+  const durableStorage={fail:false,getItem:key=>durable.getItem(key),setItem(key,value){if(this.fail)throw new Error('ROSTER_DISK_FULL');durable.setItem(key,value);}};
+  f.storage=durableStorage;
+  f.clubManager=new ClubManager(f.clubs,durableStorage,'p27-server-club-rosters');
   const signed=f.transferStore.signContract('account-loan-return-retry',{clubId:'club-a',salary:700,durationDays:180});
   processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
   const offer=f.transferStore.requestLoanOffer('account-loan-return-retry',{toClubId:'club-b',durationDays:30});
@@ -285,7 +289,7 @@ test('P27 saga prêt : une panne pendant le retour est reprise après redémarra
   assert.equal(f.transferStore.pendingRosterSync().length,1);
   f.storage.fail=false;
   const restartedTransfers=new JsonTransferStore(f.directory,{clubs:f.clubs,now:()=>f.now});
-  const restartedClubs=new ClubManager(f.clubs,new JsonClubRosterStorage(f.directory),'test-rosters');
+  const restartedClubs=new ClubManager(f.clubs,new JsonClubRosterStorage(f.directory),'p27-server-club-rosters');
   const replay=processPendingRosterSync({transferStore:restartedTransfers,clubManager:restartedClubs});
   assert.equal(replay.ok,true,JSON.stringify(replay));
   assert.equal(restartedClubs.getClub('club-a').roster.filter(player=>player.id===signed.career.playerId).length,1);
@@ -296,6 +300,7 @@ test('P27 saga prêt : une panne pendant le retour est reprise après redémarra
 
 test('P27 saga mercato et prêts : conserve une seule inscription après transfert, prêt, retour et rechargement',()=>{
  const f=setup();try{
+  f.clubManager=new ClubManager(f.clubs,new JsonClubRosterStorage(f.directory),'p27-server-club-rosters');
   const signed=f.transferStore.signContract('account-transfer-loan-cycle',{clubId:'club-a',salary:700,durationDays:365});
   processPendingRosterSync({transferStore:f.transferStore,clubManager:f.clubManager});
   const transferOffer=f.transferStore.requestOffer('account-transfer-loan-cycle',{toClubId:'club-b'});
