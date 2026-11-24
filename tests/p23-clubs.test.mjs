@@ -130,7 +130,7 @@ test('P23 clubs: migration des anciens effectifs remplace les identités IA obso
   assert.equal(player.rating, oldClubs.find(item => item.id === 'manparis-sporting').roster[2].rating);
   assert.deepEqual(player.attributes, legacy.getClub('manparis-sporting').roster[2].attributes);
   migrated.saveSeason();
-  assert.equal(JSON.parse(storage.getItem('p23-legacy')).version, 7);
+  assert.equal(JSON.parse(storage.getItem('p23-legacy')).version, 8);
 });
 
 test('P23 gameplay: les compositions 5v5 sélectionnent les meilleurs profils par poste et leurs attributs', async () => {
@@ -230,4 +230,41 @@ test('P27 contrats : un transfert conserve lhistorique de révision et trace le 
  assert.equal(moved.contract.reviewedAt,'2027-01-01T00:00:00.000Z');
  assert.equal(moved.contract.previousClubId,from);
  assert.ok(Number.isFinite(Date.parse(moved.contract.transferredAt)));
+});
+
+test('P27 contrats : durée contractuelle validée et date d’expiration calculée',()=>{
+ const manager=new ClubManager();
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster[0];
+ const signedAt=Date.UTC(2027,0,1);
+ const result=manager.setSystemPlayerContractTerm(club.id,player.id,{signedAt,durationWeeks:26});
+ assert.equal(result.ok,true);
+ assert.equal(result.contract.signedAt,'2027-01-01T00:00:00.000Z');
+ assert.equal(result.contract.durationWeeks,26);
+ assert.equal(Date.parse(result.contract.expiresAt),signedAt+26*7*24*60*60*1000);
+ assert.equal(manager.setSystemPlayerContractTerm(club.id,player.id,{signedAt,durationWeeks:2}).reason,'invalid-duration');
+});
+test('P27 contrats : expiration libère la place, archive le joueur et persiste après rechargement',()=>{
+ const storage=memoryStorage();
+ const manager=new ClubManager(undefined,storage,'p27-expiry');
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster[0];
+ const signedAt=Date.UTC(2027,0,1);
+ manager.setSystemPlayerContractTerm(club.id,player.id,{signedAt,durationWeeks:4});
+ const before=manager.getClub(club.id).roster.length;
+ const early=manager.expireSystemPlayerContracts({now:signedAt+27*24*60*60*1000});
+ assert.equal(early.expired.length,0);
+ const dueAt=signedAt+28*24*60*60*1000;
+ const result=manager.expireSystemPlayerContracts({now:dueAt});
+ assert.equal(result.expired.length,1);
+ assert.equal(manager.getClub(club.id).roster.length,before-1);
+ assert.equal(manager.getClub(club.id).releasedPlayers[0].player.id,player.id);
+ assert.equal(manager.getClub(club.id).releasedPlayers[0].player.contract.status,'expired');
+ const restored=new ClubManager(undefined,storage,'p27-expiry');
+ assert.equal(restored.getClub(club.id).releasedPlayers[0].player.id,player.id);
+ assert.equal(restored.getClub(club.id).roster.some(item=>item.id===player.id),false);
+});
+test('P27 contrats : expiration ignore les contrats sans terme',()=>{
+ const manager=new ClubManager();
+ assert.equal(manager.expireSystemPlayerContracts({now:Date.now()}).expired.length,0);
 });

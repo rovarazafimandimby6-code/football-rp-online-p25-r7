@@ -1,4 +1,4 @@
-import { createSystemPlayerContract } from './p27-player-contracts.js';
+import { createSystemPlayerContract, setSystemPlayerContractTerm, expireSystemPlayerContract } from './p27-player-contracts.js';
 import { generateClubRoster } from './club-roster.js';
 import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './league-structure.js';
 import { generateClubCharacteristics, generateClubRecruitmentProfile, generateClubStrategicProfile, balanceClubRosterQuality } from './club-profile.js';
@@ -20,7 +20,7 @@ const assignSystemContracts = (roster, club) => roster.map(player => player.play
   contract: createSystemPlayerContract({ clubId: club.id, playerId: player.id, division: club.division, rating: player.rating })
 }));
 const clonePlayer = player => ({ ...player, contract: player.contract ? { ...player.contract } : null, loyalty: player.loyalty ? { ...player.loyalty } : null, attributes: player.attributes ? { ...player.attributes } : null, appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null });
-const cloneClub = club => ({ ...club, location: club.location ? { ...club.location } : null, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, strategicProfile: club.strategicProfile ? { ...club.strategicProfile, competitiveVariance: { ...club.strategicProfile.competitiveVariance } } : null, clubLore: club.clubLore ? { ...club.clubLore, rivalries: (club.clubLore.rivalries || []).map(item => ({ ...item })) } : null, recruitmentProfile: club.recruitmentProfile ? { ...club.recruitmentProfile, nationalityCodes: [...(club.recruitmentProfile.nationalityCodes || [])] } : null, roster: club.roster.map(clonePlayer) });
+const cloneClub = club => ({ ...club, releasedPlayers: (club.releasedPlayers || []).map(item => ({ ...item, player: clonePlayer(item.player) })), location: club.location ? { ...club.location } : null, colors: [...club.colors], characteristics: club.characteristics ? { ...club.characteristics } : null, strategicProfile: club.strategicProfile ? { ...club.strategicProfile, competitiveVariance: { ...club.strategicProfile.competitiveVariance } } : null, clubLore: club.clubLore ? { ...club.clubLore, rivalries: (club.clubLore.rivalries || []).map(item => ({ ...item })) } : null, recruitmentProfile: club.recruitmentProfile ? { ...club.recruitmentProfile, nationalityCodes: [...(club.recruitmentProfile.nationalityCodes || [])] } : null, roster: club.roster.map(clonePlayer) });
 
 const normalizeRosterPlayer = (player, club, index = 0) => {
   const rating = Number(player?.rating);
@@ -40,8 +40,7 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     contract: player?.playerType !== 'human'
       ? {
           ...createSystemPlayerContract({ clubId: club.id, playerId: safeId(player?.id), division: club.division, rating: safeRating }),
-          ...(Number.isSafeInteger(player?.contract?.reviewCount) ? { reviewCount: Math.max(0, player.contract.reviewCount) } : {}),
-          ...(typeof player?.contract?.reviewedAt === 'string' ? { reviewedAt: player.contract.reviewedAt } : {})
+          ...(player?.contract && typeof player.contract === 'object' ? Object.fromEntries(['reviewCount','reviewedAt','signedAt','durationWeeks','expiresAt','transferredAt','previousClubId'].filter(key => player.contract[key] !== undefined).map(key => [key,player.contract[key]])) : {})
         }
       : player?.contract && typeof player.contract === 'object' && player.contract.status === 'active' &&
         Number.isSafeInteger(Number(player.contract.weeklyWage ?? player.contract.salary)) &&
@@ -161,7 +160,7 @@ export class ClubManager {
           : generateClubCharacteristics({ ...input, division: normalizeDivision(input.division) }),
         humanAdmission: ['open','system-only'].includes(input.humanAdmission) ? input.humanAdmission : null,
         recruitmentProfile: null,
-        roster: [], managerId: null, points: 0, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0
+        roster: [], releasedPlayers: [], managerId: null, points: 0, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0
       };
       normalized.recruitmentProfile = generateClubRecruitmentProfile({ ...input, id, division: normalized.division, countryCode: normalized.countryCode, humanAdmission: normalized.humanAdmission });
       normalized.humanAdmission = normalized.recruitmentProfile.humanAdmission;
@@ -238,7 +237,7 @@ export class ClubManager {
             id: safeId(p.id), name: cleanText(p.name, 'Joueur', 36), nationality: /^[A-Z]{2}$/.test(p.nationality || '') ? p.nationality : club.countryCode,
             age: Number.isInteger(p.age) ? Math.max(16, Math.min(45, p.age)) : 24,
             role: ['GK','DEF','MID','FWD'].includes(p.role) ? p.role : 'MID', number: Number.isInteger(p.number) ? Math.max(1, Math.min(99,p.number)) : 1,
-            playerType: ['human','system'].includes(p.playerType) ? p.playerType : (club.roster.some(seed => seed.id === safeId(p.id)) ? 'system' : 'human'), contract: p.playerType === 'human' ? (p.contract && p.contract.status === 'active' && Number.isSafeInteger(Number(p.contract.weeklyWage ?? p.contract.salary)) ? { ...p.contract, weeklyWage: Math.max(0, Math.floor(Number(p.contract.weeklyWage ?? p.contract.salary))), salary: Math.max(0, Math.floor(Number(p.contract.salary ?? p.contract.weeklyWage))) } : null) : { ...createSystemPlayerContract({ clubId: club.id, playerId: safeId(p.id), division: club.division, rating: Math.max(1, Math.min(99, Number(p.rating) || 50)) }), ...(Number.isSafeInteger(p.contract?.reviewCount) ? { reviewCount: Math.max(0, p.contract.reviewCount) } : {}), ...(typeof p.contract?.reviewedAt === 'string' ? { reviewedAt: p.contract.reviewedAt } : {}) }, controlStatus: p.playerType === 'human' && p.controlStatus === 'automated' ? 'automated' : (p.playerType === 'human' ? 'human' : 'system'),
+            playerType: ['human','system'].includes(p.playerType) ? p.playerType : (club.roster.some(seed => seed.id === safeId(p.id)) ? 'system' : 'human'), contract: p.playerType === 'human' ? (p.contract && p.contract.status === 'active' && Number.isSafeInteger(Number(p.contract.weeklyWage ?? p.contract.salary)) ? { ...p.contract, weeklyWage: Math.max(0, Math.floor(Number(p.contract.weeklyWage ?? p.contract.salary))), salary: Math.max(0, Math.floor(Number(p.contract.salary ?? p.contract.weeklyWage))) } : null) : { ...createSystemPlayerContract({ clubId: club.id, playerId: safeId(p.id), division: club.division, rating: Math.max(1, Math.min(99, Number(p.rating) || 50)) }), ...(p.contract && typeof p.contract === 'object' ? Object.fromEntries(['reviewCount','reviewedAt','signedAt','durationWeeks','expiresAt','transferredAt','previousClubId'].filter(key => p.contract[key] !== undefined).map(key => [key,p.contract[key]])) : {}) }, controlStatus: p.playerType === 'human' && p.controlStatus === 'automated' ? 'automated' : (p.playerType === 'human' ? 'human' : 'system'),
             rating: Math.max(1, Math.min(99, Number(p.rating) || 50)), potential: Math.max(1, Math.min(99, Number(p.potential) || Number(p.rating) || 50)), potentialBand: ['standard','good','high','exceptional'].includes(p.potentialBand) ? p.potentialBand : 'standard', attributes: normalizePlayerAttributes(p.attributes, Number(p.rating) || 50), loyalty: normalizePlayerLoyalty(p.loyalty),
             preferredFoot: p.preferredFoot === 'left' ? 'left' : 'right', archetype: cleanText(p.archetype, 'Joueur polyvalent', 40),
             appearance: p.appearance && typeof p.appearance === 'object' ? { skinTone: ['light','olive','tan','medium','brown','dark','deep'].includes(p.appearance.skinTone) ? p.appearance.skinTone : 'medium', bodyBuild: ['lean','athletic','strong'].includes(p.appearance.bodyBuild) ? p.appearance.bodyBuild : 'athletic', hairStyle: ['short','curly','afro','fade','shaved','braids','twists','wavy'].includes(p.appearance.hairStyle) ? p.appearance.hairStyle : 'short', hairColor: ['dark','brown','blond','black'].includes(p.appearance.hairColor) ? p.appearance.hairColor : 'dark', kitColors: p.appearance.kitColors && ['primary','secondary','accent'].every(key => /^#[0-9a-f]{6}$/i.test(p.appearance.kitColors[key] || '')) ? { ...p.appearance.kitColors } : null, kitDesign: ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'].includes(p.appearance.kitDesign) ? p.appearance.kitDesign : 'central', kitVariant: p.appearance.kitVariant === 'goalkeeper' ? 'goalkeeper' : 'outfield', faceShape: ['oval','round','angular','long','square'].includes(p.appearance.faceShape) ? p.appearance.faceShape : 'oval', eyeShape: ['almond','round','deep-set','hooded'].includes(p.appearance.eyeShape) ? p.appearance.eyeShape : 'almond' } : null
@@ -254,6 +253,7 @@ export class ClubManager {
           for (const player of migratedRoster) mergedRoster.set(player.id, player);
           club.roster = [...mergedRoster.values()].slice(0, club.capacity);
         }
+        club.releasedPlayers = Array.isArray(saved.releasedPlayers) ? saved.releasedPlayers.filter(item => item && item.player && typeof item.player === 'object').slice(-100).map(item => ({ player:{ ...item.player, contract:item.player.contract ? { ...item.player.contract } : null }, releasedAt:typeof item.releasedAt === 'string' ? item.releasedAt : null, reason:item.reason === 'contract-expired' ? item.reason : 'released' })) : [];
         club.managerId = saved.managerId ? safeId(saved.managerId) : null;
         club.control = club.managerId ? 'player' : (club.humanAdmission === 'system-only' ? 'ai' : (club.control === 'open' ? 'open' : 'ai'));
       }
@@ -263,7 +263,7 @@ export class ClubManager {
   }
 
   saveSeason() {
-    try { this.storage?.setItem(this.storageKey, JSON.stringify({ version: 7, clubs: this.listClubs(), fixtures: this.fixtures })); return true; } catch (_) { return false; }
+    try { this.storage?.setItem(this.storageKey, JSON.stringify({ version: 8, clubs: this.listClubs(), fixtures: this.fixtures })); return true; } catch (_) { return false; }
   }
 
   listClubs() { return [...this.clubs.values()].map(cloneClub); }
@@ -355,6 +355,41 @@ export class ClubManager {
     return { ok: true, fromRosterSize: from.roster.length, toRosterSize: to.roster.length, number: assignedNumber };
   }
 
+
+
+  setSystemPlayerContractTerm(clubId, playerId, { signedAt = Date.now(), durationWeeks } = {}) {
+    const club = this.clubs.get(safeId(clubId));
+    const player = club?.roster.find(item => item.id === safeId(playerId));
+    if (!club || !player) return { ok:false, reason:'player-not-found' };
+    if (player.playerType !== 'system') return { ok:false, reason:'not-system-player' };
+    const result = setSystemPlayerContractTerm(player.contract, { signedAt, durationWeeks });
+    if (!result.ok) return result;
+    player.contract = result.contract;
+    this.saveSeason();
+    return { ok:true, contract:{ ...player.contract } };
+  }
+
+  expireSystemPlayerContracts({ now = Date.now() } = {}) {
+    if (!Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-time', expired:[] };
+    const expired = [];
+    for (const club of this.clubs.values()) {
+      const remaining = [];
+      for (const player of club.roster) {
+        if (player.playerType !== 'system') { remaining.push(player); continue; }
+        const result = expireSystemPlayerContract(player.contract, { now });
+        if (!result.ok) { remaining.push(player); continue; }
+        const released = { ...player, contract:result.contract };
+        club.releasedPlayers.push({ player:released, releasedAt:new Date(now).toISOString(), reason:'contract-expired' });
+        expired.push({ clubId:club.id, playerId:player.id, contract:{ ...result.contract } });
+      }
+      if (remaining.length !== club.roster.length) {
+        club.roster = remaining;
+        club.releasedPlayers = club.releasedPlayers.slice(-100);
+      }
+    }
+    if (expired.length) this.saveSeason();
+    return { ok:true, expired };
+  }
 
   reviewSystemPlayerContract(clubId, playerId, { now = Date.now() } = {}) {
     const club = this.clubs.get(safeId(clubId));
