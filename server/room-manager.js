@@ -62,7 +62,7 @@ export class RoomManager {
       isOnPitch: true, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
       input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0, lastCallForPassAt: -Infinity, callForPassUntil: 0,
       connected: true, controlMode: 'human', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
-      stats: { passes: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
+      stats: { passes: 0, completedPasses: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
     };
     room.players.set(player.id, player);
     this.ensureBotCoverage(room);
@@ -87,7 +87,7 @@ export class RoomManager {
           isOnPitch: true, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
           input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0,
           connected: true, controlMode: 'ai', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
-          stats: { passes: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
+          stats: { passes: 0, completedPasses: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
         });
         count++;
       }
@@ -359,7 +359,7 @@ export class RoomManager {
     const players = [...room.players.values()].map(player => ({
       playerId: player.id, name: player.name, team: player.team, role: player.role,
       isBot: player.isBot === true, minutesPlayedMs: Math.round(Number(player.matchTimePlayedMs) || 0),
-      stats: { passes: player.stats?.passes || 0, shots: player.stats?.shots || 0, tackles: player.stats?.tackles || 0, goals: player.stats?.goals || 0, assists: player.stats?.assists || 0, saves: player.stats?.saves || 0, interceptions: player.stats?.interceptions || 0 },
+      stats: { passes: player.stats?.passes || 0, completedPasses: player.stats?.completedPasses || 0, shots: player.stats?.shots || 0, tackles: player.stats?.tackles || 0, goals: player.stats?.goals || 0, assists: player.stats?.assists || 0, saves: player.stats?.saves || 0, interceptions: player.stats?.interceptions || 0 },
     }));
     const performance = buildMatchPerformance(players);
     const blue = room.score.blue, red = room.score.red;
@@ -371,8 +371,8 @@ export class RoomManager {
       awards: Object.freeze(performance.awards),
       finalizedAt: this.now(), players: Object.freeze(performance.players.map(player => Object.freeze({ ...player, stats: Object.freeze({ ...player.stats }) }))),
       teamStats: Object.freeze({
-        blue: Object.freeze({ passes: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.passes,0), shots: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.interceptions,0) }),
-        red: Object.freeze({ passes: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.passes,0), shots: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.interceptions,0) }),
+        blue: Object.freeze({ passes: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.passes,0), completedPasses: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.completedPasses,0), shots: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.interceptions,0) }),
+        red: Object.freeze({ passes: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.passes,0), completedPasses: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.completedPasses,0), shots: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.interceptions,0) }),
       }),
     });
     room.events.push({ type: 'fulltime', at: room.elapsedMs, score: { ...room.score } });

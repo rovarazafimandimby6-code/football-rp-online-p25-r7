@@ -2,7 +2,7 @@ const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const FIELD = Object.freeze({ halfLength: 28, halfWidth: 17, goalHalfWidth: 3.3, goalHeight: 2.4, ballRadius: 0.36, playerRadius: 0.62 });
 
 function resetBall(room, x = 0, z = 0) {
-  room.ball = { x, y: FIELD.ballRadius, z, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null };
+  room.ball = { x, y: FIELD.ballRadius, z, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null, pendingPasserId: null };
 }
 
 function kick(room, player, action) {
@@ -14,6 +14,7 @@ function kick(room, player, action) {
   // Preserve the previous teammate touch as the potential assist while the current carrier shoots/passes.
   b.lastTouchPlayerId = player.id;
   b.lastTouchTeam = player.team;
+  b.pendingPasserId = action === 'pass' ? player.id : null;
   if (action === 'shoot') { b.lastShotPlayerId = player.id; b.lastShotTeam = player.team; b.lastShotAt = room.elapsedMs; }
   b.vx = forwardX * speed;
   b.vz = forwardZ * speed;
@@ -145,6 +146,15 @@ export function stepRoomSimulation(room, dt) {
       if (nearest) {
         const opposingShot = ball.lastShotTeam && ball.lastShotTeam !== nearest.team && room.elapsedMs - (ball.lastShotAt || 0) <= 8_000;
         const opponentLastTouch = ball.lastTouchTeam && ball.lastTouchTeam !== nearest.team;
+        if (ball.pendingPasserId && ball.pendingPasserId !== nearest.id) {
+          const passer = room.players.get(ball.pendingPasserId);
+          if (passer && passer.team === nearest.team) {
+            passer.stats ||= {};
+            passer.stats.completedPasses = (passer.stats.completedPasses || 0) + 1;
+            room.events.push({ type: 'pass-completed', team: passer.team, playerId: passer.id, receiverId: nearest.id, at: room.elapsedMs });
+          }
+          ball.pendingPasserId = null;
+        }
         if (opponentLastTouch && nearest.role !== 'GK') {
           nearest.stats ||= {}; nearest.stats.interceptions = (nearest.stats.interceptions || 0) + 1;
           room.events.push({ type: 'interception', team: nearest.team, playerId: nearest.id, at: room.elapsedMs });
