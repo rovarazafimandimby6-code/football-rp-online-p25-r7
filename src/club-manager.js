@@ -109,6 +109,23 @@ export class ClubManager {
       normalized.roster = seedDefaultRosters ? generateClubRoster(normalized, { size: Math.min(12, normalized.capacity), usedNames: globallyUsedNames }) : [];
       this.clubs.set(id, normalized);
     }
+    // D4 is absent from the starter 16-club catalogue. As soon as D4 clubs are
+    // supplied, reserve one deterministically for system-only competition.
+    const d4Clubs = [...this.clubs.values()].filter(item => item.division === 'D4').sort((a,b) => a.id.localeCompare(b.id));
+    if (d4Clubs.length && !d4Clubs.some(item => item.humanAdmission === 'system-only')) {
+      const reserved = d4Clubs[0];
+      reserved.humanAdmission = 'system-only';
+      reserved.recruitmentProfile = generateClubRecruitmentProfile({
+        id: reserved.id, division: reserved.division, countryCode: reserved.countryCode,
+        humanAdmission: 'system-only', recruitmentProfile: { mode:'continent', continent:'Africa' }
+      });
+      if (seedDefaultRosters) {
+        reserved.roster = balanceClubRosterQuality(
+          generateClubRoster({ ...reserved, recruitmentProfile: reserved.recruitmentProfile }, { size: Math.min(12, reserved.capacity), usedNames: globallyUsedNames }),
+          reserved
+        );
+      }
+    }
     this.fixtures = [];
     this.loadSeason();
   }

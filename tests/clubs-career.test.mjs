@@ -306,3 +306,14 @@ test('P27 joueurs: le plafond de 12 joueurs est appliqué même si la donnée en
   const clubs = new ClubManager([{ id:'capacity-limit', name:'Capacity Limit', capacity:30 }], null, 'capacity-limit-p27');
   assert.equal(clubs.getClub('capacity-limit').capacity, 12);
 });
+
+
+test('P27 catalogue: le premier club D4 est réservé au système si la division est présente sans réserve', () => {
+  const clubs = new ClubManager([
+    { id:'d4-alpha', name:'D4 Alpha', division:'D4', control:'ai', capacity:12 },
+    { id:'d4-beta', name:'D4 Beta', division:'D4', control:'open', capacity:12 }
+  ], null, 'd4-auto-reservation-test');
+  assert.equal(clubs.getClub('d4-alpha').humanAdmission, 'system-only');
+  assert.equal(clubs.getClub('d4-beta').humanAdmission, 'open');
+  assert.equal(clubs.takeOver('d4-alpha', 'human-d4').reason, 'club-not-available');
+});

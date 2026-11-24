@@ -93,6 +93,12 @@ function pick(list, random) { return list[Math.floor(random() * list.length)]; }
 function shuffled(values, random) { const result = [...values]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; }
 function nationalityPlan(club, count, random) {
   const homeCode = /^[A-Z]{2}$/.test(club.countryCode || '') ? club.countryCode : 'MG';
+  const recruitment = club.recruitmentProfile;
+  if (recruitment?.mode === 'country' && NATIONAL_POOLS[recruitment.countryCode]) return Array(count).fill(recruitment.countryCode);
+  if (recruitment?.mode === 'continent' && Array.isArray(recruitment.nationalityCodes)) {
+    const eligible = recruitment.nationalityCodes.filter(code => NATIONAL_POOLS[code]);
+    if (eligible.length) return shuffled(Array.from({ length: count }, (_, index) => eligible[index % eligible.length]), random);
+  }
   const internationalCodes = Object.keys(NATIONAL_POOLS).filter(code => code !== homeCode);
   const profile = NATIONALITY_PROFILES[club.id] || { [homeCode]: Math.ceil(count * 0.35), ...Object.fromEntries(internationalCodes.slice(0, 7).map(code => [code, 1])) };
   const plan = Object.entries(profile).flatMap(([code, quota]) => Array(Math.max(0, quota)).fill(code));
