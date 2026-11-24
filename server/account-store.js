@@ -48,6 +48,17 @@ export class JsonAccountStore {
     }
   }
 
+  transaction(mutator) {
+    const previous = this.state;
+    this.state = structuredClone(previous);
+    try {
+      const outcome = mutator();
+      if (outcome?.skipPersist === true) { this.state = previous; return outcome.value; }
+      this.persist();
+      return outcome;
+    } catch (error) { this.state = previous; throw error; }
+  }
+
   publicAccount(account) {
     return { id: account.id, username: account.username, displayName: account.displayName, createdAt: account.createdAt };
   }
@@ -59,14 +70,17 @@ export class JsonAccountStore {
     return before !== this.state.sessions.length;
   }
 
-  issueSession(account) {
+  issueSessionInTransaction(account) {
     this.pruneSessions();
     const token = randomBytes(32).toString('base64url');
     const expiresAt = this.now() + this.sessionTtlMs;
     this.state.sessions.push({ tokenHash: tokenDigest(token), accountId: account.id, expiresAt });
     this.state.sessions = this.state.sessions.slice(-20_000);
-    this.persist();
     return { account: this.publicAccount(account), token, expiresAt: new Date(expiresAt).toISOString() };
+  }
+
+  issueSession(account) {
+    return this.transaction(() => this.issueSessionInTransaction(account));
   }
 
   register(input = {}) {
@@ -74,7 +88,6 @@ export class JsonAccountStore {
     const handle = String(username ?? '').trim().toLowerCase();
     if (!USERNAME_RE.test(handle)) throw new Error('INVALID_USERNAME');
     if (typeof password !== 'string' || password.length < 10 || password.length > 128) throw new Error('INVALID_PASSWORD');
-    if (this.state.accounts.some(account => account.username === handle)) throw new Error('USERNAME_TAKEN');
     const salt = randomBytes(16).toString('hex');
     const account = {
       id: randomUUID(), username: handle,
@@ -82,8 +95,11 @@ export class JsonAccountStore {
       passwordSalt: salt, passwordHash: hashPassword(password, salt),
       createdAt: new Date(this.now()).toISOString()
     };
-    this.state.accounts.push(account);
-    return this.issueSession(account);
+    return this.transaction(() => {
+      if (this.state.accounts.some(row => row.username === handle)) throw new Error('USERNAME_TAKEN');
+      this.state.accounts.push(account);
+      return this.issueSessionInTransaction(account);
+    });
   }
 
   login(input = {}) {
@@ -112,10 +128,11 @@ export class JsonAccountStore {
   revoke(token) {
     if (typeof token !== 'string' || !token) return false;
     const digest = tokenDigest(token);
-    const before = this.state.sessions.length;
-    this.state.sessions = this.state.sessions.filter(row => row.tokenHash !== digest);
-    if (this.state.sessions.length === before) return false;
-    this.persist();
-    return true;
+    return this.transaction(() => {
+      const before = this.state.sessions.length;
+      this.state.sessions = this.state.sessions.filter(row => row.tokenHash !== digest);
+      if (this.state.sessions.length === before) return { skipPersist:true, value:false };
+      return true;
+    });
   }
 }
