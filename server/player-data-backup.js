@@ -6,7 +6,8 @@ const STORES = Object.freeze({
   accounts: { file: 'accounts.json', directory: 'accounts', validate: value => value?.version === 1 && Array.isArray(value.accounts) && Array.isArray(value.sessions) },
   profiles: { file: 'player-profiles.json', directory: 'player-profiles', validate: value => value?.version === 1 && Array.isArray(value.profiles) },
   progression: { file: 'progression.json', directory: 'progression', validate: value => value?.version === 1 && Array.isArray(value.players) },
-  careers: { file: 'careers.json', directory: 'careers', validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.playerCareers) }
+  careers: { file: 'careers.json', directory: 'careers', validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.playerCareers) },
+  transfers: { file: 'transfers.json', directory: 'transfers', validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.events) && Array.isArray(value.clubs) && (value.rosterSync === undefined || Array.isArray(value.rosterSync)) }
 });
 const digest = value => createHash('sha256').update(value).digest('hex');
 const defaultDirectories = root => Object.fromEntries(Object.entries(STORES).map(([key, spec]) => [key, path.join(root, 'data', spec.directory)]));

@@ -20,7 +20,8 @@ export function resolvePlayerBackupConfig({ env = process.env, root = process.cw
       accounts: path.resolve(env.ACCOUNTS_DIR || `${base}/data/accounts`),
       profiles: path.resolve(env.PLAYER_PROFILES_DIR || `${base}/data/player-profiles`),
       progression: path.resolve(env.PLAYER_PROGRESSION_DIR || `${base}/data/progression`),
-      careers: path.resolve(env.CAREERS_DIR || `${base}/data/careers`)
+      careers: path.resolve(env.CAREERS_DIR || `${base}/data/careers`),
+      transfers: path.resolve(env.TRANSFERS_DIR || `${base}/data/transfers`)
     }
   };
 }

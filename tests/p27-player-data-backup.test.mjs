@@ -9,7 +9,8 @@ const schemas = {
   accounts: { version:1, accounts:[{id:'account-1'}], sessions:[] },
   profiles: { version:1, profiles:[{accountId:'account-1',profile:{identity:{displayName:'Test'}}}] },
   progression: { version:1, players:[{accountId:'account-1',progression:{level:4}}] },
-  careers: { version:1, careers:[{accountId:'account-1',totals:{matches:2},matches:[]}], playerCareers:[] }
+  careers: { version:1, careers:[{accountId:'account-1',totals:{matches:2},matches:[]}], playerCareers:[] },
+  transfers: { version:1, careers:[{accountId:'account-1',playerId:'human-1',wallet:2500,clubId:null,contract:null,offers:[],history:[],loanOffers:[],loanHistory:[]}], events:[], clubs:[], rosterSync:[] }
 };
 function makeRoot() {
   const root=mkdtempSync(path.join(os.tmpdir(),'p27-player-backup-'));
@@ -17,7 +18,7 @@ function makeRoot() {
   for(const key of Object.keys(schemas)){
     directories[key]=path.join(root,key);
     mkdirSync(directories[key],{recursive:true});
-    const filename=key==='profiles'?'player-profiles.json':key==='progression'?'progression.json':key==='careers'?'careers.json':'accounts.json';
+    const filename=key==='profiles'?'player-profiles.json':key==='progression'?'progression.json':key==='careers'?'careers.json':key==='transfers'?'transfers.json':'accounts.json';
     writeFileSync(path.join(directories[key],filename),JSON.stringify(schemas[key]));
   }
   return {root,directories};
