@@ -9,6 +9,7 @@ import { verifyGoogleWorkerIdToken } from "./google-id-token-verifier.js";
 import { D1PlayerProfileRepository } from "./player-profile-repository.js";
 import { D1PlayerProgressionRepository } from "./player-progression-repository.js";
 import { D1PlayerCareerRepository } from "./player-career-repository.js";
+import { verifyCareerIngestSignature } from "./career-ingest-auth.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const OIDC_BINDING_COOKIE = "p27_google_oidc_binding";
@@ -474,6 +475,29 @@ export default {
       }
     }
 
+
+    // Server-to-server ingestion; the HMAC secret is never exposed to clients.
+    if (url.pathname === "/internal/matches/career") {
+      if (request.method !== "POST") return json(405, { error: "METHOD_NOT_ALLOWED" });
+      if (typeof env.P27_MATCH_INGEST_SECRET !== "string" || env.P27_MATCH_INGEST_SECRET.length < 32) return json(503, { error: "MATCH_INGEST_NOT_CONFIGURED" });
+      let rawBody;
+      try {
+        rawBody = await request.text();
+        if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) return json(413, { error: "BODY_TOO_LARGE" });
+      } catch { return json(400, { error: "INVALID_BODY" }); }
+      const validSignature = await verifyCareerIngestSignature(env.P27_MATCH_INGEST_SECRET, rawBody, request.headers.get("x-p27-signature"));
+      if (!validSignature) return json(401, { error: "MATCH_INGEST_UNAUTHORIZED" });
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") return json(503, { error: "D1_BINDING_MISSING" });
+      let body;
+      try {
+        body = JSON.parse(rawBody);
+        if (!body || typeof body !== "object" || Array.isArray(body) || !body.match || typeof body.match !== "object" || Array.isArray(body.match)) throw new Error();
+      } catch { return json(400, { error: "INVALID_JSON" }); }
+      try {
+        const result = await new D1PlayerCareerRepository(env.P27_DB).recordFinalizedMatch(body.accountId, body.playerId, body.match);
+        return json(200, { accepted: true, duplicate: result.duplicate === true, revision: result.career?.totals?.revision ?? null });
+      } catch (error) { return errorResponse(error); }
+    }
 
     // Career history is read-only for clients. Only the trusted match authority
     // may call D1PlayerCareerRepository.recordFinalizedMatch internally.

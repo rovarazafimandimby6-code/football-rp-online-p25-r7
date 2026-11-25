@@ -1,6 +1,7 @@
 # Local Cloudflare migration scaffold only.
 # Replace database_id only after the owner creates the D1 database in their account.
 # No Cloudflare resource is created or deployed by this file.
+# Configure the server-only HMAC key with: wrangler secret put P27_MATCH_INGEST_SECRET
 
 name = "football-rp-online-p27-api"
 main = "src/cloudflare/worker.js"
