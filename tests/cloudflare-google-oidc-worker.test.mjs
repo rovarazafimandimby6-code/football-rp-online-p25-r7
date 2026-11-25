@@ -60,6 +60,18 @@ const env = () => ({
   GOOGLE_REDIRECT_URI: redirectUri,
 });
 
+test("Google login start uses an isolated hashed-IP rate-limit bucket", async () => {
+  const settings = env();
+  const response = await worker.fetch(new Request("https://p27.example.test/api/auth/google/login/start", {
+    method: "POST",
+    headers: { "CF-Connecting-IP": "203.0.113.17" },
+  }), settings);
+  assert.equal(response.status, 200);
+  assert.match(settings.P27_DB.lastQuery.sql, /INSERT INTO p27_rate_limit_buckets/);
+  assert.equal(settings.P27_DB.lastQuery.values[0], "google-oidc-start");
+  assert.notEqual(settings.P27_DB.lastQuery.values[1], "203.0.113.17");
+});
+
 test("Google login start creates a PKCE S256 authorization URL and secure browser cookie", async () => {
   const settings = env();
   const response = await worker.fetch(new Request("https://p27.example.test/api/auth/google/login/start", {
@@ -102,6 +114,17 @@ test("Google OIDC endpoints fail closed when OAuth secrets are absent", async ()
   }), { P27_DB: new TransactionD1() });
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error, "GOOGLE_OIDC_NOT_CONFIGURED");
+});
+
+test("Google callback has a separate rate-limit scope from OIDC start", async () => {
+  const settings = env();
+  const response = await worker.fetch(new Request(
+    redirectUri + "?code=authorization-code-value&state=" + "s".repeat(43),
+    { headers: { "CF-Connecting-IP": "203.0.113.18" } },
+  ), settings);
+  assert.equal(response.status, 400);
+  assert.equal(settings.P27_DB.lastQuery.values[0], "google-oidc-callback");
+  assert.notEqual(settings.P27_DB.lastQuery.values[1], "203.0.113.18");
 });
 
 test("Google callback rejects a missing browser binding and mismatched callback URL", async () => {

@@ -179,7 +179,12 @@ const RATE_LIMIT_WINDOW_MS = 15 * 60_000;
 const RATE_LIMIT_MAX_ATTEMPTS = 8;
 
 /** Retains only a digest of the client address, never the raw address. */
-export async function allowPlayerIdentityAttempt(db, clientAddress, now = Date.now()) {
+export async function allowPlayerIdentityAttempt(
+  db, clientAddress, now = Date.now(), scope = "player-identities",
+) {
+  if (typeof scope !== "string" || !/^[a-z0-9-]{1,48}$/.test(scope)) {
+    throw new Error("INVALID_RATE_LIMIT_SCOPE");
+  }
   const subjectHash = digest(String(clientAddress || "unknown").slice(0, 128));
   await db.prepare(
     "DELETE FROM p27_rate_limit_buckets WHERE expires_at <= ?"
@@ -188,7 +193,7 @@ export async function allowPlayerIdentityAttempt(db, clientAddress, now = Date.n
   const row = await db.prepare(
     "INSERT INTO p27_rate_limit_buckets " +
     "(scope, subject_hash, window_started_at, attempt_count, expires_at) " +
-    "VALUES ('player-identities', ?, ?, 1, ?) " +
+    "VALUES (?, ?, ?, 1, ?) " +
     "ON CONFLICT(scope, subject_hash) DO UPDATE SET " +
     "window_started_at = CASE WHEN p27_rate_limit_buckets.window_started_at <= ? " +
     "THEN excluded.window_started_at ELSE p27_rate_limit_buckets.window_started_at END, " +
@@ -198,6 +203,7 @@ export async function allowPlayerIdentityAttempt(db, clientAddress, now = Date.n
     "THEN excluded.expires_at ELSE p27_rate_limit_buckets.expires_at END " +
     "RETURNING attempt_count"
   ).bind(
+    scope,
     subjectHash,
     now,
     now + RATE_LIMIT_WINDOW_MS,

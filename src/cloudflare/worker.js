@@ -122,7 +122,7 @@ async function startGoogleAuthorization(request, env, purpose) {
     return json(503, { error: "D1_BINDING_MISSING" });
   }
   const clientAddress = request.headers.get("CF-Connecting-IP") || "local";
-  if (!await allowPlayerIdentityAttempt(env.P27_DB, clientAddress)) {
+  if (!await allowPlayerIdentityAttempt(env.P27_DB, clientAddress, Date.now(), "google-oidc-start")) {
     return json(429, { error: "PLAYER_IDENTITY_RATE_LIMITED" });
   }
   const config = googleConfig(env);
@@ -185,7 +185,7 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
     return json(503, { error: "D1_BINDING_MISSING" });
   }
   const clientAddress = request.headers.get("CF-Connecting-IP") || "local";
-  if (!await allowPlayerIdentityAttempt(env.P27_DB, clientAddress)) {
+  if (!await allowPlayerIdentityAttempt(env.P27_DB, clientAddress, Date.now(), "google-oidc-callback")) {
     return json(429, { error: "PLAYER_IDENTITY_RATE_LIMITED" });
   }
   const config = googleConfig(env);
