@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync, existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const STORES = Object.freeze({
@@ -79,7 +79,7 @@ export function restorePlayerDataBackup({ backupFile, directories = defaultDirec
         if (item.previous === null) unlinkSync(item.destination);
         else {
           const rollback = `${item.destination}.${process.pid}.${randomUUID()}.rollback`;
-          writeFileSync(rollback, item.previous, { mode: 0o600, flag: 'wx' });
+          writeFileSync(rollback, item.previous, { mode: '0600', flag: 'wx' });
           renameSync(rollback, item.destination);
         }
       } catch {}
@@ -89,4 +89,39 @@ export function restorePlayerDataBackup({ backupFile, directories = defaultDirec
     for (const item of staged) { try { unlinkSync(item.temporary); } catch {} }
   }
   return { ok: true, restored: Object.keys(STORES), createdAt: bundle.createdAt };
+}
+
+/**
+ * Creates and verifies a new generation before pruning older generations.
+ * The backup directory can be mounted on a separate volume by the deployment.
+ */
+export function createRotatingPlayerDataBackup({ directories, backupDirectory, keep = 14, now = () => new Date() } = {}) {
+  if (!backupDirectory) throw new Error('BACKUP_DIRECTORY_REQUIRED');
+  const retention = Math.max(2, Math.min(100, Math.floor(Number(keep) || 14)));
+  const directory = path.resolve(backupDirectory);
+  mkdirSync(directory, { recursive: true });
+  const stamp = now().toISOString().replace(/[:.]/g, '-');
+  const outputFile = path.join(directory, `player-data-${stamp}-${randomUUID()}.json`);
+  const created = createPlayerDataBackup({ directories, outputFile, now });
+  try {
+    verifyPlayerDataBackup(outputFile);
+  } catch (error) {
+    try { unlinkSync(outputFile); } catch {}
+    throw error;
+  }
+  const candidates = readdirSync(directory)
+    .filter(name => /^player-data-.*\.json$/.test(name))
+    .map(name => {
+      const file = path.join(directory, name);
+      try { return { file, mtime: statSync(file).mtimeMs, isFile: statSync(file).isFile() }; }
+      catch { return null; }
+    })
+    .filter(item => item?.isFile)
+    .sort((a, b) => b.mtime - a.mtime);
+  const removed = [];
+  for (const item of candidates.slice(retention)) {
+    unlinkSync(item.file);
+    removed.push(path.basename(item.file));
+  }
+  return { ...created, verified: true, retained: Math.min(candidates.length, retention), removed };
 }
