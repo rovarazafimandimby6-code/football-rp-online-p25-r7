@@ -94,6 +94,10 @@ const queueAndSyncCurrentProfile = async () => {
   return profileSyncCoordinator.flush();
 };
 void accountClient.resumeCookieSession().then(() => profileSyncCoordinator.flush()).catch(() => {});
+window.addEventListener('online', () => { void profileSyncCoordinator.flush().catch(() => {}); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') void profileSyncCoordinator.flush().catch(() => {});
+});
 const onlineClient = new OnlineMatchClient({ baseUrl: location.origin, accountTokenProvider: () => accountClient.token });
 let avatarPreview = null;
 function disposeAvatarPreview() {
@@ -855,12 +859,14 @@ async function submitAccountForm(action) {
       const backup = createLegacyProfileBackup(profileStore.storage, profileStore.profile);
       const payload = buildLegacyProfileMigrationPayload(profileStore.profile);
       profileSyncCoordinator.enqueueProfile(payload);
-      await profileSyncCoordinator.flush();
+      const syncResult = await profileSyncCoordinator.flush();
       renderPage('account');
       const refreshedStatus = document.getElementById('account-status');
-      if (refreshedStatus) refreshedStatus.textContent = backup.created
-        ? 'Migration terminée : sauvegarde locale intégrale créée ; identité et apparence synchronisées. Progression locale préservée.'
-        : 'Migration actualisée : sauvegarde locale existante conservée ; identité et apparence synchronisées. Progression locale préservée.';
+      if (refreshedStatus) refreshedStatus.textContent = syncResult.uploaded > 0
+        ? (backup.created
+          ? 'Migration terminée : sauvegarde locale intégrale créée ; identité et apparence confirmées sur le compte. Progression locale préservée.'
+          : 'Migration actualisée : sauvegarde locale existante conservée ; identité et apparence confirmées sur le compte. Progression locale préservée.')
+        : 'Sauvegarde locale conservée ; synchronisation cloud en attente du compte correspondant.';
       return;
     } else if (action === 'restore-profile') {
       const result = await accountClient.getProfile();
