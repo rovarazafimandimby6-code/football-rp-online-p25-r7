@@ -13,6 +13,7 @@ const redirectUri = "https://p27.example.test/api/auth/google/callback";
 
 class TransactionD1 {
   constructor() { this.rows = new Map(); }
+  async batch(statements) { return Promise.all(statements.map(statement => statement.run())); }
   prepare(sql) {
     const db = this;
     return {
