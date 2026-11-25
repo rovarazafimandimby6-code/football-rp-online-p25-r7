@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { applyPlayerAction, stepRoomSimulation, resetRoomBall } from './simulation.js';
 import { resolveMatchClub, cloneMatchTeams } from './club-catalog.js';
 import { averageAiShouldAct, averageAiAim, averageAiMovement } from '../src/average-ai.js';
@@ -542,7 +542,7 @@ export class RoomManager {
     if (this.careerStore) {
       for (const player of performance.players) {
         const livePlayer = room.players.get(player.playerId);
-        if (!player.careerPlayerId || player.minutesPlayedMs < 15_000) continue;
+        if (!livePlayer?.careerPlayerId || player.minutesPlayedMs < 15_000) continue;
         const outcome = blue === red ? 'draw' : (player.team === (blue > red ? 'blue' : 'red') ? 'win' : 'loss');
         const teamName = room.teams[player.team]?.name || '';
         const opponentTeam = player.team === 'blue' ? 'red' : 'blue';
@@ -554,10 +554,10 @@ export class RoomManager {
           cleanSheet: (player.team === 'blue' ? red : blue) === 0,
           stats: player.stats, name: player.name, clubName: teamName
         };
-        this.careerStore.recordPlayerMatch(player.careerPlayerId, careerInput);
+        this.careerStore.recordPlayerMatch(livePlayer.careerPlayerId, careerInput);
         if (livePlayer?.accountId && !player.isBot) this.careerStore.recordMatch(livePlayer.accountId, careerInput);
-        if (livePlayer?.accountId && !player.isBot && /^FRP-[0-9]{6}$/.test(player.careerPlayerId || '')) {
-          this.careerSyncQueue?.enqueue({ accountId: livePlayer.accountId, playerId: player.careerPlayerId, matchId: room.id, payload: careerInput });
+        if (livePlayer?.accountId && !player.isBot && /^FRP-[0-9]{6}$/.test(livePlayer.careerPlayerId || '')) {
+          this.careerSyncQueue?.enqueue({ accountId: livePlayer.accountId, playerId: livePlayer.careerPlayerId, matchId: room.id, payload: careerInput });
         }
       }
     }

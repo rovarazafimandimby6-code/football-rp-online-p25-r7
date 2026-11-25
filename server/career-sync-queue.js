@@ -70,8 +70,10 @@ export class JsonCareerSyncQueue {
       return { queued: false, duplicate: true, pending: this.state.pending.length };
     }
     if (this.state.pending.length >= this.maxPending) throw new Error('CAREER_SYNC_QUEUE_FULL');
-    this.state.pending.push(item);
-    this.persist();
+    const previous = this.state;
+    this.state = { version: 1, pending: [...previous.pending, item] };
+    try { this.persist(); }
+    catch (error) { this.state = previous; throw error; }
     return { queued: true, duplicate: false, pending: this.state.pending.length };
   }
 
