@@ -103,6 +103,40 @@ export class OnlineAccountClient {
     return result;
   }
 
+  async previewAccountRecovery({ outbox, localIdentity = null, localState } = {}) {
+    const result = await this.getAccountSnapshot();
+    const playerId = result.snapshot.player?.playerId;
+    if (!/^FRP-[0-9]{6}$/.test(playerId || '') || this.account?.playerId !== playerId) {
+      return { ready: false, reason: 'ACCOUNT_PLAYER_ID_MISMATCH', revision: result.revision };
+    }
+    if (localIdentity && (localIdentity.id !== playerId || localIdentity.accountId !== this.account?.id)) {
+      return { ready: false, reason: 'LOCAL_IDENTITY_MISMATCH', revision: result.revision };
+    }
+    if (!outbox || typeof outbox.status !== 'function') {
+      return { ready: false, reason: 'LOCAL_OUTBOX_NOT_ASSESSED', revision: result.revision };
+    }
+    const pending = outbox.status().pending;
+    if (!Number.isSafeInteger(pending) || pending < 0) {
+      return { ready: false, reason: 'LOCAL_OUTBOX_INVALID', revision: result.revision };
+    }
+    if (pending > 0) return { ready: false, reason: 'LOCAL_CHANGES_PENDING', pending, revision: result.revision };
+    const stateKeys = ['profile', 'career', 'progression', 'seasonStats'];
+    if (!localState || stateKeys.some(key => typeof localState[key] !== 'boolean')) {
+      return { ready: false, reason: 'LOCAL_STATE_NOT_ASSESSED', revision: result.revision };
+    }
+    if (stateKeys.some(key => localState[key])) {
+      return { ready: false, reason: 'LOCAL_DATA_PRESENT', revision: result.revision };
+    }
+    return {
+      ready: true,
+      reason: 'EXPLICIT_RESTORE_CONFIRMATION_REQUIRED',
+      playerId,
+      revision: result.revision,
+      generatedAt: result.generatedAt || null,
+      snapshot: result.snapshot
+    };
+  }
+
   async saveProfile(profile) {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     return this.request('/api/profile', { method: 'PUT', auth: true, body: { profile } });

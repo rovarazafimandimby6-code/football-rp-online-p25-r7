@@ -65,6 +65,69 @@ test('P27 récupération cloud : refuse un snapshot dont le contenu ne correspon
   await assert.rejects(() => client.getAccountSnapshot(), /INVALID_ACCOUNT_SNAPSHOT_REVISION/);
 });
 
+test('P27 récupération cloud : prévisualise sans écrire quand le nouvel appareil est vierge', async () => {
+  const snapshot = { schemaVersion: 1, player: { playerId: 'FRP-123456' }, progression: { level: 4 }, career: { totals: { matches: 3 }, matches: [] } };
+  const client = new OnlineAccountClient({
+    storage: null,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed', generatedAt: '2026-11-25T07:00:00.000Z' }) })
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  const outbox = { status: () => ({ pending: 0 }) };
+  const preview = await client.previewAccountRecovery({
+    outbox,
+    localState: { profile: false, career: false, progression: false, seasonStats: false }
+  });
+  assert.equal(preview.ready, true);
+  assert.equal(preview.reason, 'EXPLICIT_RESTORE_CONFIRMATION_REQUIRED');
+  assert.equal(preview.playerId, 'FRP-123456');
+  assert.equal(preview.snapshot.career.totals.matches, 3);
+});
+
+test('P27 récupération cloud : bloque les changements locaux en attente et les données déjà présentes', async () => {
+  const snapshot = { schemaVersion: 1, player: { playerId: 'FRP-123456' } };
+  const client = new OnlineAccountClient({
+    storage: null,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed' }) })
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  const localState = { profile: false, career: false, progression: false, seasonStats: false };
+  const pending = await client.previewAccountRecovery({ outbox: { status: () => ({ pending: 2 }) }, localState });
+  assert.equal(pending.ready, false);
+  assert.equal(pending.reason, 'LOCAL_CHANGES_PENDING');
+  const existing = await client.previewAccountRecovery({
+    outbox: { status: () => ({ pending: 0 }) },
+    localState: { ...localState, career: true }
+  });
+  assert.equal(existing.ready, false);
+  assert.equal(existing.reason, 'LOCAL_DATA_PRESENT');
+});
+
+test('P27 récupération cloud : refuse une identité locale ou un compte qui ne correspond pas au joueur du snapshot', async () => {
+  const snapshot = { schemaVersion: 1, player: { playerId: 'FRP-123456' } };
+  const client = new OnlineAccountClient({
+    storage: null,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed' }) })
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  const mismatch = await client.previewAccountRecovery({
+    localIdentity: { accountId: 'other-account', id: 'FRP-123456' },
+    outbox: { status: () => ({ pending: 0 }) },
+    localState: { profile: false, career: false, progression: false, seasonStats: false }
+  });
+  assert.equal(mismatch.ready, false);
+  assert.equal(mismatch.reason, 'LOCAL_IDENTITY_MISMATCH');
+  client.account.playerId = 'FRP-999999';
+  const wrongAccount = await client.previewAccountRecovery({
+    outbox: { status: () => ({ pending: 0 }) },
+    localState: { profile: false, career: false, progression: false, seasonStats: false }
+  });
+  assert.equal(wrongAccount.ready, false);
+  assert.equal(wrongAccount.reason, 'ACCOUNT_PLAYER_ID_MISMATCH');
+});
+
 test('P27 récupération cloud : refuse snapshot invalide et compte absent', async () => {
   const invalid = new OnlineAccountClient({
     storage: null,
