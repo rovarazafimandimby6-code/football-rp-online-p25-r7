@@ -108,3 +108,13 @@ test("JWKS rejects malformed or ambiguous key sets", async () => {
   });
   await assert.rejects(cache.getKeys(), /GOOGLE_JWKS_INVALID/);
 });
+
+test("Cloudflare verifier rejects a token that is not yet valid", async () => {
+  const f = await fixture({ nbf: Math.floor(now / 1000) + 600 });
+  await assert.rejects(
+    verifyGoogleWorkerIdToken(f.token, {
+      clientId, expectedNonce: nonce, jwksCache: f.cache, now: () => now,
+    }),
+    /GOOGLE_ID_TOKEN_NOT_YET_VALID/,
+  );
+});

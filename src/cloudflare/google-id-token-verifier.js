@@ -1,4 +1,4 @@
-const GOOGLE_ISSUERS = new Set(["https://accounts.google.com"]);
+const GOOGLE_ISSUERS = new Set(["https://accounts.google.com", "accounts.google.com"]);
 const GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
 const MAX_TOKEN_LENGTH = 16_384;
 const MAX_JWKS_KEYS = 20;
@@ -138,6 +138,9 @@ export async function verifyGoogleWorkerIdToken(idToken, {
   const skew = Math.max(0, Math.min(300, Number(clockSkewSeconds) || 0));
   if (!Number.isFinite(claims.exp) || claims.exp <= seconds - skew) throw new Error("GOOGLE_ID_TOKEN_EXPIRED");
   if (!Number.isFinite(claims.iat) || claims.iat > seconds + skew) throw new Error("GOOGLE_ID_TOKEN_ISSUED_AT_INVALID");
+  if (claims.nbf !== undefined && (!Number.isFinite(claims.nbf) || claims.nbf > seconds + skew)) {
+    throw new Error("GOOGLE_ID_TOKEN_NOT_YET_VALID");
+  }
   if (!constantTimeEqual(claims.nonce, expectedNonce)) throw new Error("GOOGLE_ID_TOKEN_NONCE_INVALID");
   if (typeof claims.sub !== "string" || !/^[A-Za-z0-9_-]{8,255}$/.test(claims.sub)) {
     throw new Error("GOOGLE_ID_TOKEN_SUBJECT_INVALID");
