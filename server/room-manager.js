@@ -63,7 +63,7 @@ export class RoomManager {
       const reason = String(error?.message || 'ROOM_CHECKPOINT_FAILED').slice(0, 160);
       for (const room of active) {
         room.checkpointError = reason;
-        process.stderr.write(`P27 room checkpoint failed (${room.id}): ${reason}\\n`);
+        process.stderr.write(\`P27 room checkpoint failed (\${room.id}): \${reason}\n\`);
       }
       return { saved: 0, failed: active.map(room => ({ roomId: room.id, reason })) };
     }
