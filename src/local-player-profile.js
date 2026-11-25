@@ -3,9 +3,13 @@ function createPlayerNumber() {
   const bytes = new Uint32Array(1);
   if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(bytes);
   else throw new Error('SECURE_RANDOM_UNAVAILABLE');
-  const limit = Math.floor(0x1_0000_0000 / 900000) * 900000;\n  let value = bytes[0];\n  while (value >= limit) { globalThis.crypto.getRandomValues(bytes); value = bytes[0]; }\n  return String(100000 + (value % 900000));
+  const limit = Math.floor(0x1_0000_0000 / 900000) * 900000;
+  let value = bytes[0];
+  while (value >= limit) { globalThis.crypto.getRandomValues(bytes); value = bytes[0]; }
+  return String(100000 + (value % 900000));
 }
-function createLocalProfileKey() { if (!globalThis.crypto?.randomUUID) throw new Error('SECURE_RANDOM_UNAVAILABLE'); return globalThis.crypto.randomUUID(); }\nfunction cleanDisplayName(value) { return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').slice(0, 32) : ''; }
+function createLocalProfileKey() { if (!globalThis.crypto?.randomUUID) throw new Error('SECURE_RANDOM_UNAVAILABLE'); return globalThis.crypto.randomUUID(); }
+function cleanDisplayName(value) { return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').slice(0, 32) : ''; }
 export class LocalPlayerProfile {
   constructor({ storage = globalThis.localStorage, now = () => new Date().toISOString(), idFactory = createPlayerNumber } = {}) { this.storage = storage || null; this.now = now; this.idFactory = idFactory; }
   load() {
@@ -41,7 +45,7 @@ export class LocalPlayerProfile {
     });
     let payload = {};
     try { payload = await response.json(); } catch {}
-    if (!response.ok || typeof payload.playerId !== 'string' || !/^FRP-\\d{6}$/.test(payload.playerId) || payload.reserved !== true) throw new Error(payload.error || 'PLAYER_ID_RESERVATION_FAILED');
+    if (!response.ok || typeof payload.playerId !== 'string' || !/^FRP-\d{6}$/.test(payload.playerId) || payload.reserved !== true) throw new Error(payload.error || 'PLAYER_ID_RESERVATION_FAILED');
     const next = { ...current, id: payload.playerId, identityStatus: 'reserved', updatedAt: this.now() };
     this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, profile: next }));
     return structuredClone(next);
