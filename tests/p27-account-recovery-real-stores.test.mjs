@@ -2,68 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PlayerProfileStore } from '../src/player-profile.js';
 import { PlayerSeasonStats } from '../src/player-season-stats.js';
+import { CareerManager } from '../src/career-manager.js';
 import { createAccountRecoveryAdapters, readAccountRecoveryArchives } from '../src/account-recovery-adapters.js';
 import { restoreAccountSnapshot } from '../src/account-recovery.js';
-
-class MemoryStorage {
-  values = new Map();
-  getItem(key) { return this.values.has(key) ? this.values.get(key) : null; }
-  setItem(key, value) { this.values.set(key, String(value)); }
-  removeItem(key) { this.values.delete(key); }
-}
-const revision = 'c'.repeat(64);
-const makeSnapshot = () => ({
-  schemaVersion: 1,
-  profile: {
-    identity: { displayName: 'Cloud Player', number: 9, preferredFoot: 'left', role: 'FWD' },
-    appearance: { kit: 'crimson', skinTone: 'dark', hairStyle: 'fade', hairColor: 'brown', bodyBuild: 'lean' },
-    progression: { level: 1, experience: 0, coins: 250, trainingPoints: 0, attributes: { pace: 55 } },
-    appliedMatchIds: []
-  },
-  progression: {
-    level: 7, experience: 25, coins: 1250, trainingPoints: 4,
-    attributes: { pace: 80, shooting: 75, passing: 60, defense: 40, stamina: 70, control: 72 },
-    processedMatchIds: ['online-match-1']
-  },
-  career: { totals: { matches: 1 }, matches: [{ matchId: 'online-match-1', result: 'win' }] },
-  playerCareer: { player: null, totals: { matches: 1 }, matches: [{ matchId: 'online-match-1', result: 'win' }] },
-  seasonStats: {
-    totals: { matches: 1, wins: 1, goals: 2 },
-    matches: [{ matchId: 'online-match-1', result: 'win', goals: 2, role: 'FWD' }],
-    processedMatchIds: ['online-match-1']
-  },
-  contract: { wallet: 600, clubId: 'club-9', contract: null, offers: [], history: [], loanOffers: [{ id: 'loan-1' }], loanHistory: [] }
-});
-test('adaptateurs P27 : utilisent les stores de production et restaurent leurs modèles normalisés', async () => {
-  const storage = new MemoryStorage();
-  const profileStore = new PlayerProfileStore(storage);
-  const seasonStatsStore = new PlayerSeasonStats(storage);
-  profileStore.save({ ...profileStore.profile, identity: { ...profileStore.profile.identity, displayName: 'Local Player' } });
-  seasonStatsStore.recordMatch({ result: 'loss', matchId: 'local-match', stats: { goals: 0 } });
-  const result = await restoreAccountSnapshot({
-    preview: { ready: true, reason: 'EXPLICIT_RESTORE_CONFIRMATION_REQUIRED', revision, snapshot: makeSnapshot() },
-    currentRevision: revision, confirmed: true,
-    adapters: createAccountRecoveryAdapters({ profileStore, seasonStatsStore })
-  });
-  assert.equal(result.ok, true);
-  assert.equal(profileStore.profile.identity.displayName, 'Cloud Player');
-  assert.equal(profileStore.profile.progression.level, 7);
-  assert.deepEqual(profileStore.profile.appliedMatchIds, ['online-match-1']);
-  assert.equal(seasonStatsStore.totals.matches, 1);
-  assert.equal(seasonStatsStore.totals.goals, 2);
-  assert.equal(seasonStatsStore.matches[0].matchId, 'online-match-1');
-  assert.equal(readAccountRecoveryArchives(storage).transferCareer.loanOffers[0].id, 'loan-1');
-});
-test('adaptateurs P27 : ne suppriment pas les autres clés locales', async () => {
-  const storage = new MemoryStorage();
-  storage.setItem('unrelated.game.preference', 'keep-me');
-  const profileStore = new PlayerProfileStore(storage);
-  const seasonStatsStore = new PlayerSeasonStats(storage);
-  const result = await restoreAccountSnapshot({
-    preview: { ready: true, reason: 'EXPLICIT_RESTORE_CONFIRMATION_REQUIRED', revision, snapshot: makeSnapshot() },
-    currentRevision: revision, confirmed: true,
-    adapters: createAccountRecoveryAdapters({ profileStore, seasonStatsStore })
-  });
-  assert.equal(result.ok, true);
-  assert.equal(storage.getItem('unrelated.game.preference'), 'keep-me');
-});
+class MemoryStorage{values=new Map();getItem(k){return this.values.has(k)?this.values.get(k):null;}setItem(k,v){this.values.set(k,String(v));}removeItem(k){this.values.delete(k);}}
+const revision='c'.repeat(64);
+const snapshot=()=>({schemaVersion:1,profile:{identity:{displayName:'Cloud Player',number:9,preferredFoot:'left',role:'FWD'},appearance:{kit:'crimson',skinTone:'dark',hairStyle:'fade',hairColor:'brown',bodyBuild:'lean'},progression:{level:1,experience:0,coins:250,trainingPoints:0,attributes:{pace:55}},appliedMatchIds:[]},progression:{level:7,experience:25,coins:1250,trainingPoints:4,attributes:{pace:80,shooting:75,passing:60,defense:40,stamina:70,control:72},processedMatchIds:['online-match-1']},career:{totals:{matches:1},matches:[{matchId:'online-match-1',result:'win'}]},playerCareer:{player:null,totals:{matches:1},matches:[{matchId:'online-match-1',result:'win'}]},seasonStats:{totals:{matches:1,wins:1,goals:2},matches:[{matchId:'online-match-1',result:'win',goals:2,role:'FWD'}],processedMatchIds:['online-match-1']},contract:{wallet:600,clubId:'club-9',contract:null,offers:[{id:'offer-1',fromClubId:'club-2',salary:100,fee:0,status:'pending'}],history:[{type:'signing',clubId:'club-9'}],loanOffers:[{id:'loan-1'}],loanHistory:[]}});
+function stores(storage){return{profileStore:new PlayerProfileStore(storage),seasonStatsStore:new PlayerSeasonStats(storage),careerManager:new CareerManager({storage,initialCoins:2500})};}
+async function restore(storage,s,adapters){return restoreAccountSnapshot({preview:{ready:true,reason:'EXPLICIT_RESTORE_CONFIRMATION_REQUIRED',revision,snapshot:snapshot()},currentRevision:revision,confirmed:true,adapters:adapters||createAccountRecoveryAdapters({...s,storage})});}
+test('adaptateurs P27 : restaurent les stores actifs de profil, stats et carrière',async()=>{const storage=new MemoryStorage(),s=stores(storage);s.profileStore.save({...s.profileStore.profile,identity:{...s.profileStore.profile.identity,displayName:'Local Player'}});s.seasonStatsStore.recordMatch({result:'loss',matchId:'local-match'});const r=await restore(storage,s);assert.equal(r.ok,true);assert.equal(s.profileStore.profile.identity.displayName,'Cloud Player');assert.equal(s.profileStore.profile.progression.level,7);assert.deepEqual(s.profileStore.profile.appliedMatchIds,['online-match-1']);assert.equal(s.seasonStatsStore.totals.goals,2);assert.equal(s.careerManager.wallet,600);assert.equal(s.careerManager.clubId,'club-9');assert.equal(s.careerManager.offers.get('offer-1').status,'pending');assert.equal(s.careerManager.history[0].type,'signing');assert.equal(readAccountRecoveryArchives(storage).transferCareer.loanOffers[0].id,'loan-1');});
+test('adaptateurs P27 : rollbacke le CareerManager si une écriture ultérieure échoue',async()=>{const storage=new MemoryStorage(),s=stores(storage);s.careerManager.wallet=999;s.careerManager.persist();const a=createAccountRecoveryAdapters({...s,storage});const failing=[...a.slice(0,4),{...a[4],apply(){s.careerManager.wallet=0;throw Error('disk failure');}}];const r=await restore(storage,s,failing);assert.equal(r.reason,'RESTORE_APPLY_FAILED');assert.equal(r.rolledBack,true);assert.equal(s.careerManager.wallet,999);assert.equal(storage.getItem(s.careerManager.storageKey),JSON.stringify(s.careerManager.snapshot()));});
+test('adaptateurs P27 : conservent les clés locales étrangères',async()=>{const storage=new MemoryStorage();storage.setItem('unrelated.game.preference','keep-me');const s=stores(storage);const r=await restore(storage,s);assert.equal(r.ok,true);assert.equal(storage.getItem('unrelated.game.preference'),'keep-me');});
