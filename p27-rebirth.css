@@ -855,3 +855,51 @@ body:has(#main-menu){overflow:hidden}
   #main-menu .career-summary>div{padding:11px}
 }
 
+
+
+/* P27 REBIRTH — career actions and touch clarity; pre-match menu only. */
+#main-menu .contract-panel,
+#main-menu .market-panel,
+#main-menu .market-history{padding:clamp(12px,1.8vw,18px)}
+#main-menu .contract-details>span,
+#main-menu .contract-details>small{color:#b8c8dc;line-height:1.5}
+#main-menu .contract-details>small{font-size:11px}
+#main-menu .contract-actions label,
+#main-menu .sign-contract-row label,
+#main-menu .offer-terms label{line-height:1.4}
+#main-menu .contract-actions input,
+#main-menu .sign-contract-row input,
+#main-menu .sign-contract-row select,
+#main-menu .offer-terms input{width:100%;min-width:0;box-sizing:border-box}
+#main-menu .contract-actions button,
+#main-menu .sign-contract-row button,
+#main-menu .offer-actions button{min-height:40px}
+#main-menu button:disabled{cursor:not-allowed;opacity:.42;filter:saturate(.55)}
+#main-menu .offer-card{display:flex;flex-direction:column;gap:2px}
+#main-menu .offer-actions{margin-top:auto;padding-top:10px}
+#main-menu .offer-heading{align-items:flex-start}
+#main-menu .offer-heading b{min-width:0;overflow-wrap:anywhere}
+#main-menu .history-list>div>small{color:#8fa5c0;font-variant-numeric:tabular-nums;white-space:nowrap}
+#main-menu .history-list>div>span{color:#c2d0e1;line-height:1.45}
+#main-menu .player-career-tags span{line-height:1.35}
+#main-menu .player-career-columns>*{min-width:0}
+#main-menu .player-library-toolbar label,
+#main-menu .club-discovery-toolbar label{min-width:0}
+@media(max-height:520px) and (orientation:landscape){
+  #main-menu .contract-panel,
+  #main-menu .market-panel,
+  #main-menu .market-history{padding:10px}
+  #main-menu .contract-actions button,
+  #main-menu .sign-contract-row button,
+  #main-menu .offer-actions button{min-height:36px}
+  #main-menu .offer-card{padding:10px}
+  #main-menu .history-list>div{padding:8px 0}
+}
+@media(max-width:560px){
+  #main-menu .contract-actions,
+  #main-menu .offer-actions{align-items:stretch}
+  #main-menu .contract-actions button,
+  #main-menu .offer-actions button{flex:1 1 120px}
+  #main-menu .sign-contract-row{grid-template-columns:1fr}
+  #main-menu .history-list>div>small{white-space:normal}
+}
