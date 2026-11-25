@@ -532,3 +532,46 @@ html,body{background:var(--p27-bg);color:var(--p27-text);font-family:Inter,Robot
 @media(prefers-reduced-motion:reduce){
   #main-menu *,#main-menu *:before,#main-menu *:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}
 }
+
+
+/* Viewport and native splash consistency — menu only; never targets #game-shell. */
+html:has(#main-menu),body:has(#main-menu){
+  width:100%;
+  min-width:0;
+  min-height:100%;
+  margin:0;
+  background:#080b12;
+  overscroll-behavior:none;
+}
+body:has(#main-menu){overflow:hidden}
+#main-menu{
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100vh;
+  height:100dvh;
+  min-height:0;
+  overflow:hidden;
+  overflow:clip;
+  display:flex;
+  flex-direction:column;
+  padding-left:env(safe-area-inset-left);
+  padding-right:env(safe-area-inset-right);
+}
+#main-menu .menu-layout{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+}
+#main-menu .menu-sidebar{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+#main-menu .menu-main{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+#main-menu .menu-footer{flex:0 0 auto}
+#menu-orientation{z-index:10000}
+@media(orientation:portrait){
+  #menu-orientation{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;background:#080b12;color:#eef4ff;font-size:clamp(16px,4vw,22px);font-weight:700;letter-spacing:.04em}
+  #main-menu{visibility:hidden;pointer-events:none}
+}
+@media(orientation:landscape){
+  #menu-orientation{display:none}
+  #main-menu{visibility:visible;pointer-events:auto}
+}
