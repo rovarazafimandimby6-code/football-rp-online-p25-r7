@@ -60,7 +60,13 @@ export class JsonAccountStore {
   }
 
   publicAccount(account) {
-    return { id: account.id, username: account.username, displayName: account.displayName, createdAt: account.createdAt };
+    return {
+      id: account.id,
+      username: account.passwordless ? (account.playerId || 'Joueur P27') : account.username,
+      displayName: account.displayName,
+      createdAt: account.createdAt,
+      ...(account.passwordless ? { passwordless: true, playerId: account.playerId || null } : {})
+    };
   }
 
   pruneSessions() {
@@ -81,6 +87,43 @@ export class JsonAccountStore {
 
   issueSession(account) {
     return this.transaction(() => this.issueSessionInTransaction(account));
+  }
+
+  /**
+   * Creates or resumes the internal passwordless P27 account for an already
+   * reserved player identity. The account ID is supplied by the identity registry;
+   * no user-chosen username or password is required or exposed.
+   */
+  issuePasswordlessSession(accountId, { playerId = null } = {}) {
+    if (typeof accountId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(accountId))
+      throw new Error('INVALID_ACCOUNT_ID');
+    if (playerId !== null && (typeof playerId !== 'string' || !/^FRP-\d{6}$/.test(playerId)))
+      throw new Error('INVALID_PLAYER_ID');
+    return this.transaction(() => {
+      let account = this.state.accounts.find(row => row.id === accountId);
+      if (account && account.passwordless !== true) throw new Error('ACCOUNT_ID_ALREADY_EXISTS');
+      if (!account) {
+        const salt = randomBytes(16).toString('hex');
+        const unreachablePassword = randomBytes(48).toString('base64url');
+        account = {
+          id: accountId,
+          username: `p27-${accountId.slice(0, 12)}`,
+          displayName: playerId || 'Joueur P27',
+          passwordSalt: salt,
+          passwordHash: hashPassword(unreachablePassword, salt),
+          passwordless: true,
+          playerId,
+          createdAt: new Date(this.now()).toISOString()
+        };
+        this.state.accounts.push(account);
+      } else if (playerId && account.playerId && account.playerId !== playerId) {
+        throw new Error('PLAYER_ID_MISMATCH');
+      } else if (playerId && !account.playerId) {
+        account.playerId = playerId;
+        account.displayName = playerId;
+      }
+      return this.issueSessionInTransaction(account);
+    });
   }
 
   register(input = {}) {
@@ -106,7 +149,7 @@ export class JsonAccountStore {
     const { username, password } = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
     const handle = String(username ?? '').trim().toLowerCase();
     const account = this.state.accounts.find(row => row.username === handle);
-    if (typeof password !== 'string' || password.length > 128 || !account) {
+    if (typeof password !== 'string' || password.length > 128 || !account || account.passwordless === true) {
       hashPassword(typeof password === 'string' ? password.slice(0, 128) : 'invalid-password', '00000000000000000000000000000000');
       return null;
     }
