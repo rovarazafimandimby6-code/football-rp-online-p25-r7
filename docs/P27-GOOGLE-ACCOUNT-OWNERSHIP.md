@@ -59,12 +59,12 @@ L'association Google est recommandée, jamais obligatoire. Ne jamais présenter 
 - Les jetons Google/P27 ne sont jamais journalisés.
 
 ## État technique et limites
-Le dépôt contient des comptes serveur historiques avec mot de passe et sessions. Ils ne doivent pas être présentés comme le parcours cible du joueur. Le module LocalPlayerProfile ajoute une fondation de profil local sans mot de passe ; son intégration au flux de création de carrière et à l'interface reste à faire.
+Le dépôt contient des comptes serveur historiques avec mot de passe et sessions. Ils ne doivent pas être présentés comme le parcours cible du joueur. Le module LocalPlayerProfile ajoute une fondation de profil local sans mot de passe. L'interface du menu présente maintenant l'état du profil local et une carte de protection Google dans « Mon footballeur », « Profil et synchronisation » et les paramètres. Le bouton Google reste volontairement désactivé tant que le flux OAuth réel n'est pas intégré ; aucun écran de mot de passe n'est proposé dans le parcours visible du compte joueur.
 
 Les stores serveur existent pour profil, progression, carrière, transferts, effectifs et sauvegardes locales périodiques. Cela ne prouve pas une sauvegarde cloud hors site, une authentification Google réelle, ni une synchronisation Android réelle.
 
 Ne pas déclarer la fonctionnalité complète avant :
-- intégration du profil local au parcours de création de carrière ;
+- intégration complète du profil local au cycle de vie de la carrière et aux sauvegardes de tous les systèmes de jeu ;
 - authentification Google OIDC réelle et configuration des identifiants ;
 - import/association d'une carrière locale sans perte ;
 - synchronisation automatique testée sur deux appareils ;
