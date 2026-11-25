@@ -375,10 +375,11 @@ function renderPage(page = 'home') {
     content.innerHTML = `<section class="competition-panel onboarding-panel">
       <span class="eyebrow">PREMIÈRE ÉTAPE · PROFIL JOUEUR</span>
       <h2>Bienvenue dans Football RP Online</h2>
-      <p>Créez votre footballeur pour recevoir automatiquement votre identifiant permanent au format FRP-000000 et commencer votre carrière.</p>
+      <p>Créez votre footballeur pour recevoir automatiquement votre identifiant joueur au format FRP-000000 et commencer votre carrière.</p>
       <form id="player-onboarding-form" class="career-form">
         <label>Nom de votre footballeur<input name="displayName" maxlength="20" autocomplete="nickname" value="${escapeHTML(profileStore.profile.identity.displayName === 'Nouveau joueur' ? '' : profileStore.profile.identity.displayName)}" placeholder="Votre nom de joueur" required></label>
         <button class="primary-cta" type="submit">CRÉER MON JOUEUR</button>
+        <p class="notice onboarding-status" role="status" aria-live="polite"></p>
       </form>
       <p class="notice">Aucun e-mail, mot de passe ou compte Google n'est nécessaire. Google restera facultatif et pourra être associé plus tard pour protéger votre carrière.</p>
     </section>`;
