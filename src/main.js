@@ -1133,7 +1133,7 @@ menu.addEventListener('click', event => {
     joinOnlineRoom(id);
   } else if (action === 'choose-match') {
     const options = clubs.listClubs().map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('');
-    document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MODE DISPONIBLE · MATCH RAPIDE</span><h2>Préparez votre entrée sur le terrain</h2><p>Match local de démonstration en 5 contre 5 face à une équipe contrôlée par le système. Chaque commande reste limitée à votre propre footballeur.</p><div class="matchup-selectors"><label>Équipe domicile<select id="match-home">${options}</select></label><div class="versus-mark">VS</div><label>Équipe extérieure<select id="match-away">${options}</select></label></div><div class="match-centre">
+    document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MODE DISPONIBLE · MATCH RAPIDE</span><h2>Préparez votre entrée sur le terrain</h2><p>Match local de démonstration en 5 contre 5 face à une équipe contrôlée par le système. Chaque commande reste limitée à votre propre footballeur.</p><div class="match-centre">
       <div class="match-centre-heading"><span class="eyebrow">AVANT-MATCH · CENTRE DE PRÉPARATION</span><b>CHOISISSEZ VOTRE AFFiche</b></div>
       <div class="matchup-selectors"><label>ÉQUIPE DOMICILE<select id="match-home">${options}</select></label><div class="versus-mark">VS</div><label>ÉQUIPE EXTÉRIEURE<select id="match-away">${options}</select></label></div>
       <div class="match-preview-grid">
@@ -1143,7 +1143,7 @@ menu.addEventListener('click', event => {
       </div>
       <div class="match-centre-foot"><span>FORMAT 5 CONTRE 5</span><span>CONTRÔLE INDIVIDUEL</span><span>ÉQUIPE DU SYSTÈME</span><span>${preferences.duration} MINUTES</span></div>
       <button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button>
-    </div><div class="mode-details"><span>5 contre 5</span><span>${preferences.duration} minutes</span><span>Présentation des équipes</span><span>Équipe du système</span></div><button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button></div>`;
+    </div></div>`;
     const homeSelect=document.getElementById('match-home'), awaySelect=document.getElementById('match-away');
     homeSelect.value=selectedMatchup.home; awaySelect.value=selectedMatchup.away;
     const updateMatchup=()=>{
