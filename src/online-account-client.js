@@ -32,6 +32,22 @@ function recoverySnapshotMissingSections(snapshot) {
   return missing;
 }
 
+function validProgressionResponse(result) {
+  const progression = result?.progression;
+  const attributes = progression?.attributes;
+  const count = value => Number.isSafeInteger(value) && value >= 0;
+  return Boolean(progression && typeof progression === 'object' && !Array.isArray(progression)
+    && count(progression.level) && progression.level >= 1 && progression.level <= 99
+    && count(progression.experience) && progression.experience <= 1_000_000_000
+    && count(progression.coins) && progression.coins <= 1_000_000_000
+    && count(progression.trainingPoints) && progression.trainingPoints <= 100_000
+    && attributes && typeof attributes === 'object' && !Array.isArray(attributes)
+    && ['pace','shooting','passing','defense','stamina','control'].every(key =>
+      Number.isSafeInteger(attributes[key]) && attributes[key] >= 1 && attributes[key] <= 99)
+    && Array.isArray(progression.processedMatchIds)
+    && progression.processedMatchIds.every(id => typeof id === 'string' && id.length > 0 && id.length <= 64));
+}
+
 export class OnlineAccountClient {
   constructor({ baseUrl = '', fetchImpl = globalThis.fetch, storage = globalThis.localStorage } = {}) {
     this.baseUrl = String(baseUrl).replace(/\/$/, '');
@@ -223,7 +239,9 @@ export class OnlineAccountClient {
 
   async getProgression() {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    return this.request('/api/progression', { auth: true });
+    const result = await this.request('/api/progression', { auth: true });
+    if (!validProgressionResponse(result)) throw new Error('INVALID_PROGRESSION_RESPONSE');
+    return result;
   }
 
   async trainAttribute(attribute, amount = 1) {

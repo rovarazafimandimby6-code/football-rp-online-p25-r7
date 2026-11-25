@@ -310,6 +310,34 @@ test('P27 session Google : les lectures et écritures de compte acceptent la ses
   }
 });
 
+test('P27 progression cloud : valide les champs et bornes avant utilisation', async () => {
+  const progression = {
+    level: 4, experience: 25, coins: 420, trainingPoints: 3,
+    attributes: { pace: 60, shooting: 50, passing: 51, defense: 45, stamina: 56, control: 52 },
+    processedMatchIds: ['room-123']
+  };
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example', storage: null,
+    fetchImpl: async (url, options) => {
+      assert.equal(url, 'https://game.example/api/progression');
+      assert.equal(options.headers.authorization, `Bearer ${client.token}`);
+      return { ok: true, status: 200, json: async () => ({ progression }) };
+    }
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  const result = await client.getProgression();
+  assert.deepEqual(result.progression, progression);
+
+  const invalid = new OnlineAccountClient({
+    storage: null,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({
+      progression: { ...progression, level: 100 }
+    }) })
+  });
+  invalid.token = client.token;
+  await assert.rejects(() => invalid.getProgression(), /INVALID_PROGRESSION_RESPONSE/);
+});
+
 test('P27 session Google : logout révoque aussi une session portée par cookie', async () => {
   const calls = [];
   const client = new OnlineAccountClient({

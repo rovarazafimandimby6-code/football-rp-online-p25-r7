@@ -48,6 +48,9 @@ test('P27 API compte : inscription, authentification, session protégée et rév
     assert.equal(cloudSnapshot.authority, 'server-confirmed');
     assert.equal(cloudSnapshot.snapshot.career.totals.matches, 1);
     assert.equal(cloudSnapshot.snapshot.career.totals.goals, 1);
+    assert.ok(cloudSnapshot.snapshot.progression.processedMatchIds.includes(room.id));
+    assert.ok(cloudSnapshot.snapshot.progression.coins > 250);
+    assert.equal(cloudSnapshot.snapshot.authority, undefined);
     assert.equal(cloudSnapshot.snapshot.profile, null);
     assert.equal(cloudSnapshot.snapshot.player, null);
     assert.equal(cloudSnapshot.snapshot.playerCareer, null);
