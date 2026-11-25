@@ -84,6 +84,10 @@ test('P27: les identités de clubs sont incluses dans les états publics et les 
     assert.equal(state.teams.blue.id, 'fianarantsoa-athletic');
     assert.equal(state.teams.red.id, 'antananarivo-fc');
     assert.equal(Object.values(state.players[0]).includes(joined.token), false);
+    const publicHuman = state.players.find(player => !player.isBot);
+    assert.ok(publicHuman);
+    assert.equal(Object.hasOwn(publicHuman, 'careerPlayerId'), false);
+    assert.equal(Object.hasOwn(publicHuman, 'accountId'), false);
     const room = manager.rooms.get(created.id);
     room.phase = 'fulltime';
     room.elapsedMs = 300000;

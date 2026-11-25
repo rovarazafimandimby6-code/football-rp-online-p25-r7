@@ -733,7 +733,7 @@ export class RoomManager {
   }
 
   publicState(room) {
-    const players = [...room.players.values()].map(({ token, accountId, careerPlayerId, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p }));
+    const players = [...room.players.values()].map(({ token, accountId, careerPlayerId, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p, ...(p.isBot && typeof careerPlayerId === 'string' ? { careerPlayerId } : {}) }));
     return {
       id: room.id, name: room.name, durationMinutes: room.durationMinutes,
       phase: room.phase, period: room.period, halftimeRemainingMs: room.phase === 'halftime' && room.halftimeUntil ? Math.max(0, room.halftimeUntil - this.now()) : 0, attackDirection: { ...room.attackDirection }, elapsedMs: room.elapsedMs, durationMs: room.durationMinutes * 60_000, sequence: room.sequence,
