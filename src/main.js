@@ -93,7 +93,7 @@ const queueAndSyncCurrentProfile = async () => {
   profileSyncCoordinator.enqueueCurrentProfile();
   return profileSyncCoordinator.flush();
 };
-void accountClient.resumeCookieSession().then(() => profileSyncCoordinator.flush()).catch(() => {});
+void accountClient.resumeCookieSession().then(() => { void profileSyncCoordinator.flush(); const button = document.querySelector('[data-action="account-recovery-preview"]'); if (button) button.disabled = false; }).catch(() => {});
 window.addEventListener('online', () => { void profileSyncCoordinator.flush().catch(() => {}); });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') void profileSyncCoordinator.flush().catch(() => {});
@@ -574,7 +574,11 @@ ${renderGoogleProtectionCard({ compact: true })}
     content.innerHTML = `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">VOTRE IDENTITÉ FOOTBALL RP</span><h2>${escapeHTML(profile.identity.displayName)}</h2></div><span class="local-tag">PROFIL LOCAL ACTIF</span></div>
       <p class="notice">Identifiant joueur : ${escapeHTML(localId)} · Niveau ${profile.progression.level} · Aucun mot de passe requis.</p>
       <p class="notice">Vous pouvez jouer, créer votre footballeur et faire progresser votre carrière sans compte Google. L'association est un choix, pas une condition d'accès au jeu.</p>
-    </section>${renderGoogleProtectionCard()}<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">À SAVOIR</span><h2>Avant d'associer Google</h2></div></div><p class="notice">Une fois la fonction disponible, Google protégera ce profil existant : aucune nouvelle carrière ne sera créée et la synchronisation se fera automatiquement lorsque la connexion Internet sera disponible.</p><p class="notice">Tant que Google n'est pas associé, les données restent sur cet appareil. Un formatage ou une suppression des données de l'application peut les faire perdre.</p></section>`;
+    </section>${renderGoogleProtectionCard()}<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">À SAVOIR</span><h2>Avant d'associer Google</h2></div></div><p class="notice">Une fois la fonction disponible, Google protégera ce profil existant : aucune nouvelle carrière ne sera créée et la synchronisation se fera automatiquement lorsque la connexion Internet sera disponible.</p><p class="notice">Tant que Google n'est pas associé, les données restent sur cet appareil. Un formatage ou une suppression des données de l'application peut les faire perdre.</p></section>
+      <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">SAUVEGARDE CLOUD</span><h2>Vérifier une récupération</h2></div></div>
+      <p class="notice">Cette vérification compare l'identité du compte, la sauvegarde serveur et les données locales. Elle ne restaure et ne remplace aucune donnée.</p>
+      <button class="small-action" data-action="account-recovery-preview" ${accountClient.hasSession ? '' : 'disabled'}>ANALYSER MA SAUVEGARDE</button>
+      <p class="notice" id="account-recovery-status" aria-live="polite">${accountClient.hasSession ? 'Compte connecté : vérification disponible.' : 'Connectez le compte associé à votre joueur pour vérifier sa sauvegarde.'}</p></section>`;
   } else if (page === 'mercato') {
     career.refreshContractStatus();
     career.refreshOfferStatuses();
@@ -839,6 +843,56 @@ async function loadAccountCareerSummary() {
   }
 }
 
+function hasStoredRecoveryData(storage, key) {
+  try { return Boolean(storage?.getItem(key)); }
+  catch (_) { return true; }
+}
+
+async function previewAccountRecoveryFromUi() {
+  const status = document.getElementById('account-recovery-status');
+  const button = document.querySelector('[data-action="account-recovery-preview"]');
+  if (!accountClient.hasSession) {
+    if (status) status.textContent = 'Connectez le compte associé à votre joueur avant toute vérification.';
+    return;
+  }
+  if (button) button.disabled = true;
+  if (status) status.textContent = 'Vérification de la sauvegarde serveur et des données locales…';
+  try {
+    const localState = {
+      profile: hasStoredRecoveryData(profileStore.storage, profileStore.key),
+      career: hasStoredRecoveryData(career.storage, career.storageKey),
+      progression: hasStoredRecoveryData(profileStore.storage, profileStore.key),
+      seasonStats: hasStoredRecoveryData(seasonStats.storage, seasonStats.key)
+    };
+    const preview = await accountClient.previewAccountRecovery({
+      outbox: profileSyncOutbox,
+      localIdentity: localPlayerIdentity?.accountId ? localPlayerIdentity : null,
+      localState
+    });
+    if (!status?.isConnected) return;
+    if (!preview.ready) {
+      const reasons = {
+        ACCOUNT_PLAYER_ID_MISMATCH: 'Le compte connecté ne correspond pas à l’identifiant joueur de la sauvegarde.',
+        LOCAL_IDENTITY_MISMATCH: 'L’identité locale ne correspond pas à ce compte. Aucune donnée n’a été modifiée.',
+        LOCAL_OUTBOX_NOT_ASSESSED: 'La file de synchronisation locale ne peut pas être vérifiée.',
+        LOCAL_CHANGES_PENDING: 'Des changements locaux attendent leur synchronisation. La récupération est bloquée pour les préserver.',
+        LOCAL_STATE_NOT_ASSESSED: 'L’état des données locales ne peut pas être vérifié.',
+        LOCAL_DATA_PRESENT: 'Des données de carrière existent déjà sur cet appareil. Aucun remplacement automatique n’est autorisé.',
+        LOCAL_OUTBOX_INVALID: 'La file de synchronisation locale est invalide.'
+      };
+      status.textContent = reasons[preview.reason] || 'La récupération est bloquée par une vérification de sécurité.';
+      return;
+    }
+    const matches = Number(preview.snapshot.career?.totals?.matches) || 0;
+    const level = Number(preview.snapshot.progression?.level) || 1;
+    status.textContent = 'Sauvegarde serveur vérifiée pour ' + preview.playerId + ' · Niveau ' + level + ' · ' + matches + ' match(s) en carrière. Aperçu uniquement : aucune donnée n’a été importée. Révision ' + preview.revision.slice(0, 12) + '.';
+  } catch (error) {
+    if (status?.isConnected) status.textContent = 'Vérification impossible : ' + String(error?.message || error).slice(0, 100);
+  } finally {
+    if (button?.isConnected) button.disabled = !accountClient.hasSession;
+  }
+}
+
 async function submitAccountForm(action) {
   const status = document.getElementById('account-status');
   const username = String(document.getElementById('account-username')?.value || '').trim().toLowerCase();
@@ -913,6 +967,8 @@ menu.addEventListener('click', event => {
     submitAccountForm('migrate-legacy');
   } else if (action === 'account-restore-profile') {
     submitAccountForm('restore-profile');
+  } else if (action === 'account-recovery-preview') {
+    void previewAccountRecoveryFromUi();
   } else if (action === 'account-logout') {
     submitAccountForm('logout');
   } else if (action === 'account-train' || action === 'account-practice') {
