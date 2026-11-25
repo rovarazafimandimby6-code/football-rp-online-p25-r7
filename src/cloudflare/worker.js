@@ -142,7 +142,7 @@ export default {
         return json(503, { error: "D1_BINDING_MISSING" });
       }
       const accounts = new D1PasswordlessAccountRepository(env.P27_DB);
-      const token = (request.headers.get("authorization") || "").replace(/^Bearer\\s+/i, "");
+      const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
 
       if (request.method === "GET" && url.pathname === "/api/accounts/me") {
         const account = await accounts.resolve(token);
