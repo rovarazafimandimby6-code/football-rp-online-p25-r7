@@ -14,7 +14,7 @@ test('P27 pré-livraison : valide le secret sans le divulguer et vérifie les r�
     });
     assert.equal(result.ok, true);
     assert.deepEqual(result.errors, []);
-    assert.equal(result.checked.length, 11);
+    assert.equal(result.checked.length, 14);
     assert.ok(result.checked.every(item => item.writable));
     assert.equal(JSON.stringify(result).includes('a'.repeat(48)), false);
   } finally { rmSync(root, { recursive: true, force: true }); }
@@ -36,9 +36,9 @@ test('P27 pré-livraison : détecte un répertoire de stockage non inscriptible'
     writeFileSync(blocked, 'file');
     const result = await runP27DeploymentPreflight({
       root,
-      env: { P27_ADMIN_TOKEN: 'b'.repeat(48), ROOMS_DIR: blocked },
+      env: { P27_ADMIN_TOKEN: 'b'.repeat(48), PLAYER_IDENTITIES_DIR: blocked },
     });
     assert.equal(result.ok, false);
-    assert.ok(result.errors.includes('STORAGE_NOT_WRITABLE:ROOMS_DIR'));
+    assert.ok(result.errors.includes('STORAGE_NOT_WRITABLE:PLAYER_IDENTITIES_DIR'));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

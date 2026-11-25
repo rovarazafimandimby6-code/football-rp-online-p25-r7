@@ -18,6 +18,7 @@ export function resolvePlayerBackupConfig({ env = process.env, root = process.cw
     keep: Math.max(2, Math.min(100, Math.floor(Number(env.P27_BACKUPS_KEEP) || 14))),
     directories: {
       accounts: path.resolve(env.ACCOUNTS_DIR || `${base}/data/accounts`),
+      playerIdentities: path.resolve(env.PLAYER_IDENTITIES_DIR || `${base}/data/player-identities`),
       profiles: path.resolve(env.PLAYER_PROFILES_DIR || `${base}/data/player-profiles`),
       progression: path.resolve(env.PLAYER_PROGRESSION_DIR || `${base}/data/progression`),
       careers: path.resolve(env.CAREERS_DIR || `${base}/data/careers`),

@@ -16,6 +16,9 @@ const STORAGE_PATHS = [
   ['SYSTEM_TRANSFERS_DIR', 'system-transfers'],
   ['ROOMS_DIR', 'rooms'],
   ['ACCOUNTS_DIR', 'accounts'],
+  ['PLAYER_IDENTITIES_DIR', 'player-identities'],
+  ['GOOGLE_OIDC_TRANSACTIONS_DIR', 'google-oidc-transactions'],
+  ['P27_BACKUPS_DIR', 'backups'],
 ];
 
 /** Checks deployment prerequisites without printing or returning secret material. */

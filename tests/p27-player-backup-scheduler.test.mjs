@@ -7,6 +7,9 @@ test('P27 sauvegarde: configuration borne l’intervalle et la rétention',()=>{
   assert.equal(config.intervalMs,5*60_000);
   assert.equal(config.keep,100);
   assert.equal(config.backupDirectory,'/srv/p27/data/backups');
+  assert.equal(config.directories.playerIdentities,'/srv/p27/data/player-identities');
+  const custom=resolvePlayerBackupConfig({root:'/srv/p27',env:{PLAYER_IDENTITIES_DIR:'/mnt/p27-identities'}});
+  assert.equal(custom.directories.playerIdentities,'/mnt/p27-identities');
   assert.equal(resolvePlayerBackupConfig({root:'/srv/p27',env:{P27_PLAYER_BACKUP_INTERVAL_MS:'invalid'}}).intervalMs,6*60*60_000);
 });
 
