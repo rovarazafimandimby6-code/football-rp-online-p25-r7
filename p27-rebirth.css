@@ -731,7 +731,7 @@ body:has(#main-menu){overflow:hidden}
 #main-menu .division-count{color:#8fa6c1;font-size:10px;font-weight:850;letter-spacing:.7px}
 #main-menu .club-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 #main-menu .club-card{grid-template-columns:64px minmax(0,1fr);gap:12px;padding:14px;min-height:190px}
-#main-menu .club-card .club-crest{width:58px;height:58px;object-fit:contain}
+#main-menu .club-card .club-crest-svg{display:block;flex:0 0 58px;width:58px;height:65px}
 #main-menu .club-card-copy{gap:7px}
 #main-menu .club-card-copy h3{font-size:16px;line-height:1.15}
 #main-menu .club-card-copy>p{margin:0;color:#aabbd0;font-size:11px}
@@ -743,7 +743,8 @@ body:has(#main-menu){overflow:hidden}
 #main-menu .club-roster-preview span{color:#9fb1c8;line-height:1.4}
 #main-menu .club-card .small-action{width:100%;min-height:38px}
 #main-menu .club-detail-hero{display:grid;grid-template-columns:clamp(84px,12vw,132px) minmax(0,1fr);gap:clamp(14px,2.5vw,28px);align-items:center;padding:clamp(16px,3vw,28px);margin:10px 0 16px}
-#main-menu .club-detail-hero>.club-crest{width:100%;max-width:124px;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.35))}
+#main-menu .club-detail-hero>.club-crest-svg{display:block;width:100%;max-width:124px;height:auto;aspect-ratio:100/112;filter:drop-shadow(0 10px 18px rgba(0,0,0,.35))}
+#main-menu .club-crest-svg svg{display:block;width:100%;height:100%;overflow:visible}
 #main-menu .club-detail-hero h2{font-size:clamp(22px,3.2vw,36px);line-height:1.05;margin:5px 0}
 #main-menu .club-detail-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:16px}
 #main-menu .club-detail-stats>span{display:grid;gap:4px;padding:9px;border:1px solid var(--p27-border);border-radius:7px;background:rgba(4,10,18,.25)}
@@ -809,7 +810,7 @@ body:has(#main-menu){overflow:hidden}
 @media(max-width:760px){
   #main-menu .club-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   #main-menu .club-card{grid-template-columns:48px minmax(0,1fr);padding:10px;gap:8px}
-  #main-menu .club-card .club-crest{width:44px;height:44px}
+  #main-menu .club-card .club-crest-svg{flex-basis:44px;width:44px;height:50px}
   #main-menu .club-card-copy h3{font-size:13px}
   #main-menu .club-meta-line{gap:4px}
   #main-menu .club-meta-line span{font-size:9px}
@@ -831,7 +832,7 @@ body:has(#main-menu){overflow:hidden}
   #main-menu .player-library-overview span{font-size:8px}
   #main-menu .club-grid{grid-template-columns:1fr}
   #main-menu .club-card{grid-template-columns:54px minmax(0,1fr);padding:12px}
-  #main-menu .club-card .club-crest{width:50px;height:50px}
+  #main-menu .club-card .club-crest-svg{flex-basis:50px;width:50px;height:56px}
   #main-menu .player-library-grid{grid-template-columns:1fr}
   #main-menu .club-detail-hero{grid-template-columns:64px minmax(0,1fr);gap:12px}
   #main-menu .club-detail-stats{gap:6px}
