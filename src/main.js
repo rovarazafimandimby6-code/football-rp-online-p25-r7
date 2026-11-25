@@ -251,7 +251,7 @@ function renderGoogleProtectionCard({ compact = false } = {}) {
     <p class="notice">${compact
       ? "Votre carrière fonctionne sans compte Google. Associez Google plus tard pour la retrouver sur un autre appareil."
       : "L'association Google est facultative. Elle protégera ce profil et cette carrière existants, sans créer un nouveau joueur."}</p>
-    <button class="small-action" type="button" disabled aria-disabled="true">CONNECTER AVEC GOOGLE · BIENTÔT DISPONIBLE</button>
+    <button class="small-action" type="button" data-action="google-link">ASSOCIER CE PROFIL À GOOGLE</button>
     <p class="notice">La connexion Google réelle et la synchronisation cloud ne sont pas encore activées.</p>
   </section>`;
 }
@@ -1056,6 +1056,26 @@ menu.addEventListener('click', event => {
     submitAccountForm('migrate-legacy');
   } else if (action === 'account-restore-profile') {
     submitAccountForm('restore-profile');
+  } else if (action === 'google-link' || action === 'google-login') {
+    const googleStatus = document.getElementById('account-recovery-status');
+    if (googleStatus) googleStatus.textContent = 'Connexion sécurisée en cours…';
+    void (async () => {
+      try {
+        let response;
+        if (action === 'google-login') response = await fetch('/api/auth/google/login/start', { method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' } });
+        else {
+          const identity = localPlayerProfileStore && localPlayerProfileStore.load();
+          if (!identity || identity.identityStatus !== 'reserved') throw new Error('LOCAL_IDENTITY_NOT_SERVER_RESERVED');
+          response = await fetch('/api/auth/google/start', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ localProfileKey: identity.localProfileKey, localProofSecret: identity.localProofSecret }) });
+        }
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'GOOGLE_AUTH_START_FAILED');
+        if (!payload.authorizationUrl || !payload.authorizationUrl.startsWith('https://accounts.google.com/')) throw new Error('INVALID_GOOGLE_AUTHORIZATION_URL');
+        window.location.assign(payload.authorizationUrl);
+      } catch (error) {
+        if (googleStatus && googleStatus.isConnected) googleStatus.textContent = error.message === 'GOOGLE_OIDC_NOT_CONFIGURED' ? 'Google OAuth doit encore être configuré sur le serveur.' : 'Google indisponible : ' + String(error.message || error).slice(0, 90);
+      }
+    })();
   } else if (action === 'account-recovery-preview') {
     void previewAccountRecoveryFromUi();
   } else if (action === 'account-recovery-restore') {
