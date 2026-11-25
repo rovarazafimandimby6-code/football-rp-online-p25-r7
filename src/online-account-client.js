@@ -84,21 +84,21 @@ export class OnlineAccountClient {
   }
 
   async getCareer() {
-    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     const result = await this.request('/api/career', { auth: true });
     if (!result?.career || !result.career.totals || !Array.isArray(result.career.matches)) throw new Error('INVALID_CAREER_RESPONSE');
     return result;
   }
 
   async getAccountSnapshot() {
-    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     const result = await this.request('/api/account/snapshot', { auth: true });
     if (!result?.snapshot || result.snapshot.schemaVersion !== 1 || !/^[a-f0-9]{64}$/.test(result.revision || '') || result.authority !== 'server-confirmed') throw new Error('INVALID_ACCOUNT_SNAPSHOT');
     return result;
   }
 
   async saveProfile(profile) {
-    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     return this.request('/api/profile', { method: 'PUT', auth: true, body: { profile } });
   }
 
@@ -120,7 +120,7 @@ export class OnlineAccountClient {
   }
 
   async syncPendingProfileSnapshots(outbox, { limit = 50 } = {}) {
-    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     if (!outbox || typeof outbox.pending !== 'function' || typeof outbox.acknowledge !== 'function'
       || typeof outbox.markAttempt !== 'function' || typeof outbox.status !== 'function') throw new Error('SYNC_OUTBOX_UNAVAILABLE');
     const pending = outbox.pending(limit);
@@ -138,17 +138,17 @@ export class OnlineAccountClient {
   }
 
   async getProgression() {
-    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     return this.request('/api/progression', { auth: true });
   }
 
   async trainAttribute(attribute, amount = 1) {
-    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     return this.request('/api/progression', { method: 'POST', auth: true, body: { action: 'train', attribute, amount } });
   }
 
   async practiceAttribute(attribute, amount = 1) {
-    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     return this.request('/api/progression', { method: 'POST', auth: true, body: { action: 'practice', attribute, amount } });
   }
 

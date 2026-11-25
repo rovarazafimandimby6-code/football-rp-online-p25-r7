@@ -155,3 +155,47 @@ test('P27 session Google : refuse une réponse /me invalide et reste anonyme', a
   await assert.rejects(() => client.resumeCookieSession(), /INVALID_ACCOUNT_SESSION/);
   assert.equal(client.hasSession, false);
 });
+
+
+test('P27 session Google : les lectures et écritures de compte acceptent la session HttpOnly', async () => {
+  const calls = [];
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example', storage: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      if (url.endsWith('/api/accounts/me')) return { ok: true, status: 200, json: async () => ({ account: { id: 'account-123' } }) };
+      if (url.endsWith('/api/career')) return { ok: true, status: 200, json: async () => ({ career: { totals: {}, matches: [] } }) };
+      if (url.endsWith('/api/account/snapshot')) return { ok: true, status: 200, json: async () => ({ snapshot: { schemaVersion: 1 }, revision: 'b'.repeat(64), authority: 'server-confirmed' }) };
+      if (url.endsWith('/api/profile')) return { ok: true, status: 200, json: async () => ({ profile: {} }) };
+      return { ok: true, status: 200, json: async () => ({ progression: {} }) };
+    }
+  });
+  await client.resumeCookieSession();
+  await client.getProfile();
+  await client.getCareer();
+  await client.getAccountSnapshot();
+  await client.saveProfile({ identity: { displayName: 'Rova' }, appearance: {} });
+  await client.getProgression();
+  assert.equal(calls.length, 6);
+  for (const call of calls.slice(1)) {
+    assert.equal(call.options.credentials, 'same-origin');
+    assert.equal(call.options.headers.authorization, undefined);
+  }
+});
+
+test('P27 session Google : logout révoque aussi une session portée par cookie', async () => {
+  const calls = [];
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example', storage: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, json: async () => url.endsWith('/api/accounts/me') ? { account: { id: 'account-123' } } : { loggedOut: true };
+    }
+  });
+  await client.resumeCookieSession();
+  assert.equal(await client.logout(), true);
+  assert.equal(calls[1].url, 'https://game.example/api/accounts/logout');
+  assert.equal(calls[1].options.method, 'POST');
+  assert.equal(calls[1].options.credentials, 'same-origin');
+  assert.equal(client.hasSession, false);
+});
