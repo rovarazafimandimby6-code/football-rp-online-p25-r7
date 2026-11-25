@@ -4,6 +4,8 @@ set -euo pipefail
 PORT="$(printenv P27_CLOUDFLARE_TEST_PORT || true)"
 if [[ -z "$PORT" ]]; then PORT=8787; fi
 LOG_FILE="$(mktemp)"
+FIRST_HEADERS="$(mktemp)"
+SECOND_HEADERS="$(mktemp)"
 SERVER_PID=""
 
 cleanup() {
@@ -11,7 +13,7 @@ cleanup() {
     kill "$SERVER_PID" 2>/dev/null || true
     wait "$SERVER_PID" 2>/dev/null || true
   fi
-  rm -f "$LOG_FILE"
+  rm -f "$LOG_FILE" "$FIRST_HEADERS" "$SECOND_HEADERS"
 }
 trap cleanup EXIT
 
@@ -40,10 +42,10 @@ LOCAL_PROFILE_KEY="11111111-1111-4111-8111-111111111111"
 PROOF_SECRET="$(printf 'a%.0s' {1..64})"
 PAYLOAD="$(printf '{"localProfileKey":"%s","localProofSecret":"%s"}' "$LOCAL_PROFILE_KEY" "$PROOF_SECRET")"
 
-FIRST="$(curl --silent --show-error --fail \
+FIRST="$(curl --silent --show-error --fail -D "$FIRST_HEADERS" \
   -H 'content-type: application/json' \
   -d "$PAYLOAD" "$BASE_URL/api/player-identities/reserve")"
-SECOND="$(curl --silent --show-error --fail \
+SECOND="$(curl --silent --show-error --fail -D "$SECOND_HEADERS" \
   -H 'content-type: application/json' \
   -d "$PAYLOAD" "$BASE_URL/api/player-identities/reserve")"
 
@@ -53,23 +55,19 @@ const first = JSON.parse(process.argv[2]);
 const second = JSON.parse(process.argv[3]);
 assert.equal(first.reserved, true);
 assert.equal(first.alreadyReserved, false);
-assert.equal(first.account.id, first.accountId);
-assert.equal(first.account.playerId, first.playerId);
-assert.equal(first.account.passwordless, true);
-assert.match(first.token, /^[A-Za-z0-9_-]{43}$/);
+assert.equal(Object.hasOwn(first, "token"), false);
+assert.equal(Object.hasOwn(first, "account"), false);
 assert.match(first.playerId, /^FRP-\d{6}$/);
 assert.equal(second.accountId, first.accountId);
 assert.equal(second.playerId, first.playerId);
 assert.equal(second.alreadyReserved, true);
 NODE
 
-ACCOUNT_TOKEN="$(node --input-type=module - "$FIRST" <<'NODE'
-const result = JSON.parse(process.argv[2]);
-process.stdout.write(result.token);
-NODE
-)"
+ACCOUNT_TOKEN="$(sed -n 's/^set-cookie: p27_account_session=\\([^;]*\\).*/\\1/ip' "$SECOND_HEADERS" | tr -d '\\r')"
+test -n "$ACCOUNT_TOKEN"
+grep -Eiq '^set-cookie: p27_account_session=.*HttpOnly.*Secure.*SameSite=Lax' "$SECOND_HEADERS"
 ME="$(curl --silent --show-error --fail \
-  -H "authorization: Bearer $ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
+  -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
 node --input-type=module - "$ME" "$FIRST" <<'NODE'
 import assert from "node:assert/strict";
 const me = JSON.parse(process.argv[2]);
@@ -80,7 +78,7 @@ assert.equal(me.account.passwordless, true);
 NODE
 
 curl --silent --show-error --fail \
-  -X POST -H "authorization: Bearer $ACCOUNT_TOKEN" \
+  -X POST -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" \
   "$BASE_URL/api/accounts/logout" | node --input-type=module -e '
 import assert from "node:assert/strict";
 let raw = "";
@@ -88,7 +86,7 @@ for await (const chunk of process.stdin) raw += chunk;
 assert.equal(JSON.parse(raw).loggedOut, true);
 '
 REVOKED_STATUS="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-  -H "authorization: Bearer $ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
+  -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
 test "$REVOKED_STATUS" = "401"
 
 VERIFIED="$(curl --silent --show-error --fail \
