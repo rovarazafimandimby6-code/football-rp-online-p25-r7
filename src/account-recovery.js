@@ -1,8 +1,13 @@
 const REVISION_PATTERN = /^[a-f0-9]{64}$/;
+const REQUIRED_SECTIONS = Object.freeze([
+  'profile', 'progression', 'career', 'playerCareer', 'seasonStats', 'contract'
+]);
 
 function validAdapter(adapter) {
   return Boolean(adapter && typeof adapter === 'object'
     && typeof adapter.id === 'string' && adapter.id.trim()
+    && Array.isArray(adapter.sections) && adapter.sections.length > 0
+    && adapter.sections.every(section => REQUIRED_SECTIONS.includes(section))
     && typeof adapter.prepare === 'function'
     && typeof adapter.capture === 'function'
     && typeof adapter.apply === 'function'
@@ -37,6 +42,11 @@ export async function restoreAccountSnapshot({
   }
   const ids = adapters.map(adapter => adapter.id);
   if (new Set(ids).size !== ids.length) return { ok: false, reason: 'RESTORE_ADAPTERS_DUPLICATED' };
+  const coveredSections = adapters.flatMap(adapter => adapter.sections);
+  if (new Set(coveredSections).size !== coveredSections.length
+    || REQUIRED_SECTIONS.some(section => !coveredSections.includes(section))) {
+    return { ok: false, reason: 'RESTORE_ADAPTER_COVERAGE_INVALID' };
+  }
 
   let prepared;
   try {
