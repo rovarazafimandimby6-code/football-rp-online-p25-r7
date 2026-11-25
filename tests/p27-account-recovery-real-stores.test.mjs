@@ -13,3 +13,30 @@ async function restore(storage,s,adapters){return restoreAccountSnapshot({previe
 test('adaptateurs P27 : restaurent les stores actifs de profil, stats et carrière',async()=>{const storage=new MemoryStorage(),s=stores(storage);s.profileStore.save({...s.profileStore.profile,identity:{...s.profileStore.profile.identity,displayName:'Local Player'}});s.seasonStatsStore.recordMatch({result:'loss',matchId:'local-match'});const r=await restore(storage,s);assert.equal(r.ok,true);assert.equal(s.profileStore.profile.identity.displayName,'Cloud Player');assert.equal(s.profileStore.profile.progression.level,7);assert.deepEqual(s.profileStore.profile.appliedMatchIds,['online-match-1']);assert.equal(s.seasonStatsStore.totals.goals,2);assert.equal(s.careerManager.wallet,600);assert.equal(s.careerManager.clubId,'club-9');assert.equal(s.careerManager.offers.get('offer-1').status,'pending');assert.equal(s.careerManager.history[0].type,'signing');assert.equal(readAccountRecoveryArchives(storage).transferCareer.loanOffers[0].id,'loan-1');});
 test('adaptateurs P27 : rollbacke le CareerManager si une écriture ultérieure échoue',async()=>{const storage=new MemoryStorage(),s=stores(storage);s.careerManager.wallet=999;s.careerManager.persist();const a=createAccountRecoveryAdapters({...s,storage});const failing=[...a.slice(0,4),{...a[4],apply(){s.careerManager.wallet=0;throw Error('disk failure');}}];const r=await restore(storage,s,failing);assert.equal(r.reason,'RESTORE_APPLY_FAILED');assert.equal(r.rolledBack,true);assert.equal(s.careerManager.wallet,999);assert.equal(storage.getItem(s.careerManager.storageKey),JSON.stringify(s.careerManager.snapshot()));});
 test('adaptateurs P27 : conservent les clés locales étrangères',async()=>{const storage=new MemoryStorage();storage.setItem('unrelated.game.preference','keep-me');const s=stores(storage);const r=await restore(storage,s);assert.equal(r.ok,true);assert.equal(storage.getItem('unrelated.game.preference'),'keep-me');});
+
+test('adaptateurs P27 : rollbacke exactement le profil si une écriture archive échoue après le CareerManager', async () => {
+  class FailOnceStorage extends MemoryStorage {
+    failKey = null;
+    setItem(key, value) {
+      if (this.failKey === key) { this.failKey = null; throw new Error('simulated quota failure'); }
+      super.setItem(key, value);
+    }
+  }
+  const storage = new FailOnceStorage();
+  const s = stores(storage);
+  const originalProfile = { ...s.profileStore.profile, identity: { ...s.profileStore.profile.identity, displayName: 'Original Local' } };
+  s.profileStore.save(originalProfile);
+  const originalRaw = storage.getItem(s.profileStore.key);
+  s.careerManager.wallet = 987;
+  s.careerManager.persist();
+  const originalCareerRaw = storage.getItem(s.careerManager.storageKey);
+  const adapters = createAccountRecoveryAdapters({ ...s, storage });
+  storage.failKey = 'football-rp-online.account-archive.transfer-career.v1';
+  const result = await restore(storage, s, adapters);
+  assert.equal(result.reason, 'RESTORE_APPLY_FAILED');
+  assert.equal(result.rolledBack, true);
+  assert.equal(storage.getItem(s.profileStore.key), originalRaw);
+  assert.equal(storage.getItem(s.careerManager.storageKey), originalCareerRaw);
+  assert.equal(s.profileStore.profile.identity.displayName, 'Original Local');
+  assert.equal(s.careerManager.wallet, 987);
+});
