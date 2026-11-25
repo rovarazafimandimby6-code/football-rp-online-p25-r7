@@ -1247,3 +1247,11 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] Lot 168 : vérifier les limites effectives du serveur dans le test de cycle de vie.
 - [x] Validation GitHub Actions : [run 45482354545](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45482354545), **732/732 tests réussis**, préflight et syntaxe réussis.
 - Limite : ces délais bornent les connexions HTTP du serveur Node ; les délais du proxy inverse et de l'hébergeur doivent être alignés lors du déploiement.
+### Lots 169–172 — simulation multi-salons et réduction des scans IA
+- [x] Lot 169 : construire une vue des joueurs actifs et des groupes bleu/rouge une fois par mise à jour IA, au lieu de filtrer les 20 membres du salon pour chaque bot.
+- [x] Lot 170 : calculer une seule fois par équipe le joueur le plus proche du ballon ; réutiliser ce résultat pour les décisions de pression et de couverture.
+- [x] Lot 171 : ajouter un test de simulation de 30 salons simultanés, 20 ticks, 14 joueurs par salon ; contrôler l'avancement des séquences, la conservation des effectifs et les coordonnées finies.
+- [x] Lot 172 : corriger la terminaison de ligne du journal d'erreur de checkpoint groupé et valider l'ensemble.
+- [x] CI GitHub Actions : [run 45546059142](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45546059142), **733/733 tests réussis**, 0 échec ; préflight et syntaxe réussis.
+- Résultat mesuré : le test automatisé fait avancer 30 salons et 420 joueurs enregistrés (14 par salon) sur 20 ticks sans perte d'état. Ce test valide l'intégrité sous charge déterministe, pas un nombre maximal de salons par seconde ni une capacité d'hébergement.
+- Limite : aucun benchmark de latence p95/p99 ni de consommation mémoire n'a été effectué sur un hébergeur ou un appareil Android réel.
