@@ -14,7 +14,7 @@ test('P27 pré-livraison : valide le secret sans le divulguer et vérifie les r�
     });
     assert.equal(result.ok, true);
     assert.deepEqual(result.errors, []);
-    assert.equal(result.checked.length, 14);
+    assert.equal(result.checked.length, 15);
     assert.ok(result.checked.every(item => item.writable));
     assert.equal(JSON.stringify(result).includes('a'.repeat(48)), false);
   } finally { rmSync(root, { recursive: true, force: true }); }
