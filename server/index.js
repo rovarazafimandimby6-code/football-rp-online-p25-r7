@@ -475,6 +475,13 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       res.setHeader('set-cookie', clearAccountSessionCookie());
       return json(res, 200, { loggedOut: true });
     }
+    if (req.method === 'POST' && url.pathname === '/api/accounts/sessions/revoke-all') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const revokedSessions = accountStore.revokeAll(account.id);
+      res.setHeader('set-cookie', clearAccountSessionCookie());
+      return json(res, 200, { revoked: true, revokedSessions });
+    }
     if (req.method === 'GET' && url.pathname === '/api/league-structure') {
       const clubs=[...competitionStore.clubs.values()];
       const divisionCounts=Object.fromEntries(LEAGUE_DIVISIONS.map(item=>[item.id,clubs.filter(club=>club.division===item.id).length]));

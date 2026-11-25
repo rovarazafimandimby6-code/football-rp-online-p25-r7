@@ -37,3 +37,18 @@ test('P27 sessions : login et révocation restaurent l’état si la persistance
   assert.equal(store.resolve(registered.token),null);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });
+
+test('P27 sessions : révocation globale invalide toutes les sessions du compte sans toucher aux autres comptes',()=>{
+ const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-session-revoke-all-'));
+ try{
+  const store=new JsonAccountStore(directory);
+  const first=store.register({username:'revoke_user1',password:'strong-password-111'});
+  const other=store.register({username:'revoke_user2',password:'strong-password-222'});
+  const another=store.login({username:'revoke_user1',password:'strong-password-111'});
+  assert.equal(store.revokeAll(first.account.id),2);
+  assert.equal(store.resolve(first.token),null);
+  assert.equal(store.resolve(another.token),null);
+  assert.equal(store.resolve(other.token).id,other.account.id);
+  assert.equal(store.revokeAll(first.account.id),0);
+ }finally{rmSync(directory,{recursive:true,force:true});}
+});

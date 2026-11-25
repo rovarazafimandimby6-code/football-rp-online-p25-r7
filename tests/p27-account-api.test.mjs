@@ -117,6 +117,20 @@ test('P27 API compte : inscription, authentification, session protégée et rév
     const revoked = await fetch(`${base}/api/accounts/me`, { headers: { authorization: `Bearer ${loggedIn.token}` } });
     assert.equal(revoked.status, 401);
 
+    const secondLogin = await fetch(`${base}/api/accounts/login`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    assert.equal(secondLogin.status, 200);
+    const secondSession = await secondLogin.json();
+    const revokeAll = await fetch(`${base}/api/accounts/sessions/revoke-all`, {
+      method: 'POST',
+      headers: { cookie: `p27_session=${secondSession.token}`, origin: base }
+    });
+    assert.equal(revokeAll.status, 200);
+    assert.equal((await revokeAll.json()).revoked, true);
+    assert.equal((await fetch(`${base}/api/accounts/me`, { headers: { authorization: `Bearer ${secondSession.token}` } })).status, 401);
+
     const invalidPayload = await fetch(`${base}/api/accounts/register`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: 'null'
     });

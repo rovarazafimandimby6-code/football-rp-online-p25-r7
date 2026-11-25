@@ -178,4 +178,15 @@ export class JsonAccountStore {
       return true;
     });
   }
+
+  revokeAll(accountId) {
+    if (typeof accountId !== 'string' || !accountId) return 0;
+    return this.transaction(() => {
+      const before = this.state.sessions.length;
+      this.state.sessions = this.state.sessions.filter(row => row.accountId !== accountId);
+      const revoked = before - this.state.sessions.length;
+      if (!revoked) return { skipPersist:true, value:0 };
+      return revoked;
+    });
+  }
 }
