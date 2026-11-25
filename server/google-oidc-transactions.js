@@ -5,6 +5,7 @@ import path from 'node:path';
 const digest = value => createHash('sha256').update(value).digest('base64url');
 const cleanBinding = value => typeof value === 'string' && value.length >= 24 && value.length <= 256 ? value : null;
 const validDigest = value => typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value);
+const validUuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 /**
  * Short-lived server-side OIDC transactions.
@@ -33,9 +34,9 @@ export class GoogleOidcTransactionStore {
       for (const row of parsed.transactions) {
         if (!row || !validDigest(row.key) || typeof row.nonce !== 'string' || row.nonce.length < 40
           || typeof row.codeVerifier !== 'string' || row.codeVerifier.length < 40
-          || !validDigest(row.bindingHash) || !Number.isSafeInteger(row.expiresAt)
+          || !validDigest(row.bindingHash) || (row.accountId !== undefined && !validUuid(row.accountId)) || !Number.isSafeInteger(row.expiresAt)
           || row.expiresAt <= 0 || rows.has(row.key)) throw new Error('bad transaction');
-        rows.set(row.key, { nonce: row.nonce, codeVerifier: row.codeVerifier, bindingHash: row.bindingHash, expiresAt: row.expiresAt });
+        rows.set(row.key, { nonce: row.nonce, codeVerifier: row.codeVerifier, bindingHash: row.bindingHash, ...(row.accountId ? { accountId: row.accountId } : {}), expiresAt: row.expiresAt });
       }
       return rows;
     } catch (error) {
@@ -67,9 +68,10 @@ export class GoogleOidcTransactionStore {
     }
   }
 
-  create({ sessionBinding } = {}) {
+  create({ sessionBinding, accountId } = {}) {
     const binding = cleanBinding(sessionBinding);
     if (!binding) throw new Error('INVALID_OIDC_SESSION_BINDING');
+    if (accountId !== undefined && !validUuid(accountId)) throw new Error('INVALID_OIDC_ACCOUNT_ID');
     this.prune();
     if (this.transactions.size >= this.maxEntries) throw new Error('GOOGLE_OIDC_TRANSACTION_STORE_FULL');
     const state = randomBytes(32).toString('base64url');
@@ -79,7 +81,7 @@ export class GoogleOidcTransactionStore {
     const key = digest(state);
     const previous = this.transactions;
     this.transactions = new Map(previous);
-    this.transactions.set(key, { nonce, codeVerifier, bindingHash: digest(binding), expiresAt });
+    this.transactions.set(key, { nonce, codeVerifier, bindingHash: digest(binding), ...(accountId ? { accountId } : {}), expiresAt });
     try { this.persist(); } catch (error) { this.transactions = previous; throw error; }
     return {
       state, nonce, codeVerifier,
@@ -108,6 +110,6 @@ export class GoogleOidcTransactionStore {
     this.transactions = new Map(previous);
     this.transactions.delete(key);
     try { this.persist(); } catch (error) { this.transactions = previous; throw error; }
-    return { nonce: row.nonce, codeVerifier: row.codeVerifier, expiresAt: new Date(row.expiresAt).toISOString() };
+    return { nonce: row.nonce, codeVerifier: row.codeVerifier, ...(row.accountId ? { accountId: row.accountId } : {}), expiresAt: new Date(row.expiresAt).toISOString() };
   }
 }
