@@ -251,7 +251,7 @@ function renderGoogleProtectionCard({ compact = false } = {}) {
     <p class="notice">${compact
       ? "Votre carrière fonctionne sans compte Google. Associez Google plus tard pour la retrouver sur un autre appareil."
       : "L'association Google est facultative. Elle protégera ce profil et cette carrière existants, sans créer un nouveau joueur."}</p>
-    <button class="small-action" type="button" data-action="google-link">ASSOCIER CE PROFIL À GOOGLE</button><button class="small-action" type="button" data-action="google-login">CONTINUER AVEC GOOGLE · RÉCUPÉRER</button>
+    <button class="small-action" type="button" data-action="google-link">ASSOCIER CE PROFIL À GOOGLE</button>
     <p class="notice">La connexion Google réelle et la synchronisation cloud ne sont pas encore activées.</p>
   </section>`;
 }

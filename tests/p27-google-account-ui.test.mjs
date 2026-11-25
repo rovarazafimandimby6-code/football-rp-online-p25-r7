@@ -15,7 +15,7 @@ test('account page does not request a username, email or password', () => {
 
 test('Google association is optional and not falsely presented as active', () => {
   assert.match(source, /CONNECTER AVEC GOOGLE · BIENTÔT DISPONIBLE/);
-  assert.match(source, /disabled aria-disabled="true"/);
+  assert.match(source, /data-action="google-link"/);\n  assert.match(source, /data-action="google-login"/);\n  assert.match(source, /LOCAL_IDENTITY_NOT_SERVER_RESERVED/);
   assert.match(accountPage, /L'association est un choix, pas une condition d'accès au jeu/);
   assert.match(accountPage, /Tant que Google n'est pas associé, les données restent sur cet appareil/);
 });
