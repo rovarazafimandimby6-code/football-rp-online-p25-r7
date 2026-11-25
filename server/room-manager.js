@@ -9,13 +9,14 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Authoritative in-memory 5v5 room manager. One input stream controls one avatar. */
 export class RoomManager {
-  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, roomStore = null, careerStore = null, progressionStore = null, competitionStore = null } = {}) {
+  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, roomStore = null, careerStore = null, careerSyncQueue = null, progressionStore = null, competitionStore = null } = {}) {
     this.now = now;
     this.roomTtlMs = roomTtlMs;
     this.disconnectGraceMs = disconnectGraceMs;
     this.resultStore = resultStore;
     this.roomStore = roomStore;
     this.careerStore = careerStore;
+    this.careerSyncQueue = careerSyncQueue;
     this.progressionStore = progressionStore;
     this.competitionStore = competitionStore;
     this.rooms = new Map();
@@ -514,7 +515,7 @@ export class RoomManager {
   finalizeResult(room) {
     if (room.result) return room.result;
     const players = [...room.players.values()].map(player => ({
-      playerId: player.id, careerPlayerId: player.careerPlayerId || (player.accountId ? `human-${createHash('sha256').update(player.accountId).digest('hex').slice(0,32)}` : null), name: player.name, team: player.team, role: player.role,
+      playerId: player.id, careerPlayerId: player.careerPlayerId || null, name: player.name, team: player.team, role: player.role,
       isBot: player.isBot === true, minutesPlayedMs: Math.round(Number(player.matchTimePlayedMs) || 0),
       stats: { passes: player.stats?.passes || 0, completedPasses: player.stats?.completedPasses || 0, shots: player.stats?.shots || 0, tackles: player.stats?.tackles || 0, goals: player.stats?.goals || 0, assists: player.stats?.assists || 0, saves: player.stats?.saves || 0, interceptions: player.stats?.interceptions || 0 },
     }));
@@ -555,6 +556,9 @@ export class RoomManager {
         };
         this.careerStore.recordPlayerMatch(player.careerPlayerId, careerInput);
         if (livePlayer?.accountId && !player.isBot) this.careerStore.recordMatch(livePlayer.accountId, careerInput);
+        if (livePlayer?.accountId && !player.isBot && /^FRP-[0-9]{6}$/.test(player.careerPlayerId || '')) {
+          this.careerSyncQueue?.enqueue({ accountId: livePlayer.accountId, playerId: player.careerPlayerId, matchId: room.id, payload: careerInput });
+        }
       }
     }
     for (const player of performance.players) {

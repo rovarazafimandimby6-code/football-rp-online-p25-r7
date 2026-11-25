@@ -13,6 +13,7 @@ import { readGoogleOidcConfig } from './google-oidc-config.js';
 import { GoogleOidcTransactionStore } from './google-oidc-transactions.js';
 import { JsonPlayerIdentityStore } from './player-identity-store.js';
 import { JsonCareerStore } from './career-store.js';
+import { JsonCareerSyncQueue } from './career-sync-queue.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
 import { JsonProgressionStore } from './progression-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
@@ -35,6 +36,8 @@ import { createPlayerBackupScheduler, resolvePlayerBackupConfig } from './player
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
 const careerStore = new JsonCareerStore(careerDirectory);
+const careerSyncDirectory = process.env.CAREER_SYNC_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'career-sync');
+const careerSyncQueue = new JsonCareerSyncQueue(careerSyncDirectory);
 const progressionDirectory = process.env.PLAYER_PROGRESSION_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'progression');
 const progressionStore = new JsonProgressionStore(progressionDirectory);
 const playerProfileDirectory = process.env.PLAYER_PROFILES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'player-profiles');
@@ -84,7 +87,7 @@ const clubWorld = new P27ClubWorldService({
 const resultStore = new JsonResultStore(resultDirectory);
 const roomDirectory = process.env.ROOMS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rooms');
 const roomStore = new JsonRoomStore(roomDirectory);
-const manager = new RoomManager({ resultStore, roomStore, careerStore, progressionStore, competitionStore });
+const manager = new RoomManager({ resultStore, roomStore, careerStore, careerSyncQueue, progressionStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const googleOidcConfig = readGoogleOidcConfig(process.env);
