@@ -2,6 +2,7 @@ import {
   D1PlayerIdentityRepository,
   allowPlayerIdentityAttempt,
 } from "./player-identity-repository.js";
+import { D1PasswordlessAccountRepository } from "./passwordless-account-repository.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const json = (status, body) => new Response(JSON.stringify(body), {
@@ -108,7 +109,12 @@ export default {
             localProfileKey: body.localProfileKey,
             localProofSecret: body.localProofSecret,
           });
+          const accounts = new D1PasswordlessAccountRepository(env.P27_DB);
+          const session = await accounts.issuePasswordlessSession(reservation.accountId, {
+            playerId: reservation.playerId,
+          });
           return json(200, {
+            ...session,
             accountId: reservation.accountId,
             playerId: reservation.playerId,
             reserved: true,
@@ -128,6 +134,29 @@ export default {
         });
       } catch (error) {
         return errorResponse(error);
+      }
+    }
+
+    if (url.pathname.startsWith("/api/accounts/")) {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+      const accounts = new D1PasswordlessAccountRepository(env.P27_DB);
+      const token = (request.headers.get("authorization") || "").replace(/^Bearer\\s+/i, "");
+
+      if (request.method === "GET" && url.pathname === "/api/accounts/me") {
+        const account = await accounts.resolve(token);
+        return account ? json(200, { account }) : json(401, { error: "SESSION_EXPIRED" });
+      }
+      if (request.method === "POST" && url.pathname === "/api/accounts/logout") {
+        await accounts.revoke(token);
+        return json(200, { loggedOut: true });
+      }
+      if (request.method === "POST" && url.pathname === "/api/accounts/sessions/revoke-all") {
+        const account = await accounts.resolve(token);
+        if (!account) return json(401, { error: "SESSION_EXPIRED" });
+        const revokedSessions = await accounts.revokeAll(account.id);
+        return json(200, { revoked: true, revokedSessions });
       }
     }
 
