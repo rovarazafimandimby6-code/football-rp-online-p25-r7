@@ -121,7 +121,7 @@ export class OnlineAccountClient {
 
   assertLocalIdentity(identity) {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    if (!identity || typeof identity.accountId !== 'string' || !/^FRP-\\d{6}$/.test(identity.id || '')
+    if (!identity || typeof identity.accountId !== 'string' || !/^FRP-[0-9]{6}$/.test(identity.id || '')
       || this.account?.id !== identity.accountId || this.account?.playerId !== identity.id) throw new Error('ACCOUNT_LOCAL_IDENTITY_MISMATCH');
     return true;
   }
