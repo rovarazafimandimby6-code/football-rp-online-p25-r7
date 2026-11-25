@@ -5,7 +5,7 @@ import { verifyCareerIngestSignature } from "../src/cloudflare/career-ingest-aut
 import worker from "../src/cloudflare/worker.js";
 const secret = "p27-test-secret-with-at-least-thirty-two-characters";
 const body = JSON.stringify({ accountId: "123e4567-e89b-42d3-a456-426614174000", playerId: "FRP-123456", match: { matchId: "room00000001", result: "win", stats: {} } });
-const signed = (raw = body, timestamp = 1_800_000_000) => "t=" + timestamp + ",v1=" + createHmac("sha256", secret).update(timestamp + "." + raw).digest("hex");
+const signed = (raw = body, timestamp = Math.floor(Date.now() / 1000)) => "t=" + timestamp + ",v1=" + createHmac("sha256", secret).update(timestamp + "." + raw).digest("hex");
 const request = (path, init) => new Request("https://p27-cloudflare.test" + path, init);
 test("career ingest HMAC accepts exact body and rejects altered body", async () => {
   const signature = signed();
