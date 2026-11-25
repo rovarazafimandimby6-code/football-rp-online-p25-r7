@@ -111,6 +111,25 @@ test("snapshot captures random-initialized player phases and mutable match confi
   assert.equal(snapshot.state.ball.ownerId, "blue-1");
 });
 
+test("snapshot validates player references and pending control payloads", () => {
+  const snapshot = createMatchReplaySnapshot({ seed: 19, game: makeGame() });
+  snapshot.state.ball.ownerId = "missing-player";
+  assert.equal(validateMatchReplaySnapshot(snapshot).reason, "INVALID_SNAPSHOT_PLAYER_REFERENCE");
+
+  const pending = createMatchReplaySnapshot({ seed: 20, game: makeGame() });
+  pending.state.pendingControlledPass = { passerId: "blue-1", targetId: "missing-player", remaining: 1 };
+  assert.equal(validateMatchReplaySnapshot(pending).reason, "INVALID_SNAPSHOT_PENDING_PASS");
+
+  const controls = makeGame();
+  controls.controls = {
+    joy: { x: 0, z: 0 }, keys: new Set(), sprintHeld: false,
+    pendingPass: null, pendingPress: false, pendingShoot: { power: 1.2 },
+    pendingLob: false, pendingCallForPass: false, role: "FWD", benchMode: false
+  };
+  const invalidControls = createMatchReplaySnapshot({ seed: 21, game: controls });
+  assert.equal(validateMatchReplaySnapshot(invalidControls).reason, "INVALID_SNAPSHOT_CONTROLS");
+});
+
 test("snapshot rejects invalid seed, duplicate player IDs and tampering", () => {
   assert.throws(() => createMatchReplaySnapshot({ seed: -1, game: makeGame() }), /INVALID_MATCH_SEED/);
   const game = makeGame();

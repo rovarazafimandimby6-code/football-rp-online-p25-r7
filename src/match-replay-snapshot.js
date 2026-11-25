@@ -51,9 +51,9 @@ function captureControls(controls) {
     },
     keys: controls.keys instanceof Set ? [...controls.keys].sort() : [],
     sprintHeld: controls.sprintHeld === true,
-    pendingPass: clonePlain(controls.pendingPass),
+    pendingPass: clonePlain(controls.pendingPass ?? null),
     pendingPress: controls.pendingPress === true,
-    pendingShoot: clonePlain(controls.pendingShoot),
+    pendingShoot: clonePlain(controls.pendingShoot ?? null),
     pendingLob: controls.pendingLob === true,
     pendingCallForPass: controls.pendingCallForPass === true,
     role: controls.role ?? null,
@@ -138,6 +138,7 @@ export function createMatchReplaySnapshot({ seed, tick = 0, game } = {}) {
       lastTouchPlayerId: game.ball.lastTouchPlayer?.id === undefined ? null : String(game.ball.lastTouchPlayer.id)
     },
     match: {
+      matchId: game.match.matchId ?? null,
       durationMinutes: game.match.durationMinutes,
       halfDuration: game.match.halfDuration,
       pendingDurationMinutes: game.match.pendingDurationMinutes ?? null,
@@ -213,19 +214,32 @@ export function validateMatchReplaySnapshot(snapshot) {
         !snapshot.state.match || !snapshot.state.ai || !snapshot.state.physics ||
         !snapshot.state.weather || !Array.isArray(snapshot.state.benchPlayers?.blue) ||
         !Array.isArray(snapshot.state.benchPlayers?.red)) fail("INVALID_SNAPSHOT_STATE");
+    if (snapshot.state.match.matchId !== null && snapshot.state.match.matchId !== undefined &&
+        typeof snapshot.state.match.matchId !== "string") fail("INVALID_SNAPSHOT_MATCH_ID");
+    const playerIdSet = new Set(snapshot.state.players.map(player => player.id));
+    for (const id of [snapshot.state.activePlayerId, snapshot.state.ball.ownerId,
+      snapshot.state.ball.lastTouchPlayerId]) {
+      if (id !== null && id !== undefined && !playerIdSet.has(id)) fail("INVALID_SNAPSHOT_PLAYER_REFERENCE");
+    }
     if (snapshot.state.pendingControlledPass !== null && snapshot.state.pendingControlledPass !== undefined) {
       const pending = snapshot.state.pendingControlledPass;
-      if (typeof pending.passerId !== "string" || !pending.passerId ||
-          typeof pending.targetId !== "string" || !pending.targetId ||
+      if (typeof pending.passerId !== "string" || !playerIdSet.has(pending.passerId) ||
+          typeof pending.targetId !== "string" || !playerIdSet.has(pending.targetId) ||
           !Number.isFinite(pending.remaining) || pending.remaining < 0) fail("INVALID_SNAPSHOT_PENDING_PASS");
     }
     if (snapshot.state.controls !== null && snapshot.state.controls !== undefined) {
       const controls = snapshot.state.controls;
       if (!controls.move || !Number.isFinite(controls.move.x) || !Number.isFinite(controls.move.z) ||
+          Math.abs(controls.move.x) > 1 || Math.abs(controls.move.z) > 1 ||
           !Array.isArray(controls.keys) || controls.keys.some(key => typeof key !== "string") ||
           typeof controls.sprintHeld !== "boolean" || typeof controls.pendingPress !== "boolean" ||
           typeof controls.pendingLob !== "boolean" || typeof controls.pendingCallForPass !== "boolean" ||
-          typeof controls.benchMode !== "boolean") fail("INVALID_SNAPSHOT_CONTROLS");
+          typeof controls.benchMode !== "boolean" ||
+          ![null, "GK", "DEF", "MID", "FWD"].includes(controls.role) ||
+          (controls.pendingPass !== null && (!controls.pendingPass || typeof controls.pendingPass !== "object" ||
+            typeof controls.pendingPass.lofted !== "boolean")) ||
+          (controls.pendingShoot !== null && (!controls.pendingShoot || typeof controls.pendingShoot !== "object" ||
+            !Number.isFinite(controls.pendingShoot.power) || controls.pendingShoot.power < 0 || controls.pendingShoot.power > 1))) fail("INVALID_SNAPSHOT_CONTROLS");
     }
     clonePlain(snapshot.state);
     return { valid: true, playerCount: snapshot.state.players.length, tick: snapshot.tick };
