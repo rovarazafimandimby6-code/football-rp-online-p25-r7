@@ -120,12 +120,25 @@ async function startGoogleAuthorization(request, env, purpose) {
   if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
     return json(503, { error: "D1_BINDING_MISSING" });
   }
+  const clientAddress = request.headers.get("CF-Connecting-IP") || "local";
+  if (!await allowPlayerIdentityAttempt(env.P27_DB, clientAddress)) {
+    return json(429, { error: "PLAYER_IDENTITY_RATE_LIMITED" });
+  }
   const config = googleConfig(env);
   let account = null;
   if (purpose === "link") {
-    const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    const token = (request.headers.get("authorization") || "").replace(/^Bearer\\s+/i, "");
     account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(token);
     if (!account) return json(401, { error: "SESSION_EXPIRED" });
+    const body = await readJson(request);
+    const provenIdentity = await new D1PlayerIdentityRepository(env.P27_DB).verifyLocalProof({
+      localProfileKey: body.localProfileKey,
+      localProofSecret: body.localProofSecret,
+    });
+    if (!provenIdentity || provenIdentity.accountId !== account.id ||
+        provenIdentity.playerId !== account.playerId) {
+      return json(401, { error: "LOCAL_PROFILE_PROOF_INVALID" });
+    }
     const identity = await new D1PlayerIdentityRepository(env.P27_DB).getByAccountId(account.id);
     if (!identity || identity.playerId !== account.playerId) return json(404, { error: "PLAYER_IDENTITY_NOT_FOUND" });
     const linked = await new D1GoogleIdentityRepository(env.P27_DB).getByAccountId(account.id);
@@ -165,6 +178,10 @@ async function startGoogleAuthorization(request, env, purpose) {
 async function completeGoogleAuthorization(request, env, requestUrl) {
   if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
     return json(503, { error: "D1_BINDING_MISSING" });
+  }
+  const clientAddress = request.headers.get("CF-Connecting-IP") || "local";
+  if (!await allowPlayerIdentityAttempt(env.P27_DB, clientAddress)) {
+    return json(429, { error: "PLAYER_IDENTITY_RATE_LIMITED" });
   }
   const config = googleConfig(env);
   if (!callbackMatches(requestUrl, config.redirect)) {

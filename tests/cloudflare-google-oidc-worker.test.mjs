@@ -19,9 +19,14 @@ class TransactionD1 {
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
-      async first() { return null; },
+      async first() {
+        if (sql.includes("RETURNING attempt_count")) return { attempt_count: 1 };
+        if (sql.includes("FROM p27_account_sessions")) return db.sessionRow || null;
+        return null;
+      },
       async run() {
         const v = this.values;
+        if (sql.startsWith("DELETE FROM p27_rate_limit_buckets")) return { meta: { changes: 0 } };
         if (sql.startsWith("INSERT INTO p27_google_oidc_transactions")) {
           db.rows.set(v[0], {
             state_hash: v[0], nonce: v[1], code_verifier: v[2],
@@ -109,4 +114,21 @@ test("D1 OIDC transaction emits the RFC 7636 base64url SHA-256 challenge", async
   const expected = btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   assert.equal(tx.codeChallenge, expected);
   assert.match(tx.codeChallenge, /^[A-Za-z0-9_-]{43}$/);
+});
+
+test("Google link start requires proof of the existing local player profile", async () => {
+  const settings = env();
+  const accountId = "123e4567-e89b-42d3-a456-426614174000";
+  settings.P27_DB.sessionRow = {
+    id: accountId, username: "p27-test", display_name: "FRP-123456",
+    passwordless: 1, player_id: "FRP-123456", created_at: "2026-11-25T00:00:00.000Z",
+  };
+  const response = await worker.fetch(new Request("https://p27.example.test/api/auth/google/link/start", {
+    method: "POST",
+    headers: { authorization: "Bearer " + "t".repeat(43), "content-type": "application/json" },
+    body: JSON.stringify({ localProfileKey: "123e4567-e89b-42d3-a456-426614174001", localProofSecret: "x".repeat(64) }),
+  }), settings);
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error, "LOCAL_PROFILE_PROOF_INVALID");
+  assert.equal(settings.P27_DB.rows.size, 0);
 });
