@@ -37,7 +37,6 @@ export class LocalPlayerProfile {
   async reserveWithServer({ fetchImpl = globalThis.fetch, endpoint = '/api/player-identities/reserve' } = {}) {
     const current = this.load();
     if (!current) throw new Error('LOCAL_PROFILE_NOT_FOUND');
-    if (current.identityStatus === 'reserved') return current;
     if (typeof fetchImpl !== 'function') throw new Error('PLAYER_ID_SERVER_UNAVAILABLE');
     const response = await fetchImpl(endpoint, {
       method: 'POST',
