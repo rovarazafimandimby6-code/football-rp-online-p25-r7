@@ -1120,6 +1120,7 @@ menu.addEventListener('click', event => {
     submitAccountTraining(action, event.target.closest('[data-attribute]')?.dataset.attribute || '');
   } else if (action === 'online-menu') {
     document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MULTIJOUEUR · SERVEUR AUTORITAIRE</span><h2>Rejoindre un match en ligne</h2><p>Crée un salon ou rejoins un salon actif. Les déplacements, actions et le ballon sont validés par le serveur.</p><label>Nom affiché<input id="online-name" maxlength="20" value="${escapeHTML(profileStore.profile.identity.displayName)}"></label><div class="training-controls"><button class="primary-cta" data-action="create-online">CRÉER UN SALON</button><button class="small-action" data-action="refresh-online">ACTUALISER LES SALONS</button></div><label>Code du salon<input id="online-room-id" maxlength="12" placeholder="Code à 12 caractères" autocapitalize="characters"></label><button class="primary-cta" data-action="join-online">REJOINDRE CE SALON</button><div id="online-room-list" class="fixture-list"><p class="notice">Chargement des salons…</p></div><p class="notice" id="online-status" aria-live="polite">Le serveur doit être démarré et accessible sur cette adresse.</p><button class="text-cta" data-page="home">Retour</button></div>`;
+    document.getElementById('menu-content').scrollTop = 0;
     refreshOnlineRooms();
   }
   else if (action === 'create-online') {
@@ -1145,6 +1146,7 @@ menu.addEventListener('click', event => {
       <div class="match-centre-foot"><span>FORMAT 5 CONTRE 5</span><span>CONTRÔLE INDIVIDUEL</span><span>ÉQUIPE DU SYSTÈME</span><span>${preferences.duration} MINUTES</span></div>
       <button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button>
     </div></div>`;
+    document.getElementById('menu-content').scrollTop = 0;
     const homeSelect=document.getElementById('match-home'), awaySelect=document.getElementById('match-away');
     homeSelect.value=selectedMatchup.home; awaySelect.value=selectedMatchup.away;
     const updateMatchup=()=>{
@@ -1173,6 +1175,7 @@ menu.addEventListener('click', event => {
     const renderPlayers = (players) => players.map(player=>`<div class="pre-match-player"><span class="pre-match-number">${player.number}</span><b>${escapeHTML(player.name)}</b><small>${roleLabels[player.role]||player.role}</small><strong>${player.rating}</strong></div>`).join('');
     const renderLineup = (team, squad) => `<section class="pre-match-team ${team}"><div class="pre-match-team-heading"><span class="eyebrow">${team==='blue'?'ÉQUIPE DOMICILE':'ÉQUIPE EXTÉRIEURE'}</span><b>${team==='blue'?'BLEU':'ROUGE'} · ${squad.starters.length}/5</b></div><div class="pre-match-player-list">${renderPlayers(squad.starters)}</div><div class="pre-match-bench-heading"><span>REMPLAÇANTS</span><b>${squad.substitutes.length}</b></div><div class="pre-match-player-list pre-match-bench-list">${squad.substitutes.length ? renderPlayers(squad.substitutes) : '<p class="pre-match-no-bench">Aucun remplaçant enregistré</p>'}</div><small class="pre-match-squad-total">Effectif disponible : ${squad.squadSize} joueur(s)</small></section>`;
     content.innerHTML=`<div class="match-intro"><span class="eyebrow">PRÉSENTATION DU MATCH</span><h2>LE TERRAIN VOUS ATTEND</h2><p>5 contre 5 · ${preferences.duration} minutes · Stade de démonstration</p><div class="intro-versus"><div>${crest(home)}<b>${escapeHTML(home.name)}</b><small>${escapeHTML(home.city)}</small></div><strong>VS</strong><div>${crest(away)}<b>${escapeHTML(away.name)}</b><small>${escapeHTML(away.city)}</small></div></div><div class="intro-lineup"><span>FORMATION 2–2</span><span>10 TITULAIRES · RÉSERVES AFFICHÉES</span><span>CONTRÔLE INDIVIDUEL</span></div><div class="pre-match-lineups">${renderLineup('blue',homeSquad)}${renderLineup('red',awaySquad)}</div><button class="primary-cta" data-action="start-match">ENTRER SUR LE TERRAIN <span>→</span></button><button class="text-cta" data-action="choose-match">Modifier les équipes</button></div>`;
+    content.scrollTop = 0;
   } else if (action === 'start-match') startMatch();
   else if (action === 'take-club') {
     const result=clubs.takeOver(event.target.closest('[data-club]')?.dataset.club,'local-player');
