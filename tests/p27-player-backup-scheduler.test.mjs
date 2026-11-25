@@ -22,13 +22,14 @@ test('P27 sauvegarde: planifie, exécute, expose le statut et arrête le timer',
     now:()=>new Date('2026-11-25T12:00:00.000Z')
   });
   assert.equal(scheduler.start(),true);
+  assert.equal(calls,1); // immediate startup snapshot
   assert.equal(scheduler.start(),false);
   assert.equal(scheduler.status().scheduled,true);
   const report=callback();
   assert.equal(report.ok,true);
-  assert.equal(calls,1);
+  assert.equal(calls,2);
   assert.equal(scheduler.status().lastSuccessAt,'2026-11-25T12:00:00.000Z');
-  assert.equal(reports.length,1);
+  assert.equal(reports.length,2);
   assert.equal(scheduler.stop(),true);
   assert.ok(cleared);
   assert.equal(scheduler.status().scheduled,false);

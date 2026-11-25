@@ -130,6 +130,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       status: preflight.ok ? 'ready' : 'not-ready',
       errors: preflight.errors,
       storage: preflight.checked,
+      playerBackup: playerBackupScheduler.status(),
     });
   }
   try {

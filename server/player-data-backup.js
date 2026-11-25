@@ -79,7 +79,7 @@ export function restorePlayerDataBackup({ backupFile, directories = defaultDirec
         if (item.previous === null) unlinkSync(item.destination);
         else {
           const rollback = `${item.destination}.${process.pid}.${randomUUID()}.rollback`;
-          writeFileSync(rollback, item.previous, { mode: '0600', flag: 'wx' });
+          writeFileSync(rollback, item.previous, { mode: 0o600, flag: 'wx' });
           renameSync(rollback, item.destination);
         }
       } catch {}

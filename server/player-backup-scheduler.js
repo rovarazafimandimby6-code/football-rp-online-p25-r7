@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { createRotatingPlayerDataBackup } from './player-data-backup.js';
 
 const MIN_INTERVAL_MS = 5 * 60_000;
@@ -9,16 +10,17 @@ export function resolvePlayerBackupConfig({ env = process.env, root = process.cw
   const intervalMs = Number.isFinite(requested) && requested > 0
     ? Math.max(MIN_INTERVAL_MS, Math.min(MAX_INTERVAL_MS, Math.floor(requested)))
     : DEFAULT_INTERVAL_MS;
-  const directory = env.P27_BACKUPS_DIR || `${root.replace(/[\\/]+$/, '')}/data/backups`;
+  const base = root.replace(/[\\/]+$/, '');
+  const directory = path.resolve(env.P27_BACKUPS_DIR || `${base}/data/backups`);
   return {
     intervalMs,
     backupDirectory: directory,
     keep: Math.max(2, Math.min(100, Math.floor(Number(env.P27_BACKUPS_KEEP) || 14))),
     directories: {
-      accounts: env.ACCOUNTS_DIR,
-      profiles: env.PLAYER_PROFILES_DIR,
-      progression: env.PLAYER_PROGRESSION_DIR,
-      careers: env.CAREERS_DIR
+      accounts: path.resolve(env.ACCOUNTS_DIR || `${base}/data/accounts`),
+      profiles: path.resolve(env.PLAYER_PROFILES_DIR || `${base}/data/player-profiles`),
+      progression: path.resolve(env.PLAYER_PROGRESSION_DIR || `${base}/data/progression`),
+      careers: path.resolve(env.CAREERS_DIR || `${base}/data/careers`)
     }
   };
 }
@@ -72,6 +74,8 @@ export function createPlayerBackupScheduler({
 
   function start() {
     if (timer) return false;
+    // Create a recovery point at startup instead of waiting for the first interval.
+    runNow();
     timer = setIntervalFn(runNow, config.intervalMs);
     timer?.unref?.();
     return true;
