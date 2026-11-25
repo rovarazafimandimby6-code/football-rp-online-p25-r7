@@ -80,6 +80,7 @@ let game = null;
 let pendingOnlineMatch = null;
 const accountClient = new OnlineAccountClient({ baseUrl: location.origin });
 accountClient.restoreSession();
+void accountClient.resumeCookieSession().catch(() => {});
 const onlineClient = new OnlineMatchClient({ baseUrl: location.origin, accountTokenProvider: () => accountClient.token });
 let avatarPreview = null;
 function disposeAvatarPreview() {
@@ -789,7 +790,7 @@ async function submitAccountTraining(action, attribute) {
 
 async function loadAccountProgressionSummary() {
   const host = document.getElementById('account-progression-stats');
-  if (!host || !accountClient.token) return;
+  if (!host || !accountClient.hasSession) return;
   try {
     const payload = await accountClient.getProgression();
     if (!host.isConnected) return;

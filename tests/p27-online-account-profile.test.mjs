@@ -126,3 +126,32 @@ test('P27 carrière cloud : utilise une réponse authentifiée et valide sa stru
   invalid.token = client.token;
   await assert.rejects(() => invalid.getCareer(), /INVALID_CAREER_RESPONSE/);
 });
+
+
+test('P27 session Google : reprend une session HttpOnly via cookie sans exposer de bearer token', async () => {
+  const calls = [];
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example',
+    storage: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, json: async () => ({ account: { id: 'account-123', playerId: 'FRP-123456' } }) };
+    }
+  });
+  const account = await client.resumeCookieSession();
+  assert.equal(account.id, 'account-123');
+  assert.equal(client.hasSession, true);
+  assert.equal(client.token, null);
+  assert.equal(calls[0].url, 'https://game.example/api/accounts/me');
+  assert.equal(calls[0].options.credentials, 'same-origin');
+  assert.equal(calls[0].options.headers.authorization, undefined);
+});
+
+test('P27 session Google : refuse une réponse /me invalide et reste anonyme', async () => {
+  const client = new OnlineAccountClient({
+    storage: null,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ account: {} }) })
+  });
+  await assert.rejects(() => client.resumeCookieSession(), /INVALID_ACCOUNT_SESSION/);
+  assert.equal(client.hasSession, false);
+});

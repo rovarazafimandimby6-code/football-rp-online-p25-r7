@@ -6,6 +6,7 @@ export class OnlineAccountClient {
     this.storage = storage || null;
     this.token = null;
     this.account = null;
+    this.cookieSession = false;
   }
 
   async request(path, { method = 'GET', body, auth = false } = {}) {
@@ -13,7 +14,8 @@ export class OnlineAccountClient {
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
       method,
       headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(auth && this.token ? { authorization: `Bearer ${this.token}` } : {}) },
-      ...(body ? { body: JSON.stringify(body) } : {})
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      credentials: 'same-origin'
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `HTTP_${response.status}`);
@@ -33,6 +35,7 @@ export class OnlineAccountClient {
       if (!saved || typeof saved.token !== 'string' || saved.token.length < 32 || !saved.account || typeof saved.account.id !== 'string') return false;
       this.token = saved.token;
       this.account = saved.account;
+      this.cookieSession = false;
       return true;
     } catch { return false; }
   }
@@ -41,6 +44,7 @@ export class OnlineAccountClient {
     if (!result || typeof result.token !== 'string' || !result.account?.id) throw new Error('INVALID_ACCOUNT_SESSION');
     this.token = result.token;
     this.account = result.account;
+    this.cookieSession = false;
     this.persist();
     return this.account;
   }
@@ -53,8 +57,21 @@ export class OnlineAccountClient {
     return this.acceptSession(await this.request('/api/accounts/login', { method: 'POST', body: { username, password } }));
   }
 
+  get hasSession() {
+    return Boolean(this.token || (this.cookieSession && this.account?.id));
+  }
+
+  async resumeCookieSession() {
+    if (this.token) return this.refresh();
+    const result = await this.request('/api/accounts/me');
+    if (!result?.account || typeof result.account.id !== 'string') throw new Error('INVALID_ACCOUNT_SESSION');
+    this.account = result.account;
+    this.cookieSession = true;
+    return this.account;
+  }
+
   async refresh() {
-    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!this.hasSession) return this.resumeCookieSession();
     const result = await this.request('/api/accounts/me', { auth: true });
     this.account = result.account;
     this.persist();
@@ -62,7 +79,7 @@ export class OnlineAccountClient {
   }
 
   async getProfile() {
-    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     return this.request('/api/profile', { auth: true });
   }
 
@@ -136,11 +153,12 @@ export class OnlineAccountClient {
   }
 
   async logout() {
-    if (!this.token) return false;
+    if (!this.hasSession) return false;
     try { await this.request('/api/accounts/logout', { method: 'POST', auth: true }); }
     finally {
       this.token = null;
       this.account = null;
+      this.cookieSession = false;
       try { this.storage?.removeItem('fpro.account.session'); } catch {}
     }
     return true;
