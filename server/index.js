@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { createGoogleAuthorizationUrl, completeGoogleAuthorization, createGoogleBrowserBinding } from './google-oidc-service.js';
+import { createGoogleAuthorizationUrl, createGoogleLoginAuthorizationUrl, completeGoogleAuthorization, createGoogleBrowserBinding } from './google-oidc-service.js';
 import { JsonGoogleIdentityStore } from './google-identity-store.js';
 import { readFile, realpath } from 'node:fs/promises';
 import { JsonResultStore } from './result-store.js';
@@ -126,8 +126,27 @@ function cookieValue(req, name) {
   return null;
 }
 const googleBindingCookie = 'p27_google_binding';
+const accountSessionCookie = 'p27_session';
 function googleCookieOptions(maxAge) {
   return `${googleBindingCookie}=; HttpOnly; SameSite=Lax; Path=/api/auth/google; Max-Age=${maxAge}${process.env.NODE_ENV !== 'development' ? '; Secure' : ''}`;
+}
+function accountSessionCookieOptions(token, maxAge) {
+  return `${accountSessionCookie}=${token}; HttpOnly; SameSite=Lax; Path=/api; Max-Age=${maxAge}${process.env.NODE_ENV !== 'development' ? '; Secure' : ''}`;
+}
+function clearAccountSessionCookie() {
+  return `${accountSessionCookie}=; HttpOnly; SameSite=Lax; Path=/api; Max-Age=0${process.env.NODE_ENV !== 'development' ? '; Secure' : ''}`;
+}
+function trustedAppOrigin(req) {
+  const configured = process.env.P27_APP_ORIGIN || (googleOidcConfig.configured ? new URL(googleOidcConfig.redirectUri).origin : `http://${req.headers.host || 'localhost'}`);
+  try { return req.headers.origin === new URL(configured).origin; } catch { return false; }
+}
+function accountSessionToken(req) {
+  const authorization = bearer(req);
+  if (authorization) return authorization;
+  const token = cookieValue(req, accountSessionCookie);
+  if (!token) return '';
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !trustedAppOrigin(req)) return '';
+  return token;
 }
 
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -219,6 +238,17 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       res.setHeader('set-cookie', `${googleBindingCookie}=${sessionBinding}; HttpOnly; SameSite=Lax; Path=/api/auth/google; Max-Age=600${process.env.NODE_ENV !== 'development' ? '; Secure' : ''}`);
       return json(res, 200, authorization);
     }
+    if (req.method === 'POST' && url.pathname === '/api/auth/google/login/start') {
+      if (!googleOidcConfig.configured) return json(res, 503, { error: 'GOOGLE_OIDC_NOT_CONFIGURED' });
+      if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'GOOGLE_OIDC_RATE_LIMITED' });
+      if (!trustedAppOrigin(req)) return json(res, 403, { error: 'GOOGLE_OIDC_ORIGIN_INVALID' });
+      const sessionBinding = createGoogleBrowserBinding();
+      const authorization = createGoogleLoginAuthorizationUrl({
+        config: googleOidcConfig, transactionStore: googleOidcTransactionStore, sessionBinding
+      });
+      res.setHeader('set-cookie', `${googleBindingCookie}=${sessionBinding}; HttpOnly; SameSite=Lax; Path=/api/auth/google; Max-Age=600${process.env.NODE_ENV !== 'development' ? '; Secure' : ''}`);
+      return json(res, 200, authorization);
+    }
     if (req.method === 'GET' && url.pathname === '/api/auth/google/callback') {
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'GOOGLE_OIDC_RATE_LIMITED' });
       const sessionBinding = cookieValue(req, googleBindingCookie);
@@ -228,8 +258,21 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
           identityStore: googleIdentityStore, state: url.searchParams.get('state'),
           code: url.searchParams.get('code'), sessionBinding
         });
-        res.setHeader('set-cookie', googleCookieOptions(0));
-        return json(res, 200, { linked: true, accountId: result.accountId, linkedAt: result.linkedAt });
+        const playerIdentity = playerIdentityStore.getByAccountId(result.accountId);
+        if (!playerIdentity) throw new Error('P27_PLAYER_IDENTITY_NOT_FOUND');
+        const session = accountStore.issuePasswordlessSession(result.accountId, { playerId: playerIdentity.playerId });
+        const maxAge = Math.floor(accountStore.sessionTtlMs / 1000);
+        res.setHeader('set-cookie', [
+          googleCookieOptions(0),
+          accountSessionCookieOptions(session.token, maxAge)
+        ]);
+        return json(res, 200, {
+          linked: result.purpose === 'link',
+          authenticated: true,
+          account: session.account,
+          expiresAt: session.expiresAt,
+          ...(result.linkedAt ? { linkedAt: result.linkedAt } : {})
+        });
       } catch (error) {
         res.setHeader('set-cookie', googleCookieOptions(0));
         throw error;
@@ -317,7 +360,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       return career.player ? json(res, 200, { career }) : json(res, 404, { error: 'PLAYER_NOT_FOUND' });
     }
     if (url.pathname.startsWith('/api/contract') || url.pathname.startsWith('/api/transfer/') || url.pathname.startsWith('/api/loan/')) {
-      const account = accountStore.resolve(bearer(req));
+      const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       if (req.method === 'GET' && url.pathname === '/api/contract') {
         const career = transferStore.getCareer(account.id);
@@ -391,7 +434,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       return json(res, 404, { error: 'NOT_FOUND' });
     }
     if (url.pathname === '/api/progression') {
-      const account = accountStore.resolve(bearer(req));
+      const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       if (req.method === 'GET') return json(res, 200, { progression: progressionStore.get(account.id) });
       if (req.method === 'POST') {
@@ -409,7 +452,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       }
     }
     if (url.pathname === '/api/profile') {
-      const account = accountStore.resolve(bearer(req));
+      const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       if (req.method === 'GET') return json(res, 200, { profile: playerProfileStore.get(account.id) });
       if (req.method === 'PUT') {
@@ -419,16 +462,17 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       }
     }
     if (req.method === 'GET' && url.pathname === '/api/career') {
-      const account = accountStore.resolve(bearer(req));
+      const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       return json(res, 200, { career: careerStore.get(account.id) });
     }
     if (req.method === 'GET' && url.pathname === '/api/accounts/me') {
-      const account = accountStore.resolve(bearer(req));
+      const account = accountStore.resolve(accountSessionToken(req));
       return account ? json(res, 200, { account }) : json(res, 401, { error: 'SESSION_EXPIRED' });
     }
     if (req.method === 'POST' && url.pathname === '/api/accounts/logout') {
-      accountStore.revoke(bearer(req));
+      accountStore.revoke(accountSessionToken(req));
+      res.setHeader('set-cookie', clearAccountSessionCookie());
       return json(res, 200, { loggedOut: true });
     }
     if (req.method === 'GET' && url.pathname === '/api/league-structure') {
@@ -464,7 +508,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
     const joinMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})\/join$/);
     if (req.method === 'POST' && joinMatch) {
       const body = await readBody(req);
-      const accountToken = bearer(req);
+      const accountToken = accountSessionToken(req);
       const account = accountToken ? accountStore.resolve(accountToken) : null;
       if (accountToken && !account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       return json(res, 200, manager.join(joinMatch[1], { ...body, accountId: account?.id || null }));

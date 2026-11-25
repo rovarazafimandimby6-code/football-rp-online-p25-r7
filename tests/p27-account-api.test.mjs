@@ -79,6 +79,23 @@ test('P27 API compte : inscription, authentification, session protégée et rév
     assert.equal(me.status, 200);
     assert.equal((await me.json()).account.id, created.account.id);
 
+    const cookieMe = await fetch(`${base}/api/accounts/me`, { headers: { cookie: `p27_session=${created.token}` } });
+    assert.equal(cookieMe.status, 200);
+    assert.equal((await cookieMe.json()).account.id, created.account.id);
+    const csrfBlocked = await fetch(`${base}/api/accounts/logout`, {
+      method: 'POST', headers: { cookie: `p27_session=${created.token}` }
+    });
+    assert.equal(csrfBlocked.status, 200);
+    const cookieStillValid = await fetch(`${base}/api/accounts/me`, { headers: { cookie: `p27_session=${created.token}` } });
+    assert.equal(cookieStillValid.status, 200);
+    const cookieLogout = await fetch(`${base}/api/accounts/logout`, {
+      method: 'POST', headers: { cookie: `p27_session=${created.token}`, origin: base }
+    });
+    assert.equal(cookieLogout.status, 200);
+    assert.match(cookieLogout.headers.get('set-cookie') || '', /p27_session=; HttpOnly/);
+    const cookieRevoked = await fetch(`${base}/api/accounts/me`, { headers: { cookie: `p27_session=${created.token}` } });
+    assert.equal(cookieRevoked.status, 401);
+
     const login = await fetch(`${base}/api/accounts/login`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username, password })

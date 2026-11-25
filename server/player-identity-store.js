@@ -73,4 +73,9 @@ export class JsonPlayerIdentityStore {
     const row = this.state.identities.find(item => item.localProfileKey === localProfileKey);
     return row ? { accountId: row.accountId, playerId: row.playerId, createdAt: row.createdAt } : null;
   }
+  getByAccountId(accountId) {
+    if (!validUuid(accountId)) return null;
+    const row = this.state.identities.find(item => item.accountId === accountId);
+    return row ? { accountId: row.accountId, playerId: row.playerId, createdAt: row.createdAt } : null;
+  }
 }
