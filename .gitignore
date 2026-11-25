@@ -3,3 +3,10 @@ node_modules/
 *.log
 .env
 /data/results/
+
+dist/
+android/
+*.apk
+*.aab
+.gradle/
+local.properties

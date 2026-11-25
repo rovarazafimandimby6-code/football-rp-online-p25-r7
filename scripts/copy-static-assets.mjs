@@ -1,0 +1,10 @@
+import { cp, mkdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const root = dirname(fileURLToPath(import.meta.url));
+const source = join(root, '..', 'assets');
+const destination = join(root, '..', 'dist', 'assets');
+await mkdir(destination, { recursive: true });
+await cp(source, destination, { recursive: true, force: true });
+console.log('P27 static 3D assets copied into dist/assets.');
