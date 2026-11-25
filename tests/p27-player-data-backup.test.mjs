@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createPlayerDataBackup, verifyPlayerDataBackup, restorePlayerDataBackup, createRotatingPlayerDataBackup } from '../server/player-data-backup.js';
 import { JsonAccountStore } from '../server/account-store.js';
 import { JsonPlayerIdentityStore } from '../server/player-identity-store.js';
+import { JsonGoogleIdentityStore } from '../server/google-identity-store.js';
 import { JsonCareerStore } from '../server/career-store.js';
 import { JsonPlayerProfileStore } from '../server/player-profile-store.js';
 import { JsonProgressionStore } from '../server/progression-store.js';
@@ -16,6 +17,7 @@ import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 const schemas = {
   accounts: { version:1, accounts:[{id:'account-1'}], sessions:[] },
   playerIdentities: { version:1, identities:[{localProfileKey:'123e4567-e89b-42d3-a456-426614174000',accountId:'123e4567-e89b-42d3-a456-426614174099',playerId:'FRP-675757',createdAt:'2026-11-25T12:00:00.000Z'}] },
+  googleIdentities: { version:1, links:[{accountId:'123e4567-e89b-42d3-a456-426614174099',googleSubject:'google-subject-0001',linkedAt:'2026-11-25T12:00:00.000Z'}], audit:[{id:'123e4567-e89b-42d3-a456-426614174098',accountId:'123e4567-e89b-42d3-a456-426614174099',type:'google_linked',at:'2026-11-25T12:00:00.000Z'}] },
   profiles: { version:1, profiles:[{accountId:'account-1',profile:{identity:{displayName:'Test'}}}] },
   progression: { version:1, players:[{accountId:'account-1',progression:{level:4}}] },
   careers: { version:1, careers:[{accountId:'account-1',totals:{matches:2},matches:[]}], playerCareers:[] },
@@ -28,7 +30,7 @@ function makeRoot() {
   for(const key of Object.keys(schemas)){
     directories[key]=path.join(root,key);
     mkdirSync(directories[key],{recursive:true});
-    const filename=key==='playerIdentities'?'player-identities.json':key==='profiles'?'player-profiles.json':key==='progression'?'progression.json':key==='careers'?'careers.json':key==='transfers'?'transfers.json':key==='clubRosters'?'club-rosters.json':'accounts.json';
+    const filename=key==='playerIdentities'?'player-identities.json':key==='googleIdentities'?'google-identities.json':key==='profiles'?'player-profiles.json':key==='progression'?'progression.json':key==='careers'?'careers.json':key==='transfers'?'transfers.json':key==='clubRosters'?'club-rosters.json':'accounts.json';
     writeFileSync(path.join(directories[key],filename),JSON.stringify(schemas[key]));
   }
   return {root,directories};
@@ -93,6 +95,7 @@ test('P27 compte: le backup accepte les fichiers produits par les vrais stores s
   const directories={
     accounts:path.join(root,'accounts'),
     playerIdentities:path.join(root,'player-identities'),
+    googleIdentities:path.join(root,'google-identities'),
     profiles:path.join(root,'player-profiles'),
     progression:path.join(root,'progression'),
     careers:path.join(root,'careers'),
@@ -102,7 +105,9 @@ test('P27 compte: le backup accepte les fichiers produits par les vrais stores s
   try{
     const accountStore=new JsonAccountStore(directories.accounts);
     const identityStore=new JsonPlayerIdentityStore(directories.playerIdentities);
+    const googleIdentityStore=new JsonGoogleIdentityStore(directories.googleIdentities);
     identityStore.reserve({ localProfileKey:'123e4567-e89b-42d3-a456-426614174000', localProofSecret:'c'.repeat(64) });
+    googleIdentityStore.linkInitial({ accountId:'123e4567-e89b-42d3-a456-426614174099', googleSubject:'google-subject-0001', googleIdentityVerified:true });
     const created=accountStore.register({username:'backupplayer',password:'StrongPass123',displayName:'Backup Player'});
     const accountId=created.account.id;
     new JsonPlayerProfileStore(directories.profiles).save(accountId,{identity:{displayName:'Backup Player'}});
@@ -114,6 +119,6 @@ test('P27 compte: le backup accepte les fichiers produits par les vrais stores s
     const outputFile=path.join(root,'backups','real-server-stores.json');
     const createdBackup=createPlayerDataBackup({directories,outputFile});
     assert.equal(verifyPlayerDataBackup(outputFile).ok,true);
-    assert.equal(createdBackup.stores.length,7);
+    assert.equal(createdBackup.stores.length,8);
   }finally{rmSync(root,{recursive:true,force:true});}
 });
