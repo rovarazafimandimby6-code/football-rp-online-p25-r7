@@ -39,6 +39,19 @@ test('P27 API compte : inscription, authentification, session protégée et rév
     const forbiddenCareer = await fetch(`${base}/api/career`);
     assert.equal(forbiddenCareer.status, 401);
 
+    const cloudSnapshotResponse = await fetch(`${base}/api/account/snapshot`, {
+      headers: { authorization: `Bearer ${created.token}` }
+    });
+    assert.equal(cloudSnapshotResponse.status, 200);
+    const cloudSnapshot = await cloudSnapshotResponse.json();
+    assert.match(cloudSnapshot.revision, /^[a-f0-9]{64}$/);
+    assert.equal(cloudSnapshot.authority, 'server-confirmed');
+    assert.equal(cloudSnapshot.snapshot.career.totals.matches, 1);
+    assert.equal(cloudSnapshot.snapshot.career.totals.goals, 1);
+    assert.equal(cloudSnapshot.snapshot.profile, null);
+    const forbiddenSnapshot = await fetch(`${base}/api/account/snapshot`);
+    assert.equal(forbiddenSnapshot.status, 401);
+
     const savedProfile = await fetch(`${base}/api/profile`, {
       method: 'PUT', headers: { 'content-type': 'application/json', authorization: `Bearer ${created.token}` },
       body: JSON.stringify({ profile: { identity: { displayName: 'Compte test', role: 'FWD', number: 9 }, appearance: { kit: 'violet', hairStyle: 'fade' }, progression: { coins: 999999 } } })

@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { createHash } from 'node:crypto';
 import { createGoogleAuthorizationUrl, createGoogleLoginAuthorizationUrl, completeGoogleAuthorization, createGoogleBrowserBinding } from './google-oidc-service.js';
 import { JsonGoogleIdentityStore } from './google-identity-store.js';
 import { readFile, realpath } from 'node:fs/promises';
@@ -460,6 +461,28 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         if (!body || typeof body !== 'object' || Array.isArray(body) || !body.profile || typeof body.profile !== 'object' || Array.isArray(body.profile)) return json(res, 400, { error: 'INVALID_PROFILE' });
         return json(res, 200, { profile: playerProfileStore.save(account.id, body.profile) });
       }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/account/snapshot') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const identity = playerIdentityStore.getByAccountId(account.id);
+      const snapshot = {
+        schemaVersion: 1,
+        player: identity ? { playerId: identity.playerId, createdAt: identity.createdAt } : null,
+        profile: playerProfileStore.get(account.id),
+        progression: progressionStore.get(account.id),
+        career: careerStore.get(account.id),
+        playerCareer: identity ? careerStore.getPlayerCareer(identity.playerId) : null,
+        contract: transferStore.getCareer(account.id)
+      };
+      const revision = createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+      return json(res, 200, {
+        snapshot,
+        revision,
+        generatedAt: new Date().toISOString(),
+        authority: 'server-confirmed',
+        restorePolicy: 'server-snapshot-is-read-only; never-overwrite-newer-local-data'
+      });
     }
     if (req.method === 'GET' && url.pathname === '/api/career') {
       const account = accountStore.resolve(accountSessionToken(req));
