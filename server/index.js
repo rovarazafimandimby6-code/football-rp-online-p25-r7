@@ -722,7 +722,10 @@ function shutdownP27Server() {
 const port = Math.max(1, Math.min(65535, Number(process.env.PORT) || 8080));
 const isMainModule = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMainModule) {
-  server.listen(port, '0.0.0.0', () => process.stdout.write(`Football RP Online match server listening on ${port}\n`));
+  server.listen(port, '0.0.0.0', () => {
+    process.stdout.write(`Football RP Online match server listening on ${port}\n`);
+    careerSyncService.start();
+  });
   const handleSignal = signal => {
     process.stdout.write(`P27 graceful shutdown requested: ${signal}\n`);
     shutdownP27Server().catch(error => {
