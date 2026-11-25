@@ -1348,52 +1348,6 @@ const filterClubRoster = event => {
 menu.addEventListener('input', filterClubRoster);
 menu.addEventListener('change', filterClubRoster);
 
-  const status = document.getElementById('account-recovery-status');
-  const button = document.querySelector('[data-action="account-recovery-preview"]');
-  if (!accountClient.hasSession) {
-    if (status) status.textContent = 'Connectez le compte associé à votre joueur avant toute vérification.';
-    return;
-  }
-  if (button) button.disabled = true;
-  if (status) status.textContent = 'Vérification de la sauvegarde serveur et des données locales…';
-  try {
-    const localState = readAccountRecoveryLocalState();
-    const preview = await accountClient.previewAccountRecovery({
-      outbox: profileSyncOutbox,
-      localIdentity: localPlayerIdentity || null,
-      localState
-    });
-    if (!status?.isConnected) return;
-    if (!preview.ready) {
-      pendingAccountRecoveryPreview = null;
-      const restoreButton = document.querySelector('[data-action="account-recovery-restore"]');
-      if (restoreButton) restoreButton.disabled = true;
-      const reasons = {
-        ACCOUNT_PLAYER_ID_MISMATCH: 'Le compte connecté ne correspond pas à l’identifiant joueur de la sauvegarde.',
-        LOCAL_IDENTITY_MISMATCH: 'L’identité locale ne correspond pas à ce compte. Aucune donnée n’a été modifiée.',
-        LOCAL_OUTBOX_NOT_ASSESSED: 'La file de synchronisation locale ne peut pas être vérifiée.',
-        LOCAL_CHANGES_PENDING: 'Des changements locaux attendent leur synchronisation. La récupération est bloquée pour les préserver.',
-        LOCAL_STATE_NOT_ASSESSED: 'L’état des données locales ne peut pas être vérifié.',
-        LOCAL_DATA_PRESENT: 'Des données de carrière existent déjà sur cet appareil. Aucun remplacement automatique n’est autorisé.',
-        LOCAL_OUTBOX_INVALID: 'La file de synchronisation locale est invalide.',
-        SNAPSHOT_INCOMPLETE: 'La sauvegarde cloud est partielle. Les sections manquantes doivent être synchronisées avant toute récupération.'
-      };
-      status.textContent = reasons[preview.reason] || 'La récupération est bloquée par une vérification de sécurité.';
-      return;
-    }
-    pendingAccountRecoveryPreview = preview;
-    const restoreButton = document.querySelector('[data-action="account-recovery-restore"]');
-    if (restoreButton) restoreButton.disabled = false;
-    const matches = Number(preview.snapshot.career?.totals?.matches) || 0;
-    const level = Number(preview.snapshot.progression?.level) || 1;
-    status.textContent = 'Sauvegarde serveur vérifiée pour ' + preview.playerId + ' · Niveau ' + level + ' · ' + matches + ' match(s) en carrière. Aperçu uniquement : aucune donnée n’a été importée. Révision ' + preview.revision.slice(0, 12) + '.';
-  } catch (error) {
-    if (status?.isConnected) status.textContent = 'Vérification impossible : ' + String(error?.message || error).slice(0, 100);
-  } finally {
-    if (button?.isConnected) button.disabled = !accountClient.hasSession;
-  }
-}
-
 async function submitAccountForm(action) {
   const status = document.getElementById('account-status');
   const username = String(document.getElementById('account-username')?.value || '').trim().toLowerCase();
