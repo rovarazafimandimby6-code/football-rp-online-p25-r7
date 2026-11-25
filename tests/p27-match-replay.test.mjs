@@ -46,13 +46,21 @@ test("replay rejects malformed movement, action types, duplicate actions, and in
     sample(0, { actions: [{ type: "teleport" }] }),
     sample(0, { actions: [{ type: "lob" }, { type: "lob" }] }),
     sample(0, { actions: [{ type: "shoot", power: 1.1 }] }),
-    sample(0, { actions: [{ type: "pass_press", power: 0.5 }] }),
+    sample(0, { actions: [{ type: "pass", power: 0.5 }] }),
     sample(0, { sprint: 1 })
   ];
   for (const frame of invalid) {
     const replay = createMatchReplay({ seed: 2 });
     assert.throws(() => appendMatchReplayFrame(replay, frame));
   }
+});
+
+test("replay distinguishes pass and pressure commands", () => {
+  const replay = createMatchReplay({ seed: 9 });
+  appendMatchReplayFrame(replay, sample(0, {
+    actions: [{ type: "pass" }, { type: "press" }, { type: "lob" }, { type: "call_for_pass" }]
+  }));
+  assert.equal(validateMatchReplay(replay).valid, true);
 });
 
 test("replay validation detects tampering after recording", () => {

@@ -3,7 +3,7 @@ import { normalizeMatchSeed } from "./deterministic-rng.js";
 export const MATCH_REPLAY_SCHEMA_VERSION = 1;
 export const MATCH_REPLAY_TICK_RATE = 30;
 export const MATCH_REPLAY_MAX_FRAMES = 20000;
-const ACTION_TYPES = new Set(["pass_press", "shoot", "lob", "call_for_pass"]);
+const ACTION_TYPES = new Set(["pass", "press", "shoot", "lob", "call_for_pass"]);
 
 function fail(code) {
   throw new Error(code);
