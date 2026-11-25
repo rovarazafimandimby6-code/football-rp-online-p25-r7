@@ -83,7 +83,7 @@ const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(file
 const accountStore = new JsonAccountStore(accountDirectory);
 const accountAttempts = new Map();
 const playerBackupScheduler = createPlayerBackupScheduler({
-  config: resolvePlayerBackupConfig({ root: APP_ROOT }),
+  config: resolvePlayerBackupConfig({ root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') }),
   onResult: report => {
     if (report.ok) process.stdout.write(`P27 player backup completed: ${report.retained} generation(s) retained\\n`);
     else process.stderr.write(`P27 player backup failed: ${report.error}\\n`);
