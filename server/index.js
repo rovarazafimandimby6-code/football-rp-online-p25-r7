@@ -24,6 +24,7 @@ import { listPublicClubs, resolvePublicClub } from './club-catalog.js';
 import { listP27Players } from '../src/p27-player-library.js';
 import { isAdminTokenConfigured, isValidAdminToken } from './admin-auth.js';
 import { runP27DeploymentPreflight } from './deployment-preflight.js';
+import { createPlayerBackupScheduler, resolvePlayerBackupConfig } from './player-backup-scheduler.js';
 
 const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'results');
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
@@ -81,6 +82,13 @@ const manager = new RoomManager({ resultStore, roomStore, careerStore, progressi
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const accountAttempts = new Map();
+const playerBackupScheduler = createPlayerBackupScheduler({
+  config: resolvePlayerBackupConfig({ root: APP_ROOT }),
+  onResult: report => {
+    if (report.ok) process.stdout.write(`P27 player backup completed: ${report.retained} generation(s) retained\\n`);
+    else process.stderr.write(`P27 player backup failed: ${report.error}\\n`);
+  }
+});
 function allowAccountAttempt(ip) {
   const now = Date.now();
   const key = String(ip || 'unknown').slice(0, 96);
@@ -460,6 +468,7 @@ server.keepAliveTimeout = 5_000;
 server.maxRequestsPerSocket = 1_000;
 
 const tick = setInterval(() => manager.tick(0.05), 50);
+playerBackupScheduler.start();
 const assignmentSyncTick = setInterval(() => {
   if (!assignmentSyncPending) return;
   try {
@@ -497,6 +506,7 @@ function shutdownP27Server() {
   clearInterval(assignmentSyncTick);
   clearInterval(humanRosterSyncTick);
   clearInterval(clubWorldTick);
+  playerBackupScheduler.stop();
   shutdownPromise = new Promise((resolve, reject) => {
     const flush = () => {
       const report = manager.persistAllRooms();
@@ -532,4 +542,4 @@ if (isMainModule) {
   process.once('SIGTERM', () => handleSignal('SIGTERM'));
   process.once('SIGINT', () => handleSignal('SIGINT'));
 }
-export { server, manager, clubFinance, serverClubManager, clubWorld, shutdownP27Server };
+export { server, manager, clubFinance, serverClubManager, clubWorld, playerBackupScheduler, shutdownP27Server };
