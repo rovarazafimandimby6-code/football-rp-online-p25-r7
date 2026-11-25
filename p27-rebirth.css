@@ -691,3 +691,166 @@ body:has(#main-menu){overflow:hidden}
   #main-menu button:not(:disabled){transition:none}
 }
 
+/* P27 REBIRTH — squad, club, competition and career-market presentation.
+   Pre-match menu only. Keep all match-shell/gameplay styling untouched. */
+#main-menu .club-overview,
+#main-menu .player-library-overview{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px;
+}
+#main-menu .club-overview>div,
+#main-menu .player-library-overview>div{
+  min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px;
+  padding:14px 16px;border:1px solid var(--p27-border);border-radius:10px;
+  background:linear-gradient(145deg,rgba(32,49,72,.94),rgba(13,21,33,.98));
+}
+#main-menu .club-overview b,
+#main-menu .player-library-overview b{font-size:clamp(21px,2.5vw,30px);line-height:1;color:#f4f8ff;font-weight:900;font-variant-numeric:tabular-nums}
+#main-menu .club-overview span,
+#main-menu .player-library-overview span{font-size:10px;line-height:1.35;color:#a9bad0;font-weight:800;letter-spacing:.65px}
+#main-menu .club-discovery-toolbar,
+#main-menu .player-library-toolbar{
+  display:grid;grid-template-columns:minmax(180px,1.6fr) repeat(4,minmax(112px,1fr));
+  gap:10px;align-items:end;padding:13px;margin-bottom:18px;
+  border:1px solid var(--p27-border);border-radius:11px;background:rgba(13,21,33,.86);
+}
+#main-menu .club-discovery-toolbar label,
+#main-menu .player-library-toolbar label,
+#main-menu .roster-filters label{display:grid;gap:6px;min-width:0;color:#aebed2;font-size:10px;font-weight:850;letter-spacing:.55px}
+#main-menu .club-discovery-toolbar label>span,
+#main-menu .player-library-toolbar label>span{font-size:10px;color:#aebed2}
+#main-menu .club-discovery-toolbar input,
+#main-menu .club-discovery-toolbar select,
+#main-menu .player-library-toolbar input,
+#main-menu .player-library-toolbar select,
+#main-menu .roster-filters input,
+#main-menu .roster-filters select{width:100%;min-width:0;min-height:42px}
+#main-menu .club-filter-count{align-self:center;color:#8fcaff;font-size:11px;font-weight:850;white-space:nowrap}
+#main-menu .club-division{margin:0 0 20px}
+#main-menu .club-division-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 10px;padding:0 2px 9px;border-bottom:1px solid var(--p27-border)}
+#main-menu .club-division-heading h2{margin:3px 0 0;font-size:clamp(17px,2vw,22px);font-weight:900;letter-spacing:-.3px}
+#main-menu .division-count{color:#8fa6c1;font-size:10px;font-weight:850;letter-spacing:.7px}
+#main-menu .club-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#main-menu .club-card{grid-template-columns:64px minmax(0,1fr);gap:12px;padding:14px;min-height:190px}
+#main-menu .club-card .club-crest{width:58px;height:58px;object-fit:contain}
+#main-menu .club-card-copy{gap:7px}
+#main-menu .club-card-copy h3{font-size:16px;line-height:1.15}
+#main-menu .club-card-copy>p{margin:0;color:#aabbd0;font-size:11px}
+#main-menu .club-meta-line span{padding:4px 6px;border:1px solid rgba(153,187,226,.13);border-radius:5px;background:rgba(255,255,255,.035);font-size:10px}
+#main-menu .club-card-copy>small{color:#8fcaff;font-size:9px;font-weight:850;letter-spacing:.55px}
+#main-menu .club-stadium{font-size:10px;color:#9fb1c8}
+#main-menu .club-roster-preview{display:grid;gap:4px;padding-top:8px;border-top:1px solid var(--p27-border);font-size:10px}
+#main-menu .club-roster-preview b{color:#dce8f7;font-size:9px;letter-spacing:.65px}
+#main-menu .club-roster-preview span{color:#9fb1c8;line-height:1.4}
+#main-menu .club-card .small-action{width:100%;min-height:38px}
+#main-menu .club-detail-hero{display:grid;grid-template-columns:clamp(84px,12vw,132px) minmax(0,1fr);gap:clamp(14px,2.5vw,28px);align-items:center;padding:clamp(16px,3vw,28px);margin:10px 0 16px}
+#main-menu .club-detail-hero>.club-crest{width:100%;max-width:124px;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.35))}
+#main-menu .club-detail-hero h2{font-size:clamp(22px,3.2vw,36px);line-height:1.05;margin:5px 0}
+#main-menu .club-detail-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:16px}
+#main-menu .club-detail-stats>span{display:grid;gap:4px;padding:9px;border:1px solid var(--p27-border);border-radius:7px;background:rgba(4,10,18,.25)}
+#main-menu .club-detail-stats b{font-size:20px;color:#f2f7ff;font-variant-numeric:tabular-nums}
+#main-menu .club-detail-stats small{font-size:9px;font-weight:850;letter-spacing:.45px}
+#main-menu .roster-panel{margin-top:14px}
+#main-menu .roster-filters{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin:12px 0}
+#main-menu .roster-table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}
+#main-menu .roster-table th{position:sticky;top:0;z-index:1;background:#172438;color:#a9bdd6}
+#main-menu .roster-table tbody tr{cursor:pointer}
+#main-menu .roster-table tbody tr:hover{background:rgba(83,167,255,.09)}
+#main-menu .roster-table tbody tr:focus-visible{outline:2px solid #83c7ff;outline-offset:-2px}
+#main-menu .roster-table td:first-child{color:#9db2cd;font-weight:850}
+#main-menu .roster-table td:nth-child(2) b{font-size:12px;color:#edf4ff}
+#main-menu .roster-table td:nth-child(2) small{display:block;margin-top:3px;color:#8fa4bf;font-size:10px}
+#main-menu .player-library-toolbar{grid-template-columns:minmax(160px,1.5fr) repeat(4,minmax(100px,1fr))}
+#main-menu .player-library-resultline{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:8px 2px 12px;color:#9eb2ca;font-size:10px;font-weight:800}
+#main-menu .player-library-resultline span:first-child{color:#8fcaff;font-size:12px}
+#main-menu .player-library-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#main-menu .player-library-card{min-width:0}
+#main-menu .player-library-card:focus-visible{outline:2px solid #83c7ff;outline-offset:3px}
+#main-menu .player-card-identity h3{overflow-wrap:anywhere}
+#main-menu .player-card-details[open] summary{color:#8fcaff}
+#main-menu .player-card-details>div{display:grid;gap:5px;padding:8px 2px 2px;color:#aebed2;font-size:10px}
+#main-menu .player-library-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0;color:#9fb2ca;font-size:11px}
+#main-menu .player-career-hero{display:grid;grid-template-columns:96px minmax(0,1fr);gap:18px;align-items:center;padding:20px;border-radius:12px}
+#main-menu .player-career-avatar{width:88px;height:104px}
+#main-menu .player-career-identity h2{font-size:clamp(22px,3vw,32px);margin:5px 0}
+#main-menu .player-career-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+#main-menu .player-career-tags span{padding:6px 8px;border:1px solid var(--p27-border);border-radius:5px;background:rgba(5,12,21,.35);color:#c8d9ed;font-size:9px;font-weight:850}
+#main-menu .player-career-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:13px}
+#main-menu .career-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}
+#main-menu .career-summary>div{min-width:0;padding:16px;border:1px solid var(--p27-border);border-radius:10px;background:var(--p27-surface-raised)}
+#main-menu .career-summary strong{display:block;margin:8px 0;font-size:clamp(20px,3vw,29px);font-variant-numeric:tabular-nums}
+#main-menu .career-summary small{display:block;color:#9fb1c8;font-size:10px;line-height:1.45}
+#main-menu .contract-panel,.market-panel,.market-history{margin-bottom:13px}
+#main-menu .contract-details{display:grid;gap:9px}
+#main-menu .contract-details> b{font-size:19px;color:#f0f5fd}
+#main-menu .contract-actions,.offer-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+#main-menu .contract-actions label{display:grid;gap:5px;min-width:min(220px,100%);flex:1;color:#aebed2;font-size:11px}
+#main-menu .contract-actions input{min-height:42px}
+#main-menu .offer-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#main-menu .offer-card{min-width:0;padding:13px;border:1px solid var(--p27-border);border-radius:9px;background:rgba(7,14,24,.48)}
+#main-menu .offer-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}
+#main-menu .offer-heading b{color:#f1f6ff}
+#main-menu .offer-heading span{color:#ffc17e;font-size:9px;font-weight:850}
+#main-menu .offer-terms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#main-menu .offer-terms label{display:grid;gap:5px;min-width:0;color:#aebed2;font-size:10px}
+#main-menu .offer-terms input{width:100%;min-width:0;min-height:40px}
+#main-menu .offer-actions{margin-top:10px}
+#main-menu .history-list>div{display:grid;grid-template-columns:minmax(100px,.7fr) minmax(0,2fr) auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--p27-border)}
+#main-menu .history-list>div:last-child{border-bottom:0}
+#main-menu .empty-fixtures{padding:22px;border:1px dashed rgba(145,177,215,.28);border-radius:9px;background:rgba(8,15,25,.35)}
+#main-menu .empty-fixtures b{color:#edf4ff;font-size:14px}
+#main-menu .empty-fixtures p{margin:6px 0 0;color:#a6b7cc;font-size:12px;line-height:1.5}
+#main-menu .local-tag{white-space:nowrap}
+@media(max-width:980px){
+  #main-menu .club-discovery-toolbar,
+  #main-menu .player-library-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #main-menu .club-search-field{grid-column:span 2}
+  #main-menu .player-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  #main-menu .club-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu .club-card{grid-template-columns:48px minmax(0,1fr);padding:10px;gap:8px}
+  #main-menu .club-card .club-crest{width:44px;height:44px}
+  #main-menu .club-card-copy h3{font-size:13px}
+  #main-menu .club-meta-line{gap:4px}
+  #main-menu .club-meta-line span{font-size:9px}
+  #main-menu .club-detail-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu .player-library-toolbar,
+  #main-menu .club-discovery-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu .club-search-field{grid-column:1/-1}
+  #main-menu .player-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu .player-career-columns{grid-template-columns:1fr}
+  #main-menu .offer-list{grid-template-columns:1fr}
+  #main-menu .history-list>div{grid-template-columns:1fr;gap:4px}
+}
+@media(max-width:480px){
+  #main-menu .club-overview,
+  #main-menu .player-library-overview{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  #main-menu .club-overview>div,
+  #main-menu .player-library-overview>div{padding:9px}
+  #main-menu .club-overview span,
+  #main-menu .player-library-overview span{font-size:8px}
+  #main-menu .club-grid{grid-template-columns:1fr}
+  #main-menu .club-card{grid-template-columns:54px minmax(0,1fr);padding:12px}
+  #main-menu .club-card .club-crest{width:50px;height:50px}
+  #main-menu .player-library-grid{grid-template-columns:1fr}
+  #main-menu .club-detail-hero{grid-template-columns:64px minmax(0,1fr);gap:12px}
+  #main-menu .club-detail-stats{gap:6px}
+  #main-menu .roster-filters{grid-template-columns:1fr}
+  #main-menu .player-library-toolbar,
+  #main-menu .club-discovery-toolbar{grid-template-columns:1fr}
+  #main-menu .club-search-field{grid-column:auto}
+  #main-menu .player-library-resultline{align-items:flex-start;flex-direction:column}
+  #main-menu .player-career-hero{grid-template-columns:70px minmax(0,1fr);padding:13px;gap:12px}
+  #main-menu .player-career-avatar{width:66px;height:80px}
+  #main-menu .career-summary{grid-template-columns:1fr}
+  #main-menu .offer-terms{grid-template-columns:1fr}
+  #main-menu .player-library-footer{align-items:stretch;flex-direction:column}
+}
+@media(max-height:520px) and (orientation:landscape){
+  #main-menu .club-card{min-height:0}
+  #main-menu .club-detail-hero{padding:12px}
+  #main-menu .club-detail-stats{margin-top:9px}
+  #main-menu .player-career-hero{padding:12px}
+  #main-menu .career-summary>div{padding:11px}
+}
+
