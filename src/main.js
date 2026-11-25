@@ -1098,6 +1098,7 @@ menu.addEventListener('click', event => {
   } else if (action === 'account-train' || action === 'account-practice') {
     submitAccountTraining(action, event.target.closest('[data-attribute]')?.dataset.attribute || '');
   } else if (action === 'online-menu') {
+    if (P27_OFFLINE_TEST) { renderPage('home'); return; }
     document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MULTIJOUEUR · SERVEUR AUTORITAIRE</span><h2>Rejoindre un match en ligne</h2><p>Crée un salon ou rejoins un salon actif. Les déplacements, actions et le ballon sont validés par le serveur.</p><label>Nom affiché<input id="online-name" maxlength="20" value="${escapeHTML(profileStore.profile.identity.displayName)}"></label><div class="training-controls"><button class="primary-cta" data-action="create-online">CRÉER UN SALON</button><button class="small-action" data-action="refresh-online">ACTUALISER LES SALONS</button></div><label>Code du salon<input id="online-room-id" maxlength="12" placeholder="Code à 12 caractères" autocapitalize="characters"></label><button class="primary-cta" data-action="join-online">REJOINDRE CE SALON</button><div id="online-room-list" class="fixture-list"><p class="notice">Chargement des salons…</p></div><p class="notice" id="online-status" aria-live="polite">Le serveur doit être démarré et accessible sur cette adresse.</p><button class="text-cta" data-page="home">Retour</button></div>`;
     refreshOnlineRooms();
   }
