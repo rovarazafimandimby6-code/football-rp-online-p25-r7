@@ -260,3 +260,123 @@ html,body{background:var(--p27-bg);color:var(--p27-text);font-family:Inter,Robot
  .feature-copy h2{font-size:32px;line-height:.94}
  .feature-copy p{max-width:230px}
 }
+
+/* P27 REBIRTH — quality gate: readable type, touch targets, consistent game UI */
+:root{
+ --p27-type-xs:11px;--p27-type-sm:12px;--p27-type-md:14px;
+ --p27-type-lg:18px;--p27-type-xl:26px;
+}
+#main-menu{font-size:var(--p27-type-sm);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+#main-menu button,#main-menu input,#main-menu select{font:inherit}
+#main-menu button{touch-action:manipulation}
+#main-menu :focus-visible{outline:2px solid #83c7ff;outline-offset:3px}
+.menu-topbar,.menu-sidebar,.menu-main,.menu-footer{box-sizing:border-box}
+.menu-sidebar button{min-height:42px;font-size:11px}
+.menu-sidebar button span{font-size:17px}
+.menu-heading h1{font-size:clamp(22px,3vw,32px)}
+.menu-heading p{font-size:12px}
+.eyebrow{font-size:10px;letter-spacing:1.5px}
+.notice,.menu-user small,.menu-user b,.home-career-row>span,.home-player-heading small,
+.home-player-heading span,.home-stat-grid span,.home-last-match span,
+.quick-card small,.quick-card span,.feature-foot,.feature-matchday{font-size:10px}
+.home-player-heading b,.home-career-row b{font-size:13px}
+.home-stat-grid b{font-size:24px}
+.quick-card b{font-size:12px}
+.panel-heading h2,.profile-editor h3,.competition-panel h2{font-size:18px}
+.editor-grid label,.roster-filters label,.settings-card label,.training-controls label,
+.sign-contract-row label{font-size:12px}
+.editor-grid input,.editor-grid select,.matchup-selectors select,.settings-card select,
+.training-controls select,.sign-contract-row select,.sign-contract-row input,
+.roster-filters input,.roster-filters select,.offer-terms input{min-height:44px;font-size:14px}
+.small-action,.secondary-cta,.text-cta{min-height:40px;font-size:11px}
+.primary-cta{min-height:46px;font-size:12px}
+.player-card h2{font-size:clamp(23px,3vw,32px)}
+.player-card p{font-size:13px}
+.attribute-list>div{font-size:13px}
+.club-card h3{font-size:15px}
+.club-card p,.club-card small{font-size:11px}
+.roster-table th,.roster-table td{font-size:12px}
+.player-card-rating,.player-rating{font-size:25px}
+.player-card-attributes small{font-size:10px}
+.player-card-attributes b{font-size:12px}
+.competition-panel,.player-card,.attribute-list,.settings-card,.profile-editor,.career-form{padding:clamp(13px,2vw,20px)}
+/* Profile: the footballer is the hero, not a tiny thumbnail */
+.profile-layout{align-items:stretch}
+.avatar-preview-stage{min-height:clamp(250px,38vh,430px);display:grid;place-items:center;overflow:hidden}
+.avatar-preview-stage canvas{width:100%!important;height:100%!important;object-fit:contain}
+.profile-meta>span{font-size:16px;font-weight:850}
+.profile-meta small{font-size:10px}
+.attribute-list{display:grid;align-content:start}
+.attribute-list>div{display:grid;grid-template-columns:minmax(84px,1fr) 34px;gap:8px;align-items:center}
+.attribute-list>div i{grid-column:1/-1;width:100%}
+/* Player cards read like a scouting/game card rather than admin data tiles */
+.player-library-grid{gap:12px}
+.player-library-card{padding:14px;min-height:190px}
+.player-card-top{align-items:center}
+.player-card-number,.player-card-role{font-size:11px}
+.player-card-identity{align-items:center;gap:12px}
+.player-card-monogram{width:54px;height:64px;display:grid;place-items:center;border-radius:7px;font-size:18px;font-weight:900}
+.player-card-identity h3{font-size:15px;line-height:1.2}
+.player-card-identity p{font-size:11px}
+.player-card-meta{font-size:10px}
+.player-card-attributes{gap:5px}
+.player-card-attributes span{padding:7px 5px;border-radius:5px;text-align:center}
+.player-card-attributes small{display:block}
+.player-card-details summary{min-height:34px;font-size:11px}
+/* Club directory: crests and club identity take visual priority */
+.club-grid{gap:13px}
+.club-card{display:grid;grid-template-columns:72px minmax(0,1fr);align-items:start;gap:12px;padding:15px}
+.club-card>.club-crest{grid-row:1;grid-column:1;width:64px;height:64px}
+.club-card>.club-card-copy{grid-row:1;grid-column:2;min-width:0}
+.club-card-copy h3{font-size:16px}
+.club-meta-line{display:flex;flex-wrap:wrap;gap:6px}
+.club-meta-line span{font-size:10px}
+.club-stadium,.club-roster-preview{grid-column:1/-1}
+.club-card .small-action{margin-top:8px}
+.club-division-heading h2{font-size:21px}
+/* Competition tables: legible at phone scale, horizontally scrollable */
+.standings-table{min-width:540px}
+.standings-table th,.standings-table td{padding:10px 9px;font-size:12px}
+.division-table-title{min-height:42px}
+.fixture-row{min-height:54px;padding:10px;gap:8px}
+.fixture-row span{font-size:11px}
+.fixture-row b{font-size:14px}
+/* Match preparation: give the matchup a real broadcast-card hierarchy */
+.match-intro{min-height:180px;padding:clamp(16px,3vw,28px)}
+.intro-versus{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px}
+.intro-versus>strong{font-size:20px;font-style:italic}
+.lineup-team{padding:16px;border-radius:10px}
+.lineup-team b{font-size:16px}
+.lineup-dots i{width:30px;height:30px;font-size:11px}
+@media(max-width:760px){
+ .menu-sidebar button{min-height:46px;font-size:10px}
+ .menu-sidebar button span{font-size:17px}
+ .menu-heading h1{font-size:21px}
+ .menu-heading p{font-size:11px}
+ .home-stat-grid b{font-size:21px}
+ .home-stat-grid span,.home-player-heading small,.home-player-heading span,
+ .home-career-row>span,.home-career-row b{font-size:11px}
+ .quick-card{min-height:78px;padding:12px}
+ .quick-card b{font-size:11px}.quick-card small{font-size:10px}
+ .player-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .club-card{grid-template-columns:58px minmax(0,1fr);padding:11px;gap:9px}
+ .club-card>.club-crest{width:52px;height:52px}
+ .club-card-copy h3{font-size:14px}
+}
+@media(max-width:430px){
+ .player-library-grid{grid-template-columns:1fr}
+ .profile-layout{grid-template-columns:1fr}
+ .avatar-preview-stage{min-height:290px}
+ .club-grid{grid-template-columns:1fr}
+ .home-stat-grid b{font-size:19px}
+ .home-feature{padding:16px}
+ .feature-copy h2{font-size:31px}
+ .home-primary-actions{display:flex;flex-wrap:wrap;gap:7px}
+ .home-primary-actions button{flex:1 1 130px;padding-inline:9px}
+ .menu-user{max-width:132px}
+ .menu-user b{max-width:90px;overflow:hidden;text-overflow:ellipsis}
+}
+@media(hover:hover){
+ .quick-card,.player-library-card,.club-card,.menu-sidebar button{transition:transform .16s ease,border-color .16s ease,background .16s ease}
+ .quick-card:hover,.player-library-card:hover,.club-card:hover{transform:translateY(-2px);border-color:rgba(111,184,250,.38)!important}
+}
