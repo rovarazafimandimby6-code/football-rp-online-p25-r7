@@ -584,3 +584,110 @@ body:has(#main-menu){overflow:hidden}
 #main-menu .brand-mark small{display:block;margin-top:3px;color:#9db5d2;font-weight:750;line-height:1}
 @media(max-height:520px){#main-menu img.brand-shield{width:31px;height:34px}}
 @media(max-width:560px){#main-menu img.brand-shield{width:32px;height:36px}}
+
+/* P27 REBIRTH — finishing system: consistent surfaces, states and landscape fit.
+   Scoped strictly to the pre-match menu; no selectors target the live match shell. */
+#main-menu{
+  --p27-surface:rgba(18,27,41,.94);
+  --p27-surface-raised:linear-gradient(145deg,rgba(31,46,67,.96),rgba(14,21,33,.98));
+  --p27-border:rgba(169,199,233,.16);
+  --p27-border-strong:rgba(105,174,239,.42);
+  --p27-shadow:0 14px 34px rgba(0,0,0,.24);
+}
+#main-menu #menu-content{min-width:0;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(117,161,211,.35) transparent}
+#main-menu #menu-content::-webkit-scrollbar{width:7px;height:7px}
+#main-menu #menu-content::-webkit-scrollbar-thumb{border-radius:8px;background:rgba(117,161,211,.32)}
+#main-menu .menu-heading{border-color:var(--p27-border)}
+#main-menu .menu-heading .eyebrow{display:inline-block;margin-bottom:5px;color:#83bfff;font-weight:850}
+#main-menu .menu-user{border:1px solid var(--p27-border);border-radius:9px;background:rgba(18,29,44,.72)}
+#main-menu .user-avatar{border:1px solid rgba(125,187,245,.35);box-shadow:0 5px 18px rgba(0,0,0,.25)}
+#main-menu .home-feature,
+#main-menu .player-career-hero,
+#main-menu .club-detail-hero{
+  border:1px solid var(--p27-border-strong);
+  box-shadow:var(--p27-shadow),inset 0 1px rgba(255,255,255,.045);
+}
+#main-menu .home-feature{border-radius:15px}
+#main-menu .home-side-panel,
+#main-menu .quick-card,
+#main-menu .club-card,
+#main-menu .player-library-card,
+#main-menu .competition-panel,
+#main-menu .profile-editor,
+#main-menu .career-form,
+#main-menu .settings-card{
+  border:1px solid var(--p27-border);
+  box-shadow:var(--p27-shadow);
+}
+#main-menu .club-card,
+#main-menu .player-library-card,
+#main-menu .competition-panel,
+#main-menu .profile-editor,
+#main-menu .career-form,
+#main-menu .settings-card{background:var(--p27-surface-raised)}
+#main-menu .club-card{align-content:start;row-gap:10px}
+#main-menu .club-card-copy{display:grid;gap:5px}
+#main-menu .club-card-copy h3,
+#main-menu .player-card-identity h3{color:#f3f7ff;letter-spacing:.1px}
+#main-menu .club-meta-line span,
+#main-menu .player-card-meta,
+#main-menu .player-card-number,
+#main-menu .player-card-role{color:#aebed2}
+#main-menu .club-stadium,
+#main-menu .club-roster-preview{color:#c1cede}
+#main-menu .player-library-card{display:flex;flex-direction:column;gap:12px}
+#main-menu .player-card-details{margin-top:auto;border-top:1px solid var(--p27-border);padding-top:8px}
+#main-menu .competition-panel{overflow:hidden}
+#main-menu .division-table-title{border-bottom:1px solid var(--p27-border)}
+#main-menu .standings-table{border-collapse:separate;border-spacing:0}
+#main-menu .standings-table thead th{position:sticky;top:0;z-index:1;background:#172438}
+#main-menu .standings-table tbody tr:nth-child(even){background:rgba(255,255,255,.025)}
+#main-menu .standings-table tbody tr:hover{background:rgba(83,167,255,.075)}
+#main-menu .fixture-row{border:1px solid var(--p27-border);border-radius:8px}
+#main-menu .editor-grid input,
+#main-menu .editor-grid select,
+#main-menu .matchup-selectors select,
+#main-menu .settings-card select,
+#main-menu .training-controls select,
+#main-menu .sign-contract-row select,
+#main-menu .sign-contract-row input,
+#main-menu .roster-filters input,
+#main-menu .roster-filters select,
+#main-menu .offer-terms input,
+#main-menu textarea{
+  border:1px solid rgba(159,186,219,.24);
+  border-radius:7px;
+  background:#0d1521;
+  color:#f1f5fb;
+}
+#main-menu input::placeholder,
+#main-menu textarea::placeholder{color:#8292a9;opacity:1}
+#main-menu select:focus,
+#main-menu input:focus,
+#main-menu textarea:focus{border-color:#70baff;box-shadow:0 0 0 3px rgba(83,167,255,.13);outline:none}
+#main-menu button:not(:disabled){transition:transform .16s ease,border-color .16s ease,background-color .16s ease,filter .16s ease}
+#main-menu button:active:not(:disabled){transform:translateY(1px)}
+#main-menu .primary-cta{box-shadow:0 7px 20px rgba(57,137,211,.2)}
+#main-menu .primary-cta:hover{filter:brightness(1.08)}
+#main-menu .secondary-cta,
+#main-menu .small-action{border:1px solid var(--p27-border-strong)}
+#main-menu .menu-sidebar button:focus-visible,
+#main-menu button:focus-visible{outline-offset:2px}
+#main-menu .notice{border:1px solid var(--p27-border);border-radius:8px;line-height:1.45}
+#main-menu :where(.home-dashboard,.home-shortcuts,.profile-layout,.club-grid,.competition-layout,.player-library-grid)>*{min-width:0}
+#main-menu :where(h1,h2,h3,p,small,span,b,strong){overflow-wrap:anywhere}
+#main-menu .standings-table-wrap,
+#main-menu .roster-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+@media(max-height:520px) and (orientation:landscape){
+  #main-menu .menu-heading{margin-bottom:8px}
+  #main-menu .home-feature{min-height:174px}
+  #main-menu .avatar-preview-stage{min-height:190px}
+  #main-menu .competition-panel,
+  #main-menu .profile-editor,
+  #main-menu .career-form,
+  #main-menu .settings-card{padding:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  #main-menu button:not(:disabled){transition:none}
+}
+
