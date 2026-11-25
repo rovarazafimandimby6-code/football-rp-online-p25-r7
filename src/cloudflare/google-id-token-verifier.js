@@ -5,28 +5,21 @@ const MAX_JWKS_KEYS = 20;
 const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000;
 
 function decodeBase64Url(value) {
-  if (typeof value !== "string" || !/^[A-Za-z0-9_-]+$/.test(value)) {
-    throw new Error("GOOGLE_ID_TOKEN_MALFORMED");
-  }
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]+$/.test(value)) throw new Error("GOOGLE_ID_TOKEN_MALFORMED");
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
-  const binary = atob(padded);
+  const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
   return Uint8Array.from(binary, character => character.charCodeAt(0));
 }
 
 function decodeJsonPart(value) {
-  try {
-    return JSON.parse(new TextDecoder().decode(decodeBase64Url(value)));
-  } catch {
-    throw new Error("GOOGLE_ID_TOKEN_MALFORMED");
-  }
+  try { return JSON.parse(new TextDecoder().decode(decodeBase64Url(value))); }
+  catch { throw new Error("GOOGLE_ID_TOKEN_MALFORMED"); }
 }
 
 function constantTimeEqual(left, right) {
   if (typeof left !== "string" || typeof right !== "string") return false;
   let difference = left.length ^ right.length;
-  const length = Math.max(left.length, right.length);
-  for (let index = 0; index < length; index += 1) {
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
     difference |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
   }
   return difference === 0;
@@ -34,20 +27,16 @@ function constantTimeEqual(left, right) {
 
 function cacheTtlFromHeaders(headers, fallback) {
   const cacheControl = headers?.get?.("cache-control") || "";
-  const match = cacheControl.match(/(?:^|,)\\s*max-age=(\\d+)/i);
+  const match = cacheControl.match(/(?:^|,)\s*max-age=(\d+)/i);
   if (!match) return fallback;
   const seconds = Number(match[1]);
-  if (!Number.isFinite(seconds)) return fallback;
-  return Math.max(60_000, Math.min(6 * 60 * 60 * 1000, seconds * 1000));
+  return Number.isFinite(seconds)
+    ? Math.max(60_000, Math.min(6 * 60 * 60 * 1000, seconds * 1000))
+    : fallback;
 }
 
-/** Google JWKS cache compatible with Cloudflare Workers and Web Crypto. */
 export class GoogleWorkerJwksCache {
-  constructor({
-    fetchImpl = globalThis.fetch,
-    now = () => Date.now(),
-    ttlMs = DEFAULT_CACHE_TTL_MS,
-  } = {}) {
+  constructor({ fetchImpl = globalThis.fetch, now = () => Date.now(), ttlMs = DEFAULT_CACHE_TTL_MS } = {}) {
     this.fetchImpl = fetchImpl;
     this.now = now;
     this.ttlMs = Math.max(60_000, Math.min(6 * 60 * 60 * 1000, Number(ttlMs) || DEFAULT_CACHE_TTL_MS));
@@ -68,21 +57,15 @@ export class GoogleWorkerJwksCache {
           headers: { accept: "application/json" },
           signal: AbortSignal.timeout(5_000),
         });
-      } catch {
-        throw new Error("GOOGLE_JWKS_FETCH_FAILED");
-      }
+      } catch { throw new Error("GOOGLE_JWKS_FETCH_FAILED"); }
       if (!response?.ok) throw new Error("GOOGLE_JWKS_FETCH_FAILED");
 
       let data;
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error("GOOGLE_JWKS_INVALID");
-      }
+      try { data = await response.json(); }
+      catch { throw new Error("GOOGLE_JWKS_INVALID"); }
       if (!data || !Array.isArray(data.keys) || data.keys.length < 1 || data.keys.length > MAX_JWKS_KEYS) {
         throw new Error("GOOGLE_JWKS_INVALID");
       }
-
       const keys = data.keys.filter(key =>
         key && key.kty === "RSA" && key.use === "sig" && key.alg === "RS256" &&
         typeof key.kid === "string" && key.kid.length > 0 && key.kid.length <= 256 &&
@@ -91,31 +74,20 @@ export class GoogleWorkerJwksCache {
       if (!keys.length || new Set(keys.map(key => key.kid)).size !== keys.length) {
         throw new Error("GOOGLE_JWKS_INVALID");
       }
-
       this.keys = keys;
       this.expiresAt = this.now() + cacheTtlFromHeaders(response.headers, this.ttlMs);
       return keys;
     })();
 
-    try {
-      return await this.pending;
-    } finally {
-      this.pending = null;
-    }
+    try { return await this.pending; }
+    finally { this.pending = null; }
   }
 }
 
-/** Validates Google OIDC ID tokens using RS256 and the Worker Web Crypto API. */
 export async function verifyGoogleWorkerIdToken(idToken, {
-  clientId,
-  expectedNonce,
-  jwksCache,
-  now = () => Date.now(),
-  clockSkewSeconds = 120,
+  clientId, expectedNonce, jwksCache, now = () => Date.now(), clockSkewSeconds = 120,
 } = {}) {
-  if (typeof idToken !== "string" || idToken.length > MAX_TOKEN_LENGTH) {
-    throw new Error("GOOGLE_ID_TOKEN_MALFORMED");
-  }
+  if (typeof idToken !== "string" || idToken.length > MAX_TOKEN_LENGTH) throw new Error("GOOGLE_ID_TOKEN_MALFORMED");
   const parts = idToken.split(".");
   if (parts.length !== 3 || parts.some(part => !part)) throw new Error("GOOGLE_ID_TOKEN_MALFORMED");
   if (typeof clientId !== "string" || !clientId.trim() ||
@@ -141,31 +113,21 @@ export async function verifyGoogleWorkerIdToken(idToken, {
   let publicKey;
   try {
     publicKey = await crypto.subtle.importKey(
-      "jwk",
-      jwk,
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-      false,
-      ["verify"],
+      "jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"],
     );
-  } catch {
-    throw new Error("GOOGLE_ID_TOKEN_SIGNING_KEY_INVALID");
-  }
+  } catch { throw new Error("GOOGLE_ID_TOKEN_SIGNING_KEY_INVALID"); }
 
   let signatureValid = false;
   try {
     signatureValid = await crypto.subtle.verify(
-      "RSASSA-PKCS1-v1_5",
-      publicKey,
-      decodeBase64Url(parts[2]),
+      "RSASSA-PKCS1-v1_5", publicKey, decodeBase64Url(parts[2]),
       new TextEncoder().encode(parts[0] + "." + parts[1]),
     );
-  } catch {
-    signatureValid = false;
-  }
+  } catch { signatureValid = false; }
   if (!signatureValid) throw new Error("GOOGLE_ID_TOKEN_SIGNATURE_INVALID");
 
   if (!GOOGLE_ISSUERS.has(claims.iss)) throw new Error("GOOGLE_ID_TOKEN_ISSUER_INVALID");
-  const audiences = Array.isArray(claims.aud) ? claims.audiences || claims.aud : [claims.aud];
+  const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
   if (!audiences.includes(clientId) ||
       (audiences.length > 1 && claims.azp !== clientId) ||
       (claims.azp !== undefined && claims.azp !== clientId)) {
@@ -174,24 +136,12 @@ export async function verifyGoogleWorkerIdToken(idToken, {
 
   const seconds = Math.floor(now() / 1000);
   const skew = Math.max(0, Math.min(300, Number(clockSkewSeconds) || 0));
-  if (!Number.isFinite(claims.exp) || claims.exp <= seconds - skew) {
-    throw new Error("GOOGLE_ID_TOKEN_EXPIRED");
-  }
-  if (!Number.isFinite(claims.iat) || claims.iat > seconds + skew) {
-    throw new Error("GOOGLE_ID_TOKEN_ISSUED_AT_INVALID");
-  }
-  if (!constantTimeEqual(claims.nonce, expectedNonce)) {
-    throw new Error("GOOGLE_ID_TOKEN_NONCE_INVALID");
-  }
+  if (!Number.isFinite(claims.exp) || claims.exp <= seconds - skew) throw new Error("GOOGLE_ID_TOKEN_EXPIRED");
+  if (!Number.isFinite(claims.iat) || claims.iat > seconds + skew) throw new Error("GOOGLE_ID_TOKEN_ISSUED_AT_INVALID");
+  if (!constantTimeEqual(claims.nonce, expectedNonce)) throw new Error("GOOGLE_ID_TOKEN_NONCE_INVALID");
   if (typeof claims.sub !== "string" || !/^[A-Za-z0-9_-]{8,255}$/.test(claims.sub)) {
     throw new Error("GOOGLE_ID_TOKEN_SUBJECT_INVALID");
   }
 
-  return {
-    googleSubject: claims.sub,
-    issuer: claims.iss,
-    audience: clientId,
-    issuedAt: claims.iat,
-    expiresAt: claims.exp,
-  };
+  return { googleSubject: claims.sub, issuer: claims.iss, audience: clientId, issuedAt: claims.iat, expiresAt: claims.exp };
 }

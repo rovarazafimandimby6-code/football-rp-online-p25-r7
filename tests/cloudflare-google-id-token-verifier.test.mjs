@@ -14,46 +14,35 @@ function encode(value) {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-async function fixture(overrides = {}) {
+async function fixture(overrides = {}, { headerKid = "test-key-1" } = {}) {
   const pair = await crypto.subtle.generateKey({
-    name: "RSASSA-PKCS1-v1_5",
-    modulusLength: 2048,
-    publicExponent: new Uint8Array([1, 0, 1]),
-    hash: "SHA-256",
+    name: "RSASSA-PKCS1-v1_5", modulusLength: 2048,
+    publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256",
   }, true, ["sign", "verify"]);
   const jwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
   Object.assign(jwk, { kid: "test-key-1", use: "sig", alg: "RS256" });
   const claims = {
-    iss: "https://accounts.google.com",
-    aud: clientId,
-    sub: subject,
-    nonce,
-    iat: Math.floor(now / 1000) - 10,
-    exp: Math.floor(now / 1000) + 3600,
+    iss: "https://accounts.google.com", aud: clientId, sub: subject, nonce,
+    iat: Math.floor(now / 1000) - 10, exp: Math.floor(now / 1000) + 3600,
     ...overrides,
   };
-  const header = encode({ alg: "RS256", kid: "test-key-1", typ: "JWT" });
+  const header = encode({ alg: "RS256", kid: headerKid, typ: "JWT" });
   const payload = encode(claims);
   const signingInput = header + "." + payload;
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    pair.privateKey,
-    new TextEncoder().encode(signingInput),
-  );
+  const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", pair.privateKey, new TextEncoder().encode(signingInput));
   let binary = "";
   for (const byte of new Uint8Array(signature)) binary += String.fromCharCode(byte);
-  const token = signingInput + "." + btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  const token = signingInput + "." + btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   let fetches = 0;
   const cache = new GoogleWorkerJwksCache({
     now: () => now,
     fetchImpl: async () => {
       fetches += 1;
       return new Response(JSON.stringify({ keys: [jwk] }), {
-        status: 200,
-        headers: { "cache-control": "public, max-age=3600" },
+        status: 200, headers: { "cache-control": "public, max-age=3600" },
       });
     },
   });
@@ -71,18 +60,19 @@ test("Cloudflare verifier accepts a valid Google RS256 ID token", async () => {
   assert.equal(f.getFetches(), 1);
 });
 
-test("JWKS cache reuses keys and refreshes once for an unknown kid", async () => {
+test("JWKS cache reuses keys and refreshes for an unknown kid", async () => {
   const f = await fixture();
   await verifyGoogleWorkerIdToken(f.token, { clientId, expectedNonce: nonce, jwksCache: f.cache, now: () => now });
   await verifyGoogleWorkerIdToken(f.token, { clientId, expectedNonce: nonce, jwksCache: f.cache, now: () => now });
   assert.equal(f.getFetches(), 1);
+  const unknown = await fixture({}, { headerKid: "unknown-key" });
   await assert.rejects(
-    verifyGoogleWorkerIdToken(f.token.replace("test-key-1", "unknown-key"), {
-      clientId, expectedNonce: nonce, jwksCache: f.cache, now: () => now,
+    verifyGoogleWorkerIdToken(unknown.token, {
+      clientId, expectedNonce: nonce, jwksCache: unknown.cache, now: () => now,
     }),
     /GOOGLE_ID_TOKEN_SIGNING_KEY_UNKNOWN/,
   );
-  assert.equal(f.getFetches(), 2);
+  assert.equal(unknown.getFetches(), 2);
 });
 
 test("Cloudflare verifier rejects wrong audience, issuer, nonce, expiry and signature", async () => {
@@ -99,9 +89,12 @@ test("Cloudflare verifier rejects wrong audience, issuer, nonce, expiry and sign
     );
   }
   const f = await fixture();
-  const tampered = f.token.slice(0, -1) + (f.token.endsWith("A") ? "B" : "A");
+  const signatureParts = f.token.split(".");
+  signatureParts[2] = (signatureParts[2][0] === "A" ? "B" : "A") + signatureParts[2].slice(1);
   await assert.rejects(
-    verifyGoogleWorkerIdToken(tampered, { clientId, expectedNonce: nonce, jwksCache: f.cache, now: () => now }),
+    verifyGoogleWorkerIdToken(signatureParts.join("."), {
+      clientId, expectedNonce: nonce, jwksCache: f.cache, now: () => now,
+    }),
     /GOOGLE_ID_TOKEN_SIGNATURE_INVALID/,
   );
 });
