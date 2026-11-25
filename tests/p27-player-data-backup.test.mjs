@@ -15,7 +15,7 @@ import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 
 const schemas = {
   accounts: { version:1, accounts:[{id:'account-1'}], sessions:[] },
-  playerIdentities: { version:1, identities:[{localProfileKey:'123e4567-e89b-42d3-a456-426614174000',playerId:'FRP-675757',createdAt:'2026-11-25T12:00:00.000Z'}] },
+  playerIdentities: { version:1, identities:[{localProfileKey:'123e4567-e89b-42d3-a456-426614174000',accountId:'123e4567-e89b-42d3-a456-426614174099',playerId:'FRP-675757',createdAt:'2026-11-25T12:00:00.000Z'}] },
   profiles: { version:1, profiles:[{accountId:'account-1',profile:{identity:{displayName:'Test'}}}] },
   progression: { version:1, players:[{accountId:'account-1',progression:{level:4}}] },
   careers: { version:1, careers:[{accountId:'account-1',totals:{matches:2},matches:[]}], playerCareers:[] },

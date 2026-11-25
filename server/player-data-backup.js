@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const STORES = Object.freeze({
   accounts: { file: 'accounts.json', directory: 'accounts', validate: value => value?.version === 1 && Array.isArray(value.accounts) && Array.isArray(value.sessions) },
-  playerIdentities: { file: 'player-identities.json', directory: 'player-identities', validate: value => value?.version === 1 && Array.isArray(value.identities) && value.identities.every(row => row && typeof row.localProfileKey === 'string' && typeof row.playerId === 'string' && typeof row.createdAt === 'string') },
+  playerIdentities: { file: 'player-identities.json', directory: 'player-identities', validate: value => value?.version === 1 && Array.isArray(value.identities) && value.identities.every(row => row && typeof row.localProfileKey === 'string' && typeof row.accountId === 'string' && typeof row.playerId === 'string' && typeof row.createdAt === 'string') },
   profiles: { file: 'player-profiles.json', directory: 'player-profiles', validate: value => value?.version === 1 && Array.isArray(value.profiles) },
   progression: { file: 'progression.json', directory: 'progression', validate: value => value?.version === 1 && Array.isArray(value.players) },
   careers: { file: 'careers.json', directory: 'careers', validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.playerCareers) },

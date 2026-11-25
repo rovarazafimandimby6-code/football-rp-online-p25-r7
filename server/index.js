@@ -182,7 +182,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'PLAYER_ID_RESERVATION_RATE_LIMITED' });
       const body = await readBody(req);
       const reservation = playerIdentityStore.reserve({ localProfileKey: body.localProfileKey });
-      return json(res, 200, { playerId: reservation.playerId, reserved: true, alreadyReserved: reservation.alreadyReserved });
+      return json(res, 200, { accountId: reservation.accountId, playerId: reservation.playerId, reserved: true, alreadyReserved: reservation.alreadyReserved });
     }
     if (req.method === 'GET' && url.pathname === '/api/rooms') return json(res, 200, { rooms: manager.list() });
     if (req.method === 'GET' && url.pathname === '/api/players/library') {

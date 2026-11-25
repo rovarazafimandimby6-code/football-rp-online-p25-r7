@@ -45,8 +45,8 @@ export class LocalPlayerProfile {
     });
     let payload = {};
     try { payload = await response.json(); } catch {}
-    if (!response.ok || typeof payload.playerId !== 'string' || !/^FRP-\d{6}$/.test(payload.playerId) || payload.reserved !== true) throw new Error(payload.error || 'PLAYER_ID_RESERVATION_FAILED');
-    const next = { ...current, id: payload.playerId, identityStatus: 'reserved', updatedAt: this.now() };
+    if (!response.ok || typeof payload.playerId !== 'string' || !/^FRP-\d{6}$/.test(payload.playerId) || typeof payload.accountId !== 'string' || !/^[0-9a-f-]{36}$/i.test(payload.accountId) || payload.reserved !== true) throw new Error(payload.error || 'PLAYER_ID_RESERVATION_FAILED');
+    const next = { ...current, id: payload.playerId, accountId: payload.accountId, identityStatus: 'reserved', updatedAt: this.now() };
     this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, profile: next }));
     return structuredClone(next);
   }

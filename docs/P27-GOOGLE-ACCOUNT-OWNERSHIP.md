@@ -15,7 +15,7 @@ L'association Google est recommandée, jamais obligatoire. Ne jamais présenter 
 - Cet identifiant est indépendant du nom affiché, du club et du compte Google.
 - Il est conservé dans les données locales et présenté comme identifiant du joueur, pas comme un mot de passe ni un secret d'authentification.
 - La génération locale ne peut pas garantir à elle seule l'unicité mondiale. Avant d'exposer cet identifiant comme définitivement réservé sur toute la plateforme, le serveur devra effectuer une réservation atomique dans un registre central ; les collisions devront être rejetées et un nouvel identifiant attribué sans toucher aux données de carrière.
-- Une clé locale UUID distincte rend les réservations serveur idempotentes. Le serveur réserve le numéro dans un registre central et le client remplace le numéro provisoire par le numéro confirmé. Le registre est inclus dans les sauvegardes vérifiées. Le registre JSON actuel convient à une instance unique ; une base transactionnelle partagée reste nécessaire avant une architecture multi-instance.
+- Une clé locale UUID distincte rend les réservations serveur idempotentes. Le serveur crée aussi un identifiant technique de compte P27 (UUID sans mot de passe) et réserve le numéro FRP dans le registre central ; le client remplace le numéro provisoire par le numéro confirmé. Cet accountId servira de clé propriétaire des stores serveur et de la liaison Google. Le registre est inclus dans les sauvegardes vérifiées. Le registre JSON actuel convient à une instance unique ; une base transactionnelle partagée reste nécessaire avant une architecture multi-instance.
 
 ## Parcours sans Google
 - Le joueur choisit « Jouer » ou « Créer mon joueur ».
