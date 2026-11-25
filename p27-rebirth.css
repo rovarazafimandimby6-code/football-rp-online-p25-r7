@@ -575,3 +575,12 @@ body:has(#main-menu){overflow:hidden}
   #menu-orientation{display:none}
   #main-menu{visibility:visible;pointer-events:auto}
 }
+
+
+/* P27 brand system — crisp crest sizing across landscape breakpoints */
+#main-menu .brand-mark{display:flex;align-items:center;gap:11px;min-width:0}
+#main-menu img.brand-shield{display:block;flex:0 0 auto;width:38px;height:42px;object-fit:contain;filter:drop-shadow(0 3px 9px rgba(35,105,170,.28))}
+#main-menu .brand-mark strong{font-weight:850;color:#f5f8ff;line-height:1.05}
+#main-menu .brand-mark small{display:block;margin-top:3px;color:#9db5d2;font-weight:750;line-height:1}
+@media(max-height:520px){#main-menu img.brand-shield{width:31px;height:34px}}
+@media(max-width:560px){#main-menu img.brand-shield{width:32px;height:36px}}
