@@ -223,13 +223,31 @@ export class RoomManager {
   }
 
   updateBots(room) {
-    const bots = [...room.players.values()].filter(p => p.isOnPitch !== false && (p.isBot || p.aiControlled) && (p.connected || p.aiControlled));
+    const activePlayers = [...room.players.values()].filter(p => p.isOnPitch !== false && (p.connected || p.aiControlled));
+    const bots = activePlayers.filter(p => p.isBot || p.aiControlled);
+    const playersByTeam = {
+      blue: activePlayers.filter(p => p.team === 'blue'),
+      red: activePlayers.filter(p => p.team === 'red'),
+    };
+    const opponentsByTeam = {
+      blue: playersByTeam.red,
+      red: playersByTeam.blue,
+    };
+    const nearestToBallByTeam = {};
+    for (const team of ['blue', 'red']) {
+      let nearest = null, nearestDistance = Infinity;
+      for (const player of playersByTeam[team]) {
+        const distance = Math.hypot(player.x - room.ball.x, player.z - room.ball.z);
+        if (distance < nearestDistance) { nearest = player; nearestDistance = distance; }
+      }
+      nearestToBallByTeam[team] = nearest;
+    }
     const ball = room.ball;
     for (const bot of bots) {
-      const teammates = [...room.players.values()].filter(p => p.team === bot.team && p.id !== bot.id && p.isOnPitch !== false && (p.connected || p.aiControlled));
-      const opponents = [...room.players.values()].filter(p => p.team !== bot.team && p.isOnPitch !== false && (p.connected || p.aiControlled));
+      const teammates = playersByTeam[bot.team].filter(p => p.id !== bot.id);
+      const opponents = opponentsByTeam[bot.team];
       const owner = ball.ownerId ? room.players.get(ball.ownerId) : null;
-      const nearestTeammate = [bot, ...teammates].sort((a,b) => Math.hypot(a.x-ball.x,a.z-ball.z)-Math.hypot(b.x-ball.x,b.z-ball.z))[0];
+      const nearestTeammate = nearestToBallByTeam[bot.team];
       const now = this.now();
       let targetX = ball.x, targetZ = ball.z;
       const attackDir = room.attackDirection[bot.team] || (bot.team === 'blue' ? 1 : -1);
