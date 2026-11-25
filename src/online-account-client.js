@@ -78,6 +78,41 @@ export class OnlineAccountClient {
     return this.request('/api/profile', { method: 'PUT', auth: true, body: { profile } });
   }
 
+  enqueueProfileSnapshot(profile, outbox) {
+    if (!outbox || typeof outbox.enqueue !== 'function') throw new Error('SYNC_OUTBOX_UNAVAILABLE');
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile)) throw new Error('INVALID_PROFILE');
+    const snapshot = {
+      identity: profile.identity && typeof profile.identity === 'object' ? {
+        displayName: profile.identity.displayName, number: profile.identity.number,
+        preferredFoot: profile.identity.preferredFoot, role: profile.identity.role
+      } : {},
+      appearance: profile.appearance && typeof profile.appearance === 'object' ? {
+        kit: profile.appearance.kit, skinTone: profile.appearance.skinTone,
+        hairStyle: profile.appearance.hairStyle, hairColor: profile.appearance.hairColor,
+        bodyBuild: profile.appearance.bodyBuild
+      } : {}
+    };
+    return outbox.enqueue('profile_snapshot', snapshot);
+  }
+
+  async syncPendingProfileSnapshots(outbox, { limit = 50 } = {}) {
+    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    if (!outbox || typeof outbox.pending !== 'function' || typeof outbox.acknowledge !== 'function'
+      || typeof outbox.markAttempt !== 'function' || typeof outbox.status !== 'function') throw new Error('SYNC_OUTBOX_UNAVAILABLE');
+    const pending = outbox.pending(limit);
+    const result = { uploaded: 0, remaining: pending.length, blocked: 0 };
+    for (const operation of pending) {
+      if (operation.type !== 'profile_snapshot') { result.blocked++; break; }
+      outbox.markAttempt(operation.operationId);
+      await this.saveProfile(operation.payload);
+      const nextVersion = outbox.status().serverVersion + 1;
+      if (!outbox.acknowledge({ operationId: operation.operationId, serverVersion: nextVersion })) throw new Error('SYNC_ACKNOWLEDGEMENT_FAILED');
+      result.uploaded++;
+    }
+    result.remaining = outbox.status().pending;
+    return result;
+  }
+
   async getProgression() {
     if (!this.token) throw new Error('NOT_AUTHENTICATED');
     return this.request('/api/progression', { auth: true });

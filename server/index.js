@@ -224,8 +224,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
     if (req.method === 'POST' && url.pathname === '/api/auth/google/start') {
       if (!googleOidcConfig.configured) return json(res, 503, { error: 'GOOGLE_OIDC_NOT_CONFIGURED' });
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'GOOGLE_OIDC_RATE_LIMITED' });
-      const origin = req.headers.origin;
-      if (origin && origin !== new URL(googleOidcConfig.redirectUri).origin) return json(res, 403, { error: 'GOOGLE_OIDC_ORIGIN_INVALID' });
+      if (!trustedAppOrigin(req)) return json(res, 403, { error: 'GOOGLE_OIDC_ORIGIN_INVALID' });
       const body = await readBody(req);
       const identity = playerIdentityStore.verifyLocalProof({
         localProfileKey: body.localProfileKey, localProofSecret: body.localProofSecret
