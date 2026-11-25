@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
 import { readGoogleOidcConfig } from './google-oidc-config.js';
+import { GoogleOidcTransactionStore } from './google-oidc-transactions.js';
 import { JsonPlayerIdentityStore } from './player-identity-store.js';
 import { JsonCareerStore } from './career-store.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
@@ -84,6 +85,8 @@ const manager = new RoomManager({ resultStore, roomStore, careerStore, progressi
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const googleOidcConfig = readGoogleOidcConfig(process.env);
+const googleOidcTransactionDirectory = process.env.GOOGLE_OIDC_TRANSACTIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'google-oidc-transactions');
+const googleOidcTransactionStore = new GoogleOidcTransactionStore({ directory: googleOidcTransactionDirectory });
 const playerIdentityDirectory = process.env.PLAYER_IDENTITIES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'player-identities');
 const playerIdentityStore = new JsonPlayerIdentityStore(playerIdentityDirectory);
 const accountAttempts = new Map();
