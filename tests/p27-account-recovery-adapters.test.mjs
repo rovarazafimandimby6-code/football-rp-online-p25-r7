@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { CareerManager } from '../src/career-manager.js';
 import { createAccountRecoveryAdapters, readAccountRecoveryArchives } from '../src/account-recovery-adapters.js';
 import { restoreAccountSnapshot } from '../src/account-recovery.js';
 class MemoryStorage {
@@ -31,7 +32,8 @@ function makeStores(storage) {
     save() { storage.setItem(this.key, JSON.stringify(this.snapshot())); return true; },
     load() { const v=JSON.parse(storage.getItem(this.key)); this.totals=v.totals; this.matches=v.matches; this.processedMatchIds=v.processedMatchIds; }
   };
-  return { profileStore, seasonStatsStore };
+  const careerManager = new CareerManager({ storage, initialCoins: 2500 });
+  return { profileStore, seasonStatsStore, careerManager };
 }
 const preview = () => ({ ready: true, reason: 'EXPLICIT_RESTORE_CONFIRMATION_REQUIRED', revision, snapshot: snapshot() });
 
