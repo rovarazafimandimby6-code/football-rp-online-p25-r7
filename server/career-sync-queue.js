@@ -24,7 +24,7 @@ export class JsonCareerSyncQueue {
     try {
       const value = JSON.parse(readFileSync(this.file, 'utf8'));
       if (!value || value.version !== 1 || !Array.isArray(value.pending)) throw new Error('bad schema');
-      const pending = value.pending.filter(item => this.valid(item));
+      const pending = value.pending.map(item => ({ ...item, attempts: Number.isSafeInteger(item?.attempts) && item.attempts >= 0 ? item.attempts : 0, nextAttemptAt: Number.isSafeInteger(item?.nextAttemptAt) && item.nextAttemptAt >= 0 ? item.nextAttemptAt : 0 })).filter(item => this.valid(item));
       if (pending.length !== value.pending.length) throw new Error('invalid queue entry');
       const keys = new Set();
       for (const item of pending) {
@@ -43,6 +43,8 @@ export class JsonCareerSyncQueue {
     return Boolean(item && UUID_RE.test(item.accountId || '') && PLAYER_ID_RE.test(item.playerId || '') &&
       typeof item.matchId === 'string' && item.matchId.length > 0 && item.matchId.length <= 64 &&
       Number.isSafeInteger(item.queuedAt) && item.queuedAt >= 0 &&
+      Number.isSafeInteger(item.attempts ?? 0) && (item.attempts ?? 0) >= 0 &&
+      Number.isSafeInteger(item.nextAttemptAt ?? 0) && (item.nextAttemptAt ?? 0) >= 0 &&
       item.payload && typeof item.payload === 'object' && !Array.isArray(item.payload) &&
       item.payload.matchId === item.matchId && ['win', 'draw', 'loss'].includes(item.payload.result));
   }
@@ -61,7 +63,7 @@ export class JsonCareerSyncQueue {
   }
 
   enqueue({ accountId, playerId, matchId, payload } = {}) {
-    const item = { accountId, playerId, matchId: clean(matchId), queuedAt: this.now(), payload: structuredClone(payload) };
+    const item = { accountId, playerId, matchId: clean(matchId), queuedAt: this.now(), attempts: 0, nextAttemptAt: 0, payload: structuredClone(payload) };
     if (!this.valid(item)) throw new Error('INVALID_CAREER_SYNC_EVENT');
     const key = this.key(item.accountId, item.matchId);
     const existing = this.state.pending.find(entry => this.key(entry.accountId, entry.matchId) === key);
@@ -80,6 +82,32 @@ export class JsonCareerSyncQueue {
   listPending({ limit = 100 } = {}) {
     const safeLimit = Number.isSafeInteger(limit) ? Math.max(1, Math.min(500, limit)) : 100;
     return this.state.pending.slice(0, safeLimit).map(item => structuredClone(item));
+  }
+
+
+  listDue({ limit = 25, now = this.now() } = {}) {
+    const safeLimit = Number.isSafeInteger(limit) ? Math.max(1, Math.min(100, limit)) : 25;
+    const timestamp = Number.isSafeInteger(now) ? now : this.now();
+    return this.state.pending.filter(item => (item.nextAttemptAt ?? 0) <= timestamp)
+      .slice(0, safeLimit).map(item => structuredClone(item));
+  }
+
+  markAttempt(accountId, matchId) {
+    const key = this.key(accountId, matchId);
+    const index = this.state.pending.findIndex(item => this.key(item.accountId, item.matchId) === key);
+    if (index < 0) return { updated: false, retryAt: null };
+    const previous = this.state;
+    const item = previous.pending[index];
+    const attempts = (item.attempts ?? 0) + 1;
+    const delay = Math.min(6 * 60 * 60_000, 15_000 * (2 ** Math.min(attempts, 10)));
+    const retryAt = this.now() + delay;
+    const pending = previous.pending.map((entry, i) => i === index
+      ? { ...entry, attempts, lastAttemptAt: this.now(), nextAttemptAt: retryAt }
+      : entry);
+    this.state = { version: 1, pending };
+    try { this.persist(); }
+    catch (error) { this.state = previous; throw error; }
+    return { updated: true, attempts, retryAt };
   }
 
   acknowledge(accountId, matchId) {

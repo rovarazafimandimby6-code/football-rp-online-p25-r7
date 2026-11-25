@@ -14,6 +14,7 @@ import { GoogleOidcTransactionStore } from './google-oidc-transactions.js';
 import { JsonPlayerIdentityStore } from './player-identity-store.js';
 import { JsonCareerStore } from './career-store.js';
 import { JsonCareerSyncQueue } from './career-sync-queue.js';
+import { CareerSyncService } from './career-sync-service.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
 import { JsonProgressionStore } from './progression-store.js';
 import { JsonCompetitionStore } from './competition-store.js';
@@ -38,6 +39,7 @@ const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileUR
 const careerStore = new JsonCareerStore(careerDirectory);
 const careerSyncDirectory = process.env.CAREER_SYNC_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'career-sync');
 const careerSyncQueue = new JsonCareerSyncQueue(careerSyncDirectory);
+const careerSyncService = new CareerSyncService(careerSyncQueue);
 const progressionDirectory = process.env.PLAYER_PROGRESSION_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'progression');
 const progressionStore = new JsonProgressionStore(progressionDirectory);
 const playerProfileDirectory = process.env.PLAYER_PROFILES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'player-profiles');
@@ -695,6 +697,7 @@ function shutdownP27Server() {
   clearInterval(humanRosterSyncTick);
   clearInterval(clubWorldTick);
   playerBackupScheduler.stop();
+  careerSyncService.stop();
   shutdownPromise = new Promise((resolve, reject) => {
     const flush = () => {
       const report = manager.persistAllRooms();
@@ -730,4 +733,4 @@ if (isMainModule) {
   process.once('SIGTERM', () => handleSignal('SIGTERM'));
   process.once('SIGINT', () => handleSignal('SIGINT'));
 }
-export { server, manager, clubFinance, serverClubManager, clubWorld, playerBackupScheduler, shutdownP27Server };
+export { server, manager, clubFinance, serverClubManager, clubWorld, playerBackupScheduler, careerSyncQueue, careerSyncService, shutdownP27Server };
