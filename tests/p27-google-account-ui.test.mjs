@@ -13,13 +13,14 @@ test('account page does not request a username, email or password', () => {
   assert.match(accountPage, /PROFIL LOCAL ACTIF/);
 });
 
-test('Google association is optional and not falsely presented as active', () => {
-  assert.match(source, /CONNECTER AVEC GOOGLE · BIENTÔT DISPONIBLE/);
-  assert.match(source, /data-action="google-link"/);\n  assert.match(source, /data-action="google-login"/);\n  assert.match(source, /LOCAL_IDENTITY_NOT_SERVER_RESERVED/);
+test('Google association stays optional and the linked recovery actions are wired', () => {
+  assert.match(source, /data-action="google-link"/);
+  assert.match(source, /data-action="google-login"/);
+  assert.match(source, /LOCAL_IDENTITY_NOT_SERVER_RESERVED/);
+  assert.match(source, /Google OAuth doit encore être configuré sur le serveur/);
   assert.match(accountPage, /L'association est un choix, pas une condition d'accès au jeu/);
   assert.match(accountPage, /Tant que Google n'est pas associé, les données restent sur cet appareil/);
 });
-
 test('Google protection entry points are present on player page and settings', () => {
   assert.match(source, /renderGoogleProtectionCard\(\{ compact: true \}\)/);
   assert.match(source, /Compte et synchronisation/);
