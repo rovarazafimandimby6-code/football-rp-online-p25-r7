@@ -21,6 +21,8 @@ jobs:
         run: |
           npx --yes wrangler@4 d1 migrations apply p27-world --local
           npx --yes wrangler@4 d1 execute p27-world --local --command "PRAGMA foreign_key_check;"
+      - name: Build Cloudflare Worker without deploying
+        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/p27-cloudflare-worker
       - name: Validate deployment preflight command
         env:
           P27_ADMIN_TOKEN: p27-ci-only-dummy-secret-not-for-production-0123456789
