@@ -42,6 +42,25 @@ function vector(value, label) {
   return output;
 }
 
+function captureControls(controls) {
+  if (!controls) return null;
+  return {
+    move: {
+      x: Number.isFinite(controls.joy?.x) ? controls.joy.x : 0,
+      z: Number.isFinite(controls.joy?.z) ? controls.joy.z : 0
+    },
+    keys: controls.keys instanceof Set ? [...controls.keys].sort() : [],
+    sprintHeld: controls.sprintHeld === true,
+    pendingPass: clonePlain(controls.pendingPass),
+    pendingPress: controls.pendingPress === true,
+    pendingShoot: clonePlain(controls.pendingShoot),
+    pendingLob: controls.pendingLob === true,
+    pendingCallForPass: controls.pendingCallForPass === true,
+    role: controls.role ?? null,
+    benchMode: controls.benchMode === true
+  };
+}
+
 function capturePlayer(player) {
   if (!player || player.id === null || player.id === undefined) fail("INVALID_SNAPSHOT_PLAYER");
   const output = {
@@ -104,6 +123,12 @@ export function createMatchReplaySnapshot({ seed, tick = 0, game } = {}) {
       red: clonePlain(game.benchPlayers?.red || [])
     },
     activePlayerId: game.activePlayer?.id === undefined ? null : String(game.activePlayer.id),
+    pendingControlledPass: game.pendingControlledPass ? {
+      passerId: String(game.pendingControlledPass.passer?.id ?? ""),
+      targetId: String(game.pendingControlledPass.target?.id ?? ""),
+      remaining: game.pendingControlledPass.remaining
+    } : null,
+    controls: captureControls(game.controls),
     ball: {
       pos: vector(game.ball.pos, "ball_position"),
       vel: vector(game.ball.vel, "ball_velocity"),
@@ -188,6 +213,20 @@ export function validateMatchReplaySnapshot(snapshot) {
         !snapshot.state.match || !snapshot.state.ai || !snapshot.state.physics ||
         !snapshot.state.weather || !Array.isArray(snapshot.state.benchPlayers?.blue) ||
         !Array.isArray(snapshot.state.benchPlayers?.red)) fail("INVALID_SNAPSHOT_STATE");
+    if (snapshot.state.pendingControlledPass !== null && snapshot.state.pendingControlledPass !== undefined) {
+      const pending = snapshot.state.pendingControlledPass;
+      if (typeof pending.passerId !== "string" || !pending.passerId ||
+          typeof pending.targetId !== "string" || !pending.targetId ||
+          !Number.isFinite(pending.remaining) || pending.remaining < 0) fail("INVALID_SNAPSHOT_PENDING_PASS");
+    }
+    if (snapshot.state.controls !== null && snapshot.state.controls !== undefined) {
+      const controls = snapshot.state.controls;
+      if (!controls.move || !Number.isFinite(controls.move.x) || !Number.isFinite(controls.move.z) ||
+          !Array.isArray(controls.keys) || controls.keys.some(key => typeof key !== "string") ||
+          typeof controls.sprintHeld !== "boolean" || typeof controls.pendingPress !== "boolean" ||
+          typeof controls.pendingLob !== "boolean" || typeof controls.pendingCallForPass !== "boolean" ||
+          typeof controls.benchMode !== "boolean") fail("INVALID_SNAPSHOT_CONTROLS");
+    }
     clonePlain(snapshot.state);
     return { valid: true, playerCount: snapshot.state.players.length, tick: snapshot.tick };
   } catch (error) {

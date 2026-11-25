@@ -79,6 +79,28 @@ test("snapshot is detached from live game objects and contains no renderer refer
   assert.equal(JSON.stringify(snapshot).includes("visual"), false);
 });
 
+test("snapshot preserves pending pass resolution and queued user controls", () => {
+  const game = makeGame();
+  game.pendingControlledPass = { passer: game.players[0], target: game.players[1], remaining: 2.75 };
+  game.controls = {
+    joy: { x: 0.6, z: -0.4 }, keys: new Set(["KeyW", "ShiftLeft"]),
+    sprintHeld: true, pendingPass: { lofted: false }, pendingPress: true,
+    pendingShoot: { power: 0.82 }, pendingLob: false, pendingCallForPass: true,
+    role: "FWD", benchMode: false
+  };
+  const snapshot = createMatchReplaySnapshot({ seed: 12, game });
+  assert.deepEqual(snapshot.state.pendingControlledPass, {
+    passerId: "blue-1", targetId: "red-1", remaining: 2.75
+  });
+  assert.deepEqual(snapshot.state.controls, {
+    move: { x: 0.6, z: -0.4 }, keys: ["KeyW", "ShiftLeft"],
+    sprintHeld: true, pendingPass: { lofted: false }, pendingPress: true,
+    pendingShoot: { power: 0.82 }, pendingLob: false, pendingCallForPass: true,
+    role: "FWD", benchMode: false
+  });
+  assert.equal(validateMatchReplaySnapshot(snapshot).valid, true);
+});
+
 test("snapshot captures random-initialized player phases and mutable match configuration", () => {
   const snapshot = createMatchReplaySnapshot({ seed: 99, game: makeGame() });
   assert.equal(snapshot.state.players[0].decisionTimer, 0.12);
