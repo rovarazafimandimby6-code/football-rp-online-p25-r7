@@ -63,9 +63,14 @@ export class GoogleOidcTransactionStore {
     if(typeof state!=='string'||state.length<32||state.length>128)return null;
     const binding=cleanBinding(sessionBinding);if(!binding)return null;
     const key=digest(state),row=this.transactions.get(key);if(!row)return null;
+    if(row.expiresAt<=this.now()){
+      const previous=this.transactions;this.transactions=new Map(previous);this.transactions.delete(key);
+      try{this.persist();}catch(error){this.transactions=previous;throw error;}
+      return null;
+    }
+    if(row.bindingHash!==digest(binding))return null;
     const previous=this.transactions;this.transactions=new Map(previous);this.transactions.delete(key);
     try{this.persist();}catch(error){this.transactions=previous;throw error;}
-    if(row.expiresAt<=this.now()||row.bindingHash!==digest(binding))return null;
-    return {nonce:row.nonce,codeVerifier:row.codeVerifier,purpose:row.purpose|| (row.accountId?'link':'transaction'),...(row.accountId?{accountId:row.accountId}:{}),expiresAt:new Date(row.expiresAt).toISOString()};
+    return {nonce:row.nonce,codeVerifier:row.codeVerifier,purpose:row.purpose||(row.accountId?'link':'transaction'),...(row.accountId?{accountId:row.accountId}:{}),expiresAt:new Date(row.expiresAt).toISOString()};
   }
 }
