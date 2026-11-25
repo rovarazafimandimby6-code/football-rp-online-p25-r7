@@ -98,7 +98,7 @@ test('P27 restauration : signale explicitement un rollback incomplet', async () 
 test('P27 restauration : refuse les adaptateurs incomplets, dupliqués ou couvrant partiellement les sections', async () => {
   const events = [];
   const full = adapters(events);
-  const duplicateId = [...full, { ...full[0], id: 'duplicate' }];
+  const duplicateId = [...full, { ...full[0] }];
   const missingSection = full.slice(0, -1);
   const incompleteAdapter = [{ id: 'profile-progression', sections: ['profile', 'progression'] }];
   const duplicateResult = await restoreAccountSnapshot({ preview: preview(), currentRevision: revision, confirmed: true, adapters: duplicateId });
