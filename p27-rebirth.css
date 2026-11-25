@@ -148,3 +148,59 @@ html,body{background:var(--p27-bg);color:var(--p27-text);font-family:Inter,Robot
  .competition-layout{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* P27 Rebirth — second pass: game-like mobile shell and football-first hierarchy */
+.menu-sidebar button{position:relative;letter-spacing:.15px}
+.menu-sidebar button:before{content:"";position:absolute;inset:0;border-radius:7px;background:linear-gradient(135deg,rgba(104,176,245,.08),transparent);opacity:0;transition:opacity .18s}
+.menu-sidebar button:hover:before,.menu-sidebar button.active:before{opacity:1}
+.menu-sidebar button.active{color:#fff}
+.menu-main{position:relative}
+.menu-heading{border-bottom:1px solid rgba(215,231,250,.09)}
+.menu-heading h1{text-shadow:0 3px 18px rgba(0,0,0,.5)}
+.home-feature{position:relative;isolation:isolate;overflow:hidden}
+.home-feature:after{content:"";position:absolute;z-index:-1;right:2%;bottom:-24%;width:44%;height:125%;border:1px solid rgba(146,197,250,.18);border-radius:50%;transform:rotate(-24deg);box-shadow:0 0 0 22px rgba(146,197,250,.025),0 0 0 44px rgba(146,197,250,.02)}
+.feature-copy h2{text-transform:uppercase;font-style:italic}
+.home-feature .eyebrow{color:#ffc17e}
+.home-side-panel{position:relative;overflow:hidden}
+.home-side-panel:before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#6dbaff,#f6a65d,transparent)}
+.quick-card{position:relative;overflow:hidden}
+.quick-card:after{content:"";position:absolute;right:-18px;bottom:-27px;width:70px;height:70px;border:1px solid rgba(130,184,240,.12);border-radius:50%}
+.player-library-card{position:relative;overflow:hidden}
+.player-library-card .player-card-rating{font-size:23px;font-weight:900}
+.player-card-monogram{border:1px solid rgba(147,197,247,.2);background:linear-gradient(145deg,#263d59,#101927);color:#d8eaff}
+.club-card{position:relative;overflow:hidden}
+.club-card .club-crest{filter:drop-shadow(0 7px 12px rgba(0,0,0,.3))}
+.competition-panel,.profile-editor,.career-form{backdrop-filter:blur(12px)}
+.primary-cta{font-weight:900;letter-spacing:1px;text-transform:uppercase}
+.small-action,.secondary-cta{font-weight:800;letter-spacing:.55px}
+@media(max-width:760px){
+ .menu-layout{padding:0 8px}
+ .menu-sidebar{order:2;flex:0 0 auto;position:relative;z-index:5;margin-top:5px;padding:7px 2px calc(7px + env(safe-area-inset-bottom));border:1px solid rgba(210,228,250,.12);border-radius:10px 10px 0 0;background:rgba(8,12,20,.97);backdrop-filter:blur(18px);box-shadow:0 -8px 26px rgba(0,0,0,.28)}
+ .menu-sidebar button{flex:1 0 auto;min-width:54px;min-height:43px;flex-direction:column;gap:3px;padding:4px 6px;font-size:8px}
+ .menu-sidebar button span{font-size:15px;line-height:16px}
+ .menu-main{order:1;padding:8px 0 4px}
+ .menu-heading{min-height:45px;margin-bottom:8px}
+ .menu-heading h1{font-size:18px}
+ #menu-content{padding-bottom:12px}
+ .menu-footer{display:none}
+}
+@media(max-width:560px){
+ .menu-sidebar{justify-content:flex-start;overflow-x:auto}
+ .menu-sidebar button{flex:0 0 65px}
+ .home-feature{min-height:190px}
+ .home-feature:after{right:-14%;width:64%}
+ .feature-copy h2{font-size:35px}
+ .home-side-panel{display:block}
+ .home-player-heading{display:flex}
+ .home-stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .player-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .player-library-card{padding:9px}
+ .player-card-attributes{gap:3px}
+ .player-card-attributes span{padding:4px 2px}
+}
+@media(max-height:460px) and (orientation:landscape) and (max-width:900px){
+ .menu-sidebar{padding-block:4px}
+ .menu-sidebar button{min-height:34px;flex-direction:row;gap:5px}
+ .menu-sidebar button span{font-size:13px}
+ .menu-heading{min-height:38px}
+}
