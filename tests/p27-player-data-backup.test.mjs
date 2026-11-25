@@ -4,6 +4,13 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSyn
 import os from 'node:os';
 import path from 'node:path';
 import { createPlayerDataBackup, verifyPlayerDataBackup, restorePlayerDataBackup, createRotatingPlayerDataBackup } from '../server/player-data-backup.js';
+import { JsonAccountStore } from '../server/account-store.js';
+import { JsonCareerStore } from '../server/career-store.js';
+import { JsonPlayerProfileStore } from '../server/player-profile-store.js';
+import { JsonProgressionStore } from '../server/progression-store.js';
+import { JsonTransferStore } from '../server/transfer-store.js';
+import { JsonClubRosterStorage } from '../server/club-roster-storage.js';
+import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 
 const schemas = {
   accounts: { version:1, accounts:[{id:'account-1'}], sessions:[] },
@@ -77,4 +84,31 @@ test('P27 compte: une source invalide ne déclenche pas la purge des sauvegardes
     assert.throws(()=>createRotatingPlayerDataBackup({directories:source.directories,backupDirectory,keep:2}),/BACKUP_SOURCE_INVALID_JSON:accounts/);
     assert.deepEqual(readdirSync(backupDirectory),before);
   }finally{rmSync(source.root,{recursive:true,force:true});}
+});
+
+test('P27 compte: le backup accepte les fichiers produits par les vrais stores serveur',()=>{
+  const root=mkdtempSync(path.join(os.tmpdir(),'p27-real-stores-'));
+  const directories={
+    accounts:path.join(root,'accounts'),
+    profiles:path.join(root,'player-profiles'),
+    progression:path.join(root,'progression'),
+    careers:path.join(root,'careers'),
+    transfers:path.join(root,'transfers'),
+    clubRosters:path.join(root,'club-rosters')
+  };
+  try{
+    const accountStore=new JsonAccountStore(directories.accounts);
+    const created=accountStore.register({username:'backupplayer',password:'StrongPass123',displayName:'Backup Player'});
+    const accountId=created.account.id;
+    new JsonPlayerProfileStore(directories.profiles).save(accountId,{identity:{displayName:'Backup Player'}});
+    new JsonProgressionStore(directories.progression).grantMatchReward(accountId,{matchId:'backup-match-1',result:'win',minutesPlayedMs:900000,rating:7.5});
+    new JsonCareerStore(directories.careers).recordMatch(accountId,{matchId:'backup-match-1',result:'win',teamName:'Test FC',opponent:'Rival FC'});
+    new JsonTransferStore(directories.transfers).getCareer(accountId);
+    const clubManager=new ClubManager(DEFAULT_CLUBS,new JsonClubRosterStorage(directories.clubRosters),'p27-server-club-rosters');
+    assert.equal(clubManager.saveSeason(),true);
+    const outputFile=path.join(root,'backups','real-server-stores.json');
+    const createdBackup=createPlayerDataBackup({directories,outputFile});
+    assert.equal(verifyPlayerDataBackup(outputFile).ok,true);
+    assert.equal(createdBackup.stores.length,6);
+  }finally{rmSync(root,{recursive:true,force:true});}
 });

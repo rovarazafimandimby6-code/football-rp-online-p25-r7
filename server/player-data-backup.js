@@ -21,7 +21,7 @@ function readAndValidate(key, file) {
   return raw;
 }
 
-/** Creates a portable, checksummed snapshot of the four account-owned data stores. */
+/** Creates a portable, checksummed snapshot of all six account, career, transfer and club-roster stores. */
 export function createPlayerDataBackup({ directories = defaultDirectories(process.cwd()), outputFile, now = () => new Date() } = {}) {
   if (!outputFile) throw new Error('BACKUP_OUTPUT_REQUIRED');
   const files = {};
