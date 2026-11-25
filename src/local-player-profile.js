@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'fpro.local-player-profile.v1';
-function cleanDisplayName(value) { return typeof value === 'string' ? value.trim().replace(/\\s+/g, ' ').slice(0, 32) : ''; }
+function cleanDisplayName(value) { return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').slice(0, 32) : ''; }
 export class LocalPlayerProfile {
   constructor({ storage = globalThis.localStorage, now = () => new Date().toISOString(), idFactory = () => globalThis.crypto.randomUUID() } = {}) { this.storage = storage || null; this.now = now; this.idFactory = idFactory; }
   load() {
