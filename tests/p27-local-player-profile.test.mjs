@@ -25,7 +25,7 @@ test('clears only the device-local profile', () => { const storage = memoryStora
 test('server reservation replaces provisional number and retries idempotently', async () => {
   const store = new LocalPlayerProfile({ storage: memoryStorage(), idFactory: () => '111111' });
   const initial = store.create({ displayName: 'Player' }); let calls = 0;
-  const fetchImpl = async (_url, options) => { calls++; assert.equal(JSON.parse(options.body).localProfileKey, initial.localProfileKey); return { ok: true, json: async () => ({ playerId: 'FRP-675757', reserved: true }) }; };
+  const fetchImpl = async (_url, options) => { calls++; assert.equal(JSON.parse(options.body).localProfileKey, initial.localProfileKey); return { ok: true, json: async () => ({ accountId: '123e4567-e89b-42d3-a456-426614174099', playerId: 'FRP-675757', reserved: true }) }; };
   const first = await store.reserveWithServer({ fetchImpl }); const second = await store.reserveWithServer({ fetchImpl });
-  assert.equal(first.id, 'FRP-675757'); assert.equal(first.identityStatus, 'reserved'); assert.equal(second.id, first.id); assert.equal(calls, 1);
+  assert.equal(first.id, 'FRP-675757'); assert.equal(first.accountId, '123e4567-e89b-42d3-a456-426614174099'); assert.equal(first.identityStatus, 'reserved'); assert.equal(second.id, first.id); assert.equal(calls, 1);
 });
