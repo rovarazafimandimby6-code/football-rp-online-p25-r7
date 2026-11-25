@@ -6,6 +6,7 @@ import { D1PasswordlessAccountRepository } from "./passwordless-account-reposito
 import { D1GoogleIdentityRepository } from "./google-identity-repository.js";
 import { D1GoogleOidcTransactionRepository } from "./google-oidc-transaction-repository.js";
 import { verifyGoogleWorkerIdToken } from "./google-id-token-verifier.js";
+import { D1PlayerProfileRepository } from "./player-profile-repository.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const OIDC_BINDING_COOKIE = "p27_google_oidc_binding";
@@ -117,6 +118,9 @@ function errorResponse(error) {
     code === "INVALID_LOCAL_PROFILE_KEY" ||
     code === "INVALID_LOCAL_PROFILE_PROOF" ||
     code === "INVALID_PLAYER_ID_GENERATOR" ||
+    code === "INVALID_PLAYER_PROFILE" ||
+    code === "INVALID_PROFILE_REVISION" ||
+    code === "PLAYER_PROFILE_TOO_LARGE" ||
     code === "INVALID_JSON" ||
     code === "BODY_TOO_LARGE" ||
     code === "GOOGLE_OIDC_TRANSACTION_INVALID" ||
@@ -127,7 +131,8 @@ function errorResponse(error) {
     code === "SESSION_EXPIRED" ? 401 :
     code === "PLAYER_IDENTITY_RATE_LIMITED" ? 429 :
     code === "LOCAL_PROFILE_REPLICA_LIMIT" ||
-    code === "GOOGLE_IDENTITY_ALREADY_LINKED" ? 409 :
+    code === "GOOGLE_IDENTITY_ALREADY_LINKED" ||
+    code === "PROFILE_REVISION_CONFLICT" ? 409 :
     code === "PLAYER_IDENTITY_NOT_FOUND" ||
     code === "GOOGLE_ACCOUNT_NOT_LINKED" ? 404 :
     503;
@@ -394,6 +399,41 @@ export default {
         if (!identity) return json(401, { error: "LOCAL_PROFILE_PROOF_INVALID" });
         return json(200, { verified: true, accountId: identity.accountId, playerId: identity.playerId });
       } catch (error) { return errorResponse(error); }
+    }
+
+    if (url.pathname === "/api/player-profile/me" && ["GET", "PUT"].includes(request.method)) {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+      const token = sessionTokenFromRequest(request);
+      const accounts = new D1PasswordlessAccountRepository(env.P27_DB);
+      const account = await accounts.resolve(token);
+      if (!account) return json(401, { error: "SESSION_EXPIRED" });
+      if (request.method === "GET") {
+        try {
+          const snapshot = await new D1PlayerProfileRepository(env.P27_DB).get(account.id);
+          return json(200, snapshot);
+        } catch (error) { return errorResponse(error); }
+      }
+      const origin = request.headers.get("origin");
+      if (origin) {
+        try {
+          if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+        } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
+      }
+      try {
+        const body = await readJson(request);
+        const snapshot = await new D1PlayerProfileRepository(env.P27_DB).save(
+          account.id, body.profile, body.expectedRevision,
+        );
+        return json(200, snapshot);
+      } catch (error) {
+        const response = errorResponse(error);
+        if (error?.message === "PROFILE_REVISION_CONFLICT") {
+          return json(409, { error: "PROFILE_REVISION_CONFLICT", currentRevision: error.currentRevision });
+        }
+        return response;
+      }
     }
 
     if (url.pathname.startsWith("/api/accounts/")) {
