@@ -46,6 +46,28 @@ test('P27 carrière serveur : seul le compte authentifié lié au joueur reçoit
  }finally{f.cleanup();}
 });
 
+test('P27 carrière joueur : rattache les matchs du compte à son identifiant FRP et masque la clé interne',()=>{
+ const f=fixture();
+ try{
+  const manager=new RoomManager({careerStore:f.store});
+  const created=manager.create(), joined=manager.join(created.id,{
+   displayName:'Joueur FRP',accountId:'account-frp',careerPlayerId:'FRP-675757'
+  });
+  const room=manager.rooms.get(created.id), player=room.players.get(joined.playerId);
+  player.matchTimePlayedMs=60000; player.stats.goals=2;
+  room.phase='fulltime'; room.elapsedMs=room.durationMinutes*60000; room.score={blue:2,red:0};
+  manager.finalizeResult(room);
+  const playerCareer=f.store.getPlayerCareer('FRP-675757');
+  assert.equal(playerCareer.player.name,'Joueur FRP');
+  assert.equal(playerCareer.totals.matches,1);
+  assert.equal(playerCareer.totals.goals,2);
+  assert.equal(f.store.get('account-frp').totals.matches,1);
+  const publicPlayer=manager.get(created.id).players.find(row=>row.id===joined.playerId);
+  assert.equal(Object.hasOwn(publicPlayer,'accountId'),false);
+  assert.equal(Object.hasOwn(publicPlayer,'careerPlayerId'),false);
+ }finally{f.cleanup();}
+});
+
 test('P27 profil joueur public : carrière persistante indexée par identité sportive, sans compte privé',()=>{
  const f=fixture();
  try {

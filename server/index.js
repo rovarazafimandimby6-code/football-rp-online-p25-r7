@@ -558,7 +558,12 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const accountToken = accountSessionToken(req);
       const account = accountToken ? accountStore.resolve(accountToken) : null;
       if (accountToken && !account) return json(res, 401, { error: 'SESSION_EXPIRED' });
-      return json(res, 200, manager.join(joinMatch[1], { ...body, accountId: account?.id || null }));
+      const playerIdentity = account ? playerIdentityStore.getByAccountId(account.id) : null;
+      return json(res, 200, manager.join(joinMatch[1], {
+        ...body,
+        accountId: account?.id || null,
+        careerPlayerId: playerIdentity?.playerId || null
+      }));
     }
     const entryRequestMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})\/entry-request$/);
     if (req.method === 'POST' && entryRequestMatch) {

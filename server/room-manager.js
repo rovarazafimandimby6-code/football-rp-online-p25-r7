@@ -144,7 +144,7 @@ export class RoomManager {
     return this.publicState(room);
   }
 
-  join(roomId, { displayName = 'Joueur', preferredTeam = 'auto', role = null, accountId = null } = {}) {
+  join(roomId, { displayName = 'Joueur', preferredTeam = 'auto', role = null, accountId = null, careerPlayerId = null } = {}) {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('ROOM_NOT_FOUND');
     if (room.phase === 'fulltime') throw new Error('MATCH_ALREADY_FINISHED');
@@ -164,6 +164,7 @@ export class RoomManager {
     const player = {
       id: randomBytes(8).toString('hex'), token,
       accountId: typeof accountId === 'string' && accountId.length <= 64 ? accountId : null,
+      careerPlayerId: typeof careerPlayerId === 'string' && /^FRP-[0-9]{6}$/.test(careerPlayerId) ? careerPlayerId : null,
       name: String(displayName).replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 20) || 'Joueur',
       team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
       z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
@@ -732,7 +733,7 @@ export class RoomManager {
   }
 
   publicState(room) {
-    const players = [...room.players.values()].map(({ token, accountId, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p }));
+    const players = [...room.players.values()].map(({ token, accountId, careerPlayerId, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p }));
     return {
       id: room.id, name: room.name, durationMinutes: room.durationMinutes,
       phase: room.phase, period: room.period, halftimeRemainingMs: room.phase === 'halftime' && room.halftimeUntil ? Math.max(0, room.halftimeUntil - this.now()) : 0, attackDirection: { ...room.attackDirection }, elapsedMs: room.elapsedMs, durationMs: room.durationMinutes * 60_000, sequence: room.sequence,
