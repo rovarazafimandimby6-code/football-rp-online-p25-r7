@@ -442,6 +442,7 @@ function renderPage(page = 'home') {
   if (page !== 'results') resultsRequestSequence++;
   disposeAvatarPreview();
   const content = document.getElementById('menu-content');
+  if (content) content.scrollTop = 0;
   const title = document.getElementById('menu-page-title');
   const subtitle = document.getElementById('menu-page-subtitle');
   document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page));
