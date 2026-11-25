@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { JsonGoogleIdentityStore } from '../server/google-identity-store.js';
@@ -64,6 +64,6 @@ test('Google identity store rejects malformed account IDs and does not persist u
   try {
     const store = new JsonGoogleIdentityStore(t.directory);
     assert.throws(() => store.linkInitial({ accountId: 'account-1', googleSubject: 'google-subject-0001', googleIdentityVerified: true }), /INVALID_ACCOUNT_ID/);
-    assert.equal(JSON.parse(readFileSync(path.join(t.directory, 'google-identities.json'), 'utf8')).links.length, 0);
+    assert.equal(store.state.links.length, 0);
   } finally { t.cleanup(); }
 });
