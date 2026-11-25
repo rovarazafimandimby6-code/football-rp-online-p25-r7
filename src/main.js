@@ -807,7 +807,7 @@ async function loadAccountCareerSummary() {
   const host = document.getElementById('account-career-stats');
   if (!host || !accountClient.token) return;
   try {
-    const payload = await accountClient.request('/api/career', { auth: true });
+    const payload = await accountClient.getCareer();
     if (!host.isConnected) return;
     const totals = payload?.career?.totals || {};
     const count = key => Number.isFinite(Number(totals[key])) ? Math.max(0, Math.floor(Number(totals[key]))) : 0;

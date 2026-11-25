@@ -66,6 +66,13 @@ export class OnlineAccountClient {
     return this.request('/api/profile', { auth: true });
   }
 
+  async getCareer() {
+    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    const result = await this.request('/api/career', { auth: true });
+    if (!result?.career || !result.career.totals || !Array.isArray(result.career.matches)) throw new Error('INVALID_CAREER_RESPONSE');
+    return result;
+  }
+
   async getAccountSnapshot() {
     if (!this.token) throw new Error('NOT_AUTHENTICATED');
     const result = await this.request('/api/account/snapshot', { auth: true });

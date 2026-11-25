@@ -106,3 +106,23 @@ test('P27 synchronisation : conserve les opérations si le serveur refuse le PUT
   assert.equal(outbox.status().pending, 1);
   assert.equal(outbox.pending()[0].attempts, 1);
 });
+
+
+test('P27 carrière cloud : utilise une réponse authentifiée et valide sa structure', async () => {
+  const calls = [];
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example', storage: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, json: async () => ({ career: { totals: { matches: 2, goals: 1 }, matches: [{ matchId: 'm1' }] } }) };
+    }
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  const result = await client.getCareer();
+  assert.equal(result.career.totals.matches, 2);
+  assert.equal(calls[0].url, 'https://game.example/api/career');
+  assert.equal(calls[0].options.headers.authorization, `Bearer ${client.token}`);
+  const invalid = new OnlineAccountClient({ storage: null, fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ career: {} }) }) });
+  invalid.token = client.token;
+  await assert.rejects(() => invalid.getCareer(), /INVALID_CAREER_RESPONSE/);
+});
