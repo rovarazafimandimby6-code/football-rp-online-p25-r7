@@ -8,6 +8,7 @@ import { D1GoogleOidcTransactionRepository } from "./google-oidc-transaction-rep
 import { verifyGoogleWorkerIdToken } from "./google-id-token-verifier.js";
 import { D1PlayerProfileRepository } from "./player-profile-repository.js";
 import { D1PlayerProgressionRepository } from "./player-progression-repository.js";
+import { D1PlayerCareerRepository } from "./player-career-repository.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const OIDC_BINDING_COOKIE = "p27_google_oidc_binding";
@@ -124,6 +125,8 @@ function errorResponse(error) {
     code === "PLAYER_PROFILE_TOO_LARGE" ||
     code === "INVALID_ATTRIBUTE" ||
     code === "INVALID_PROGRESSION_MODE" ||
+    code === "INVALID_PLAYER_ID" ||
+    code === "INVALID_CAREER_CURSOR" ||
     code === "INVALID_JSON" ||
     code === "BODY_TOO_LARGE" ||
     code === "GOOGLE_OIDC_TRANSACTION_INVALID" ||
@@ -469,6 +472,39 @@ export default {
         if (error?.message === "PROGRESSION_CONCURRENT_UPDATE") return json(409, { error: error.message });
         return errorResponse(error);
       }
+    }
+
+
+    // Career history is read-only for clients. Only the trusted match authority
+    // may call D1PlayerCareerRepository.recordFinalizedMatch internally.
+    if (url.pathname === "/api/career" && request.method !== "GET") {
+      return json(405, { error: "METHOD_NOT_ALLOWED" });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/career") {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+      const token = sessionTokenFromRequest(request);
+      const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(token);
+      if (!account) return json(401, { error: "SESSION_EXPIRED" });
+      try {
+        const career = await new D1PlayerCareerRepository(env.P27_DB).get(account.id);
+        return json(200, { career });
+      } catch (error) { return errorResponse(error); }
+    }
+
+    const publicCareerRoute = url.pathname.match(/^\/api\/players\/(FRP-[0-9]{6})\/career$/);
+    if (request.method === "GET" && publicCareerRoute) {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+      try {
+        const career = await new D1PlayerCareerRepository(env.P27_DB).getPlayerCareer(publicCareerRoute[1]);
+        return career.player
+          ? json(200, { career })
+          : json(404, { error: "PLAYER_NOT_FOUND" });
+      } catch (error) { return errorResponse(error); }
     }
 
     if (url.pathname.startsWith("/api/accounts/")) {

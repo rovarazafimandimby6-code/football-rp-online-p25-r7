@@ -1,0 +1,29 @@
+name: P27 CI
+
+on:
+  push:
+    branches: [p27-dev]
+  pull_request:
+    branches: [p27-dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: P27 tests and syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout P27 development branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run complete test suite
+        run: npm test
+      - name: Check Cloudflare Worker syntax
+        run: node --check src/cloudflare/worker.js
+      - name: Check D1 career repository syntax
+        run: node --check src/cloudflare/player-career-repository.js
