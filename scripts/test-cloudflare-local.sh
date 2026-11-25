@@ -87,7 +87,7 @@ let raw = "";
 for await (const chunk of process.stdin) raw += chunk;
 assert.equal(JSON.parse(raw).loggedOut, true);
 '
-REVOKED_STATUS="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+REVOKED_STATUS="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
   -H "authorization: Bearer $ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
 test "$REVOKED_STATUS" = "401"
 
