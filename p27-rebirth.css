@@ -204,3 +204,59 @@ html,body{background:var(--p27-bg);color:var(--p27-text);font-family:Inter,Robot
  .menu-sidebar button span{font-size:13px}
  .menu-heading{min-height:38px}
 }
+
+/* Matchday hero: football-pitch geometry, broadcast-style labels and ball artwork */
+.home-feature{
+ background:
+  linear-gradient(90deg,rgba(5,9,16,.97) 0%,rgba(6,13,23,.82) 48%,rgba(7,16,29,.26) 100%),
+  radial-gradient(ellipse at 76% 52%,rgba(65,139,207,.3),transparent 40%),
+  repeating-linear-gradient(0deg,rgba(116,169,220,.035) 0 1px,transparent 1px 42px),
+  linear-gradient(135deg,#14243a,#080e18 72%);
+}
+.home-feature:before{
+ content:"";position:absolute;inset:12% 4% 12% 49%;border:1px solid rgba(155,199,244,.2);
+ border-radius:2px;transform:perspective(500px) rotateY(-17deg);
+ background:linear-gradient(90deg,transparent 49.7%,rgba(155,199,244,.16) 50%,transparent 50.3%);
+}
+.home-feature:after{
+ content:"";position:absolute;z-index:0;right:10%;top:15%;width:clamp(112px,18vw,190px);aspect-ratio:1;
+ border:1px solid rgba(178,211,246,.2);border-radius:50%;transform:none;
+ background:radial-gradient(circle at 34% 28%,#fff 0 4%,#c6d2df 5% 10%,#26374c 11% 13%,transparent 14%),
+ repeating-conic-gradient(from 12deg,rgba(215,230,247,.9) 0 9deg,rgba(30,47,68,.95) 9deg 18deg);
+ box-shadow:0 18px 45px rgba(0,0,0,.42),0 0 55px rgba(74,151,224,.14);
+ clip-path:circle(49%);
+ opacity:.78;
+}
+.feature-ball{display:none}
+.feature-copy{position:relative;z-index:2}
+.feature-matchday{position:absolute;z-index:2;right:4%;bottom:17%;display:flex;align-items:center;gap:8px;color:#dceaff;font-size:8px;letter-spacing:1px}
+.feature-matchday>span{display:grid;place-items:center;width:24px;height:24px;border-radius:5px;background:#e9a65f;color:#1b1209;font-weight:1000}
+.feature-matchday>i{width:5px;height:5px;border-radius:50%;background:#6ee0b0;box-shadow:0 0 9px #6ee0b0}
+.feature-matchday small{color:#a8bbd3;font-size:7px}
+.feature-foot{z-index:2;display:flex;gap:7px;flex-wrap:wrap}
+.user-avatar{display:grid;place-items:center;position:relative}
+.user-avatar b{font-size:16px;font-weight:950}
+.user-avatar small{font-size:6px;letter-spacing:1px}
+.home-player-heading{align-items:center}
+.home-player-heading>div{display:grid;gap:3px}
+.home-player-heading>div b{text-transform:uppercase;letter-spacing:.4px}
+.home-career-row b{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quick-card{border-left:2px solid rgba(91,169,237,.55)!important}
+.quick-card span{font-weight:900;letter-spacing:1px}
+.quick-card b{text-transform:uppercase;letter-spacing:.45px}
+@media(max-width:760px){
+ .home-feature:before{inset:14% 1% 14% 45%}
+ .home-feature:after{right:5%;top:20%;width:112px}
+ .feature-matchday{right:4%;bottom:13%;gap:5px}
+ .feature-matchday small{font-size:6px}
+ .feature-foot{max-width:85%;font-size:7px}
+}
+@media(max-width:560px){
+ .home-feature{min-height:205px}
+ .home-feature:before{inset:18% -5% 14% 40%}
+ .home-feature:after{right:-2%;top:23%;width:104px;opacity:.52}
+ .feature-matchday{right:4%;bottom:10%;max-width:48%;flex-wrap:wrap}
+ .feature-copy{max-width:72%}
+ .feature-copy h2{font-size:32px;line-height:.94}
+ .feature-copy p{max-width:230px}
+}
