@@ -287,7 +287,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       if (!identity || account.playerId !== identity.playerId) return json(res, 409, { error: 'PLAYER_IDENTITY_NOT_FOUND' });
       try {
         const replica = playerIdentityStore.createReplica(account.id);
-        return json(res, 201, { ...replica, reserved: true });
+        return json(res, 201, { ...replica, displayName: playerProfileStore.get(account.id)?.identity?.displayName || replica.playerId, reserved: true });
       } catch (error) {
         return json(res, 409, { error: String(error?.message || 'PLAYER_ID_REPLICA_FAILED') });
       }
