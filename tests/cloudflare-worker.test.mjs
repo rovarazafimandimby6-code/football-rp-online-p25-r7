@@ -67,8 +67,8 @@ test("local player identity routes fail closed when D1 is not configured", async
   assert.equal((await response.json()).error, "D1_BINDING_MISSING");
 });
 
-test("unmigrated P27 routes fail closed instead of pretending to work", async () => {
+test("D1 account routes fail closed when persistent storage is missing", async () => {
   const response = await worker.fetch(request("/api/accounts/me"), {});
-  assert.equal(response.status, 501);
-  assert.equal((await response.json()).error, "CLOUDFLARE_API_NOT_MIGRATED");
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "D1_BINDING_MISSING");
 });
