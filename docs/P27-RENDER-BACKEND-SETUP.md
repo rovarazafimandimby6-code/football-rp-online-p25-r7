@@ -8,16 +8,16 @@ Le Blueprint `render.yaml` décrit un service Node.js dédié à P27. Il ne dép
 - Service Node.js : `football-rp-online-p27-api`.
 - Commande : `npm start` (`node server/index.js`).
 - Contrôle de vie : `/health`.
-- Plan défini : `starter`, avec un disque persistant de 1 Go monté sur `/var/data`.
+- Plan déclaré : `starter` (nom historique du plan web 0,5 CPU / 512 Mo RAM), avec un disque persistant de 1 Go monté sur `/var/data`.
 
-**Attention aux coûts :** le plan `starter` et le disque persistant sont des ressources payantes chez Render. Vérifier le prix affiché dans le tableau de bord avant de confirmer la création. Le service gratuit ne convient pas à ce déploiement : son système de fichiers est éphémère et ne conserve pas les données de carrière. Ne pas déployer en production sur un stockage éphémère.
+**Budget indicatif vérifié le 25 novembre 2026 :** le calcul Render affiche environ 7 USD/mois pour le compute web 0,5 CPU / 512 Mo RAM, plus 0,25 USD/Go/mois pour le disque persistant. Pour le Blueprint actuel (1 Go), prévoir environ **7,25 USD/mois**, hors éventuel dépassement de bande passante, taxes et autres ressources. Les tarifs peuvent évoluer : le montant affiché dans le tableau de bord Render avant validation fait foi. Le service gratuit ne convient pas à ce déploiement : son système de fichiers est éphémère et ne conserve pas les données de carrière. Ne pas déployer en production sur un stockage éphémère.
 
 ## Étapes dans Render
 
 1. Créer/ouvrir un compte Render et choisir **New → Blueprint**.
 2. Connecter le dépôt GitHub `rovarazafimandimby6-code/football-rp-online-p25-r7`.
 3. Sélectionner explicitement la branche `p27-dev` et le fichier `render.yaml`.
-4. Lire le récapitulatif des services et le coût avant de confirmer. Ne pas sélectionner un service de production déjà existant par erreur.
+4. Lire le récapitulatif des services et le coût avant de confirmer. Ne pas sélectionner un service de production déjà existant par erreur. Ne pas confirmer si le budget mensuel n'est pas acceptable.
 5. Après création, attendre le premier déploiement puis vérifier :
    - `https://<service>.onrender.com/health` → HTTP 200, `status: live`
    - `https://<service>.onrender.com/readyz` → HTTP 200, `status: ready`
