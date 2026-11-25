@@ -8,6 +8,7 @@ const amount=(v,d=0)=>Number.isFinite(Number(v))?Math.max(0,Math.min(1_000_000_0
 const dateMs=v=>{const n=new Date(v).getTime();return Number.isFinite(n)?n:null;};
 const playerKey=id=>'human-'+createHash('sha256').update(String(id)).digest('hex').slice(0,32);
 const active=(c,now)=>Boolean(c&&c.status==='active'&&dateMs(c.expiresAt)>now);
+const MAX_ROSTER_SYNC_ENTRIES = 10_000;
 
 export class JsonTransferStore {
  constructor(directory,{clubs=DEFAULT_CLUBS,now=()=>Date.now(),initialWallet=2500}={}) {
@@ -30,7 +31,16 @@ export class JsonTransferStore {
  career(id){id=clean(id,64);if(!id)return null;let row=this.state.careers.find(x=>x.accountId===id);if(!row){row={accountId:id,playerId:playerKey(id),wallet:this.initialWallet,clubId:null,contract:null,offers:[],history:[],loanOffers:[],loanHistory:[]};this.state.careers.push(row);}return row;}
  club(id){return this.state.clubs.find(x=>x.id===clean(id,48))||null;}
  addEvent(row,event){const e={id:randomUUID(),playerId:row.playerId,type:event.type,at:this.now(),...event};delete e.accountId;row.history.push(e);row.history=row.history.slice(-200);this.state.events.push(e);this.state.events=this.state.events.slice(-10000);return e;}
+ compactRosterSyncQueueForAppend(){
+  const pending=this.state.rosterSync.filter(item=>item.status==='pending');
+  if(pending.length>=MAX_ROSTER_SYNC_ENTRIES)throw new Error('ROSTER_SYNC_QUEUE_FULL');
+  const completed=this.state.rosterSync.filter(item=>item.status!=='pending');
+  const keepCount=MAX_ROSTER_SYNC_ENTRIES-pending.length-1;
+  const keepIds=new Set(keepCount>0?completed.slice(-keepCount).map(item=>item.id):[]);
+  this.state.rosterSync=this.state.rosterSync.filter(item=>item.status==='pending'||keepIds.has(item.id));
+ }
  queueRosterSync(row,{action,clubId=null,previousClubId=null,fee=0,reason='contract-change'}={}){
+  this.compactRosterSyncQueueForAppend();
   const eventTypes={'contract-signing':'signing','contract-transfer':'transfer','contract-renewal':'renewal','contract-termination':'contract-termination','contract-expired':'contract-expired','loan-start':'loan','loan-return':'loan-return'};
   const eventType=eventTypes[reason]||'signing';
   const event=this.addEvent(row,{
@@ -38,7 +48,7 @@ export class JsonTransferStore {
    salary:row.contract?.salary??null,fee:amount(fee),expiresAt:row.contract?.expiresAt??null,reason
   });
   this.state.rosterSync.push({id:'roster-'+event.id,eventId:event.id,playerId:row.playerId,action,clubId,previousClubId,contract:row.contract?{...row.contract}:null,playerName:'Joueur humain',reason,status:'pending',attempts:0,createdAt:new Date(this.now()).toISOString(),lastError:null});
-  this.state.rosterSync=this.state.rosterSync.slice(-10000);
+  // Pending outbox entries are never evicted; completed history is compacted before append.
  }
  pendingRosterSync(){return this.state.rosterSync.filter(item=>item.status==='pending').map(item=>structuredClone(item));}
  completeRosterSync(id){return this.transaction(()=>{const item=this.state.rosterSync.find(entry=>entry.id===clean(id,128));if(!item)return{skipPersist:true,value:{ok:false,reason:'sync-not-found'}};if(item.status==='completed')return{skipPersist:true,value:{ok:true,alreadyCompleted:true}};item.status='completed';item.completedAt=new Date(this.now()).toISOString();item.lastError=null;return{value:{ok:true,item:structuredClone(item)}};});}
