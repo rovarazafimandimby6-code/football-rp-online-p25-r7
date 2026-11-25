@@ -11,6 +11,7 @@ const accountRow = {
 
 class ProfileRouteD1 {
   constructor() { this.profile = null; }
+  async batch(statements) { return Promise.all(statements.map(statement => statement.run())); }
   prepare(sql) {
     const db = this;
     return {
