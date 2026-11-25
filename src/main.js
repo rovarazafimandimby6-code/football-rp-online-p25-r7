@@ -448,26 +448,27 @@ function renderPage(page = 'home') {
     const contractStatus = career.getContractStatus?.();
     const contractLabel = contractStatus?.active ? `Contrat actif · ${contractStatus.daysRemaining} j` : 'Agent libre';
     const clubLabel = careerClub?.name || 'Sans club';
-    title.textContent = 'Tableau de bord';
-    subtitle.textContent = `Bienvenue, ${profile.identity.displayName}. Votre carrière se construit ici.`;
+    title.textContent = 'ACCUEIL';
+    subtitle.textContent = `VOTRE CARRIÈRE · ${profile.identity.displayName}`;
     content.innerHTML = `
       <div class="home-dashboard">
         <section class="home-feature">
           <div class="feature-copy">
-            <span class="eyebrow">FOOTBALL RP ONLINE · SAISON PERSONNELLE</span>
-            <h2>Écrivez votre<br>histoire.</h2>
-            <p>Entrez sur le terrain, imposez votre style et faites progresser votre footballeur match après match.</p>
+            <span class="eyebrow">MODE CARRIÈRE · SAISON PERSONNELLE</span>
+            <h2>VOTRE<br>HISTOIRE.</h2>
+            <p>Un joueur. Une carrière. Chaque match compte. Gagnez votre place et écrivez votre légende.</p>
             <div class="home-primary-actions">
               <button class="primary-cta" data-action="choose-match">JOUER UN MATCH <span>→</span></button>
               <button class="secondary-cta" data-action="online-menu">MODE EN LIGNE</button>
             </div>
           </div>
-          <div class="feature-ball" aria-hidden="true">⚽</div>
-          <div class="feature-foot">5 CONTRE 5 · CONTRÔLE INDIVIDUEL · ÉQUIPE DU SYSTÈME</div>
+          <div class="feature-ball" aria-hidden="true"></div>
+          <div class="feature-matchday"><span>FRP</span><b>PLAYER CAREER</b><i></i><small>5V5 · MATCHDAY EXPERIENCE</small></div>
+          <div class="feature-foot"><span>SAISON PERSONNELLE</span><span>·</span><span>5 CONTRE 5</span><span>·</span><span>CONTRÔLE INDIVIDUEL</span></div>
         </section>
         <aside class="home-side-panel">
           <div class="home-player-heading">
-            <span class="user-avatar">${escapeHTML(profile.identity.number)}</span>
+            <span class="user-avatar"><b>${escapeHTML(profile.identity.number)}</b><small>PRO</small></span>
             <div><small>VOTRE FOOTBALLEUR</small><b>${escapeHTML(profile.identity.displayName)}</b><span>NIVEAU ${profile.progression.level} · ${escapeHTML(profile.identity.role)}</span></div>
           </div>
           <div class="home-career-row"><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div>
@@ -484,11 +485,11 @@ function renderPage(page = 'home') {
           </div>
         </aside>
         <nav class="quick-grid home-shortcuts" aria-label="Accès rapides">
-          <button class="quick-card" data-page="player"><span>01</span><b>Mon joueur</b><small>Profil et progression</small></button>
-          <button class="quick-card" data-page="clubs"><span>02</span><b>Clubs & effectifs</b><small>Équipes et joueurs</small></button>
-          <button class="quick-card" data-page="players"><span>03</span><b>Bibliothèque joueurs</b><small>Recherche et comparaison</small></button>
-          <button class="quick-card" data-page="competitions"><span>03</span><b>Compétitions</b><small>Calendrier et saison</small></button>
-          <button class="quick-card" data-page="mercato"><span>04</span><b>Carrière & mercato</b><small>Contrats et transferts</small></button>
+          <button class="quick-card" data-page="player"><span>01</span><b>MON JOUEUR</b><small>Profil · progression</small></button>
+          <button class="quick-card" data-page="clubs"><span>02</span><b>CLUBS</b><small>Équipes · effectifs</small></button>
+          <button class="quick-card" data-page="players"><span>03</span><b>JOUEURS</b><small>Profils · scouting</small></button>
+          <button class="quick-card" data-page="competitions"><span>04</span><b>COMPÉTITIONS</b><small>Ligues · classements</small></button>
+          <button class="quick-card" data-page="mercato"><span>05</span><b>MERCATO</b><small>Contrats · transferts</small></button>
         </nav>
       </div>`;
   } else if (page === 'player') {
