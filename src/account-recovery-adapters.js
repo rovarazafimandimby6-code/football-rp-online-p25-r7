@@ -31,4 +31,5 @@ export function createAccountRecoveryAdapters({profileStore,seasonStatsStore,car
  };
  return[profileAdapter,seasonAdapter,archiveAdapter({id:'online-career-archive',section:'career',storage:archiveStorage,key:ARCHIVE_KEYS.onlineCareer,select:s=>s.onlineCareerArchive}),archiveAdapter({id:'player-career-archive',section:'playerCareer',storage:archiveStorage,key:ARCHIVE_KEYS.playerCareer,select:s=>s.playerCareerArchive}),transferCareerAdapter];
 }
+export function hasAccountRecoveryData(storage){if(!storage?.getItem)return true;try{return Object.values(ARCHIVE_KEYS).some(key=>Boolean(storage.getItem(key)||storage.getItem(key+'.backup')));}catch{return true;}}
 export function readAccountRecoveryArchives(storage){if(!storage?.getItem)return null;const result={};for(const[name,key]of Object.entries(ARCHIVE_KEYS)){const value=readJsonWithBackup(storage,key,normalizeArchive);if(!value)return null;result[name]=clone(value.data);}return result;}

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CareerManager } from '../src/career-manager.js';
-import { createAccountRecoveryAdapters, readAccountRecoveryArchives } from '../src/account-recovery-adapters.js';
+import { createAccountRecoveryAdapters, hasAccountRecoveryData, readAccountRecoveryArchives } from '../src/account-recovery-adapters.js';
 import { restoreAccountSnapshot } from '../src/account-recovery.js';
 class MemoryStorage {
   values = new Map();
@@ -70,4 +70,15 @@ test('P27 adapters : conserve exactement la copie de secours lors du rollback', 
   const result = await restoreAccountSnapshot({ preview: preview(), currentRevision: revision, confirmed: true, adapters: [...adapters.slice(0,4), { ...adapters[4], apply() { throw new Error('stop'); } }] });
   assert.equal(result.rolledBack, true);
   assert.equal(storage.getItem(key + '.backup'), '{"sentinel":"backup"}');
+});
+
+test('P27 adapters : bloque la récupération si une archive locale existe déjà', () => {
+  const storage = new MemoryStorage();
+  assert.equal(hasAccountRecoveryData(storage), false);
+  storage.setItem('football-rp-online.account-archive.player-career.v1', JSON.stringify({ schemaVersion: 1, data: {} }));
+  assert.equal(hasAccountRecoveryData(storage), true);
+  storage.removeItem('football-rp-online.account-archive.player-career.v1');
+  storage.setItem('football-rp-online.account-archive.transfer-career.v1.backup', JSON.stringify({ schemaVersion: 1, data: {} }));
+  assert.equal(hasAccountRecoveryData(storage), true);
+  assert.equal(hasAccountRecoveryData({ getItem() { throw new Error('storage unavailable'); } }), true);
 });

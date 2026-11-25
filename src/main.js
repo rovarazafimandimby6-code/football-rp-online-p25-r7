@@ -12,7 +12,7 @@ import { OnlineMatchClient } from './online-client.js';
 import { OnlineAccountClient } from './online-account-client.js';
 import { PlayerSyncOutbox } from './player-sync-outbox.js';
 import { ProfileSyncCoordinator } from './profile-sync-coordinator.js';
-import { createAccountRecoveryAdapters } from './account-recovery-adapters.js';
+import { createAccountRecoveryAdapters, hasAccountRecoveryData } from './account-recovery-adapters.js';
 import { restoreAccountSnapshot } from './account-recovery.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
@@ -870,7 +870,8 @@ function readAccountRecoveryLocalState() {
     profile: hasStoredRecoveryData(profileStore.storage, profileStore.key),
     career: hasStoredRecoveryData(career.storage, career.storageKey),
     progression: hasStoredRecoveryData(profileStore.storage, profileStore.key),
-    seasonStats: hasStoredRecoveryData(seasonStats.storage, seasonStats.key)
+    seasonStats: hasStoredRecoveryData(seasonStats.storage, seasonStats.key),
+    archives: hasAccountRecoveryData(profileStore.storage)
   };
 }
 

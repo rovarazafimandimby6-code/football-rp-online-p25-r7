@@ -96,7 +96,7 @@ test('P27 récupération cloud : prévisualise sans écrire quand le nouvel appa
   const preview = await client.previewAccountRecovery({
     localIdentity: { id: 'FRP-123456', accountId: 'account-123' },
     outbox,
-    localState: { profile: false, career: false, progression: false, seasonStats: false }
+    localState: { profile: false, career: false, progression: false, seasonStats: false, archives: false }
   });
   assert.equal(preview.ready, true);
   assert.equal(preview.reason, 'EXPLICIT_RESTORE_CONFIRMATION_REQUIRED');
@@ -117,7 +117,7 @@ test('P27 récupération cloud : bloque une sauvegarde dont des sections de carr
   const preview = await client.previewAccountRecovery({
     localIdentity: { id: 'FRP-123456', accountId: 'account-123' },
     outbox: { status: () => ({ pending: 0 }) },
-    localState: { profile: false, career: false, progression: false, seasonStats: false }
+    localState: { profile: false, career: false, progression: false, seasonStats: false, archives: false }
   });
   assert.equal(preview.ready, false);
   assert.equal(preview.reason, 'SNAPSHOT_INCOMPLETE');
@@ -145,7 +145,7 @@ test('P27 récupération cloud : refuse les sections présentes mais mal formée
     const preview = await client.previewAccountRecovery({
       localIdentity: { id: 'FRP-123456', accountId: 'account-123' },
       outbox: { status: () => ({ pending: 0 }) },
-      localState: { profile: false, career: false, progression: false, seasonStats: false }
+      localState: { profile: false, career: false, progression: false, seasonStats: false, archives: false }
     });
     assert.equal(preview.ready, false, section);
     assert.equal(preview.reason, 'SNAPSHOT_INCOMPLETE', section);
@@ -161,7 +161,7 @@ test('P27 récupération cloud : bloque les changements locaux en attente et les
   });
   client.token = 'account-token-with-more-than-32-characters';
   client.account = { id: 'account-123', playerId: 'FRP-123456' };
-  const localState = { profile: false, career: false, progression: false, seasonStats: false };
+  const localState = { profile: false, career: false, progression: false, seasonStats: false, archives: false };
   const pending = await client.previewAccountRecovery({ localIdentity: { id: 'FRP-123456', accountId: 'account-123' }, outbox: { status: () => ({ pending: 2 }) }, localState });
   assert.equal(pending.ready, false);
   assert.equal(pending.reason, 'LOCAL_CHANGES_PENDING');
@@ -185,21 +185,21 @@ test('P27 récupération cloud : refuse une identité locale ou un compte qui ne
   const mismatch = await client.previewAccountRecovery({
     localIdentity: { accountId: 'other-account', id: 'FRP-123456' },
     outbox: { status: () => ({ pending: 0 }) },
-    localState: { profile: false, career: false, progression: false, seasonStats: false }
+    localState: { profile: false, career: false, progression: false, seasonStats: false, archives: false }
   });
   assert.equal(mismatch.ready, false);
   assert.equal(mismatch.reason, 'LOCAL_IDENTITY_MISMATCH');
   const unlinkedLocalIdentity = await client.previewAccountRecovery({
     localIdentity: { id: 'FRP-123456', identityStatus: 'local-pending' },
     outbox: { status: () => ({ pending: 0 }) },
-    localState: { profile: false, career: false, progression: false, seasonStats: false }
+    localState: { profile: false, career: false, progression: false, seasonStats: false, archives: false }
   });
   assert.equal(unlinkedLocalIdentity.ready, false);
   assert.equal(unlinkedLocalIdentity.reason, 'LOCAL_IDENTITY_MISMATCH');
   client.account.playerId = 'FRP-999999';
   const wrongAccount = await client.previewAccountRecovery({
     outbox: { status: () => ({ pending: 0 }) },
-    localState: { profile: false, career: false, progression: false, seasonStats: false }
+    localState: { profile: false, career: false, progression: false, seasonStats: false, archives: false }
   });
   assert.equal(wrongAccount.ready, false);
   assert.equal(wrongAccount.reason, 'ACCOUNT_PLAYER_ID_MISMATCH');

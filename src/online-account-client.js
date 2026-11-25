@@ -214,7 +214,7 @@ export class OnlineAccountClient {
       return { ready: false, reason: 'LOCAL_OUTBOX_INVALID', revision: result.revision };
     }
     if (pending > 0) return { ready: false, reason: 'LOCAL_CHANGES_PENDING', pending, revision: result.revision };
-    const stateKeys = ['profile', 'career', 'progression', 'seasonStats'];
+    const stateKeys = ['profile', 'career', 'progression', 'seasonStats', 'archives'];
     if (!localState || stateKeys.some(key => typeof localState[key] !== 'boolean')) {
       return { ready: false, reason: 'LOCAL_STATE_NOT_ASSESSED', revision: result.revision };
     }
