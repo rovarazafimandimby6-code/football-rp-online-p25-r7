@@ -1,3 +1,9 @@
+import {
+  D1PlayerIdentityRepository,
+  allowPlayerIdentityAttempt,
+} from "./player-identity-repository.js";
+
+const MAX_BODY_BYTES = 8 * 1024;
 const json = (status, body) => new Response(JSON.stringify(body), {
   status,
   headers: {
@@ -5,6 +11,38 @@ const json = (status, body) => new Response(JSON.stringify(body), {
     "cache-control": "no-store",
   },
 });
+
+async function readJson(request) {
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > MAX_BODY_BYTES) throw new Error("BODY_TOO_LARGE");
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) throw new Error("BODY_TOO_LARGE");
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    return parsed;
+  } catch {
+    throw new Error("INVALID_JSON");
+  }
+}
+
+function errorResponse(error) {
+  const code = String(error?.message || "INTERNAL_ERROR");
+  const status =
+    code === "INVALID_LOCAL_PROFILE_KEY" ||
+    code === "INVALID_LOCAL_PROFILE_PROOF" ||
+    code === "INVALID_PLAYER_ID_GENERATOR" ||
+    code === "INVALID_JSON" ||
+    code === "BODY_TOO_LARGE" ? 400 :
+    code === "LOCAL_PROFILE_PROOF_INVALID" ? 401 :
+    code === "PLAYER_IDENTITY_RATE_LIMITED" ? 429 :
+    code === "LOCAL_PROFILE_REPLICA_LIMIT" ? 409 :
+    code === "PLAYER_IDENTITY_NOT_FOUND" ? 404 :
+    503;
+  const safeCode = status === 503 ? "PLAYER_IDENTITY_SERVICE_UNAVAILABLE" : code;
+  return json(status, { error: safeCode });
+}
 
 export default {
   async fetch(request, env = {}) {
@@ -15,7 +53,7 @@ export default {
         ok: true,
         status: "live",
         service: "football-rp-online-p27-cloudflare",
-        stage: "bootstrap",
+        stage: "local-player-identity",
       });
     }
 
@@ -35,7 +73,7 @@ export default {
           ok: true,
           status: "ready",
           storage: "d1-connected",
-          stage: "bootstrap",
+          stage: "local-player-identity",
         });
       } catch {
         return json(503, {
@@ -46,9 +84,56 @@ export default {
       }
     }
 
+    const identityRoute =
+      request.method === "POST" &&
+      (url.pathname === "/api/player-identities/reserve" ||
+        url.pathname === "/api/player-identities/verify-local-proof");
+
+    if (identityRoute) {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+
+      try {
+        const clientAddress = request.headers.get("CF-Connecting-IP") || "local";
+        if (!await allowPlayerIdentityAttempt(env.P27_DB, clientAddress)) {
+          throw new Error("PLAYER_IDENTITY_RATE_LIMITED");
+        }
+
+        const body = await readJson(request);
+        const identities = new D1PlayerIdentityRepository(env.P27_DB);
+
+        if (url.pathname === "/api/player-identities/reserve") {
+          const reservation = await identities.reserve({
+            localProfileKey: body.localProfileKey,
+            localProofSecret: body.localProofSecret,
+          });
+          return json(200, {
+            accountId: reservation.accountId,
+            playerId: reservation.playerId,
+            reserved: true,
+            alreadyReserved: reservation.alreadyReserved,
+          });
+        }
+
+        const identity = await identities.verifyLocalProof({
+          localProfileKey: body.localProfileKey,
+          localProofSecret: body.localProofSecret,
+        });
+        if (!identity) return json(401, { error: "LOCAL_PROFILE_PROOF_INVALID" });
+        return json(200, {
+          verified: true,
+          accountId: identity.accountId,
+          playerId: identity.playerId,
+        });
+      } catch (error) {
+        return errorResponse(error);
+      }
+    }
+
     return json(501, {
       error: "CLOUDFLARE_API_NOT_MIGRATED",
-      message: "Cette entrée Cloudflare est un socle de migration. Les routes P27 ne sont pas encore migrées.",
+      message: "Cette entrée Cloudflare ne contient pas encore toutes les routes P27.",
     });
   },
 };

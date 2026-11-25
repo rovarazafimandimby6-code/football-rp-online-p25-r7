@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import worker from "../src/cloudflare/worker.js";
 
-const request = path => new Request(`https://p27-cloudflare.test${path}`);
+const request = (path, init) => new Request("https://p27-cloudflare.test" + path, init);
 
 test("Cloudflare bootstrap exposes a live health endpoint", async () => {
   const response = await worker.fetch(request("/health"), {});
@@ -11,7 +11,7 @@ test("Cloudflare bootstrap exposes a live health endpoint", async () => {
     ok: true,
     status: "live",
     service: "football-rp-online-p27-cloudflare",
-    stage: "bootstrap",
+    stage: "local-player-identity",
   });
 });
 
@@ -33,6 +33,7 @@ test("Cloudflare readiness verifies the D1 binding before reporting ready", asyn
   const response = await worker.fetch(request("/readyz"), env);
   assert.equal(response.status, 200);
   assert.equal((await response.json()).storage, "d1-connected");
+  assert.equal((await response.json()).stage, "local-player-identity");
 });
 
 test("Cloudflare readiness reports D1 failures without exposing internal errors", async () => {
@@ -50,6 +51,19 @@ test("Cloudflare readiness reports D1 failures without exposing internal errors"
     status: "not-ready",
     reason: "D1_UNAVAILABLE",
   });
+});
+
+test("local player identity routes fail closed when D1 is not configured", async () => {
+  const response = await worker.fetch(request("/api/player-identities/reserve", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      localProfileKey: "11111111-1111-4111-8111-111111111111",
+      localProofSecret: "a".repeat(64),
+    }),
+  }), {});
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "D1_BINDING_MISSING");
 });
 
 test("unmigrated P27 routes fail closed instead of pretending to work", async () => {

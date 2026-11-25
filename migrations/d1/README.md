@@ -4,12 +4,14 @@ SQL migrations are applied locally in CI with Wrangler against its local SQLite-
 
 ## Current schema
 
-- `0001_identity.sql` defines the first identity foundation.
+- 0001_identity.sql defines the first identity foundation.
+- 0002_rate_limits.sql adds D1-backed request throttling for local-player identity endpoints.
 - Player identity reservations are separate from authenticated accounts: a local profile can reserve its FRP identity before Google association.
 - Local profile credentials store only proof hashes, never raw proof secrets.
 - Google subject and account ownership are unique in the database.
 - OIDC state, nonce, PKCE verifier and browser-binding digests are short-lived rows; expired rows must be pruned.
 - Account sessions store only token hashes and expire by timestamp.
+- Identity API rate limits retain only a hash of the client address and expire after their window.
 
 The schema intentionally does not yet include career, progression, transfers, finances, clubs, competitions, or match data. Those domains require separate audited migrations and repository adapters.
 
