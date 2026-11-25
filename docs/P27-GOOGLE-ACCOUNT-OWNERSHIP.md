@@ -66,6 +66,15 @@ L'association Google est recommandée, jamais obligatoire. Ne jamais présenter 
 - La suppression des données locales peut effacer le profil non associé ; avertissement clair avant une suppression volontaire.
 - Les jetons Google/P27 ne sont jamais journalisés.
 
+## Préparation de la configuration Google
+
+Le serveur expose désormais un état non bloquant de configuration Google dans `/readyz`. Les variables attendues sont :
+- `GOOGLE_CLIENT_ID` : identifiant OAuth de type Web client Google ;
+- `GOOGLE_CLIENT_SECRET` : secret OAuth, conservé uniquement dans l'environnement serveur ;
+- `GOOGLE_REDIRECT_URI` : URI de callback HTTPS (HTTP accepté uniquement sur localhost en développement).
+
+Aucune valeur secrète ne doit être commitée dans Git ni renvoyée par `/readyz`. Une configuration complète indique seulement que les paramètres sont présents ; elle ne signifie pas que le flux OIDC est déjà opérationnel.
+
 ## État technique et limites
 Le dépôt contient des comptes serveur historiques avec mot de passe et sessions. Ils ne doivent pas être présentés comme le parcours cible du joueur. Le module LocalPlayerProfile ajoute une fondation de profil local sans mot de passe et génère désormais un identifiant lisible au format FRP- suivi de six chiffres. Cet identifiant est local tant qu'un registre serveur ne l'a pas réservé. L'interface du menu présente maintenant l'état du profil local et une carte de protection Google dans « Mon footballeur », « Profil et synchronisation » et les paramètres. Le bouton Google reste volontairement désactivé tant que le flux OAuth réel n'est pas intégré ; aucun écran de mot de passe n'est proposé dans le parcours visible du compte joueur.
 

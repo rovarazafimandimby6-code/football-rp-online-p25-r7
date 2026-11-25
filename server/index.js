@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
+import { readGoogleOidcConfig } from './google-oidc-config.js';
 import { JsonCareerStore } from './career-store.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
 import { JsonProgressionStore } from './progression-store.js';
@@ -81,6 +82,7 @@ const roomStore = new JsonRoomStore(roomDirectory);
 const manager = new RoomManager({ resultStore, roomStore, careerStore, progressionStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
+const googleOidcConfig = readGoogleOidcConfig(process.env);
 const accountAttempts = new Map();
 const playerBackupScheduler = createPlayerBackupScheduler({
   config: resolvePlayerBackupConfig({ root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') }),
@@ -131,6 +133,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       errors: preflight.errors,
       storage: preflight.checked,
       playerBackup: playerBackupScheduler.status(),
+      googleIdentity: googleOidcConfig.publicStatus,
     });
   }
   try {
