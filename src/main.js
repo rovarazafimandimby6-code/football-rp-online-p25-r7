@@ -844,7 +844,8 @@ async function loadAccountCareerSummary() {
 }
 
 function hasStoredRecoveryData(storage, key) {
-  try { return Boolean(storage?.getItem(key)); }
+  if (!storage || typeof storage.getItem !== 'function') return true;
+  try { return Boolean(storage.getItem(key) || storage.getItem(`${key}.backup`)); }
   catch (_) { return true; }
 }
 
