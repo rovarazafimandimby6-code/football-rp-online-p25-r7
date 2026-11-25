@@ -380,3 +380,155 @@ html,body{background:var(--p27-bg);color:var(--p27-text);font-family:Inter,Robot
  .quick-card,.player-library-card,.club-card,.menu-sidebar button{transition:transform .16s ease,border-color .16s ease,background .16s ease}
  .quick-card:hover,.player-library-card:hover,.club-card:hover{transform:translateY(-2px);border-color:rgba(111,184,250,.38)!important}
 }
+
+
+/* P27 REBIRTH — final menu polish pass (outside-match UI only).
+   The live match shell, HUD, controls and 3D scene are intentionally untouched. */
+#main-menu{
+  min-height:100dvh;
+  min-height:100svh;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+  isolation:isolate;
+}
+#main-menu *{box-sizing:border-box}
+#main-menu button,
+#main-menu input,
+#main-menu select,
+#main-menu textarea{font-family:inherit}
+#main-menu button{cursor:pointer}
+#main-menu button:disabled{cursor:not-allowed;opacity:.48}
+#main-menu :focus-visible{outline:2px solid #8bcaff;outline-offset:3px}
+#main-menu .menu-topbar{min-height:52px;flex-basis:52px}
+#main-menu .brand-mark{display:flex;align-items:center}
+#main-menu .brand-mark strong{font-size:14px;letter-spacing:1.4px}
+#main-menu .brand-mark small{font-size:9px;letter-spacing:2.2px}
+#main-menu .menu-status{font-size:10px}
+#main-menu .fullscreen-toggle{min-height:38px;padding-inline:12px;font-size:10px}
+#main-menu .menu-layout{width:100%;max-width:1600px}
+#main-menu .menu-sidebar{gap:6px}
+#main-menu .menu-sidebar button{
+  min-height:42px;
+  padding-inline:13px;
+  font-size:11px;
+  letter-spacing:.25px;
+}
+#main-menu .menu-sidebar button span{font-size:17px}
+#main-menu .menu-main{padding-top:12px}
+#main-menu .menu-heading{min-height:62px;margin-bottom:13px}
+#main-menu .menu-heading h1{font-size:clamp(23px,3vw,34px);letter-spacing:-.8px}
+#main-menu .menu-heading p{font-size:12px}
+#main-menu .eyebrow{font-size:10px;letter-spacing:1.5px}
+#main-menu .notice,
+#main-menu .menu-user b,
+#main-menu .menu-user small,
+#main-menu .home-career-row>span,
+#main-menu .home-player-heading small,
+#main-menu .home-player-heading span,
+#main-menu .home-stat-grid span,
+#main-menu .home-last-match span,
+#main-menu .quick-card small,
+#main-menu .quick-card span,
+#main-menu .feature-foot,
+#main-menu .feature-matchday{font-size:11px}
+#main-menu .home-feature{min-height:250px;border-radius:14px}
+#main-menu .feature-copy h2{font-size:clamp(36px,5vw,64px);line-height:.94}
+#main-menu .feature-copy p{font-size:13px;line-height:1.5}
+#main-menu .primary-cta{min-height:48px;padding-inline:20px;font-size:12px}
+#main-menu .secondary-cta,
+#main-menu .small-action,
+#main-menu .text-cta{min-height:42px;font-size:11px}
+#main-menu .home-side-panel{padding:16px}
+#main-menu .home-player-heading b,
+#main-menu .home-career-row b{font-size:14px}
+#main-menu .home-stat-grid b{font-size:25px}
+#main-menu .quick-card{min-height:84px;padding:13px}
+#main-menu .quick-card b{font-size:13px}
+#main-menu .panel-heading h2,
+#main-menu .profile-editor h3,
+#main-menu .competition-panel h2{font-size:19px}
+#main-menu .player-card h2{font-size:clamp(24px,3vw,34px)}
+#main-menu .player-card p,
+#main-menu .attribute-list>div{font-size:13px}
+#main-menu .club-card h3{font-size:16px}
+#main-menu .club-card p,
+#main-menu .club-card small{font-size:12px}
+#main-menu .roster-table th,
+#main-menu .roster-table td,
+#main-menu .standings-table th,
+#main-menu .standings-table td{font-size:12px}
+#main-menu .editor-grid label,
+#main-menu .roster-filters label,
+#main-menu .settings-card label,
+#main-menu .training-controls label,
+#main-menu .sign-contract-row label{font-size:12px}
+#main-menu .editor-grid input,
+#main-menu .editor-grid select,
+#main-menu .matchup-selectors select,
+#main-menu .settings-card select,
+#main-menu .training-controls select,
+#main-menu .sign-contract-row select,
+#main-menu .sign-contract-row input,
+#main-menu .roster-filters input,
+#main-menu .roster-filters select,
+#main-menu .offer-terms input{min-height:44px;padding-inline:11px;font-size:14px}
+#main-menu .competition-panel,
+#main-menu .profile-editor,
+#main-menu .career-form,
+#main-menu .club-card,
+#main-menu .player-library-card{border-radius:12px!important}
+#main-menu .club-card,
+#main-menu .player-library-card,
+#main-menu .quick-card{box-shadow:0 12px 28px rgba(0,0,0,.22)}
+#main-menu .club-card:hover,
+#main-menu .player-library-card:hover,
+#main-menu .quick-card:hover{border-color:rgba(117,190,255,.42)!important}
+#main-menu .menu-footer{font-size:9px}
+#main-menu #menu-content{scroll-padding-block:12px 24px}
+@media(max-width:900px){
+  #main-menu .menu-sidebar button{font-size:10px;padding-inline:10px}
+  #main-menu .home-dashboard{gap:10px}
+}
+@media(max-width:760px){
+  #main-menu .menu-topbar{min-height:48px;flex-basis:48px;padding-inline:10px}
+  #main-menu .brand-mark strong{font-size:12px}
+  #main-menu .menu-heading{min-height:48px}
+  #main-menu .menu-heading h1{font-size:21px}
+  #main-menu .menu-heading p{font-size:11px}
+  #main-menu .menu-sidebar{gap:4px}
+  #main-menu .menu-sidebar button{min-height:46px;min-width:58px;font-size:10px}
+  #main-menu .menu-sidebar button span{font-size:17px}
+  #main-menu .home-feature{min-height:205px}
+  #main-menu .feature-copy h2{font-size:clamp(32px,5vw,44px)}
+  #main-menu .feature-copy p{font-size:12px}
+  #main-menu .quick-card{min-height:72px}
+}
+@media(max-height:480px) and (orientation:landscape){
+  #main-menu .menu-topbar{min-height:44px;flex-basis:44px}
+  #main-menu .menu-layout{padding-inline:12px}
+  #main-menu .menu-sidebar{padding-block:4px}
+  #main-menu .menu-sidebar button{min-height:38px;flex-direction:row;gap:6px;padding-inline:10px}
+  #main-menu .menu-main{padding-top:6px}
+  #main-menu .menu-heading{min-height:40px;margin-bottom:6px}
+  #main-menu .menu-heading h1{font-size:19px}
+  #main-menu .home-feature{min-height:170px}
+  #main-menu .home-side-panel{padding:9px}
+  #main-menu .home-stat-grid{margin-block:6px}
+  #main-menu .quick-card{min-height:58px;padding:8px}
+}
+@media(max-width:560px) and (orientation:landscape){
+  #main-menu .home-dashboard{grid-template-columns:minmax(0,1.35fr) minmax(160px,.8fr)}
+  #main-menu .home-side-panel{display:block}
+  #main-menu .home-shortcuts{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #main-menu .profile-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  #main-menu .club-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu .competition-layout{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(hover:none){
+  #main-menu .quick-card:active,
+  #main-menu .club-card:active,
+  #main-menu .player-library-card:active{transform:scale(.985)}
+}
+@media(prefers-reduced-motion:reduce){
+  #main-menu *,#main-menu *:before,#main-menu *:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}
+}
