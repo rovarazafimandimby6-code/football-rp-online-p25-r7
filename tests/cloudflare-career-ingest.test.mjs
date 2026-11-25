@@ -9,7 +9,7 @@ const signed = (raw = body, timestamp = Math.floor(Date.now() / 1000)) => "t=" +
 const request = (path, init) => new Request("https://p27-cloudflare.test" + path, init);
 test("career ingest HMAC accepts exact body and rejects altered body", async () => {
   const signature = signed();
-  assert.equal(await verifyCareerIngestSignature(secret, body, signature, 1_800_000_000), true);
+  assert.equal(await verifyCareerIngestSignature(secret, body, signature, Math.floor(Date.now() / 1000)), true);
   assert.equal(await verifyCareerIngestSignature(secret, body + " ", signature, 1_800_000_000), false);
 });
 test("career ingest HMAC rejects stale timestamps, malformed headers, and weak secrets", async () => {
@@ -23,7 +23,7 @@ test("career ingest route fails closed until its server secret is configured", a
   assert.equal((await response.json()).error, "MATCH_INGEST_NOT_CONFIGURED");
 });
 test("career ingest route rejects invalid signatures before accessing D1", async () => {
-  const response = await worker.fetch(request("/internal/matches/career", { method: "POST", headers: { "content-type": "application/json", "x-p27-signature": signed() }, body }), { P27_MATCH_INGEST_SECRET: secret });
+  const response = await worker.fetch(request("/internal/matches/career", { method: "POST", headers: { "content-type": "application/json", "x-p27-signature": signed(body + "tampered") }, body }), { P27_MATCH_INGEST_SECRET: secret });
   assert.equal(response.status, 401);
   assert.equal((await response.json()).error, "MATCH_INGEST_UNAUTHORIZED");
 });

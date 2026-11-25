@@ -143,6 +143,7 @@ function errorResponse(error) {
     code === "PROGRESSION_CONCURRENT_UPDATE" ? 409 :
     code === "PLAYER_IDENTITY_NOT_FOUND" ||
     code === "GOOGLE_ACCOUNT_NOT_LINKED" ? 404 :
+    code === "PLAYER_IDENTITY_MISMATCH" ? 409 :
     503;
   const safeCode = status === 503 && code !== "GOOGLE_OIDC_NOT_CONFIGURED"
     ? "P27_SERVICE_UNAVAILABLE"
