@@ -39,6 +39,14 @@ test('P27 serveur : readiness contrôle les secrets et stockages, puis SIGTERM f
     const ready = await readiness.json();
     assert.equal(ready.status, 'ready');
     assert.equal(ready.storage.length, 15);
+    assert.equal(ready.googleIdentity.status, 'not-configured');
+    const googleStart = await fetch(`${base}/api/auth/google/start`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ localProfileKey: '123e4567-e89b-42d3-a456-426614174000', localProofSecret: 'a'.repeat(64) })
+    });
+    assert.equal(googleStart.status, 503);
+    assert.equal((await googleStart.json()).error, 'GOOGLE_OIDC_NOT_CONFIGURED');
+    assert.equal(googleStart.headers.get('set-cookie'), null);
     assert.equal(server.maxHeaderSize, 16 * 1024);
     assert.equal(server.headersTimeout, 15_000);
     assert.equal(server.requestTimeout, 30_000);
