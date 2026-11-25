@@ -20,6 +20,7 @@ test('P27 serveur : readiness contrôle les secrets et stockages, puis SIGTERM f
     ACCOUNTS_DIR:'accounts',
     PLAYER_IDENTITIES_DIR:'player-identities',
     GOOGLE_OIDC_TRANSACTIONS_DIR:'google-oidc-transactions',
+    GOOGLE_IDENTITIES_DIR:'google-identities',
     P27_BACKUPS_DIR:'backups',
   };
   const original = Object.fromEntries([...Object.keys(envPaths), 'P27_ADMIN_TOKEN'].map(key => [key, process.env[key]]));
@@ -37,7 +38,7 @@ test('P27 serveur : readiness contrôle les secrets et stockages, puis SIGTERM f
     assert.equal(readiness.status, 200);
     const ready = await readiness.json();
     assert.equal(ready.status, 'ready');
-    assert.equal(ready.storage.length, 14);
+    assert.equal(ready.storage.length, 15);
     assert.equal(server.maxHeaderSize, 16 * 1024);
     assert.equal(server.headersTimeout, 15_000);
     assert.equal(server.requestTimeout, 30_000);
