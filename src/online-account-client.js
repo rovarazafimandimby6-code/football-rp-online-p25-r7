@@ -236,7 +236,18 @@ export class OnlineAccountClient {
   async saveProfile(profile) {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     const current = await this.getProfile();
-    const saved = await this.request('/api/player-profile/me', { method: 'PUT', auth: true, body: { profile, expectedRevision: current.revision } });
+    const safeProfile = {
+      identity: profile?.identity && typeof profile.identity === 'object' ? {
+        displayName: profile.identity.displayName, number: profile.identity.number,
+        preferredFoot: profile.identity.preferredFoot, role: profile.identity.role
+      } : {},
+      appearance: profile?.appearance && typeof profile.appearance === 'object' ? {
+        kit: profile.appearance.kit, skinTone: profile.appearance.skinTone,
+        hairStyle: profile.appearance.hairStyle, hairColor: profile.appearance.hairColor,
+        bodyBuild: profile.appearance.bodyBuild
+      } : {}
+    };
+    const saved = await this.request('/api/player-profile/me', { method: 'PUT', auth: true, body: { profile: safeProfile, expectedRevision: current.revision } });
     if (!Number.isSafeInteger(saved?.revision) || saved.revision <= current.revision) throw new Error('INVALID_PLAYER_PROFILE_RESPONSE');
     return saved;
   }

@@ -41,7 +41,7 @@ test('P27 profil cloud : GET et PUT utilisent uniquement la session persistante'
   assert.equal(calls[2].options.headers.authorization, `Bearer ${client.token}`);
   assert.equal(calls[2].url, 'https://game.example/api/player-profile/me');
   assert.equal(JSON.parse(calls[2].options.body).expectedRevision, 0);
-  assert.equal(JSON.parse(calls[2].options.body).profile.progression.coins, 999);
+  assert.equal(JSON.parse(calls[2].options.body).profile.progression, undefined);
 });
 
 test('P27 profil cloud : refuse la synchronisation sans compte connecté', async () => {
@@ -339,7 +339,7 @@ test('P27 session Google : les lectures et écritures de compte acceptent la ses
   await client.getAccountSnapshot();
   await client.saveProfile({ identity: { displayName: 'Rova' }, appearance: {} });
   await client.getProgression();
-  assert.equal(calls.length, 6);
+  assert.equal(calls.length, 7);
   for (const call of calls.slice(1)) {
     assert.equal(call.options.credentials, 'same-origin');
     assert.equal(call.options.headers.authorization, undefined);
