@@ -1,14 +1,22 @@
 # P27 D1 migrations
 
-This directory is intentionally empty of SQL migrations during the bootstrap stage.
+SQL migrations are applied locally in CI with Wrangler against its local SQLite-backed D1 emulator. No production database is created or modified by the workflow.
 
-The first schema migration will be added only after the current JSON stores, their invariants, uniqueness rules, and transactional boundaries have been mapped. Do not create a production D1 database or apply migrations yet.
+## Current schema
 
-Migration requirements:
+- `0001_identity.sql` defines the first identity foundation.
+- Player identity reservations are separate from authenticated accounts: a local profile can reserve its FRP identity before Google association.
+- Local profile credentials store only proof hashes, never raw proof secrets.
+- Google subject and account ownership are unique in the database.
+- OIDC state, nonce, PKCE verifier and browser-binding digests are short-lived rows; expired rows must be pruned.
+- Account sessions store only token hashes and expire by timestamp.
 
-- versioned, forward-only SQL files with explicit rollback/export notes;
-- normalized tables for accounts, player identities, profiles, progression, careers, contracts, transfers, clubs, competitions, and results;
-- unique constraints for account IDs, player IDs, and Google OIDC subjects;
-- revision columns and idempotency keys for synchronization and match-result processing;
-- no single oversized JSON row for an entire domain store;
-- local D1 migration tests before any account is connected.
+The schema intentionally does not yet include career, progression, transfers, finances, clubs, competitions, or match data. Those domains require separate audited migrations and repository adapters.
+
+## Rules
+
+- Add forward-only, versioned SQL files; do not edit a migration after it has been applied outside local development.
+- Preserve unique constraints and foreign keys; test duplicate identities and deletion behavior.
+- Use explicit revisions and idempotency keys for later synchronization and match-result tables.
+- Never store a whole domain store in one JSON row or exceed D1's 2 MB row limit.
+- Do not create a production D1 database or apply migrations to a remote database without the owner's explicit action.
