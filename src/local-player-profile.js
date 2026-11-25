@@ -9,12 +9,13 @@ function createPlayerNumber() {
   return String(100000 + (value % 900000));
 }
 function createLocalProfileKey() { if (!globalThis.crypto?.randomUUID) throw new Error('SECURE_RANDOM_UNAVAILABLE'); return globalThis.crypto.randomUUID(); }
+function createLocalProofSecret() { if (!globalThis.crypto?.getRandomValues) throw new Error('SECURE_RANDOM_UNAVAILABLE'); const bytes = new Uint8Array(32); globalThis.crypto.getRandomValues(bytes); return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join(''); }
 function cleanDisplayName(value) { return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').slice(0, 32) : ''; }
 export class LocalPlayerProfile {
   constructor({ storage = globalThis.localStorage, now = () => new Date().toISOString(), idFactory = createPlayerNumber } = {}) { this.storage = storage || null; this.now = now; this.idFactory = idFactory; }
   load() {
     if (!this.storage) return null;
-    try { const parsed = JSON.parse(this.storage.getItem(STORAGE_KEY) || 'null'); if (!parsed || parsed.version !== 1 || !parsed.profile || typeof parsed.profile.id !== 'string' || typeof parsed.profile.displayName !== 'string') return null; return structuredClone(parsed.profile); } catch { return null; }
+    try { const parsed = JSON.parse(this.storage.getItem(STORAGE_KEY) || 'null'); if (!parsed || parsed.version !== 1 || !parsed.profile || typeof parsed.profile.id !== 'string' || typeof parsed.profile.displayName !== 'string') return null; const profile = parsed.profile; if (!/^[a-f0-9]{64}$/i.test(profile.localProofSecret || '')) { profile.localProofSecret = createLocalProofSecret(); this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, profile })); } return structuredClone(profile); } catch { return null; }
   }
   create({ displayName } = {}) {
     if (!this.storage) throw new Error('LOCAL_PROFILE_STORAGE_UNAVAILABLE');
@@ -23,7 +24,7 @@ export class LocalPlayerProfile {
     const timestamp = this.now();
     const playerNumber = String(this.idFactory());
     if (!/^\d{6}$/.test(playerNumber)) throw new Error('INVALID_PLAYER_ID');
-    const profile = { id: `FRP-${playerNumber}`, localProfileKey: createLocalProfileKey(), identityStatus: 'local-pending', displayName: name, createdAt: timestamp, updatedAt: timestamp, cloudSync: { status: 'not-linked', googleLinked: false } };
+    const profile = { id: `FRP-${playerNumber}`, localProfileKey: createLocalProfileKey(), localProofSecret: createLocalProofSecret(), identityStatus: 'local-pending', displayName: name, createdAt: timestamp, updatedAt: timestamp, cloudSync: { status: 'not-linked', googleLinked: false } };
     this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, profile })); return structuredClone(profile);
   }
   update(patch = {}) {
@@ -41,7 +42,7 @@ export class LocalPlayerProfile {
     const response = await fetchImpl(endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ localProfileKey: current.localProfileKey })
+      body: JSON.stringify({ localProfileKey: current.localProfileKey, localProofSecret: current.localProofSecret })
     });
     let payload = {};
     try { payload = await response.json(); } catch {}

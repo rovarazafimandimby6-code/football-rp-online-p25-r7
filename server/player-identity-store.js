@@ -1,8 +1,11 @@
-import { randomInt, randomUUID } from 'node:crypto';
+import { createHash, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 const validUuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 const validNumber = value => typeof value === 'string' && /^FRP-\d{6}$/.test(value);
+const validProofSecret = value => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
+const proofDigest = value => createHash('sha256').update(value).digest('hex');
+const sameDigest = (a, b) => { if (typeof a !== 'string' || typeof b !== 'string') return false; const left = Buffer.from(a, 'hex'), right = Buffer.from(b, 'hex'); return left.length === 32 && right.length === 32 && timingSafeEqual(left, right); };
 export class JsonPlayerIdentityStore {
   constructor(directory, options = {}) {
     this.directory = path.resolve(directory);
@@ -17,7 +20,7 @@ export class JsonPlayerIdentityStore {
     try {
       const parsed = JSON.parse(readFileSync(this.file, 'utf8'));
       if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.identities)) throw Error('schema');
-      const rows = parsed.identities.filter(row => row && validUuid(row.localProfileKey) && validUuid(row.accountId) && validNumber(row.playerId) && typeof row.createdAt === 'string');
+      const rows = parsed.identities.filter(row => row && validUuid(row.localProfileKey) && validUuid(row.accountId) && validNumber(row.playerId) && typeof row.createdAt === 'string' && (row.proofHash === undefined || /^[a-f0-9]{64}$/i.test(row.proofHash)));
       if (rows.length !== parsed.identities.length || new Set(rows.map(row => row.localProfileKey)).size !== rows.length ||
           new Set(rows.map(row => row.accountId)).size !== rows.length || new Set(rows.map(row => row.playerId)).size !== rows.length) throw Error('duplicates');
       return { version: 1, identities: rows };
@@ -31,10 +34,16 @@ export class JsonPlayerIdentityStore {
     try { writeFileSync(temporary, JSON.stringify(this.state), { mode: 0o600 }); renameSync(temporary, this.file); }
     catch (error) { try { unlinkSync(temporary); } catch {} throw error; }
   }
-  reserve({ localProfileKey } = {}) {
+  reserve({ localProfileKey, localProofSecret } = {}) {
     if (!validUuid(localProfileKey)) throw new Error('INVALID_LOCAL_PROFILE_KEY');
+    if (!validProofSecret(localProofSecret)) throw new Error('INVALID_LOCAL_PROFILE_PROOF');
     const existing = this.state.identities.find(row => row.localProfileKey === localProfileKey);
-    if (existing) return { accountId: existing.accountId, playerId: existing.playerId, createdAt: existing.createdAt, alreadyReserved: true };
+    if (existing) {
+      const suppliedHash = proofDigest(localProofSecret);
+      if (existing.proofHash && !sameDigest(existing.proofHash, suppliedHash)) throw new Error('LOCAL_PROFILE_PROOF_INVALID');
+      if (!existing.proofHash) { const previous = this.state; this.state = structuredClone(previous); try { const row = this.state.identities.find(item => item.localProfileKey === localProfileKey); row.proofHash = suppliedHash; this.persist(); } catch (error) { this.state = previous; throw error; } }
+      return { accountId: existing.accountId, playerId: existing.playerId, createdAt: existing.createdAt, alreadyReserved: true };
+    }
     const previous = this.state;
     this.state = structuredClone(previous);
     try {
@@ -48,10 +57,16 @@ export class JsonPlayerIdentityStore {
       if (!playerId) throw new Error('PLAYER_ID_SPACE_EXHAUSTED');
       const accountId = randomUUID();
       const createdAt = new Date(this.now()).toISOString();
-      this.state.identities.push({ localProfileKey, accountId, playerId, createdAt });
+      this.state.identities.push({ localProfileKey, accountId, playerId, createdAt, proofHash: proofDigest(localProofSecret) });
       this.persist();
       return { accountId, playerId, createdAt, alreadyReserved: false };
     } catch (error) { this.state = previous; throw error; }
+  }
+  verifyLocalProof({ localProfileKey, localProofSecret } = {}) {
+    if (!validUuid(localProfileKey) || !validProofSecret(localProofSecret)) return null;
+    const row = this.state.identities.find(item => item.localProfileKey === localProfileKey);
+    if (!row?.proofHash || !sameDigest(row.proofHash, proofDigest(localProofSecret))) return null;
+    return { accountId: row.accountId, playerId: row.playerId, createdAt: row.createdAt };
   }
   getByLocalProfileKey(localProfileKey) {
     if (!validUuid(localProfileKey)) return null;

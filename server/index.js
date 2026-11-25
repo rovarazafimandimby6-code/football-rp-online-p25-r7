@@ -184,8 +184,15 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
     if (req.method === 'POST' && url.pathname === '/api/player-identities/reserve') {
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'PLAYER_ID_RESERVATION_RATE_LIMITED' });
       const body = await readBody(req);
-      const reservation = playerIdentityStore.reserve({ localProfileKey: body.localProfileKey });
+      const reservation = playerIdentityStore.reserve({ localProfileKey: body.localProfileKey, localProofSecret: body.localProofSecret });
       return json(res, 200, { accountId: reservation.accountId, playerId: reservation.playerId, reserved: true, alreadyReserved: reservation.alreadyReserved });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/player-identities/verify-local-proof') {
+      if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'PLAYER_IDENTITY_RATE_LIMITED' });
+      const body = await readBody(req);
+      const identity = playerIdentityStore.verifyLocalProof({ localProfileKey: body.localProfileKey, localProofSecret: body.localProofSecret });
+      if (!identity) return json(res, 401, { error: 'LOCAL_PROFILE_PROOF_INVALID' });
+      return json(res, 200, { verified: true, accountId: identity.accountId, playerId: identity.playerId });
     }
     if (req.method === 'GET' && url.pathname === '/api/rooms') return json(res, 200, { rooms: manager.list() });
     if (req.method === 'GET' && url.pathname === '/api/players/library') {

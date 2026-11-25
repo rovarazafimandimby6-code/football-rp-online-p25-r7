@@ -5,7 +5,7 @@ function memoryStorage() { const values = new Map(); return { getItem: key => va
 test('creates an offline local player profile without password or account credentials', () => {
   const storage = memoryStorage(); const store = new LocalPlayerProfile({ storage, now: () => '2026-11-25T08:00:00.000Z', idFactory: () => '675757' });
   const profile = store.create({ displayName: '  Rova   Player  ' });
-  assert.equal(profile.id, 'FRP-675757'); assert.match(profile.localProfileKey, /^[0-9a-f-]{36}$/); assert.equal(profile.identityStatus, 'local-pending'); assert.equal(profile.displayName, 'Rova Player');
+  assert.equal(profile.id, 'FRP-675757'); assert.match(profile.localProfileKey, /^[0-9a-f-]{36}$/); assert.equal(profile.identityStatus, 'local-pending'); assert.match(profile.localProofSecret, /^[a-f0-9]{64}$/); assert.equal(profile.displayName, 'Rova Player');
   assert.deepEqual(profile.cloudSync, { status: 'not-linked', googleLinked: false }); assert.equal(store.load().id, profile.id);
   assert.equal(Object.hasOwn(profile, 'password'), false); assert.equal(Object.hasOwn(profile, 'username'), false); assert.equal(Object.hasOwn(profile, 'email'), false);
   assert.equal(storage.getItem(LOCAL_PLAYER_PROFILE_STORAGE_KEY).includes('password'), false);
@@ -25,7 +25,9 @@ test('clears only the device-local profile', () => { const storage = memoryStora
 test('server reservation replaces provisional number and retries idempotently', async () => {
   const store = new LocalPlayerProfile({ storage: memoryStorage(), idFactory: () => '111111' });
   const initial = store.create({ displayName: 'Player' }); let calls = 0;
-  const fetchImpl = async (_url, options) => { calls++; assert.equal(JSON.parse(options.body).localProfileKey, initial.localProfileKey); return { ok: true, json: async () => ({ accountId: '123e4567-e89b-42d3-a456-426614174099', playerId: 'FRP-675757', reserved: true }) }; };
+  const fetchImpl = async (_url, options) => { calls++; assert.equal(JSON.parse(options.body).localProfileKey, initial.localProfileKey); assert.equal(JSON.parse(options.body).localProofSecret, initial.localProofSecret); return { ok: true, json: async () => ({ accountId: '123e4567-e89b-42d3-a456-426614174099', playerId: 'FRP-675757', reserved: true }) }; };
   const first = await store.reserveWithServer({ fetchImpl }); const second = await store.reserveWithServer({ fetchImpl });
   assert.equal(first.id, 'FRP-675757'); assert.equal(first.accountId, '123e4567-e89b-42d3-a456-426614174099'); assert.equal(first.identityStatus, 'reserved'); assert.equal(second.id, first.id); assert.equal(calls, 1);
 });
+
+test('migrates an existing local profile by adding a device-held proof secret', () => { const storage = memoryStorage(); const profile = { id: 'FRP-123456', localProfileKey: '123e4567-e89b-42d3-a456-426614174000', displayName: 'Player' }; storage.setItem(LOCAL_PLAYER_PROFILE_STORAGE_KEY, JSON.stringify({ version: 1, profile })); const loaded = new LocalPlayerProfile({ storage }).load(); assert.match(loaded.localProofSecret, /^[a-f0-9]{64}$/); assert.equal(JSON.parse(storage.getItem(LOCAL_PLAYER_PROFILE_STORAGE_KEY)).profile.localProofSecret, loaded.localProofSecret); });
