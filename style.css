@@ -1757,3 +1757,9 @@ html, body {
 @media(max-width:560px){.server-season-overview b{font-size:17px}.server-season-overview>div{padding:9px}.server-fixture-preview .fixture-row{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:5px}.server-fixture-preview .fixture-row small{grid-column:1/-1;text-align:right}}
 
 .club-control-indicator{display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;color:#aebfb3;font-size:7px;font-weight:900;letter-spacing:.055em}.club-control-indicator i{display:inline-block;width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#e16a6a;box-shadow:0 0 0 3px rgba(225,106,106,.12)}.club-control-indicator.human i{background:#63d99a;box-shadow:0 0 0 3px rgba(99,217,154,.13)}.club-control-indicator.human{color:#9ce5b9}
+
+
+/* P27 Android test build: keep unfinished online/cloud routes out of the offline APK. */
+.p27-offline-test [data-action="online-menu"],
+.p27-offline-test .p27-cloud-only { display: none !important; }
+.p27-offline-test .menu-status i { display: none; }

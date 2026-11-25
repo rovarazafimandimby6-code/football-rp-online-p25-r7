@@ -6,6 +6,7 @@ import { validateProfile, createDefaultProfile } from '../src/player-profile.js'
 const playerSource = await readFile(new URL('../src/player.js', import.meta.url), 'utf8');
 const mainSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
 const htmlSource = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const packageSource = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 
 test('P23 avatar : le profil propose cinq coiffures et trois morphologies contrôlées', () => {
   const p = validateProfile({ appearance: { hairStyle: 'afro', bodyBuild: 'strong' } });
@@ -43,7 +44,8 @@ test('P23 avatar : aperçu 3D interactif du profil monté puis nettoyé à la na
   assert.match(mainSource, /function disposeAvatarPreview\(\)/);
   assert.match(mainSource, /cancelAnimationFrame\(avatarPreview\.raf\)/);
   assert.match(mainSource, /mountAvatarPreview\(p\)/);
-  assert.match(htmlSource, /three@0\.170\.0/);
+  assert.equal(packageSource.dependencies.three, '0.170.0');
+  assert.doesNotMatch(htmlSource, /cdn\.jsdelivr\.net/);
 });
 
 
