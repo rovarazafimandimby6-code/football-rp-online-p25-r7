@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,readFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import path from 'node:path';import {JsonPlayerIdentityStore} from '../server/player-identity-store.js';
+import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';import {tmpdir} from 'node:os';import path from 'node:path';import {JsonPlayerIdentityStore} from '../server/player-identity-store.js';
 const a='123e4567-e89b-42d3-a456-426614174000',b='123e4567-e89b-42d3-a456-426614174001';
 const temp=()=>{const directory=mkdtempSync(path.join(tmpdir(),'p27-player-identities-'));return{directory,cleanup:()=>rmSync(directory,{recursive:true,force:true})};};
 test('FRP registry idempotently reserves a number for one local profile',()=>{const t=temp();try{let n=0;const s=new JsonPlayerIdentityStore(t.directory,{idFactory:()=>['675757','123456'][n++]||'123456'});const secret='a'.repeat(64);const x=s.reserve({localProfileKey:a,localProofSecret:secret}),y=s.reserve({localProfileKey:a,localProofSecret:secret});assert.equal(x.playerId,'FRP-675757');assert.equal(x.alreadyReserved,false);assert.equal(y.playerId,x.playerId);assert.equal(y.accountId,x.accountId);assert.equal(y.alreadyReserved,true);assert.equal(s.state.identities.length,1);assert.equal(s.verifyLocalProof({localProfileKey:a,localProofSecret:secret}).accountId,x.accountId);assert.equal(s.verifyLocalProof({localProfileKey:a,localProofSecret:'b'.repeat(64)}),null);assert.throws(()=>s.reserve({localProfileKey:a,localProofSecret:'b'.repeat(64)}),/LOCAL_PROFILE_PROOF_INVALID/);assert.equal(JSON.stringify(s.state).includes(secret),false);}finally{t.cleanup();}});
@@ -18,7 +18,6 @@ test('FRP registry upgrades a legacy identity row without a stored proof hash', 
         playerId: 'FRP-123456', createdAt: '2026-11-25T00:00:00.000Z'
       }]
     };
-    const { writeFileSync } = await import('node:fs');
     writeFileSync(path.join(directory, 'player-identities.json'), JSON.stringify(legacy));
     const store = new JsonPlayerIdentityStore(directory);
     assert.equal(store.verifyLocalProof({ localProfileKey: a, localProofSecret: 'c'.repeat(64) }), null);
