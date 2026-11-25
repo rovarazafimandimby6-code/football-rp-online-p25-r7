@@ -21,7 +21,8 @@ export function resolvePlayerBackupConfig({ env = process.env, root = process.cw
       profiles: path.resolve(env.PLAYER_PROFILES_DIR || `${base}/data/player-profiles`),
       progression: path.resolve(env.PLAYER_PROGRESSION_DIR || `${base}/data/progression`),
       careers: path.resolve(env.CAREERS_DIR || `${base}/data/careers`),
-      transfers: path.resolve(env.TRANSFERS_DIR || `${base}/data/transfers`)
+      transfers: path.resolve(env.TRANSFERS_DIR || `${base}/data/transfers`),
+      clubRosters: path.resolve(env.CLUB_ROSTERS_DIR || `${base}/data/club-rosters`)
     }
   };
 }
