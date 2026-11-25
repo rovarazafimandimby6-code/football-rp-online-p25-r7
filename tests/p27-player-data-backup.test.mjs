@@ -102,7 +102,7 @@ test('P27 compte: le backup accepte les fichiers produits par les vrais stores s
   try{
     const accountStore=new JsonAccountStore(directories.accounts);
     const identityStore=new JsonPlayerIdentityStore(directories.playerIdentities);
-    identityStore.reserve({ localProfileKey:'123e4567-e89b-42d3-a456-426614174000' });
+    identityStore.reserve({ localProfileKey:'123e4567-e89b-42d3-a456-426614174000', localProofSecret:'c'.repeat(64) });
     const created=accountStore.register({username:'backupplayer',password:'StrongPass123',displayName:'Backup Player'});
     const accountId=created.account.id;
     new JsonPlayerProfileStore(directories.profiles).save(accountId,{identity:{displayName:'Backup Player'}});
