@@ -123,3 +123,35 @@ export class JsonCareerSyncQueue {
 
   get pendingCount() { return this.state.pending.length; }
 }
+
+
+/** New events share the career store transaction; this adapter also drains the legacy outbox. */
+export class CareerStoreSyncQueue {
+  constructor(careerStore, { legacyQueue = null, now = () => Date.now() } = {}) {
+    if (!careerStore || typeof careerStore.listDueCloudMatches !== 'function') throw new Error('CAREER_STORE_SYNC_QUEUE_REQUIRED');
+    this.careerStore = careerStore;
+    this.legacyQueue = legacyQueue;
+    this.now = now;
+  }
+  listPending({ limit = 100 } = {}) {
+    const integrated = this.careerStore.listPendingCloudMatches({ limit });
+    const keys = new Set(integrated.map(item => item.accountId + ':' + item.matchId));
+    const legacy = this.legacyQueue?.listPending({ limit }) || [];
+    return [...integrated, ...legacy.filter(item => !keys.has(item.accountId + ':' + item.matchId))].slice(0, limit);
+  }
+  listDue({ limit = 25, now = this.now() } = {}) {
+    const integrated = this.careerStore.listDueCloudMatches({ limit, now });
+    const keys = new Set(integrated.map(item => item.accountId + ':' + item.matchId));
+    const legacy = this.legacyQueue?.listDue({ limit, now }) || [];
+    return [...integrated, ...legacy.filter(item => !keys.has(item.accountId + ':' + item.matchId))].slice(0, limit);
+  }
+  markAttempt(accountId, matchId) {
+    const integrated = this.careerStore.listPendingCloudMatches({ limit:10_000 }).some(item => item.accountId === accountId && item.matchId === matchId);
+    return integrated ? this.careerStore.markCloudMatchAttempt(accountId, matchId, this.now()) : this.legacyQueue?.markAttempt(accountId, matchId);
+  }
+  acknowledge(accountId, matchId) {
+    const integrated = this.careerStore.listPendingCloudMatches({ limit:10_000 }).some(item => item.accountId === accountId && item.matchId === matchId);
+    return integrated ? this.careerStore.acknowledgeCloudMatch(accountId, matchId) : this.legacyQueue?.acknowledge(accountId, matchId);
+  }
+  get pendingCount() { return this.careerStore.pendingCloudMatchCount + (this.legacyQueue?.pendingCount || 0); }
+}

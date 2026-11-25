@@ -554,11 +554,11 @@ export class RoomManager {
           cleanSheet: (player.team === 'blue' ? red : blue) === 0,
           stats: player.stats, name: player.name, clubName: teamName
         };
-        this.careerStore.recordPlayerMatch(player.careerPlayerId, careerInput);
-        if (livePlayer?.accountId && !player.isBot) this.careerStore.recordMatch(livePlayer.accountId, careerInput);
-        if (livePlayer?.accountId && !player.isBot && /^FRP-[0-9]{6}$/.test(livePlayer.careerPlayerId || '')) {
-          this.careerSyncQueue?.enqueue({ accountId: livePlayer.accountId, playerId: livePlayer.careerPlayerId, matchId: room.id, payload: careerInput });
-        }
+        const accountId = livePlayer?.accountId && !player.isBot ? livePlayer.accountId : null;
+        const syncEvent = accountId && /^FRP-[0-9]{6}$/.test(livePlayer?.careerPlayerId || '')
+          ? { accountId, playerId: livePlayer.careerPlayerId, matchId: room.id, payload: careerInput }
+          : null;
+        this.careerStore.recordFinalizedMatch(accountId, player.careerPlayerId, careerInput, { syncEvent });
       }
     }
     for (const player of performance.players) {

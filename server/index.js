@@ -13,7 +13,7 @@ import { readGoogleOidcConfig } from './google-oidc-config.js';
 import { GoogleOidcTransactionStore } from './google-oidc-transactions.js';
 import { JsonPlayerIdentityStore } from './player-identity-store.js';
 import { JsonCareerStore } from './career-store.js';
-import { JsonCareerSyncQueue } from './career-sync-queue.js';
+import { JsonCareerSyncQueue, CareerStoreSyncQueue } from './career-sync-queue.js';
 import { CareerSyncService } from './career-sync-service.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
 import { JsonProgressionStore } from './progression-store.js';
@@ -38,7 +38,8 @@ const resultDirectory = process.env.RESULTS_DIR || path.join(path.dirname(fileUR
 const careerDirectory = process.env.CAREERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'careers');
 const careerStore = new JsonCareerStore(careerDirectory);
 const careerSyncDirectory = process.env.CAREER_SYNC_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'career-sync');
-const careerSyncQueue = new JsonCareerSyncQueue(careerSyncDirectory);
+const legacyCareerSyncQueue = new JsonCareerSyncQueue(careerSyncDirectory);
+const careerSyncQueue = new CareerStoreSyncQueue(careerStore, { legacyQueue: legacyCareerSyncQueue });
 const careerSyncService = new CareerSyncService(careerSyncQueue);
 const progressionDirectory = process.env.PLAYER_PROGRESSION_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'progression');
 const progressionStore = new JsonProgressionStore(progressionDirectory);
