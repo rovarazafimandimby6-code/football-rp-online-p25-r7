@@ -2,32 +2,53 @@
 function recoverySnapshotMissingSections(snapshot) {
   const missing = [];
   const isObject = value => Boolean(value && typeof value === 'object' && !Array.isArray(value));
-  const isCount = value => Number.isSafeInteger(value) && value >= 0;
+  const isCount = value => Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000_000;
+  const isMatch = match => isObject(match) && typeof match.matchId === 'string'
+    && match.matchId.length > 0 && match.matchId.length <= 64
+    && ['win','draw','loss'].includes(match.result);
+  const totals = value => isObject(value) && isCount(value.matches);
+
   const profile = snapshot?.profile;
-  if (!isObject(profile?.identity) || !isObject(profile?.appearance)
-    || typeof profile.identity.displayName !== 'string'
-    || !isCount(profile.identity.number)
-    || !['GK','DEF','MID','FWD'].includes(profile.identity.role)) missing.push('profile');
+  const identity = profile?.identity;
+  const appearance = profile?.appearance;
+  if (!isObject(identity) || !isObject(appearance)
+    || typeof identity.displayName !== 'string' || !identity.displayName.trim() || identity.displayName.length > 20
+    || !Number.isSafeInteger(identity.number) || identity.number < 1 || identity.number > 99
+    || !['left','right'].includes(identity.preferredFoot)
+    || !['GK','DEF','MID','FWD'].includes(identity.role)
+    || !['emerald','crimson','gold','violet','monochrome'].includes(appearance.kit)
+    || !['light','medium','dark'].includes(appearance.skinTone)
+    || !['short','curly','shaved','fade','afro'].includes(appearance.hairStyle)
+    || !['dark','brown','blond'].includes(appearance.hairColor)
+    || !['lean','athletic','strong'].includes(appearance.bodyBuild)) missing.push('profile');
 
   const progression = snapshot?.progression;
   const attributes = progression?.attributes;
-  if (!isObject(progression) || !isCount(progression.level) || progression.level < 1 || progression.level > 99
-    || !isCount(progression.experience) || !isCount(progression.coins) || !isCount(progression.trainingPoints)
-    || !isObject(attributes) || !['pace','shooting','passing','defense','stamina','control'].every(key => isCount(attributes[key]))
-    || !Array.isArray(progression.processedMatchIds)) missing.push('progression');
+  if (!isObject(progression) || !Number.isSafeInteger(progression.level) || progression.level < 1 || progression.level > 99
+    || !isCount(progression.experience) || !isCount(progression.coins) || !Number.isSafeInteger(progression.trainingPoints)
+    || progression.trainingPoints < 0 || progression.trainingPoints > 100_000
+    || !isObject(attributes) || !['pace','shooting','passing','defense','stamina','control'].every(key =>
+      Number.isSafeInteger(attributes[key]) && attributes[key] >= 1 && attributes[key] <= 99)
+    || !Array.isArray(progression.processedMatchIds)
+    || !progression.processedMatchIds.every(id => typeof id === 'string' && id.length > 0 && id.length <= 64)) missing.push('progression');
 
-  if (!isObject(snapshot?.career?.totals) || !Array.isArray(snapshot.career.matches)) missing.push('career');
-  if (!isObject(snapshot?.playerCareer) || !isObject(snapshot.playerCareer.totals)
-    || !Array.isArray(snapshot.playerCareer.matches)) missing.push('playerCareer');
+  if (!totals(snapshot?.career?.totals) || !Array.isArray(snapshot.career.matches)
+    || !snapshot.career.matches.every(isMatch)) missing.push('career');
+  if (!isObject(snapshot?.playerCareer) || !totals(snapshot.playerCareer.totals)
+    || !Array.isArray(snapshot.playerCareer.matches) || !snapshot.playerCareer.matches.every(isMatch)
+    || !(snapshot.playerCareer.player === null || isObject(snapshot.playerCareer.player))) missing.push('playerCareer');
 
-  if (!isObject(snapshot?.seasonStats?.totals) || !Array.isArray(snapshot.seasonStats.matches)
-    || !Array.isArray(snapshot.seasonStats.processedMatchIds)) missing.push('seasonStats');
+  if (!totals(snapshot?.seasonStats?.totals) || !Array.isArray(snapshot.seasonStats.matches)
+    || !snapshot.seasonStats.matches.every(match => isObject(match) && ['win','draw','loss'].includes(match.result))
+    || !Array.isArray(snapshot.seasonStats.processedMatchIds)
+    || !snapshot.seasonStats.processedMatchIds.every(id => typeof id === 'string' && id.length > 0 && id.length <= 64)) missing.push('seasonStats');
 
   const contract = snapshot?.contract;
   if (!isObject(contract) || !isCount(contract.wallet)
-    || !Object.hasOwn(contract, 'clubId') || !Object.hasOwn(contract, 'contract')
-    || !Array.isArray(contract.offers) || !Array.isArray(contract.history)
-    || !Array.isArray(contract.loanOffers) || !Array.isArray(contract.loanHistory)) missing.push('contract');
+    || !(contract.clubId === null || typeof contract.clubId === 'string')
+    || !(contract.contract === null || isObject(contract.contract))
+    || !['offers','history','loanOffers','loanHistory'].every(key =>
+      Array.isArray(contract[key]) && contract[key].every(isObject))) missing.push('contract');
 
   return missing;
 }

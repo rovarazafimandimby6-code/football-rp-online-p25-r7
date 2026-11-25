@@ -122,6 +122,34 @@ test('P27 récupération cloud : bloque une sauvegarde dont des sections de carr
   assert.deepEqual(preview.missingSections, ['seasonStats']);
 });
 
+test('P27 récupération cloud : refuse les sections présentes mais mal formées', async () => {
+  const cases = [
+    ['profile', snapshot => { snapshot.profile.appearance.kit = 'unknown'; }],
+    ['progression', snapshot => { snapshot.progression.attributes.control = 0; }],
+    ['career', snapshot => { snapshot.career.matches = [null]; }],
+    ['playerCareer', snapshot => { snapshot.playerCareer.matches = [{ matchId: 'm1', result: 'invalid' }]; }],
+    ['seasonStats', snapshot => { snapshot.seasonStats.processedMatchIds = [42]; }],
+    ['contract', snapshot => { snapshot.contract.loanOffers = null; }]
+  ];
+  for (const [section, corrupt] of cases) {
+    const snapshot = completeRecoverySnapshot();
+    corrupt(snapshot);
+    const client = new OnlineAccountClient({
+      storage: null,
+      fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed' }) })
+    });
+    client.token = 'account-token-with-more-than-32-characters';
+    client.account = { id: 'account-123', playerId: 'FRP-123456' };
+    const preview = await client.previewAccountRecovery({
+      outbox: { status: () => ({ pending: 0 }) },
+      localState: { profile: false, career: false, progression: false, seasonStats: false }
+    });
+    assert.equal(preview.ready, false, section);
+    assert.equal(preview.reason, 'SNAPSHOT_INCOMPLETE', section);
+    assert.ok(preview.missingSections.includes(section), section);
+  }
+});
+
 test('P27 récupération cloud : bloque les changements locaux en attente et les données déjà présentes', async () => {
   const snapshot = completeRecoverySnapshot();
   const client = new OnlineAccountClient({
