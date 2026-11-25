@@ -1,14 +1,13 @@
 /* P27 REBIRTH — complete football-game menu direction.
    DLS-inspired sports presentation; original assets and layout, not a replica. */
 :root{
-  color-scheme:dark;
   --p27-bg:#080b12;--p27-panel:#111722;--p27-panel-2:#171f2c;
   --p27-line:rgba(220,232,255,.12);--p27-text:#f5f7fb;
   --p27-muted:#9aa7bb;--p27-blue:#53a7ff;--p27-cyan:#63d5e8;
   --p27-orange:#ff9b45;--p27-red:#f06464;
   --glass:rgba(8,12,20,.88);--line:rgba(220,232,255,.16);--mint:#63d5e8;
 }
-html,body{background:var(--p27-bg);color:var(--p27-text);font-family:Inter,Roboto,"Segoe UI",system-ui,sans-serif}
+#main-menu{color-scheme:dark;color:var(--p27-text);font-family:Inter,Roboto,"Segoe UI",system-ui,sans-serif}
 #main-menu{position:fixed;inset:0;display:flex;flex-direction:column;min-height:0;overflow:hidden;background:
  radial-gradient(ellipse at 76% 5%,rgba(35,103,160,.23),transparent 34%),
  radial-gradient(ellipse at 8% 88%,rgba(31,54,86,.28),transparent 40%),
@@ -147,7 +146,7 @@ html,body{background:var(--p27-bg);color:var(--p27-text);font-family:Inter,Robot
  .profile-layout{grid-template-columns:1fr}.club-grid{grid-template-columns:1fr}
  .competition-layout{grid-template-columns:1fr}
 }
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+@media(prefers-reduced-motion:reduce){#main-menu *,#main-menu *:before,#main-menu *:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 
 /* P27 Rebirth — second pass: game-like mobile shell and football-first hierarchy */
 .menu-sidebar button{position:relative;letter-spacing:.15px}
@@ -535,7 +534,7 @@ html,body{background:var(--p27-bg);color:var(--p27-text);font-family:Inter,Robot
 
 
 /* Viewport and native splash consistency — menu only; never targets #game-shell. */
-html:has(#main-menu),body:has(#main-menu){
+html:has(#main-menu:not(.hidden)),body:has(#main-menu:not(.hidden)){
   width:100%;
   min-width:0;
   min-height:100%;
@@ -543,7 +542,7 @@ html:has(#main-menu),body:has(#main-menu){
   background:#080b12;
   overscroll-behavior:none;
 }
-body:has(#main-menu){overflow:hidden}
+body:has(#main-menu:not(.hidden)){overflow:hidden}
 #main-menu{
   position:fixed;
   inset:0;
