@@ -12,6 +12,8 @@ import { OnlineMatchClient } from './online-client.js';
 import { OnlineAccountClient } from './online-account-client.js';
 import { PlayerSyncOutbox } from './player-sync-outbox.js';
 import { ProfileSyncCoordinator } from './profile-sync-coordinator.js';
+import { createAccountRecoveryAdapters } from './account-recovery-adapters.js';
+import { restoreAccountSnapshot } from './account-recovery.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
 
@@ -81,6 +83,7 @@ syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
 let game = null;
 let pendingOnlineMatch = null;
 const accountClient = new OnlineAccountClient({ baseUrl: location.origin });
+let pendingAccountRecoveryPreview = null;
 accountClient.restoreSession();
 const profileSyncOutbox = new PlayerSyncOutbox();
 const profileSyncCoordinator = new ProfileSyncCoordinator({
@@ -590,6 +593,7 @@ ${renderGoogleProtectionCard({ compact: true })}
       <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">SAUVEGARDE CLOUD</span><h2>Vérifier une récupération</h2></div></div>
       <p class="notice">Cette vérification compare l'identité du compte, la sauvegarde serveur et les données locales. Elle ne restaure et ne remplace aucune donnée.</p>
       <button class="small-action" data-action="account-recovery-preview" ${accountClient.hasSession ? '' : 'disabled'}>ANALYSER MA SAUVEGARDE</button>
+      <button class="small-action" data-action="account-recovery-restore" disabled>RESTAURER MA CARRIÈRE</button>
       <p class="notice" id="account-recovery-status" aria-live="polite">${accountClient.hasSession ? 'Compte connecté : vérification disponible.' : 'Connectez le compte associé à votre joueur pour vérifier sa sauvegarde.'}</p></section>`;
   } else if (page === 'mercato') {
     career.refreshContractStatus();
@@ -861,6 +865,15 @@ function hasStoredRecoveryData(storage, key) {
   catch (_) { return true; }
 }
 
+function readAccountRecoveryLocalState() {
+  return {
+    profile: hasStoredRecoveryData(profileStore.storage, profileStore.key),
+    career: hasStoredRecoveryData(career.storage, career.storageKey),
+    progression: hasStoredRecoveryData(profileStore.storage, profileStore.key),
+    seasonStats: hasStoredRecoveryData(seasonStats.storage, seasonStats.key)
+  };
+}
+
 async function previewAccountRecoveryFromUi() {
   const status = document.getElementById('account-recovery-status');
   const button = document.querySelector('[data-action="account-recovery-preview"]');
@@ -871,12 +884,7 @@ async function previewAccountRecoveryFromUi() {
   if (button) button.disabled = true;
   if (status) status.textContent = 'Vérification de la sauvegarde serveur et des données locales…';
   try {
-    const localState = {
-      profile: hasStoredRecoveryData(profileStore.storage, profileStore.key),
-      career: hasStoredRecoveryData(career.storage, career.storageKey),
-      progression: hasStoredRecoveryData(profileStore.storage, profileStore.key),
-      seasonStats: hasStoredRecoveryData(seasonStats.storage, seasonStats.key)
-    };
+    const localState = readAccountRecoveryLocalState();
     const preview = await accountClient.previewAccountRecovery({
       outbox: profileSyncOutbox,
       localIdentity: localPlayerIdentity || null,
@@ -884,6 +892,9 @@ async function previewAccountRecoveryFromUi() {
     });
     if (!status?.isConnected) return;
     if (!preview.ready) {
+      pendingAccountRecoveryPreview = null;
+      const restoreButton = document.querySelector('[data-action="account-recovery-restore"]');
+      if (restoreButton) restoreButton.disabled = true;
       const reasons = {
         ACCOUNT_PLAYER_ID_MISMATCH: 'Le compte connecté ne correspond pas à l’identifiant joueur de la sauvegarde.',
         LOCAL_IDENTITY_MISMATCH: 'L’identité locale ne correspond pas à ce compte. Aucune donnée n’a été modifiée.',
@@ -897,6 +908,476 @@ async function previewAccountRecoveryFromUi() {
       status.textContent = reasons[preview.reason] || 'La récupération est bloquée par une vérification de sécurité.';
       return;
     }
+    pendingAccountRecoveryPreview = preview;
+    const restoreButton = document.querySelector('[data-action="account-recovery-restore"]');
+    if (restoreButton) restoreButton.disabled = false;
+    const matches = Number(preview.snapshot.career?.totals?.matches) || 0;
+    const level = Number(preview.snapshot.progression?.level) || 1;
+    status.textContent = 'Sauvegarde serveur vérifiée pour ' + preview.playerId + ' · Niveau ' + level + ' · ' + matches + ' match(s) en carrière. Aperçu uniquement : aucune donnée n’a été importée. Révision ' + preview.revision.slice(0, 12) + '.';
+  } catch (error) {
+    if (status?.isConnected) status.textContent = 'Vérification impossible : ' + String(error?.message || error).slice(0, 100);
+  } finally {
+    if (button?.isConnected) button.disabled = !accountClient.hasSession;
+  }
+}
+
+async function restoreAccountRecoveryFromUi() {
+  const status = document.getElementById('account-recovery-status');
+  const button = document.querySelector('[data-action="account-recovery-restore"]');
+  const preview = pendingAccountRecoveryPreview;
+  if (!preview?.ready || !accountClient.hasSession) {
+    if (status) status.textContent = 'Effectuez d’abord une analyse valide de la sauvegarde.';
+    return;
+  }
+  if (!window.confirm('Restaurer cette sauvegarde serveur sur cet appareil ? Cette opération remplacera les données locales de profil, progression, statistiques et mercato après une dernière vérification.')) return;
+  if (button) button.disabled = true;
+  if (status) status.textContent = 'Nouvelle vérification de sécurité avant restauration…';
+  try {
+    const fresh = await accountClient.getAccountSnapshot();
+    if (fresh.revision !== preview.revision) throw new Error('SNAPSHOT_REVISION_CHANGED');
+    if (fresh.snapshot.player?.playerId !== preview.playerId || accountClient.account?.playerId !== preview.playerId) {
+      throw new Error('ACCOUNT_PLAYER_ID_MISMATCH');
+    }
+    accountClient.assertLocalIdentity(localPlayerIdentity);
+    const outboxStatus = profileSyncOutbox.status();
+    if (outboxStatus.pending !== 0) throw new Error('LOCAL_CHANGES_PENDING');
+    const localState = readAccountRecoveryLocalState();
+    if (Object.values(localState).some(Boolean)) throw new Error('LOCAL_DATA_PRESENT');
+    const adapters = createAccountRecoveryAdapters({ profileStore, seasonStatsStore: seasonStats, careerManager: career });
+    const result = await restoreAccountSnapshot({
+      preview: { ...preview, snapshot: fresh.snapshot },
+      currentRevision: fresh.revision,
+      confirmed: true,
+      adapters
+    });
+    if (!result.ok) throw new Error(result.reason || 'RESTORE_FAILED');
+    const displayName = fresh.snapshot.profile.identity.displayName;
+    if (localPlayerProfileStore && localPlayerIdentity?.displayName !== displayName) {
+      localPlayerIdentity = localPlayerProfileStore.update({ displayName });
+    }
+    syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+    pendingAccountRecoveryPreview = null;
+    renderPage('account');
+    const restoredStatus = document.getElementById('account-recovery-status');
+    if (restoredStatus) restoredStatus.textContent = 'Restauration terminée : profil, progression, statistiques de saison et carrière mercato importés. Les historiques détaillés restent conservés dans les archives locales.';
+  } catch (error) {
+    if (status?.isConnected) {
+      const messages = {
+        SNAPSHOT_REVISION_CHANGED: 'La sauvegarde a changé depuis l’analyse. Relancez une vérification avant de réessayer.',
+        ACCOUNT_PLAYER_ID_MISMATCH: 'Le compte ne correspond plus à cette identité joueur.',
+        LOCAL_IDENTITY_MISMATCH: 'L’identité locale ne correspond pas au compte connecté.',
+        LOCAL_CHANGES_PENDING: 'Des changements locaux sont en attente. Synchronisez-les avant la restauration.',
+        LOCAL_DATA_PRESENT: 'Des données locales existent désormais. La restauration est bloquée pour éviter leur écrasement.'
+      };
+      status.textContent = messages[error.message] || 'Restauration impossible : ' + String(error?.message || error).slice(0, 100);
+    }
+    if (button?.isConnected) button.disabled = false;
+  }
+}
+
+async function submitAccountForm(action) {
+  const status = document.getElementById('account-status');
+  const username = String(document.getElementById('account-username')?.value || '').trim().toLowerCase();
+  const password = String(document.getElementById('account-password')?.value || '');
+  const displayName = String(document.getElementById('account-display-name')?.value || profileStore.profile.identity.displayName).trim();
+  if (status) status.textContent = 'Traitement de la demande…';
+  try {
+    if (action === 'login') await accountClient.login({ username, password });
+    else if (action === 'register') await accountClient.register({ username, password, displayName });
+    else if (action === 'refresh') await accountClient.refresh();
+    else if (action === 'sync-profile') {
+      await queueAndSyncCurrentProfile();
+      renderPage('account');
+      const refreshedStatus = document.getElementById('account-status');
+      if (refreshedStatus) refreshedStatus.textContent = 'Identité et apparence enregistrées sur le compte. Progression et attributs locaux inchangés.';
+      return;
+    } else if (action === 'migrate-legacy') {
+      const backup = createLegacyProfileBackup(profileStore.storage, profileStore.profile);
+      const payload = buildLegacyProfileMigrationPayload(profileStore.profile);
+      profileSyncCoordinator.enqueueProfile(payload);
+      const syncResult = await profileSyncCoordinator.flush();
+      renderPage('account');
+      const refreshedStatus = document.getElementById('account-status');
+      if (refreshedStatus) refreshedStatus.textContent = syncResult.uploaded > 0
+        ? (backup.created
+          ? 'Migration terminée : sauvegarde locale intégrale créée ; identité et apparence confirmées sur le compte. Progression locale préservée.'
+          : 'Migration actualisée : sauvegarde locale existante conservée ; identité et apparence confirmées sur le compte. Progression locale préservée.')
+        : 'Sauvegarde locale conservée ; synchronisation cloud en attente du compte correspondant.';
+      return;
+    } else if (action === 'restore-profile') {
+      const result = await accountClient.getProfile();
+      if (!result?.profile) throw new Error('NO_CLOUD_PROFILE');
+      profileStore.save({ ...profileStore.profile, identity: result.profile.identity, appearance: result.profile.appearance });
+      renderPage('account');
+      const refreshedStatus = document.getElementById('account-status');
+      if (refreshedStatus) refreshedStatus.textContent = 'Identité et apparence restaurées depuis le compte. Progression, attributs et monnaie locaux préservés.';
+      return;
+    }
+    else if (action === 'logout') await accountClient.logout();
+    if (['login', 'register', 'refresh'].includes(action)) await profileSyncCoordinator.flush();
+    renderPage('account');
+  } catch (error) {
+    if (status) status.textContent = `Opération impossible : ${String(error?.message || error).slice(0, 100)}`;
+  }
+}
+
+menu.addEventListener('click', event => {
+  const pageButton = event.target.closest('[data-page]');
+  if (pageButton) { renderPage(pageButton.dataset.page); return; }
+  const playerCard = event.target.closest('[data-player-profile]');
+  if (playerCard && event.target.closest('.player-card-details')) return;
+  if (playerCard) { const index = Number(playerCard.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = playerCard.dataset.profileOrigin || 'players'; renderPage('player-detail'); return; }
+  const action = event.target.closest('[data-action]')?.dataset.action;
+  if (action === 'players-load-more') { playerLibraryLimit += 24; filterPlayerLibrary(); }
+  else if (action === 'open-player-profile') { const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); }
+  else if (action === 'back-player-library') { selectedPlayerProfile = null; renderPage(playerProfileReturnPage); }
+  else if (action === 'view-roster') { selectedClubId = event.target.closest('[data-club]')?.dataset.club || null; renderPage('clubs'); }
+  else if (action === 'back-clubs') { selectedClubId = null; renderPage('clubs'); }
+  else if (action === 'results-page') { renderResultsPage(Number(event.target.closest('[data-offset]')?.dataset.offset || 0)); }
+  else if (action === 'show-result') { const roomId = event.target.closest('[data-room]')?.dataset.room; if (roomId) renderResultDetail(roomId); }
+  else if (action === 'close-result') { document.getElementById('result-detail')?.replaceChildren(); }
+  else if (action === 'retry-results') { renderResultsPage(0); }
+  else if (action === 'account-login') {
+    submitAccountForm('login');
+  } else if (action === 'account-register') {
+    submitAccountForm('register');
+  } else if (action === 'account-refresh') {
+    submitAccountForm('refresh');
+  } else if (action === 'account-sync-profile') {
+    submitAccountForm('sync-profile');
+  } else if (action === 'account-migrate-legacy') {
+    submitAccountForm('migrate-legacy');
+  } else if (action === 'account-restore-profile') {
+    submitAccountForm('restore-profile');
+  } else if (action === 'account-recovery-preview') {
+    void previewAccountRecoveryFromUi();
+  } else if (action === 'account-recovery-restore') {
+    void restoreAccountRecoveryFromUi();
+  } else if (action === 'account-logout') {
+    submitAccountForm('logout');
+  } else if (action === 'account-train' || action === 'account-practice') {
+    submitAccountTraining(action, event.target.closest('[data-attribute]')?.dataset.attribute || '');
+  } else if (action === 'online-menu') {
+    document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MULTIJOUEUR · SERVEUR AUTORITAIRE</span><h2>Rejoindre un match en ligne</h2><p>Crée un salon ou rejoins un salon actif. Les déplacements, actions et le ballon sont validés par le serveur.</p><label>Nom affiché<input id="online-name" maxlength="20" value="${escapeHTML(profileStore.profile.identity.displayName)}"></label><div class="training-controls"><button class="primary-cta" data-action="create-online">CRÉER UN SALON</button><button class="small-action" data-action="refresh-online">ACTUALISER LES SALONS</button></div><label>Code du salon<input id="online-room-id" maxlength="12" placeholder="Code à 12 caractères" autocapitalize="characters"></label><button class="primary-cta" data-action="join-online">REJOINDRE CE SALON</button><div id="online-room-list" class="fixture-list"><p class="notice">Chargement des salons…</p></div><p class="notice" id="online-status" aria-live="polite">Le serveur doit être démarré et accessible sur cette adresse.</p><button class="text-cta" data-page="home">Retour</button></div>`;
+    refreshOnlineRooms();
+  }
+  else if (action === 'create-online') {
+    createOnlineRoom();
+  } else if (action === 'refresh-online') {
+    refreshOnlineRooms();
+  } else if (action === 'join-online') {
+    joinOnlineRoom(document.getElementById('online-room-id')?.value || '');
+  } else if (action === 'join-listed-room') {
+    const id = event.target.closest('[data-room]')?.dataset.room || '';
+    const field = document.getElementById('online-room-id'); if (field) field.value = id;
+    joinOnlineRoom(id);
+  } else if (action === 'choose-match') {
+    const options = clubs.listClubs().map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('');
+    document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MODE DISPONIBLE · MATCH RAPIDE</span><h2>Préparez votre entrée sur le terrain</h2><p>Match local de démonstration en 5 contre 5 face à une équipe contrôlée par le système. Chaque commande reste limitée à votre propre footballeur.</p><div class="matchup-selectors"><label>Équipe domicile<select id="match-home">${options}</select></label><div class="versus-mark">VS</div><label>Équipe extérieure<select id="match-away">${options}</select></label></div><div class="match-centre">
+      <div class="match-centre-heading"><span class="eyebrow">AVANT-MATCH · CENTRE DE PRÉPARATION</span><b>CHOISISSEZ VOTRE AFFiche</b></div>
+      <div class="matchup-selectors"><label>ÉQUIPE DOMICILE<select id="match-home">${options}</select></label><div class="versus-mark">VS</div><label>ÉQUIPE EXTÉRIEURE<select id="match-away">${options}</select></label></div>
+      <div class="match-preview-grid">
+        <article class="match-preview-card home"><div id="home-match-identity" class="match-preview-identity"></div><div class="match-preview-stadium" id="home-match-stadium"></div><div class="match-preview-rating"><span>NOTE GLOBALE</span><b id="home-match-rating">—</b><small id="home-match-squad">— joueurs</small></div><div class="match-preview-stars" id="home-match-stars"></div></article>
+        <div class="match-pitch-preview" aria-label="Schéma tactique cinq contre cinq"><div class="pitch-half-line"></div><div class="pitch-circle"></div><div class="pitch-box top"></div><div class="pitch-box bottom"></div><div class="pitch-formation-label">2 — 2</div><div class="pitch-dots home-dots"><i></i><i></i><i></i><i></i><i></i></div><div class="pitch-dots away-dots"><i></i><i></i><i></i><i></i><i></i></div></div>
+        <article class="match-preview-card away"><div id="away-match-identity" class="match-preview-identity"></div><div class="match-preview-stadium" id="away-match-stadium"></div><div class="match-preview-rating"><span>NOTE GLOBALE</span><b id="away-match-rating">—</b><small id="away-match-squad">— joueurs</small></div><div class="match-preview-stars" id="away-match-stars"></div></article>
+      </div>
+      <div class="match-centre-foot"><span>FORMAT 5 CONTRE 5</span><span>CONTRÔLE INDIVIDUEL</span><span>ÉQUIPE DU SYSTÈME</span><span>${preferences.duration} MINUTES</span></div>
+      <button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button>
+    </div><div class="mode-details"><span>5 contre 5</span><span>${preferences.duration} minutes</span><span>Présentation des équipes</span><span>Équipe du système</span></div><button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button></div>`;
+    const homeSelect=document.getElementById('match-home'), awaySelect=document.getElementById('match-away');
+    homeSelect.value=selectedMatchup.home; awaySelect.value=selectedMatchup.away;
+    const updateMatchup=()=>{
+      if(homeSelect.value===awaySelect.value) awaySelect.value=clubs.listClubs().find(c=>c.id!==homeSelect.value)?.id||awaySelect.value;
+      selectedMatchup={home:homeSelect.value,away:awaySelect.value};
+      const renderSide=(side,club)=>{
+        if(!club) return;
+        const average=club.roster.length?Math.round(club.roster.reduce((sum,p)=>sum+p.rating,0)/club.roster.length):0;
+        const leaders=club.roster.slice().sort((a,b)=>b.rating-a.rating).slice(0,3);
+        document.getElementById(side+'-match-identity').innerHTML=`${crest(club)}<div><b>${escapeHTML(club.name)}</b><small>${escapeHTML(club.city)} · ${escapeHTML(club.country)}</small></div>`;
+        document.getElementById(side+'-match-stadium').textContent=club.stadium;
+        document.getElementById(side+'-match-rating').textContent=average||club.rating;
+        document.getElementById(side+'-match-squad').textContent=club.roster.length+' joueurs · Niveau club '+club.rating;
+        document.getElementById(side+'-match-stars').innerHTML=leaders.map((p,i)=>`<span><i>${i+1}</i><b>${escapeHTML(p.name)}</b><small>${p.role} · ${p.rating}</small></span>`).join('');
+      };
+      renderSide('home',clubs.getClub(selectedMatchup.home));
+      renderSide('away',clubs.getClub(selectedMatchup.away));
+    };
+    homeSelect.addEventListener('change',updateMatchup); awaySelect.addEventListener('change',updateMatchup); updateMatchup();
+  } else if (action === 'show-lineup') {
+    const content=document.getElementById('menu-content');
+    const home=clubs.getClub(selectedMatchup.home), away=clubs.getClub(selectedMatchup.away);
+    const homeSquad = createMatchSquad('blue','2-2',home.roster,'career-player');
+    const awaySquad = createMatchSquad('red','2-2',away.roster);
+    const roleLabels = { GK:'Gardien', DEF:'Défenseur', MID:'Milieu', FWD:'Attaquant' };
+    const renderPlayers = (players) => players.map(player=>`<div class="pre-match-player"><span class="pre-match-number">${player.number}</span><b>${escapeHTML(player.name)}</b><small>${roleLabels[player.role]||player.role}</small><strong>${player.rating}</strong></div>`).join('');
+    const renderLineup = (team, squad) => `<section class="pre-match-team ${team}"><div class="pre-match-team-heading"><span class="eyebrow">${team==='blue'?'ÉQUIPE DOMICILE':'ÉQUIPE EXTÉRIEURE'}</span><b>${team==='blue'?'BLEU':'ROUGE'} · ${squad.starters.length}/5</b></div><div class="pre-match-player-list">${renderPlayers(squad.starters)}</div><div class="pre-match-bench-heading"><span>REMPLAÇANTS</span><b>${squad.substitutes.length}</b></div><div class="pre-match-player-list pre-match-bench-list">${squad.substitutes.length ? renderPlayers(squad.substitutes) : '<p class="pre-match-no-bench">Aucun remplaçant enregistré</p>'}</div><small class="pre-match-squad-total">Effectif disponible : ${squad.squadSize} joueur(s)</small></section>`;
+    content.innerHTML=`<div class="match-intro"><span class="eyebrow">PRÉSENTATION DU MATCH</span><h2>LE TERRAIN VOUS ATTEND</h2><p>5 contre 5 · ${preferences.duration} minutes · Stade de démonstration</p><div class="intro-versus"><div>${crest(home)}<b>${escapeHTML(home.name)}</b><small>${escapeHTML(home.city)}</small></div><strong>VS</strong><div>${crest(away)}<b>${escapeHTML(away.name)}</b><small>${escapeHTML(away.city)}</small></div></div><div class="intro-lineup"><span>FORMATION 2–2</span><span>10 TITULAIRES · RÉSERVES AFFICHÉES</span><span>CONTRÔLE INDIVIDUEL</span></div><div class="pre-match-lineups">${renderLineup('blue',homeSquad)}${renderLineup('red',awaySquad)}</div><button class="primary-cta" data-action="start-match">ENTRER SUR LE TERRAIN <span>→</span></button><button class="text-cta" data-action="choose-match">Modifier les équipes</button></div>`;
+  } else if (action === 'start-match') startMatch();
+  else if (action === 'take-club') {
+    const result=clubs.takeOver(event.target.closest('[data-club]')?.dataset.club,'local-player');
+    renderPage('clubs');
+    if(!result.ok) document.querySelector('.menu-main .menu-heading p').textContent='Ce club ne peut pas être repris dans cette session.';
+  } else if (action === 'create-schedule') {
+    if (!clubs.fixtures.length) {
+      let round=0;
+      for(const division of clubs.listDivisions()) {
+        const list=division.clubs;
+        for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++) {
+          const date=new Date(Date.now()+(round+1)*86400000);
+          clubs.createFixture({id:`local-season-${division.id}-${i}-${j}`,homeClubId:list[i].id,awayClubId:list[j].id,scheduledAt:date.toISOString()}); round++;
+        }
+      }
+    }
+    renderPage('competitions');
+  }
+  else if (action === 'practice-player') {
+    const amount = Number(document.getElementById('practice-amount')?.value || 1);
+    const attribute = document.getElementById('practice-attribute')?.value;
+    const method = document.getElementById('training-method')?.value || 'practice';
+    const result = method === 'train' ? profileStore.train(attribute, amount) : profileStore.practice(attribute, amount);
+    renderPage('player');
+    const status = document.querySelector('.training-panel .notice');
+    if (status) status.textContent = result.ok
+      ? (method === 'train' ? `Entraînement encadré réussi : +${amount} point(s), ${amount} point(s) d’entraînement et ${result.spentCoins} crédits dépensés.` : `Séance individuelle réussie : +${amount} point(s), +${amount * 25} XP et ${result.spentCoins} crédits dépensés.`)
+      : result.reason === 'insufficient-coins' ? 'Crédits insuffisants : une séance individuelle coûte 80 crédits par point.'
+      : result.reason === 'insufficient-resources' ? 'Ressources insuffisantes : il faut 1 point d’entraînement et 40 crédits par point.'
+      : result.reason === 'attribute-cap' ? 'Cette capacité a atteint son maximum de 99.'
+      : 'Séance impossible.';
+  } else if (action === 'sign-contract') {
+    const clubId = document.getElementById('contract-club')?.value;
+    const targetClub = clubs.getClub(clubId);
+    const alreadyRegistered = clubs.listClubs().some(club => club.roster.some(player => player.id === 'career-player'));
+    const canRegister = targetClub && (alreadyRegistered || targetClub.roster.length < targetClub.capacity);
+    const result = canRegister
+      ? career.signContract({ clubId, salary: Number(document.getElementById('contract-salary')?.value || 0), durationDays: 180 })
+      : { ok: false, reason: targetClub ? 'roster-full' : 'invalid-club' };
+    renderPage('mercato');
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'active-contract' ? 'Vous avez déjà un contrat actif.' : result.reason === 'roster-full' ? 'Effectif complet : ce club ne peut pas inscrire votre footballeur.' : 'Impossible de signer ce contrat.';
+  } else if (action === 'renew-contract') {
+    const result = career.renewContract({ salary: Number(document.getElementById('renew-contract-salary')?.value), durationDays: 180 });
+    renderPage('mercato');
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'contract-expired' ? 'Contrat expiré : signez un nouveau contrat.' : 'Renouvellement impossible : vérifiez le salaire.';
+  } else if (action === 'terminate-contract') {
+    const result = career.terminateContract();
+    renderPage('mercato');
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = 'Aucun contrat actif à résilier.';
+  } else if (action === 'generate-offers') {
+    if (career.contract && !career.getContractStatus()?.expired) {
+      clubs.listClubs().filter(club => club.id !== career.clubId).forEach(club => {
+        const duplicate = [...career.offers.values()].some(offer => offer.fromClubId === club.id && offer.status === 'pending');
+        if (!duplicate) {
+          const nextWindow = career.transferWindows.find(window => window.end >= Date.now());
+          career.makeOffer({ fromClubId: club.id, salary: Math.max(40, club.rating * 4), fee: club.rating * 8, expiresAt: new Date(nextWindow?.end || Date.now() + 30 * 86400000).toISOString() });
+        }
+      });
+    }
+    renderPage('mercato');
+  } else if (action === 'negotiate-offer') {
+    const id = event.target.closest('[data-offer]')?.dataset.offer;
+    const result = career.negotiate(id, { salary: Number(document.getElementById(`salary-${id}`)?.value), fee: Number(document.getElementById(`fee-${id}`)?.value) });
+    renderPage('mercato');
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = 'Cette offre ne peut plus être négociée.';
+  } else if (action === 'accept-offer') {
+    const id = event.target.closest('[data-offer]')?.dataset.offer;
+    const offer = career.offers.get(id);
+    const targetClub = clubs.getClub(offer?.fromClubId);
+    const alreadyRegistered = targetClub?.roster.some(player => player.id === 'career-player');
+    const canRegister = targetClub && (alreadyRegistered || targetClub.roster.length < targetClub.capacity);
+    const result = canRegister
+      ? career.acceptOffer(id)
+      : { ok: false, reason: targetClub ? 'roster-full' : 'invalid-club' };
+    renderPage('mercato');
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'window-closed' ? 'Transfert impossible : la fenêtre officielle est fermée.' : result.reason === 'insufficient-funds' ? 'Budget de transfert insuffisant.' : result.reason === 'roster-full' ? 'Transfert refusé : l’effectif du club cible est complet.' : 'Cette offre ne peut pas être acceptée.';
+  } else if (action === 'reject-offer') {
+    career.rejectOffer(event.target.closest('[data-offer]')?.dataset.offer);
+    renderPage('mercato');
+  } else if (action === 'save-settings') {
+    preferences.duration = Number(document.getElementById('pref-duration').value) === 3 ? 3 : 5;
+    preferences.quality = document.getElementById('pref-quality').value;
+    preferences.cameraMode = document.getElementById('pref-camera')?.value || 'broadcast';
+    preferences.cameraZoom = Number(document.getElementById('pref-zoom')?.value ?? 55);
+    preferences.nameDisplay = 'standard';
+    try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
+    renderPage('settings');
+    document.getElementById('menu-page-subtitle').textContent = 'Préférences enregistrées pour votre prochain match.';
+  }
+});
+
+menu.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  const card = event.target.closest('[data-player-profile]');
+  if (!card || event.target.closest('summary,button,a,input,select,textarea')) return;
+  event.preventDefault();
+  const index = Number(card.dataset.playerProfile);
+  selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null;
+  playerProfileReturnPage = card.dataset.profileOrigin || 'players';
+  renderPage('player-detail');
+});
+
+menu.addEventListener('submit', event => {
+  if (event.target.id === 'player-onboarding-form') {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const displayName = String(data.get('displayName') || '').trim();
+    try {
+      profileStore.updateIdentity({ displayName });
+      localPlayerIdentity = localPlayerIdentity
+        ? localPlayerProfileStore?.update({ displayName }) || localPlayerIdentity
+        : localPlayerProfileStore?.create({ displayName }) || null;
+      if (!localPlayerIdentity) throw new Error('LOCAL_PLAYER_ID_UNAVAILABLE');
+      hasSavedPlayerProfile = true;
+      profileSyncCoordinator.enqueueCurrentProfile();
+      void profileSyncCoordinator.flush().catch(() => {});
+      void reserveLocalPlayerIdentity();
+      syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      renderPage('home');
+    } catch (error) {
+      const status = event.target.querySelector('.onboarding-status');
+      if (status) status.textContent = `Création impossible : ${String(error?.message || error)}`;
+    }
+    return;
+  }
+  if (event.target.id !== 'profile-editor') return;
+  event.preventDefault();
+  const data = new FormData(event.target);
+  profileStore.updateIdentity({displayName:data.get('displayName'),number:data.get('number'),role:data.get('role'),preferredFoot:data.get('preferredFoot')});
+  profileStore.updateAppearance({kit:data.get('kit'),skinTone:data.get('skinTone'),hairStyle:data.get('hairStyle'),hairColor:data.get('hairColor'),bodyBuild:data.get('bodyBuild')});
+  try { localPlayerIdentity = localPlayerProfileStore?.update({ displayName: profileStore.profile.identity.displayName }) || localPlayerIdentity; } catch (_) {}
+  syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+  renderPage('player');
+  const status=document.getElementById('profile-save-status');
+  if(status) status.textContent='Profil enregistré localement. Synchronisation cloud en attente ou en cours…';
+  void queueAndSyncCurrentProfile().then(result => {
+    const currentStatus = document.getElementById('profile-save-status');
+    if (currentStatus && result.uploaded > 0) currentStatus.textContent = 'Profil enregistré sur cet appareil et synchronisé avec le compte.';
+  }).catch(() => {});
+});
+
+renderPage(hasSavedPlayerProfile ? 'home' : 'onboarding');
+void reserveLocalPlayerIdentity();
+window.addEventListener('pagehide', () => game?.dispose?.(), { once: true });
+
+const filterPlayerLibrary = () => {
+  const root=document.getElementById('player-library-grid');
+  if(!root) return;
+  const query=(document.getElementById('library-search')?.value||'').trim().toLocaleLowerCase('fr');
+  const club=document.getElementById('library-club')?.value||'all';
+  const role=document.getElementById('library-role')?.value||'all';
+  const minRating=Number(document.getElementById('library-min-rating')?.value||0);
+  const sort=document.getElementById('library-sort')?.value||'rating';
+  const cards=[...root.querySelectorAll('[data-library-card]')];
+  cards.sort((a,b)=>{
+    if(sort==='name') return a.dataset.name.localeCompare(b.dataset.name,'fr');
+    const key=sort==='potential'?'potential':sort==='age'?'age':'rating';
+    return sort==='age'?Number(a.dataset.age)-Number(b.dataset.age):Number(b.dataset[key])-Number(a.dataset[key]);
+  });
+  let matched=0,visible=0;
+  for(const card of cards){
+    const match=(card.dataset.name.includes(query)||card.dataset.archetype.includes(query))
+      &&(club==='all'||card.dataset.club===club)&&(role==='all'||card.dataset.role===role)
+      &&Number(card.dataset.rating)>=minRating;
+    card.classList.toggle('hidden',!match);
+    if(match){matched++; if(visible<playerLibraryLimit){card.classList.remove('hidden');visible++;} else card.classList.add('hidden');}
+    root.appendChild(card);
+  }
+  const count=document.getElementById('library-count');
+  const shown=document.getElementById('library-visible-count');
+  const more=document.getElementById('library-load-more');
+  if(count) count.textContent=matched+' joueur'+(matched>1?'s':'')+' trouvé'+(matched>1?'s':'');
+  if(shown) shown.textContent=visible+' / '+matched+' affichés';
+  if(more) more.hidden=visible>=matched;
+};
+const onPlayerLibraryFilter = event => {
+  if(['library-search','library-club','library-role','library-sort','library-min-rating'].includes(event.target.id)){
+    playerLibraryLimit=24; filterPlayerLibrary();
+  }
+};
+menu.addEventListener('input',onPlayerLibraryFilter);
+menu.addEventListener('change',onPlayerLibraryFilter);
+
+const filterClubDiscovery = event => {
+  if (!['club-search','club-division-filter','club-conference-filter','club-country-filter','club-sort'].includes(event.target.id)) return;
+  const query=(document.getElementById('club-search')?.value||'').trim().toLocaleLowerCase('fr');
+  const division=document.getElementById('club-division-filter')?.value||'all';
+  const conference=document.getElementById('club-conference-filter')?.value||'all';
+  const country=document.getElementById('club-country-filter')?.value||'all';
+  const sort=document.getElementById('club-sort')?.value||'rating';
+  const groups=[...document.querySelectorAll('.club-division')];
+  let visible=0;
+  for(const group of groups){
+    const cards=[...group.querySelectorAll('[data-club-card]')];
+    cards.sort((a,b)=>{
+      if(sort==='name') return a.dataset.name.localeCompare(b.dataset.name,'fr');
+      const key=sort==='roster'?'roster':sort==='reputation'?'reputation':'rating';
+      return Number(b.dataset[key])-Number(a.dataset[key]);
+    });
+    for(const card of cards){
+      const match=(card.dataset.name.includes(query)||card.dataset.location.includes(query))
+        && (division==='all'||card.dataset.division===division)
+        && (conference==='all'||card.dataset.conference===conference)
+        && (country==='all'||card.dataset.country===country);
+      card.classList.toggle('hidden',!match);
+      if(match) visible++;
+      group.querySelector('.club-grid')?.appendChild(card);
+    }
+    group.classList.toggle('hidden',!cards.some(card=>!card.classList.contains('hidden')));
+  }
+  const counter=document.getElementById('club-filter-count');
+  if(counter) counter.textContent=visible+' club'+(visible>1?'s':'')+' affiché'+(visible>1?'s':'');
+};
+menu.addEventListener('input', filterClubDiscovery);
+menu.addEventListener('change', filterClubDiscovery);
+
+const filterClubRoster = event => {
+  if (event.target.id !== 'roster-search' && event.target.id !== 'roster-role') return;
+  const query = (document.getElementById('roster-search')?.value || '').trim().toLocaleLowerCase('fr');
+  const role = document.getElementById('roster-role')?.value || 'all';
+  let visible = 0;
+  document.querySelectorAll('[data-player-row]').forEach(row => {
+    const match = row.dataset.name.includes(query) && (role === 'all' || row.dataset.role === role);
+    row.classList.toggle('hidden', !match); if (match) visible++;
+  });
+  document.getElementById('roster-empty')?.classList.toggle('hidden', visible > 0);
+};
+menu.addEventListener('input', filterClubRoster);
+menu.addEventListener('change', filterClubRoster);
+
+  const status = document.getElementById('account-recovery-status');
+  const button = document.querySelector('[data-action="account-recovery-preview"]');
+  if (!accountClient.hasSession) {
+    if (status) status.textContent = 'Connectez le compte associé à votre joueur avant toute vérification.';
+    return;
+  }
+  if (button) button.disabled = true;
+  if (status) status.textContent = 'Vérification de la sauvegarde serveur et des données locales…';
+  try {
+    const localState = readAccountRecoveryLocalState();
+    const preview = await accountClient.previewAccountRecovery({
+      outbox: profileSyncOutbox,
+      localIdentity: localPlayerIdentity || null,
+      localState
+    });
+    if (!status?.isConnected) return;
+    if (!preview.ready) {
+      pendingAccountRecoveryPreview = null;
+      const restoreButton = document.querySelector('[data-action="account-recovery-restore"]');
+      if (restoreButton) restoreButton.disabled = true;
+      const reasons = {
+        ACCOUNT_PLAYER_ID_MISMATCH: 'Le compte connecté ne correspond pas à l’identifiant joueur de la sauvegarde.',
+        LOCAL_IDENTITY_MISMATCH: 'L’identité locale ne correspond pas à ce compte. Aucune donnée n’a été modifiée.',
+        LOCAL_OUTBOX_NOT_ASSESSED: 'La file de synchronisation locale ne peut pas être vérifiée.',
+        LOCAL_CHANGES_PENDING: 'Des changements locaux attendent leur synchronisation. La récupération est bloquée pour les préserver.',
+        LOCAL_STATE_NOT_ASSESSED: 'L’état des données locales ne peut pas être vérifié.',
+        LOCAL_DATA_PRESENT: 'Des données de carrière existent déjà sur cet appareil. Aucun remplacement automatique n’est autorisé.',
+        LOCAL_OUTBOX_INVALID: 'La file de synchronisation locale est invalide.',
+        SNAPSHOT_INCOMPLETE: 'La sauvegarde cloud est partielle. Les sections manquantes doivent être synchronisées avant toute récupération.'
+      };
+      status.textContent = reasons[preview.reason] || 'La récupération est bloquée par une vérification de sécurité.';
+      return;
+    }
+    pendingAccountRecoveryPreview = preview;
+    const restoreButton = document.querySelector('[data-action="account-recovery-restore"]');
+    if (restoreButton) restoreButton.disabled = false;
     const matches = Number(preview.snapshot.career?.totals?.matches) || 0;
     const level = Number(preview.snapshot.progression?.level) || 1;
     status.textContent = 'Sauvegarde serveur vérifiée pour ' + preview.playerId + ' · Niveau ' + level + ' · ' + matches + ' match(s) en carrière. Aperçu uniquement : aucune donnée n’a été importée. Révision ' + preview.revision.slice(0, 12) + '.';
