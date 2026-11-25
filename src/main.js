@@ -17,9 +17,16 @@ import { restoreAccountSnapshot } from './account-recovery.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
 
+const P27_OFFLINE_TEST = typeof __P27_OFFLINE_TEST__ !== 'undefined' && __P27_OFFLINE_TEST__;
+
 const shell = document.getElementById('game-shell');
 const menu = document.getElementById('main-menu');
 const container = document.getElementById('webgl-container');
+if (P27_OFFLINE_TEST) {
+  document.documentElement.classList.add('p27-offline-test');
+  const modeLabel = document.querySelector('.menu-status');
+  if (modeLabel) modeLabel.textContent = 'MODE TEST · CARRIÈRE LOCALE';
+}
 const fullscreenButtons = [document.getElementById('menu-fullscreen'), document.getElementById('match-fullscreen')].filter(Boolean);
 function refreshFullscreenControls() {
   const active = Boolean(document.fullscreenElement);
@@ -84,7 +91,7 @@ let game = null;
 let pendingOnlineMatch = null;
 const accountClient = new OnlineAccountClient({ baseUrl: location.origin });
 let pendingAccountRecoveryPreview = null;
-accountClient.restoreSession();
+if (!P27_OFFLINE_TEST) accountClient.restoreSession();
 const profileSyncOutbox = new PlayerSyncOutbox();
 const profileSyncCoordinator = new ProfileSyncCoordinator({
   accountClient,
@@ -96,6 +103,7 @@ const queueAndSyncCurrentProfile = async () => {
   profileSyncCoordinator.enqueueCurrentProfile();
   return profileSyncCoordinator.flush();
 };
+if (!P27_OFFLINE_TEST) {
 void accountClient.resumeCookieSession().then(async () => {
   if (!localPlayerIdentity && localPlayerProfileStore && /^FRP-[0-9]{6}$/.test(accountClient.account?.playerId || '')) {
     try {
@@ -109,15 +117,19 @@ void accountClient.resumeCookieSession().then(async () => {
   const button = document.querySelector('[data-action="account-recovery-preview"]');
   if (button) button.disabled = false;
 }).catch(() => {});
-window.addEventListener('online', () => { void profileSyncCoordinator.flush().catch(() => {}); });
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') void profileSyncCoordinator.flush().catch(() => {});
-});
+}
+if (!P27_OFFLINE_TEST) {
+  window.addEventListener('online', () => { void profileSyncCoordinator.flush().catch(() => {}); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void profileSyncCoordinator.flush().catch(() => {});
+  });
+}
 const onlineClient = new OnlineMatchClient({ baseUrl: location.origin, accountTokenProvider: () => accountClient.token });
 let avatarPreview = null;
 function disposeAvatarPreview() {
   if (!avatarPreview) return;
   cancelAnimationFrame(avatarPreview.raf);
+  if (avatarPreview.onVisibilityChange) document.removeEventListener('visibilitychange', avatarPreview.onVisibilityChange);
   avatarPreview.resizeObserver?.disconnect();
   avatarPreview.player.visual.dispose?.();
   avatarPreview.scene.traverse((obj) => { obj.geometry?.dispose?.(); const mats = Array.isArray(obj.material) ? obj.material : [obj.material]; for (const mat of mats) { if (!mat) continue; for (const value of Object.values(mat)) if (value?.isTexture) value.dispose(); mat.dispose?.(); } });
@@ -132,8 +144,8 @@ function mountAvatarPreview(profile) {
     const width = Math.max(180, host.clientWidth || 280);
     const height = Math.max(220, host.clientHeight || 300);
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x10251f);
-    scene.fog = new THREE.Fog(0x10251f, 7, 15);
+    scene.background = new THREE.Color(0x0b1422);
+    scene.fog = new THREE.Fog(0x0b1422, 7, 15);
     const camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 30);
     camera.position.set(0.15, 2.05, 5.8); camera.lookAt(0, 1.12, 0);
     const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: 'low-power' });
@@ -141,17 +153,23 @@ function mountAvatarPreview(profile) {
     renderer.setSize(width, height); renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
     host.replaceChildren(renderer.domElement);
-    scene.add(new THREE.HemisphereLight(0xe9fff3, 0x26382d, 1.8));
-    const key = new THREE.DirectionalLight(0xffe7c5, 2.2); key.position.set(-3, 5, 4); scene.add(key);
-    const rim = new THREE.DirectionalLight(0x8bd9ff, 1.1); rim.position.set(3, 3, -3); scene.add(rim);
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(1.2, 32), new THREE.MeshStandardMaterial({ color: 0x1b4735, roughness: 0.95 }));
+    scene.add(new THREE.HemisphereLight(0xe6f2ff, 0x17243a, 1.65));
+    const key = new THREE.DirectionalLight(0xf4f0e8, 2.0); key.position.set(-3, 5, 4); scene.add(key);
+    const rim = new THREE.DirectionalLight(0x70baff, 1.25); rim.position.set(3, 3, -3); scene.add(rim);
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(1.2, 32), new THREE.MeshStandardMaterial({ color: 0x172a3b, roughness: 0.95 }));
     floor.rotation.x = -Math.PI / 2; floor.position.y = 0.015; scene.add(floor);
     const player = new Player({ id: 'avatar-preview', team: 'blue', number: profile.identity.number, name: profile.identity.displayName, role: profile.identity.role, slotIndex: 0, homePos: { x: 0, z: 0 }, appearance: profile.appearance, attributes: profile.progression.attributes, preferredFoot: profile.identity.preferredFoot });
     player.isControlled = true; player.visual.ring.visible = false; player.visual.root.rotation.y = 0.12; scene.add(player.visual.root);
     let last = performance.now();
-    const state = { scene, renderer, player, raf: 0, dragging: false, pointerId: null, lastPointerX: 0, resumeAutoAt: 0, resizeObserver: null };
+    const state = {
+      scene, renderer, player, raf: 0, dragging: false, pointerId: null,
+      lastPointerX: 0, resumeAutoAt: 0, resizeObserver: null,
+      reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+      onVisibilityChange: null
+    };
     avatarPreview = state;
     const canvas = renderer.domElement;
+    canvas.setAttribute('aria-label', 'Aperçu 3D du joueur. Faites glisser pour le faire tourner.');
     canvas.style.touchAction = 'none';
     canvas.style.cursor = 'grab';
     const onPointerDown = (event) => {
@@ -203,12 +221,24 @@ function mountAvatarPreview(profile) {
       if (avatarPreview !== state) return;
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
       last = now;
-      player.updateVisual(dt);
-      if (!state.dragging && now >= state.resumeAutoAt) player.visual.root.rotation.y += dt * 0.12;
+      if (!state.reducedMotion) {
+        player.updateVisual(dt);
+        if (!state.dragging && now >= state.resumeAutoAt) player.visual.root.rotation.y += dt * 0.12;
+      }
       renderer.render(scene, camera);
       state.raf = requestAnimationFrame(frame);
     };
-    state.raf = requestAnimationFrame(frame);
+    state.onVisibilityChange = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(state.raf);
+        state.raf = 0;
+      } else if (avatarPreview === state) {
+        last = performance.now();
+        state.raf = requestAnimationFrame(frame);
+      }
+    };
+    document.addEventListener('visibilitychange', state.onVisibilityChange);
+    if (!document.hidden) state.raf = requestAnimationFrame(frame);
   } catch (error) { host.textContent = 'Aperçu 3D indisponible sur ce navigateur.'; }
 }
 
@@ -233,7 +263,7 @@ const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 async function reserveLocalPlayerIdentity() {
-  if (!localPlayerProfileStore || !localPlayerIdentity || localPlayerIdentity.identityStatus === 'reserved') return;
+  if (P27_OFFLINE_TEST || !localPlayerProfileStore || !localPlayerIdentity || localPlayerIdentity.identityStatus === 'reserved') return;
   try {
     localPlayerIdentity = await localPlayerProfileStore.reserveWithServer();
     await accountClient.resumeCookieSession().catch(() => null);
@@ -245,6 +275,7 @@ async function reserveLocalPlayerIdentity() {
 }
 
 function renderGoogleProtectionCard({ compact = false } = {}) {
+  if (P27_OFFLINE_TEST) return `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">VERSION DE TEST</span><h2>Carrière locale</h2></div><span class="local-tag">HORS LIGNE</span></div><p class="notice">Cette APK de test fonctionne sans compte ni serveur. L’association Google et la sauvegarde cloud sont désactivées dans cette version.</p></section>`;
   const playerId = localPlayerIdentity?.id || 'FRP en attente';
   return `<section class="competition-panel google-protection-card">
     <div class="panel-heading"><div><span class="eyebrow">IDENTITÉ FOOTBALL RP</span><h2>Protéger votre carrière</h2></div><span class="local-tag">LOCAL</span></div>
@@ -411,6 +442,7 @@ function renderPage(page = 'home') {
   if (page !== 'results') resultsRequestSequence++;
   disposeAvatarPreview();
   const content = document.getElementById('menu-content');
+  if (content) content.scrollTop = 0;
   const title = document.getElementById('menu-page-title');
   const subtitle = document.getElementById('menu-page-subtitle');
   document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page));
@@ -436,26 +468,27 @@ function renderPage(page = 'home') {
     const contractStatus = career.getContractStatus?.();
     const contractLabel = contractStatus?.active ? `Contrat actif · ${contractStatus.daysRemaining} j` : 'Agent libre';
     const clubLabel = careerClub?.name || 'Sans club';
-    title.textContent = 'Tableau de bord';
-    subtitle.textContent = `Bienvenue, ${profile.identity.displayName}. Votre carrière se construit ici.`;
+    title.textContent = 'ACCUEIL';
+    subtitle.textContent = `VOTRE CARRIÈRE · ${profile.identity.displayName}`;
     content.innerHTML = `
       <div class="home-dashboard">
         <section class="home-feature">
           <div class="feature-copy">
-            <span class="eyebrow">FOOTBALL RP ONLINE · SAISON PERSONNELLE</span>
-            <h2>Écrivez votre<br>histoire.</h2>
-            <p>Entrez sur le terrain, imposez votre style et faites progresser votre footballeur match après match.</p>
+            <span class="eyebrow">MODE CARRIÈRE · SAISON PERSONNELLE</span>
+            <h2>VOTRE<br>HISTOIRE.</h2>
+            <p>Un joueur. Une carrière. Chaque match compte. Gagnez votre place et écrivez votre légende.</p>
             <div class="home-primary-actions">
               <button class="primary-cta" data-action="choose-match">JOUER UN MATCH <span>→</span></button>
               <button class="secondary-cta" data-action="online-menu">MODE EN LIGNE</button>
             </div>
           </div>
-          <div class="feature-ball" aria-hidden="true">⚽</div>
-          <div class="feature-foot">5 CONTRE 5 · CONTRÔLE INDIVIDUEL · ÉQUIPE DU SYSTÈME</div>
+          <div class="feature-ball" aria-hidden="true"></div>
+          <div class="feature-matchday"><span>FRP</span><b>PLAYER CAREER</b><i></i><small>5V5 · MATCHDAY EXPERIENCE</small></div>
+          <div class="feature-foot"><span>SAISON PERSONNELLE</span><span>·</span><span>5 CONTRE 5</span><span>·</span><span>CONTRÔLE INDIVIDUEL</span></div>
         </section>
         <aside class="home-side-panel">
           <div class="home-player-heading">
-            <span class="user-avatar">${escapeHTML(profile.identity.number)}</span>
+            <span class="user-avatar"><b>${escapeHTML(profile.identity.number)}</b><small>PRO</small></span>
             <div><small>VOTRE FOOTBALLEUR</small><b>${escapeHTML(profile.identity.displayName)}</b><span>NIVEAU ${profile.progression.level} · ${escapeHTML(profile.identity.role)}</span></div>
           </div>
           <div class="home-career-row"><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div>
@@ -472,11 +505,11 @@ function renderPage(page = 'home') {
           </div>
         </aside>
         <nav class="quick-grid home-shortcuts" aria-label="Accès rapides">
-          <button class="quick-card" data-page="player"><span>01</span><b>Mon joueur</b><small>Profil et progression</small></button>
-          <button class="quick-card" data-page="clubs"><span>02</span><b>Clubs & effectifs</b><small>Équipes et joueurs</small></button>
-          <button class="quick-card" data-page="players"><span>03</span><b>Bibliothèque joueurs</b><small>Recherche et comparaison</small></button>
-          <button class="quick-card" data-page="competitions"><span>03</span><b>Compétitions</b><small>Calendrier et saison</small></button>
-          <button class="quick-card" data-page="mercato"><span>04</span><b>Carrière & mercato</b><small>Contrats et transferts</small></button>
+          <button class="quick-card" data-page="player"><span>01</span><b>MON JOUEUR</b><small>Profil · progression</small></button>
+          <button class="quick-card" data-page="clubs"><span>02</span><b>CLUBS</b><small>Équipes · effectifs</small></button>
+          <button class="quick-card" data-page="players"><span>03</span><b>JOUEURS</b><small>Profils · scouting</small></button>
+          <button class="quick-card" data-page="competitions"><span>04</span><b>COMPÉTITIONS</b><small>Ligues · classements</small></button>
+          <button class="quick-card" data-page="mercato"><span>05</span><b>MERCATO</b><small>Contrats · transferts</small></button>
         </nav>
       </div>`;
   } else if (page === 'player') {
@@ -566,7 +599,7 @@ ${renderGoogleProtectionCard({ compact: true })}
         <label><span>IDENTITÉ</span><select id="club-country-filter"><option value="all">Tous les pays</option>${[...new Set(allClubs.map(c=>c.country))].sort().map(country=>`<option value="${escapeHTML(country)}">${escapeHTML(country)}</option>`).join('')}</select></label>
         <label><span>TRI</span><select id="club-sort"><option value="rating">Niveau du club</option><option value="name">Nom A–Z</option><option value="roster">Taille de l’effectif</option><option value="reputation">Réputation</option></select></label>
         <span id="club-filter-count" class="club-filter-count">${allClubs.length} clubs</span>
-      </div>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.map(club=>`<article class="club-card" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}">${crest(club)}<div class="club-card-copy"><h3>${escapeHTML(club.name)}</h3><p>${escapeHTML(club.city)} · ${escapeHTML(club.country)}</p><div class="club-meta-line"><span>Niveau ${club.rating}</span><span>${club.roster.length} joueurs</span><span>${club.reputation} réputation</span></div><small>${club.control === 'open' ? 'OUVERT À LA REPRISE' : club.control === 'player' ? 'CLUB DIRIGÉ PAR UN JOUEUR' : 'CLUB DIRIGÉ PAR LE SYSTÈME'}</small><div class="club-stadium">${escapeHTML(club.stadium)}</div><div class="club-roster-preview"><b>EFFECTIF · ${club.roster.length} JOUEURS</b><span>${club.roster.slice(0,3).map(player=>escapeHTML(player.name)).join(' · ')}${club.roster.length>3?' · …':''}</span></div><button class="small-action" data-action="view-roster" data-club="${escapeHTML(club.id)}">VOIR L’EFFECTIF COMPLET</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE CE CLUB</button>` : ''}</div></article>`).join('')}</div></section>`).join('')}<p class="notice">Catalogue local chargé · vérification de la saison active en cours.</p><p class="notice" id="club-directory-status" aria-live="polite">Synchronisation du catalogue…</p><p class="notice">Les identités des clubs et joueurs sont fictives. Les fiches publiques n’exposent pas les contrats privés.</p>`;
+      </div>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.map(club=>`<article class="club-card" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-conference="${escapeHTML(club.conference || '')}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}">${crest(club)}<div class="club-card-copy"><h3>${escapeHTML(club.name)}</h3><p>${escapeHTML(club.city)} · ${escapeHTML(club.country)}</p><div class="club-meta-line"><span>Niveau ${club.rating}</span><span>${club.roster.length} joueurs</span><span>${club.reputation} réputation</span></div><small>${club.control === 'open' ? 'OUVERT À LA REPRISE' : club.control === 'player' ? 'CLUB DIRIGÉ PAR UN JOUEUR' : 'CLUB DIRIGÉ PAR LE SYSTÈME'}</small><div class="club-stadium">${escapeHTML(club.stadium)}</div><div class="club-roster-preview"><b>EFFECTIF · ${club.roster.length} JOUEURS</b><span>${club.roster.slice(0,3).map(player=>escapeHTML(player.name)).join(' · ')}${club.roster.length>3?' · …':''}</span></div><button class="small-action" data-action="view-roster" data-club="${escapeHTML(club.id)}">VOIR L’EFFECTIF COMPLET</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE CE CLUB</button>` : ''}</div></article>`).join('')}</div></section>`).join('')}<p class="notice">Catalogue local chargé · vérification de la saison active en cours.</p><p class="notice" id="club-directory-status" aria-live="polite">Synchronisation du catalogue…</p><p class="notice">Les identités des clubs et joueurs sont fictives. Les fiches publiques n’exposent pas les contrats privés.</p>`;
       loadPublicClubDirectory();
     }
   } else if (page === 'competitions') {
@@ -581,7 +614,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     renderResultsPage(0);
   } else if (page === 'settings') {
     title.textContent = 'Paramètres'; subtitle.textContent = 'Préparez votre expérience de jeu.';
-    content.innerHTML = `<div class="settings-card"><label>Caméra du match<select id="pref-camera"><option value="player" ${preferences.cameraMode==='player'?'selected':''}>Immersion joueur · adaptée au poste</option><option value="touchline" ${preferences.cameraMode==='touchline'?'selected':''}>Ligne de touche · latérale</option><option value="broadcast" ${preferences.cameraMode==='broadcast'?'selected':''}>Retransmission · oblique</option><option value="close" ${preferences.cameraMode==='close'?'selected':''}>Rapprochée · joueurs plus grands</option><option value="tactical" ${preferences.cameraMode==='tactical'?'selected':''}>Tactique · vue large</option><option value="spectator" ${preferences.cameraMode==='spectator'?'selected':''}>Spectateur · panoramique</option></select></label><label>Zoom caméra · référence 55 %<input id="pref-zoom" type="range" min="0" max="100" value="${preferences.cameraZoom}"></label><label>Affichage des noms<select id="pref-names"><option value="standard" selected>Standard · joueur contrôlé + deux proches</option></select></label><label>Durée du match<select id="pref-duration"><option value="5" ${preferences.duration===5?'selected':''}>5 minutes · 2 × 2 min 30</option><option value="3" ${preferences.duration===3?'selected':''}>3 minutes · 2 × 1 min 30</option></select></label><label>Qualité graphique<select id="pref-quality"><option value="auto" ${preferences.quality==='auto'?'selected':''}>Automatique · recommandé</option><option value="low" ${preferences.quality==='low'?'selected':''}>Basse · appareils modestes</option><option value="medium" ${preferences.quality==='medium'?'selected':''}>Moyenne · recommandée</option><option value="high" ${preferences.quality==='high'?'selected':''}>Haute</option></select></label><button class="primary-cta" data-action="save-settings">ENREGISTRER</button></div><section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PROFIL & SAUVEGARDE</span><h2>Compte et synchronisation</h2></div></div><p class="notice">L'association Google sera facultative et recommandée. Elle permettra de retrouver la carrière sur un autre appareil.</p><button class="small-action" type="button" data-page="account">GÉRER MON PROFIL JOUEUR</button></section><p class="notice">Les réglages graphiques s'appliquent au prochain lancement du match.</p>`;
+    content.innerHTML = `<div class="settings-card"><label>Caméra du match<select id="pref-camera"><option value="player" ${preferences.cameraMode==='player'?'selected':''}>Immersion joueur · adaptée au poste</option><option value="touchline" ${preferences.cameraMode==='touchline'?'selected':''}>Ligne de touche · latérale</option><option value="broadcast" ${preferences.cameraMode==='broadcast'?'selected':''}>Retransmission · oblique</option><option value="close" ${preferences.cameraMode==='close'?'selected':''}>Rapprochée · joueurs plus grands</option><option value="tactical" ${preferences.cameraMode==='tactical'?'selected':''}>Tactique · vue large</option><option value="spectator" ${preferences.cameraMode==='spectator'?'selected':''}>Spectateur · panoramique</option></select></label><label>Zoom caméra · référence 55 %<input id="pref-zoom" type="range" min="0" max="100" value="${preferences.cameraZoom}"></label><label>Affichage des noms<select id="pref-names"><option value="standard" selected>Standard · joueur contrôlé + deux proches</option></select></label><label>Durée du match<select id="pref-duration"><option value="5" ${preferences.duration===5?'selected':''}>5 minutes · 2 × 2 min 30</option><option value="3" ${preferences.duration===3?'selected':''}>3 minutes · 2 × 1 min 30</option></select></label><label>Qualité graphique<select id="pref-quality"><option value="auto" ${preferences.quality==='auto'?'selected':''}>Automatique · recommandé</option><option value="low" ${preferences.quality==='low'?'selected':''}>Basse · appareils modestes</option><option value="medium" ${preferences.quality==='medium'?'selected':''}>Moyenne · recommandée</option><option value="high" ${preferences.quality==='high'?'selected':''}>Haute</option></select></label><button class="primary-cta" data-action="save-settings">ENREGISTRER</button></div><section class="competition-panel p27-cloud-only"><div class="panel-heading"><div><span class="eyebrow">PROFIL & SAUVEGARDE</span><h2>Compte et synchronisation</h2></div></div><p class="notice">L'association Google sera facultative et recommandée. Elle permettra de retrouver la carrière sur un autre appareil.</p><button class="small-action" type="button" data-page="account">GÉRER MON PROFIL JOUEUR</button></section><p class="notice">Les réglages graphiques s'appliquent au prochain lancement du match.</p>`;
   } else if (page === 'account') {
     title.textContent = 'Profil et synchronisation';
     subtitle.textContent = 'Jouez librement, puis associez Google si vous souhaitez protéger votre carrière.';
@@ -590,8 +623,8 @@ ${renderGoogleProtectionCard({ compact: true })}
     content.innerHTML = `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">VOTRE IDENTITÉ FOOTBALL RP</span><h2>${escapeHTML(profile.identity.displayName)}</h2></div><span class="local-tag">PROFIL LOCAL ACTIF</span></div>
       <p class="notice">Identifiant joueur : ${escapeHTML(localId)} · Niveau ${profile.progression.level} · Aucun mot de passe requis.</p>
       <p class="notice">Vous pouvez jouer, créer votre footballeur et faire progresser votre carrière sans compte Google. L'association est un choix, pas une condition d'accès au jeu.</p>
-    </section>${renderGoogleProtectionCard()}<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">À SAVOIR</span><h2>Avant d'associer Google</h2></div></div><p class="notice">Une fois la fonction disponible, Google protégera ce profil existant : aucune nouvelle carrière ne sera créée et la synchronisation se fera automatiquement lorsque la connexion Internet sera disponible.</p><p class="notice">Tant que Google n'est pas associé, les données restent sur cet appareil. Un formatage ou une suppression des données de l'application peut les faire perdre.</p></section>
-      <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">SAUVEGARDE CLOUD</span><h2>Vérifier une récupération</h2></div></div>
+    </section>${renderGoogleProtectionCard()}<section class="competition-panel p27-cloud-only"><div class="panel-heading"><div><span class="eyebrow">À SAVOIR</span><h2>Avant d'associer Google</h2></div></div><p class="notice">Une fois la fonction disponible, Google protégera ce profil existant : aucune nouvelle carrière ne sera créée et la synchronisation se fera automatiquement lorsque la connexion Internet sera disponible.</p><p class="notice">Tant que Google n'est pas associé, les données restent sur cet appareil. Un formatage ou une suppression des données de l'application peut les faire perdre.</p></section>
+      <section class="competition-panel p27-cloud-only"><div class="panel-heading"><div><span class="eyebrow">SAUVEGARDE CLOUD</span><h2>Vérifier une récupération</h2></div></div>
       <p class="notice">Cette vérification compare l'identité du compte, la sauvegarde serveur et les données locales. Elle ne restaure et ne remplace aucune donnée.</p>
       <button class="small-action" data-action="account-recovery-preview" ${accountClient.hasSession ? '' : 'disabled'}>ANALYSER MA SAUVEGARDE</button>
       <button class="small-action" data-action="account-recovery-restore" disabled>RESTAURER MA CARRIÈRE</button>
@@ -1087,6 +1120,7 @@ menu.addEventListener('click', event => {
     submitAccountTraining(action, event.target.closest('[data-attribute]')?.dataset.attribute || '');
   } else if (action === 'online-menu') {
     document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MULTIJOUEUR · SERVEUR AUTORITAIRE</span><h2>Rejoindre un match en ligne</h2><p>Crée un salon ou rejoins un salon actif. Les déplacements, actions et le ballon sont validés par le serveur.</p><label>Nom affiché<input id="online-name" maxlength="20" value="${escapeHTML(profileStore.profile.identity.displayName)}"></label><div class="training-controls"><button class="primary-cta" data-action="create-online">CRÉER UN SALON</button><button class="small-action" data-action="refresh-online">ACTUALISER LES SALONS</button></div><label>Code du salon<input id="online-room-id" maxlength="12" placeholder="Code à 12 caractères" autocapitalize="characters"></label><button class="primary-cta" data-action="join-online">REJOINDRE CE SALON</button><div id="online-room-list" class="fixture-list"><p class="notice">Chargement des salons…</p></div><p class="notice" id="online-status" aria-live="polite">Le serveur doit être démarré et accessible sur cette adresse.</p><button class="text-cta" data-page="home">Retour</button></div>`;
+    document.getElementById('menu-content').scrollTop = 0;
     refreshOnlineRooms();
   }
   else if (action === 'create-online') {
@@ -1101,7 +1135,7 @@ menu.addEventListener('click', event => {
     joinOnlineRoom(id);
   } else if (action === 'choose-match') {
     const options = clubs.listClubs().map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('');
-    document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MODE DISPONIBLE · MATCH RAPIDE</span><h2>Préparez votre entrée sur le terrain</h2><p>Match local de démonstration en 5 contre 5 face à une équipe contrôlée par le système. Chaque commande reste limitée à votre propre footballeur.</p><div class="matchup-selectors"><label>Équipe domicile<select id="match-home">${options}</select></label><div class="versus-mark">VS</div><label>Équipe extérieure<select id="match-away">${options}</select></label></div><div class="match-centre">
+    document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MODE DISPONIBLE · MATCH RAPIDE</span><h2>Préparez votre entrée sur le terrain</h2><p>Match local de démonstration en 5 contre 5 face à une équipe contrôlée par le système. Chaque commande reste limitée à votre propre footballeur.</p><div class="match-centre">
       <div class="match-centre-heading"><span class="eyebrow">AVANT-MATCH · CENTRE DE PRÉPARATION</span><b>CHOISISSEZ VOTRE AFFiche</b></div>
       <div class="matchup-selectors"><label>ÉQUIPE DOMICILE<select id="match-home">${options}</select></label><div class="versus-mark">VS</div><label>ÉQUIPE EXTÉRIEURE<select id="match-away">${options}</select></label></div>
       <div class="match-preview-grid">
@@ -1111,7 +1145,8 @@ menu.addEventListener('click', event => {
       </div>
       <div class="match-centre-foot"><span>FORMAT 5 CONTRE 5</span><span>CONTRÔLE INDIVIDUEL</span><span>ÉQUIPE DU SYSTÈME</span><span>${preferences.duration} MINUTES</span></div>
       <button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button>
-    </div><div class="mode-details"><span>5 contre 5</span><span>${preferences.duration} minutes</span><span>Présentation des équipes</span><span>Équipe du système</span></div><button class="primary-cta" data-action="show-lineup">PRÉSENTER LES ÉQUIPES <span>→</span></button><button class="text-cta" data-page="home">Retour</button></div>`;
+    </div></div>`;
+    document.getElementById('menu-content').scrollTop = 0;
     const homeSelect=document.getElementById('match-home'), awaySelect=document.getElementById('match-away');
     homeSelect.value=selectedMatchup.home; awaySelect.value=selectedMatchup.away;
     const updateMatchup=()=>{
@@ -1140,6 +1175,7 @@ menu.addEventListener('click', event => {
     const renderPlayers = (players) => players.map(player=>`<div class="pre-match-player"><span class="pre-match-number">${player.number}</span><b>${escapeHTML(player.name)}</b><small>${roleLabels[player.role]||player.role}</small><strong>${player.rating}</strong></div>`).join('');
     const renderLineup = (team, squad) => `<section class="pre-match-team ${team}"><div class="pre-match-team-heading"><span class="eyebrow">${team==='blue'?'ÉQUIPE DOMICILE':'ÉQUIPE EXTÉRIEURE'}</span><b>${team==='blue'?'BLEU':'ROUGE'} · ${squad.starters.length}/5</b></div><div class="pre-match-player-list">${renderPlayers(squad.starters)}</div><div class="pre-match-bench-heading"><span>REMPLAÇANTS</span><b>${squad.substitutes.length}</b></div><div class="pre-match-player-list pre-match-bench-list">${squad.substitutes.length ? renderPlayers(squad.substitutes) : '<p class="pre-match-no-bench">Aucun remplaçant enregistré</p>'}</div><small class="pre-match-squad-total">Effectif disponible : ${squad.squadSize} joueur(s)</small></section>`;
     content.innerHTML=`<div class="match-intro"><span class="eyebrow">PRÉSENTATION DU MATCH</span><h2>LE TERRAIN VOUS ATTEND</h2><p>5 contre 5 · ${preferences.duration} minutes · Stade de démonstration</p><div class="intro-versus"><div>${crest(home)}<b>${escapeHTML(home.name)}</b><small>${escapeHTML(home.city)}</small></div><strong>VS</strong><div>${crest(away)}<b>${escapeHTML(away.name)}</b><small>${escapeHTML(away.city)}</small></div></div><div class="intro-lineup"><span>FORMATION 2–2</span><span>10 TITULAIRES · RÉSERVES AFFICHÉES</span><span>CONTRÔLE INDIVIDUEL</span></div><div class="pre-match-lineups">${renderLineup('blue',homeSquad)}${renderLineup('red',awaySquad)}</div><button class="primary-cta" data-action="start-match">ENTRER SUR LE TERRAIN <span>→</span></button><button class="text-cta" data-action="choose-match">Modifier les équipes</button></div>`;
+    content.scrollTop = 0;
   } else if (action === 'start-match') startMatch();
   else if (action === 'take-club') {
     const result=clubs.takeOver(event.target.closest('[data-club]')?.dataset.club,'local-player');

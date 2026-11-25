@@ -3,23 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0d311f">
+  <meta name="theme-color" content="#080b12">
+  <link rel="icon" type="image/svg+xml" href="assets/branding/p27-crest.svg">
   <meta name="description" content="Football RP Online P27 — jeu de football RP mobile, multijoueur et carrière.">
   <title>Football RP Online — P27</title>
   <link rel="stylesheet" href="style.css">
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="p27-rebirth.css">
+    <!-- three@0.170.0 is bundled locally through npm for offline Android builds. -->
 </head>
 <body>
   <section id="main-menu" aria-label="Menu principal Football RP Online">
     <div class="menu-backdrop"><div class="stadium-lights"></div><div class="stadium-pitch"></div></div>
-    <header class="menu-topbar"><div class="brand-mark"><span class="brand-shield">FR</span><div><strong>FOOTBALL RP</strong><small>ONLINE</small></div></div><div class="menu-topbar-actions"><div class="menu-status"><i></i> ESPACE CARRIÈRE · LOCAL & EN LIGNE</div><button id="menu-fullscreen" class="fullscreen-toggle" type="button" aria-label="Passer en plein écran" aria-pressed="false">⛶ <span>PLEIN ÉCRAN</span></button></div></header>
+    <header class="menu-topbar"><div class="brand-mark"><img class="brand-shield" src="assets/branding/p27-crest.svg" alt="Écusson Football RP Online P27" width="38" height="42"><div><strong>FOOTBALL RP</strong><small>ONLINE</small></div></div><div class="menu-topbar-actions"><div class="menu-status"><i></i> ESPACE CARRIÈRE · LOCAL & EN LIGNE</div><button id="menu-fullscreen" class="fullscreen-toggle" type="button" aria-label="Passer en plein écran" aria-pressed="false">⛶ <span>PLEIN ÉCRAN</span></button></div></header>
     <div class="menu-layout">
       <aside class="menu-sidebar"><div class="menu-section-label">ESPACE JOUEUR</div>
         <button data-page="home" class="active"><span>⌂</span> Accueil</button>
