@@ -53,11 +53,43 @@ const first = JSON.parse(process.argv[2]);
 const second = JSON.parse(process.argv[3]);
 assert.equal(first.reserved, true);
 assert.equal(first.alreadyReserved, false);
+assert.equal(first.account.id, first.accountId);
+assert.equal(first.account.playerId, first.playerId);
+assert.equal(first.account.passwordless, true);
+assert.match(first.token, /^[A-Za-z0-9_-]{43}$/);
 assert.match(first.playerId, /^FRP-\d{6}$/);
 assert.equal(second.accountId, first.accountId);
 assert.equal(second.playerId, first.playerId);
 assert.equal(second.alreadyReserved, true);
 NODE
+
+ACCOUNT_TOKEN="$(node --input-type=module - "$FIRST" <<'NODE'
+const result = JSON.parse(process.argv[2]);
+process.stdout.write(result.token);
+NODE
+)"
+ME="$(curl --silent --show-error --fail \
+  -H "authorization: Bearer $ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
+node --input-type=module - "$ME" "$FIRST" <<'NODE'
+import assert from "node:assert/strict";
+const me = JSON.parse(process.argv[2]);
+const first = JSON.parse(process.argv[3]);
+assert.equal(me.account.id, first.accountId);
+assert.equal(me.account.playerId, first.playerId);
+assert.equal(me.account.passwordless, true);
+NODE
+
+curl --silent --show-error --fail \
+  -X POST -H "authorization: Bearer $ACCOUNT_TOKEN" \
+  "$BASE_URL/api/accounts/logout" | node --input-type=module -e '
+import assert from "node:assert/strict";
+let raw = "";
+for await (const chunk of process.stdin) raw += chunk;
+assert.equal(JSON.parse(raw).loggedOut, true);
+'
+REVOKED_STATUS="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  -H "authorization: Bearer $ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
+test "$REVOKED_STATUS" = "401"
 
 VERIFIED="$(curl --silent --show-error --fail \
   -H 'content-type: application/json' \
