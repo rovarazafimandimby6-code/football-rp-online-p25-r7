@@ -94,6 +94,12 @@ export class OnlineAccountClient {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     const result = await this.request('/api/account/snapshot', { auth: true });
     if (!result?.snapshot || result.snapshot.schemaVersion !== 1 || !/^[a-f0-9]{64}$/.test(result.revision || '') || result.authority !== 'server-confirmed') throw new Error('INVALID_ACCOUNT_SNAPSHOT');
+    const subtle = globalThis.crypto?.subtle;
+    if (!subtle || typeof TextEncoder === 'undefined') throw new Error('SNAPSHOT_VERIFICATION_UNAVAILABLE');
+    const bytes = new TextEncoder().encode(JSON.stringify(result.snapshot));
+    const digest = await subtle.digest('SHA-256', bytes);
+    const revision = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
+    if (revision !== result.revision) throw new Error('INVALID_ACCOUNT_SNAPSHOT_REVISION');
     return result;
   }
 

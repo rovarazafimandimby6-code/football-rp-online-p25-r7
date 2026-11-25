@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+
+const snapshotRevision = snapshot => createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
 import { OnlineAccountClient } from '../src/online-account-client.js';
 
 test('P27 profil cloud : GET et PUT utilisent uniquement la session persistante', async () => {
@@ -36,7 +39,7 @@ test('P27 récupération cloud : charge un snapshot serveur authentifié et vér
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
       return { ok: true, status: 200, json: async () => ({
-        snapshot, revision: 'a'.repeat(64), authority: 'server-confirmed',
+        snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed',
         restorePolicy: 'server-snapshot-is-read-only; never-overwrite-newer-local-data'
       }) };
     }
@@ -44,9 +47,22 @@ test('P27 récupération cloud : charge un snapshot serveur authentifié et vér
   client.token = 'account-token-with-more-than-32-characters';
   const result = await client.getAccountSnapshot();
   assert.equal(result.snapshot.player.playerId, 'FRP-123456');
-  assert.equal(result.revision, 'a'.repeat(64));
+  assert.equal(result.revision, snapshotRevision(snapshot));
   assert.equal(calls[0].url, 'https://game.example/api/account/snapshot');
   assert.equal(calls[0].options.headers.authorization, `Bearer ${client.token}`);
+});
+
+test('P27 récupération cloud : refuse un snapshot dont le contenu ne correspond pas à sa révision SHA-256', async () => {
+  const client = new OnlineAccountClient({
+    storage: null,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({
+      snapshot: { schemaVersion: 1, progression: { level: 99 } },
+      revision: snapshotRevision({ schemaVersion: 1, progression: { level: 1 } }),
+      authority: 'server-confirmed'
+    }) })
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  await assert.rejects(() => client.getAccountSnapshot(), /INVALID_ACCOUNT_SNAPSHOT_REVISION/);
 });
 
 test('P27 récupération cloud : refuse snapshot invalide et compte absent', async () => {
@@ -168,7 +184,7 @@ test('P27 session Google : les lectures et écritures de compte acceptent la ses
       calls.push({ url, options });
       if (url.endsWith('/api/accounts/me')) return { ok: true, status: 200, json: async () => ({ account: { id: 'account-123' } }) };
       if (url.endsWith('/api/career')) return { ok: true, status: 200, json: async () => ({ career: { totals: {}, matches: [] } }) };
-      if (url.endsWith('/api/account/snapshot')) return { ok: true, status: 200, json: async () => ({ snapshot: { schemaVersion: 1 }, revision: 'b'.repeat(64), authority: 'server-confirmed' }) };
+      if (url.endsWith('/api/account/snapshot')) { const snapshot = { schemaVersion: 1 }; return { ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed' }) }; }
       if (url.endsWith('/api/profile')) return { ok: true, status: 200, json: async () => ({ profile: {} }) };
       return { ok: true, status: 200, json: async () => ({ progression: {} }) };
     }
