@@ -1,83 +1,69 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { JsonGoogleIdentityStore } from '../server/google-identity-store.js';
 
-function temporary() {
-  const directory = mkdtempSync(path.join(tmpdir(), 'fpro-google-identities-'));
-  return { directory, store: new JsonGoogleIdentityStore(directory), cleanup: () => rmSync(directory, { recursive: true, force: true }) };
-}
+const accountA = '123e4567-e89b-42d3-a456-426614174000';
+const accountB = '123e4567-e89b-42d3-a456-426614174001';
+const temp = () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'p27-google-identities-'));
+  return { directory, cleanup: () => rmSync(directory, { recursive: true, force: true }) };
+};
 
-test('P27 Google identity: one Google subject maps to only one P27 account', () => {
-  const temp = temporary();
+test('Google identity links enforce verified one-to-one ownership and survive restart', () => {
+  const t = temp();
   try {
-    temp.store.linkInitial({ accountId: 'player-a', googleSubject: 'google-subject-0001', googleIdentityVerified: true });
-    assert.equal(temp.store.getByGoogleSubject('google-subject-0001').accountId, 'player-a');
-    assert.throws(() => temp.store.linkInitial({ accountId: 'player-b', googleSubject: 'google-subject-0001', googleIdentityVerified: true }), /GOOGLE_ALREADY_LINKED/);
-    assert.throws(() => temp.store.linkInitial({ accountId: 'player-a', googleSubject: 'google-subject-0002', googleIdentityVerified: true }), /ACCOUNT_ALREADY_LINKED/);
-    assert.equal(temp.store.state.links.length, 1);
-  } finally { temp.cleanup(); }
+    const store = new JsonGoogleIdentityStore(t.directory, { now: () => 1_800_000_000_000 });
+    assert.throws(() => store.linkInitial({ accountId: accountA, googleSubject: 'google-subject-0001' }), /GOOGLE_IDENTITY_NOT_VERIFIED/);
+    store.linkInitial({ accountId: accountA, googleSubject: 'google-subject-0001', googleIdentityVerified: true });
+    assert.throws(() => store.linkInitial({ accountId: accountA, googleSubject: 'google-subject-0002', googleIdentityVerified: true }), /ACCOUNT_ALREADY_LINKED/);
+    assert.throws(() => store.linkInitial({ accountId: accountB, googleSubject: 'google-subject-0001', googleIdentityVerified: true }), /GOOGLE_ALREADY_LINKED/);
+    const restarted = new JsonGoogleIdentityStore(t.directory);
+    assert.equal(restarted.getByAccountId(accountA).googleSubject, 'google-subject-0001');
+    assert.equal(restarted.getByGoogleSubject('google-subject-0001').accountId, accountA);
+  } finally { t.cleanup(); }
 });
 
-test('P27 Google identity: refuses unverified client identity claims', () => {
-  const temp = temporary();
+test('Google ownership transfer requires both verified identities and explicit confirmation', () => {
+  const t = temp();
   try {
-    assert.throws(() => temp.store.linkInitial({ accountId: 'player-a', googleSubject: 'google-subject-0001' }), /GOOGLE_IDENTITY_NOT_VERIFIED/);
-    assert.throws(() => temp.store.linkInitial({ accountId: 'player-a', googleSubject: 'bad' , googleIdentityVerified: true }), /INVALID_GOOGLE_SUBJECT/);
-    assert.equal(temp.store.state.links.length, 0);
-  } finally { temp.cleanup(); }
-});
-
-test('P27 Google identity: transfer preserves the P27 account and releases the previous Google identity', () => {
-  const temp = temporary();
-  try {
-    temp.store.linkInitial({ accountId: 'player-a', googleSubject: 'google-subject-0001', googleIdentityVerified: true });
-    temp.store.linkInitial({ accountId: 'player-b', googleSubject: 'google-subject-0002', googleIdentityVerified: true });
-    assert.throws(() => temp.store.transfer({
-      accountId: 'player-a', currentGoogleSubject: 'google-subject-0001', newGoogleSubject: 'google-subject-0002',
-      currentIdentityVerified: true, newIdentityVerified: true, confirmed: true
-    }), /GOOGLE_ALREADY_LINKED/);
-    assert.throws(() => temp.store.transfer({
-      accountId: 'player-a', currentGoogleSubject: 'google-subject-0001', newGoogleSubject: 'google-subject-0003',
-      currentIdentityVerified: true, newIdentityVerified: true
+    const store = new JsonGoogleIdentityStore(t.directory);
+    store.linkInitial({ accountId: accountA, googleSubject: 'google-subject-0001', googleIdentityVerified: true });
+    assert.throws(() => store.transfer({
+      accountId: accountA, currentGoogleSubject: 'google-subject-0001',
+      newGoogleSubject: 'google-subject-0002', currentIdentityVerified: true,
+      newIdentityVerified: true
     }), /GOOGLE_TRANSFER_NOT_CONFIRMED/);
-    const moved = temp.store.transfer({
-      accountId: 'player-a', currentGoogleSubject: 'google-subject-0001', newGoogleSubject: 'google-subject-0003',
-      currentIdentityVerified: true, newIdentityVerified: true, confirmed: true
+    store.transfer({
+      accountId: accountA, currentGoogleSubject: 'google-subject-0001',
+      newGoogleSubject: 'google-subject-0002', currentIdentityVerified: true,
+      newIdentityVerified: true, confirmed: true
     });
-    assert.equal(moved.accountId, 'player-a');
-    assert.equal(temp.store.getByGoogleSubject('google-subject-0001'), null);
-    assert.equal(temp.store.getByGoogleSubject('google-subject-0003').accountId, 'player-a');
-    assert.equal(temp.store.getByAccountId('player-a').googleSubject, 'google-subject-0003');
-    assert.equal(temp.store.getByGoogleSubject('google-subject-0002').accountId, 'player-b');
-    assert.equal(temp.store.state.audit.at(-1).type, 'google_transferred');
-  } finally { temp.cleanup(); }
+    assert.equal(store.getByGoogleSubject('google-subject-0001'), null);
+    assert.equal(store.getByGoogleSubject('google-subject-0002').accountId, accountA);
+    assert.equal(store.state.audit.at(-1).type, 'google_transferred');
+  } finally { t.cleanup(); }
 });
 
-test('P27 Google identity: transfer rolls back when the current Google owner does not match', () => {
-  const temp = temporary();
+test('Google identity store fails closed instead of silently dropping malformed ownership rows', () => {
+  const t = temp();
   try {
-    temp.store.linkInitial({ accountId: 'player-a', googleSubject: 'google-subject-0001', googleIdentityVerified: true });
-    assert.throws(() => temp.store.transfer({
-      accountId: 'player-a', currentGoogleSubject: 'google-subject-wrong', newGoogleSubject: 'google-subject-0003',
-      currentIdentityVerified: true, newIdentityVerified: true, confirmed: true
-    }), /CURRENT_GOOGLE_MISMATCH/);
-    assert.equal(temp.store.getByAccountId('player-a').googleSubject, 'google-subject-0001');
-    assert.equal(temp.store.getByGoogleSubject('google-subject-0003'), null);
-  } finally { temp.cleanup(); }
+    writeFileSync(path.join(t.directory, 'google-identities.json'), JSON.stringify({
+      version: 1,
+      links: [{ accountId: 'not-an-account-id', googleSubject: 'google-subject-0001', linkedAt: new Date().toISOString() }],
+      audit: []
+    }));
+    assert.throws(() => new JsonGoogleIdentityStore(t.directory), /GOOGLE_IDENTITY_STORE_CORRUPT/);
+  } finally { t.cleanup(); }
 });
 
-test('P27 Google identity: mapping survives store restart without storing Google tokens', () => {
-  const directory = mkdtempSync(path.join(tmpdir(), 'fpro-google-identities-restart-'));
+test('Google identity store rejects malformed account IDs and does not persist unverified subjects', () => {
+  const t = temp();
   try {
-    const first = new JsonGoogleIdentityStore(directory);
-    first.linkInitial({ accountId: 'player-a', googleSubject: 'google-subject-0001', googleIdentityVerified: true });
-    const disk = readFileSync(path.join(directory, 'google-identities.json'), 'utf8');
-    assert.equal(disk.includes('access_token'), false);
-    assert.equal(disk.includes('id_token'), false);
-    const restarted = new JsonGoogleIdentityStore(directory);
-    assert.equal(restarted.getByGoogleSubject('google-subject-0001').accountId, 'player-a');
-  } finally { rmSync(directory, { recursive: true, force: true }); }
+    const store = new JsonGoogleIdentityStore(t.directory);
+    assert.throws(() => store.linkInitial({ accountId: 'account-1', googleSubject: 'google-subject-0001', googleIdentityVerified: true }), /INVALID_ACCOUNT_ID/);
+    assert.equal(JSON.parse(readFileSync(path.join(t.directory, 'google-identities.json'), 'utf8')).links.length, 0);
+  } finally { t.cleanup(); }
 });

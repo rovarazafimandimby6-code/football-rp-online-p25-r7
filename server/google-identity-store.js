@@ -2,14 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
+const validUuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 const cleanSubject = value => typeof value === 'string' && /^[A-Za-z0-9_-]{8,255}$/.test(value) ? value : null;
+const validTimestamp = value => typeof value === 'string' && Number.isFinite(Date.parse(value));
 
 /**
- * Persistent mapping between verified Google OpenID Connect subjects and P27 accounts.
- *
- * Security boundary: callers MUST pass a Google subject only after validating the
- * Google ID token server-side (signature, issuer, audience, expiry, nonce and state).
- * This store deliberately does not validate Google tokens or trust client-supplied IDs.
+ * Persistent one-to-one mapping between verified Google OIDC subjects and P27 accounts.
+ * Callers MUST verify the Google ID token (signature, issuer, audience, expiry, nonce
+ * and transaction binding) before passing googleIdentityVerified=true.
  */
 export class JsonGoogleIdentityStore {
   constructor(directory, { now = () => Date.now() } = {}) {
@@ -25,16 +25,19 @@ export class JsonGoogleIdentityStore {
       const parsed = JSON.parse(readFileSync(this.file, 'utf8'));
       if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.links) || !Array.isArray(parsed.audit)) throw new Error('bad schema');
       const links = parsed.links.filter(row =>
-        row && typeof row.accountId === 'string' && cleanSubject(row.googleSubject) &&
-        typeof row.linkedAt === 'string'
+        row && validUuid(row.accountId) && cleanSubject(row.googleSubject) &&
+        validTimestamp(row.linkedAt)
       );
-      if (new Set(links.map(row => row.accountId)).size !== links.length ||
-          new Set(links.map(row => row.googleSubject)).size !== links.length) throw new Error('duplicate links');
-      return {
-        version: 1,
-        links,
-        audit: parsed.audit.filter(row => row && typeof row.id === 'string' && typeof row.accountId === 'string' && typeof row.type === 'string' && typeof row.at === 'string').slice(-10_000)
-      };
+      const audit = parsed.audit.filter(row =>
+        row && validUuid(row.id) && validUuid(row.accountId) &&
+        ['google_linked', 'google_transferred'].includes(row.type) && validTimestamp(row.at) &&
+        (row.type !== 'google_transferred' ||
+          (cleanSubject(row.previousSubject) && cleanSubject(row.newSubject) && row.previousSubject !== row.newSubject))
+      );
+      if (links.length !== parsed.links.length || audit.length !== parsed.audit.length ||
+          new Set(links.map(row => row.accountId)).size !== links.length ||
+          new Set(links.map(row => row.googleSubject)).size !== links.length) throw new Error('invalid or duplicate identity rows');
+      return { version: 1, links, audit: audit.slice(-10_000) };
     } catch (error) {
       if (error.code === 'ENOENT') return { version: 1, links: [], audit: [] };
       throw new Error('GOOGLE_IDENTITY_STORE_CORRUPT');
@@ -73,14 +76,14 @@ export class JsonGoogleIdentityStore {
   }
 
   getByAccountId(accountId) {
-    if (typeof accountId !== 'string' || !accountId) return null;
+    if (!validUuid(accountId)) return null;
     const link = this.state.links.find(row => row.accountId === accountId);
     return link ? { googleSubject: link.googleSubject, linkedAt: link.linkedAt } : null;
   }
 
   linkInitial({ accountId, googleSubject, googleIdentityVerified = false } = {}) {
     const subject = cleanSubject(googleSubject);
-    if (typeof accountId !== 'string' || !accountId) throw new Error('INVALID_ACCOUNT_ID');
+    if (!validUuid(accountId)) throw new Error('INVALID_ACCOUNT_ID');
     if (!subject) throw new Error('INVALID_GOOGLE_SUBJECT');
     if (googleIdentityVerified !== true) throw new Error('GOOGLE_IDENTITY_NOT_VERIFIED');
     return this.transaction(() => {
@@ -101,7 +104,7 @@ export class JsonGoogleIdentityStore {
   } = {}) {
     const currentSubject = cleanSubject(currentGoogleSubject);
     const newSubject = cleanSubject(newGoogleSubject);
-    if (typeof accountId !== 'string' || !accountId) throw new Error('INVALID_ACCOUNT_ID');
+    if (!validUuid(accountId)) throw new Error('INVALID_ACCOUNT_ID');
     if (!currentSubject || !newSubject) throw new Error('INVALID_GOOGLE_SUBJECT');
     if (currentIdentityVerified !== true || newIdentityVerified !== true) throw new Error('GOOGLE_IDENTITY_NOT_VERIFIED');
     if (confirmed !== true) throw new Error('GOOGLE_TRANSFER_NOT_CONFIRMED');
