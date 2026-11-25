@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PLAYER_ID_RE = /^FRP-[0-9]{6}$/;
-const clean = value => String(value ?? '').replace(/[<>\\u0000-\\u001f]/g, '').trim().slice(0, 64);
+const clean = value => String(value ?? '').replace(/[<>\x00-\x1f]/g, '').trim().slice(0, 64);
 
 /**
  * Durable local outbox for server-finalized career events.
