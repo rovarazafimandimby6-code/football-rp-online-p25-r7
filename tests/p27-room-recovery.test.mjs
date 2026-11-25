@@ -220,3 +220,35 @@ test('P27 salons persistés : saveMany respecte le plafond global sans écriture
     assert.deepEqual(store.readAll().map(room => room.id), ['room-one']);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+
+test('P27 simulation : plusieurs dizaines de salons avancent ensemble sans perte d état ni joueur', () => {
+  let now = 100_000;
+  const manager = new RoomManager({ now: () => now });
+  const rooms = [];
+  for (let index = 0; index < 30; index++) {
+    const created = manager.create({ name: `Stress ${index + 1}` });
+    manager.join(created.id, { displayName: `Humain ${index + 1}` });
+    const room = manager.rooms.get(created.id);
+    assert.equal(room.phase, 'playing');
+    assert.equal(room.players.size, 14);
+    rooms.push({ id: created.id, sequence: room.sequence });
+  }
+
+  for (let frame = 0; frame < 20; frame++) {
+    now += 50;
+    manager.tick(0.05);
+  }
+
+  assert.equal(manager.rooms.size, 30);
+  for (const entry of rooms) {
+    const room = manager.rooms.get(entry.id);
+    assert.ok(room.sequence > entry.sequence);
+    assert.equal(room.players.size, 14);
+    assert.ok(Number.isFinite(room.ball.x) && Number.isFinite(room.ball.z));
+    for (const player of room.players.values()) {
+      assert.ok(Number.isFinite(player.x) && Number.isFinite(player.z));
+      assert.ok(Number.isFinite(player.input.x) && Number.isFinite(player.input.z));
+    }
+  }
+});
