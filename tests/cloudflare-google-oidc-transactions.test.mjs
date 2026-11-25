@@ -17,7 +17,7 @@ class FakeD1 {
         const v = this.values;
         if (sql.startsWith("INSERT INTO p27_google_oidc_transactions")) {
           if (db.rows.has(v[0])) throw new Error("UNIQUE constraint failed");
-          db.rows.set(v[0], { state_hash:v[0], nonce:v[1], code_verifier:v[2], binding_hash:v[3], purpose:v[4], account_id:v[5], expires_at:v[6] });
+          db.rows.set(v[0], { state_hash:v[0], nonce:v[1], code_verifier:v[2], binding_hash:v[3], purpose:v[4], account_id:v[5], session_token_hash:v[6], expires_at:v[7] });
           return { meta: { changes: 1 } };
         }
         if (sql.startsWith("DELETE FROM p27_google_oidc_transactions WHERE state_hash")) {
@@ -49,7 +49,8 @@ const makeRepo = () => {
 test("D1 OIDC transactions are browser-bound, hashed, and single-use", async () => {
   const { db, repo } = makeRepo();
   const binding = "browser-session-binding-secret-0001";
-  const tx = await repo.create({ accountId, sessionBinding: binding, purpose: "link" });
+  const sessionTokenHash = "a".repeat(64);
+  const tx = await repo.create({ accountId, sessionBinding: binding, sessionTokenHash, purpose: "link" });
   assert.equal(tx.codeChallengeMethod, "S256");
   assert.equal(db.rows.size, 1);
   const stored = [...db.rows.values()][0];
@@ -60,6 +61,7 @@ test("D1 OIDC transactions are browser-bound, hashed, and single-use", async () 
   const consumed = await repo.consume({ state: tx.state, sessionBinding: binding });
   assert.equal(consumed.accountId, accountId);
   assert.equal(consumed.purpose, "link");
+  assert.equal(consumed.sessionTokenHash, sessionTokenHash);
   assert.equal(consumed.nonce, tx.nonce);
   assert.equal(await repo.consume({ state: tx.state, sessionBinding: binding }), null);
   assert.equal(db.rows.size, 0);
