@@ -10,6 +10,8 @@ import { Player } from './player.js';
 import { createMatchSquad } from './match-squad.js';
 import { OnlineMatchClient } from './online-client.js';
 import { OnlineAccountClient } from './online-account-client.js';
+import { PlayerSyncOutbox } from './player-sync-outbox.js';
+import { ProfileSyncCoordinator } from './profile-sync-coordinator.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
 
@@ -80,7 +82,18 @@ let game = null;
 let pendingOnlineMatch = null;
 const accountClient = new OnlineAccountClient({ baseUrl: location.origin });
 accountClient.restoreSession();
-void accountClient.resumeCookieSession().catch(() => {});
+const profileSyncOutbox = new PlayerSyncOutbox();
+const profileSyncCoordinator = new ProfileSyncCoordinator({
+  accountClient,
+  outbox: profileSyncOutbox,
+  getProfile: () => profileStore.profile,
+  getLocalIdentity: () => localPlayerIdentity
+});
+const queueAndSyncCurrentProfile = async () => {
+  profileSyncCoordinator.enqueueCurrentProfile();
+  return profileSyncCoordinator.flush();
+};
+void accountClient.resumeCookieSession().then(() => profileSyncCoordinator.flush()).catch(() => {});
 const onlineClient = new OnlineMatchClient({ baseUrl: location.origin, accountTokenProvider: () => accountClient.token });
 let avatarPreview = null;
 function disposeAvatarPreview() {
@@ -205,6 +218,7 @@ async function reserveLocalPlayerIdentity() {
   try {
     localPlayerIdentity = await localPlayerProfileStore.reserveWithServer();
     document.querySelectorAll('[data-player-id]').forEach(node => { node.textContent = localPlayerIdentity.id; });
+    void profileSyncCoordinator?.flush().catch(() => {});
   } catch (_) {
     // Keep the provisional local FRP number and retry on a later launch.
   }
@@ -832,7 +846,7 @@ async function submitAccountForm(action) {
     else if (action === 'register') await accountClient.register({ username, password, displayName });
     else if (action === 'refresh') await accountClient.refresh();
     else if (action === 'sync-profile') {
-      await accountClient.saveProfile(profileStore.profile);
+      await queueAndSyncCurrentProfile();
       renderPage('account');
       const refreshedStatus = document.getElementById('account-status');
       if (refreshedStatus) refreshedStatus.textContent = 'Identité et apparence enregistrées sur le compte. Progression et attributs locaux inchangés.';
@@ -840,7 +854,8 @@ async function submitAccountForm(action) {
     } else if (action === 'migrate-legacy') {
       const backup = createLegacyProfileBackup(profileStore.storage, profileStore.profile);
       const payload = buildLegacyProfileMigrationPayload(profileStore.profile);
-      await accountClient.saveProfile(payload);
+      profileSyncCoordinator.enqueueProfile(payload);
+      await profileSyncCoordinator.flush();
       renderPage('account');
       const refreshedStatus = document.getElementById('account-status');
       if (refreshedStatus) refreshedStatus.textContent = backup.created
@@ -857,6 +872,7 @@ async function submitAccountForm(action) {
       return;
     }
     else if (action === 'logout') await accountClient.logout();
+    if (['login', 'register', 'refresh'].includes(action)) await profileSyncCoordinator.flush();
     renderPage('account');
   } catch (error) {
     if (status) status.textContent = `Opération impossible : ${String(error?.message || error).slice(0, 100)}`;
@@ -1064,6 +1080,7 @@ menu.addEventListener('submit', event => {
         : localPlayerProfileStore?.create({ displayName }) || null;
       if (!localPlayerIdentity) throw new Error('LOCAL_PLAYER_ID_UNAVAILABLE');
       hasSavedPlayerProfile = true;
+      profileSyncCoordinator.enqueueCurrentProfile();
       void reserveLocalPlayerIdentity();
       syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
       renderPage('home');
@@ -1082,7 +1099,11 @@ menu.addEventListener('submit', event => {
   syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
   renderPage('player');
   const status=document.getElementById('profile-save-status');
-  if(status) status.textContent='Profil mis à jour et sauvegardé sur cet appareil.';
+  if(status) status.textContent='Profil enregistré localement. Synchronisation cloud en attente ou en cours…';
+  void queueAndSyncCurrentProfile().then(result => {
+    const currentStatus = document.getElementById('profile-save-status');
+    if (currentStatus && result.uploaded > 0) currentStatus.textContent = 'Profil enregistré sur cet appareil et synchronisé avec le compte.';
+  }).catch(() => {});
 });
 
 renderPage(hasSavedPlayerProfile ? 'home' : 'onboarding');

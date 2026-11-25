@@ -218,3 +218,53 @@ test('P27 synchronisation : bloque tout envoi si le compte ne correspond pas au 
   assert.equal(requests, 0);
   assert.equal(outbox.status().pending, 1);
 });
+
+
+test('P27 synchronisation automatique : conserve les changements hors ligne puis les envoie après liaison du bon compte', async () => {
+  const { PlayerSyncOutbox } = await import('../src/player-sync-outbox.js');
+  const { ProfileSyncCoordinator } = await import('../src/profile-sync-coordinator.js');
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const outbox = new PlayerSyncOutbox({ storage, operationIdFactory: (() => { let i = 0; return () => 'profile-coordinator-op-' + (++i).toString().padStart(8, '0'); })() });
+  const calls = [];
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example', storage: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, json: async () => ({ profile: { identity: { displayName: 'Rova' }, appearance: { kit: 'crimson' } } }) };
+    }
+  });
+  let profile = { identity: { displayName: 'Rova', number: 9, role: 'FWD' }, appearance: { kit: 'crimson' }, progression: { coins: 999 } };
+  const localIdentity = { id: 'FRP-123456', accountId: 'account-123' };
+  const coordinator = new ProfileSyncCoordinator({ accountClient: client, outbox, getProfile: () => profile, getLocalIdentity: () => localIdentity });
+  coordinator.enqueueCurrentProfile();
+  assert.deepEqual(await coordinator.flush(), { uploaded: 0, remaining: 1, blocked: 0, skipped: true });
+  assert.equal(calls.length, 0);
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  client.cookieSession = true;
+  assert.deepEqual(await coordinator.flush(), { uploaded: 1, remaining: 0, blocked: 0 });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.credentials, 'same-origin');
+  assert.equal(JSON.parse(calls[0].options.body).profile.progression, undefined);
+});
+
+test('P27 synchronisation automatique : ne transmet jamais une file au compte Google différent', async () => {
+  const { PlayerSyncOutbox } = await import('../src/player-sync-outbox.js');
+  const { ProfileSyncCoordinator } = await import('../src/profile-sync-coordinator.js');
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const outbox = new PlayerSyncOutbox({ storage, operationIdFactory: () => 'profile-coordinator-op-mismatch' });
+  let requests = 0;
+  const client = new OnlineAccountClient({ storage: null, fetchImpl: async () => { requests++; throw new Error('SHOULD_NOT_FETCH'); } });
+  client.account = { id: 'other-account', playerId: 'FRP-999999' };
+  client.cookieSession = true;
+  const coordinator = new ProfileSyncCoordinator({
+    accountClient: client, outbox,
+    getProfile: () => ({ identity: { displayName: 'Rova' }, appearance: {} }),
+    getLocalIdentity: () => ({ id: 'FRP-123456', accountId: 'local-account' })
+  });
+  coordinator.enqueueCurrentProfile();
+  await assert.rejects(() => coordinator.flush(), /ACCOUNT_LOCAL_IDENTITY_MISMATCH/);
+  assert.equal(requests, 0);
+  assert.equal(outbox.status().pending, 1);
+});
