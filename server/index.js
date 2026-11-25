@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
 import { readGoogleOidcConfig } from './google-oidc-config.js';
+import { JsonPlayerIdentityStore } from './player-identity-store.js';
 import { JsonCareerStore } from './career-store.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
 import { JsonProgressionStore } from './progression-store.js';
@@ -83,6 +84,8 @@ const manager = new RoomManager({ resultStore, roomStore, careerStore, progressi
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const googleOidcConfig = readGoogleOidcConfig(process.env);
+const playerIdentityDirectory = process.env.PLAYER_IDENTITIES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'player-identities');
+const playerIdentityStore = new JsonPlayerIdentityStore(playerIdentityDirectory);
 const accountAttempts = new Map();
 const playerBackupScheduler = createPlayerBackupScheduler({
   config: resolvePlayerBackupConfig({ root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') }),
@@ -174,6 +177,12 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         playerId:body.playerId, fee:body.fee
       });
       return json(res, result.ok ? 200 : (result.pending ? 202 : 409), result);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/player-identities/reserve') {
+      if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'PLAYER_ID_RESERVATION_RATE_LIMITED' });
+      const body = await readBody(req);
+      const reservation = playerIdentityStore.reserve({ localProfileKey: body.localProfileKey });
+      return json(res, 200, { playerId: reservation.playerId, reserved: true, alreadyReserved: reservation.alreadyReserved });
     }
     if (req.method === 'GET' && url.pathname === '/api/rooms') return json(res, 200, { rooms: manager.list() });
     if (req.method === 'GET' && url.pathname === '/api/players/library') {

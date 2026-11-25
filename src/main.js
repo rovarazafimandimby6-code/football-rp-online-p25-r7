@@ -199,11 +199,21 @@ try {
 const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58, colors: club.colors });
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
+async function reserveLocalPlayerIdentity() {
+  if (!localPlayerProfileStore || !localPlayerIdentity || localPlayerIdentity.identityStatus === 'reserved') return;
+  try {
+    localPlayerIdentity = await localPlayerProfileStore.reserveWithServer();
+    document.querySelectorAll('[data-player-id]').forEach(node => { node.textContent = localPlayerIdentity.id; });
+  } catch (_) {
+    // Keep the provisional local FRP number and retry on a later launch.
+  }
+}
+
 function renderGoogleProtectionCard({ compact = false } = {}) {
   const playerId = localPlayerIdentity?.id || 'FRP en attente';
   return `<section class="competition-panel google-protection-card">
     <div class="panel-heading"><div><span class="eyebrow">IDENTITÉ FOOTBALL RP</span><h2>Protéger votre carrière</h2></div><span class="local-tag">LOCAL</span></div>
-    <p class="notice">Identifiant joueur : <strong>${escapeHTML(playerId)}</strong></p>
+    <p class="notice">Identifiant joueur : <strong data-player-id>${escapeHTML(playerId)}</strong></p>
     <p class="notice">${compact
       ? "Votre carrière fonctionne sans compte Google. Associez Google plus tard pour la retrouver sur un autre appareil."
       : "L'association Google est facultative. Elle protégera ce profil et cette carrière existants, sans créer un nouveau joueur."}</p>
@@ -1053,6 +1063,7 @@ menu.addEventListener('submit', event => {
         : localPlayerProfileStore?.create({ displayName }) || null;
       if (!localPlayerIdentity) throw new Error('LOCAL_PLAYER_ID_UNAVAILABLE');
       hasSavedPlayerProfile = true;
+      void reserveLocalPlayerIdentity();
       syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
       renderPage('home');
     } catch (error) {
@@ -1074,6 +1085,7 @@ menu.addEventListener('submit', event => {
 });
 
 renderPage(hasSavedPlayerProfile ? 'home' : 'onboarding');
+void reserveLocalPlayerIdentity();
 window.addEventListener('pagehide', () => game?.dispose?.(), { once: true });
 
 const filterPlayerLibrary = () => {

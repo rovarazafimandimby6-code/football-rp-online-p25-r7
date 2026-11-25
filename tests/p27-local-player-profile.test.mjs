@@ -5,7 +5,7 @@ function memoryStorage() { const values = new Map(); return { getItem: key => va
 test('creates an offline local player profile without password or account credentials', () => {
   const storage = memoryStorage(); const store = new LocalPlayerProfile({ storage, now: () => '2026-11-25T08:00:00.000Z', idFactory: () => '675757' });
   const profile = store.create({ displayName: '  Rova   Player  ' });
-  assert.equal(profile.id, 'FRP-675757'); assert.equal(profile.displayName, 'Rova Player');
+  assert.equal(profile.id, 'FRP-675757'); assert.match(profile.localProfileKey, /^[0-9a-f-]{36}$/); assert.equal(profile.identityStatus, 'local-pending'); assert.equal(profile.displayName, 'Rova Player');
   assert.deepEqual(profile.cloudSync, { status: 'not-linked', googleLinked: false }); assert.equal(store.load().id, profile.id);
   assert.equal(Object.hasOwn(profile, 'password'), false); assert.equal(Object.hasOwn(profile, 'username'), false); assert.equal(Object.hasOwn(profile, 'email'), false);
   assert.equal(storage.getItem(LOCAL_PLAYER_PROFILE_STORAGE_KEY).includes('password'), false);
@@ -21,3 +21,11 @@ test('rejects blank names and handles missing storage', () => {
   assert.equal(new LocalPlayerProfile({ storage: null }).load(), null); assert.throws(() => new LocalPlayerProfile({ storage: null }).create({ displayName: 'Player' }), { message: 'LOCAL_PROFILE_STORAGE_UNAVAILABLE' });
 });
 test('clears only the device-local profile', () => { const storage = memoryStorage(); const store = new LocalPlayerProfile({ storage, idFactory: () => '000001' }); store.create({ displayName: 'Player' }); assert.equal(store.clear(), true); assert.equal(store.load(), null); });
+
+test('server reservation replaces provisional number and retries idempotently', async () => {
+  const store = new LocalPlayerProfile({ storage: memoryStorage(), idFactory: () => '111111' });
+  const initial = store.create({ displayName: 'Player' }); let calls = 0;
+  const fetchImpl = async (_url, options) => { calls++; assert.equal(JSON.parse(options.body).localProfileKey, initial.localProfileKey); return { ok: true, json: async () => ({ playerId: 'FRP-675757', reserved: true }) }; };
+  const first = await store.reserveWithServer({ fetchImpl }); const second = await store.reserveWithServer({ fetchImpl });
+  assert.equal(first.id, 'FRP-675757'); assert.equal(first.identityStatus, 'reserved'); assert.equal(second.id, first.id); assert.equal(calls, 1);
+});
