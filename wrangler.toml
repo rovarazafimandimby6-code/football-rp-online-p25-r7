@@ -5,6 +5,7 @@
 name = "football-rp-online-p27-api"
 main = "src/cloudflare/worker.js"
 compatibility_date = "2026-11-25"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 preview_urls = false
 
