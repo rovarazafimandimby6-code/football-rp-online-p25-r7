@@ -17,9 +17,16 @@ import { restoreAccountSnapshot } from './account-recovery.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
 
+const P27_OFFLINE_TEST = typeof __P27_OFFLINE_TEST__ !== 'undefined' && __P27_OFFLINE_TEST__;
+
 const shell = document.getElementById('game-shell');
 const menu = document.getElementById('main-menu');
 const container = document.getElementById('webgl-container');
+if (P27_OFFLINE_TEST) {
+  document.documentElement.classList.add('p27-offline-test');
+  const modeLabel = document.querySelector('.menu-status');
+  if (modeLabel) modeLabel.textContent = 'MODE TEST · CARRIÈRE LOCALE';
+}
 const fullscreenButtons = [document.getElementById('menu-fullscreen'), document.getElementById('match-fullscreen')].filter(Boolean);
 function refreshFullscreenControls() {
   const active = Boolean(document.fullscreenElement);
@@ -84,7 +91,7 @@ let game = null;
 let pendingOnlineMatch = null;
 const accountClient = new OnlineAccountClient({ baseUrl: location.origin });
 let pendingAccountRecoveryPreview = null;
-accountClient.restoreSession();
+if (!P27_OFFLINE_TEST) accountClient.restoreSession();
 const profileSyncOutbox = new PlayerSyncOutbox();
 const profileSyncCoordinator = new ProfileSyncCoordinator({
   accountClient,
@@ -96,6 +103,7 @@ const queueAndSyncCurrentProfile = async () => {
   profileSyncCoordinator.enqueueCurrentProfile();
   return profileSyncCoordinator.flush();
 };
+if (!P27_OFFLINE_TEST) {
 void accountClient.resumeCookieSession().then(async () => {
   if (!localPlayerIdentity && localPlayerProfileStore && /^FRP-[0-9]{6}$/.test(accountClient.account?.playerId || '')) {
     try {
@@ -109,10 +117,13 @@ void accountClient.resumeCookieSession().then(async () => {
   const button = document.querySelector('[data-action="account-recovery-preview"]');
   if (button) button.disabled = false;
 }).catch(() => {});
-window.addEventListener('online', () => { void profileSyncCoordinator.flush().catch(() => {}); });
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') void profileSyncCoordinator.flush().catch(() => {});
-});
+}
+if (!P27_OFFLINE_TEST) {
+  window.addEventListener('online', () => { void profileSyncCoordinator.flush().catch(() => {}); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void profileSyncCoordinator.flush().catch(() => {});
+  });
+}
 const onlineClient = new OnlineMatchClient({ baseUrl: location.origin, accountTokenProvider: () => accountClient.token });
 let avatarPreview = null;
 function disposeAvatarPreview() {
@@ -233,7 +244,7 @@ const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 async function reserveLocalPlayerIdentity() {
-  if (!localPlayerProfileStore || !localPlayerIdentity || localPlayerIdentity.identityStatus === 'reserved') return;
+  if (P27_OFFLINE_TEST || !localPlayerProfileStore || !localPlayerIdentity || localPlayerIdentity.identityStatus === 'reserved') return;
   try {
     localPlayerIdentity = await localPlayerProfileStore.reserveWithServer();
     await accountClient.resumeCookieSession().catch(() => null);
@@ -245,6 +256,7 @@ async function reserveLocalPlayerIdentity() {
 }
 
 function renderGoogleProtectionCard({ compact = false } = {}) {
+  if (P27_OFFLINE_TEST) return `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">VERSION DE TEST</span><h2>Carrière locale</h2></div><span class="local-tag">HORS LIGNE</span></div><p class="notice">Cette APK de test fonctionne sans compte ni serveur. L’association Google et la sauvegarde cloud sont désactivées dans cette version.</p></section>`;
   const playerId = localPlayerIdentity?.id || 'FRP en attente';
   return `<section class="competition-panel google-protection-card">
     <div class="panel-heading"><div><span class="eyebrow">IDENTITÉ FOOTBALL RP</span><h2>Protéger votre carrière</h2></div><span class="local-tag">LOCAL</span></div>
@@ -581,7 +593,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     renderResultsPage(0);
   } else if (page === 'settings') {
     title.textContent = 'Paramètres'; subtitle.textContent = 'Préparez votre expérience de jeu.';
-    content.innerHTML = `<div class="settings-card"><label>Caméra du match<select id="pref-camera"><option value="player" ${preferences.cameraMode==='player'?'selected':''}>Immersion joueur · adaptée au poste</option><option value="touchline" ${preferences.cameraMode==='touchline'?'selected':''}>Ligne de touche · latérale</option><option value="broadcast" ${preferences.cameraMode==='broadcast'?'selected':''}>Retransmission · oblique</option><option value="close" ${preferences.cameraMode==='close'?'selected':''}>Rapprochée · joueurs plus grands</option><option value="tactical" ${preferences.cameraMode==='tactical'?'selected':''}>Tactique · vue large</option><option value="spectator" ${preferences.cameraMode==='spectator'?'selected':''}>Spectateur · panoramique</option></select></label><label>Zoom caméra · référence 55 %<input id="pref-zoom" type="range" min="0" max="100" value="${preferences.cameraZoom}"></label><label>Affichage des noms<select id="pref-names"><option value="standard" selected>Standard · joueur contrôlé + deux proches</option></select></label><label>Durée du match<select id="pref-duration"><option value="5" ${preferences.duration===5?'selected':''}>5 minutes · 2 × 2 min 30</option><option value="3" ${preferences.duration===3?'selected':''}>3 minutes · 2 × 1 min 30</option></select></label><label>Qualité graphique<select id="pref-quality"><option value="auto" ${preferences.quality==='auto'?'selected':''}>Automatique · recommandé</option><option value="low" ${preferences.quality==='low'?'selected':''}>Basse · appareils modestes</option><option value="medium" ${preferences.quality==='medium'?'selected':''}>Moyenne · recommandée</option><option value="high" ${preferences.quality==='high'?'selected':''}>Haute</option></select></label><button class="primary-cta" data-action="save-settings">ENREGISTRER</button></div><section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PROFIL & SAUVEGARDE</span><h2>Compte et synchronisation</h2></div></div><p class="notice">L'association Google sera facultative et recommandée. Elle permettra de retrouver la carrière sur un autre appareil.</p><button class="small-action" type="button" data-page="account">GÉRER MON PROFIL JOUEUR</button></section><p class="notice">Les réglages graphiques s'appliquent au prochain lancement du match.</p>`;
+    content.innerHTML = `<div class="settings-card"><label>Caméra du match<select id="pref-camera"><option value="player" ${preferences.cameraMode==='player'?'selected':''}>Immersion joueur · adaptée au poste</option><option value="touchline" ${preferences.cameraMode==='touchline'?'selected':''}>Ligne de touche · latérale</option><option value="broadcast" ${preferences.cameraMode==='broadcast'?'selected':''}>Retransmission · oblique</option><option value="close" ${preferences.cameraMode==='close'?'selected':''}>Rapprochée · joueurs plus grands</option><option value="tactical" ${preferences.cameraMode==='tactical'?'selected':''}>Tactique · vue large</option><option value="spectator" ${preferences.cameraMode==='spectator'?'selected':''}>Spectateur · panoramique</option></select></label><label>Zoom caméra · référence 55 %<input id="pref-zoom" type="range" min="0" max="100" value="${preferences.cameraZoom}"></label><label>Affichage des noms<select id="pref-names"><option value="standard" selected>Standard · joueur contrôlé + deux proches</option></select></label><label>Durée du match<select id="pref-duration"><option value="5" ${preferences.duration===5?'selected':''}>5 minutes · 2 × 2 min 30</option><option value="3" ${preferences.duration===3?'selected':''}>3 minutes · 2 × 1 min 30</option></select></label><label>Qualité graphique<select id="pref-quality"><option value="auto" ${preferences.quality==='auto'?'selected':''}>Automatique · recommandé</option><option value="low" ${preferences.quality==='low'?'selected':''}>Basse · appareils modestes</option><option value="medium" ${preferences.quality==='medium'?'selected':''}>Moyenne · recommandée</option><option value="high" ${preferences.quality==='high'?'selected':''}>Haute</option></select></label><button class="primary-cta" data-action="save-settings">ENREGISTRER</button></div><section class="competition-panel p27-cloud-only"><div class="panel-heading"><div><span class="eyebrow">PROFIL & SAUVEGARDE</span><h2>Compte et synchronisation</h2></div></div><p class="notice">L'association Google sera facultative et recommandée. Elle permettra de retrouver la carrière sur un autre appareil.</p><button class="small-action" type="button" data-page="account">GÉRER MON PROFIL JOUEUR</button></section><p class="notice">Les réglages graphiques s'appliquent au prochain lancement du match.</p>`;
   } else if (page === 'account') {
     title.textContent = 'Profil et synchronisation';
     subtitle.textContent = 'Jouez librement, puis associez Google si vous souhaitez protéger votre carrière.';
@@ -590,8 +602,8 @@ ${renderGoogleProtectionCard({ compact: true })}
     content.innerHTML = `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">VOTRE IDENTITÉ FOOTBALL RP</span><h2>${escapeHTML(profile.identity.displayName)}</h2></div><span class="local-tag">PROFIL LOCAL ACTIF</span></div>
       <p class="notice">Identifiant joueur : ${escapeHTML(localId)} · Niveau ${profile.progression.level} · Aucun mot de passe requis.</p>
       <p class="notice">Vous pouvez jouer, créer votre footballeur et faire progresser votre carrière sans compte Google. L'association est un choix, pas une condition d'accès au jeu.</p>
-    </section>${renderGoogleProtectionCard()}<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">À SAVOIR</span><h2>Avant d'associer Google</h2></div></div><p class="notice">Une fois la fonction disponible, Google protégera ce profil existant : aucune nouvelle carrière ne sera créée et la synchronisation se fera automatiquement lorsque la connexion Internet sera disponible.</p><p class="notice">Tant que Google n'est pas associé, les données restent sur cet appareil. Un formatage ou une suppression des données de l'application peut les faire perdre.</p></section>
-      <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">SAUVEGARDE CLOUD</span><h2>Vérifier une récupération</h2></div></div>
+    </section>${renderGoogleProtectionCard()}<section class="competition-panel p27-cloud-only"><div class="panel-heading"><div><span class="eyebrow">À SAVOIR</span><h2>Avant d'associer Google</h2></div></div><p class="notice">Une fois la fonction disponible, Google protégera ce profil existant : aucune nouvelle carrière ne sera créée et la synchronisation se fera automatiquement lorsque la connexion Internet sera disponible.</p><p class="notice">Tant que Google n'est pas associé, les données restent sur cet appareil. Un formatage ou une suppression des données de l'application peut les faire perdre.</p></section>
+      <section class="competition-panel p27-cloud-only"><div class="panel-heading"><div><span class="eyebrow">SAUVEGARDE CLOUD</span><h2>Vérifier une récupération</h2></div></div>
       <p class="notice">Cette vérification compare l'identité du compte, la sauvegarde serveur et les données locales. Elle ne restaure et ne remplace aucune donnée.</p>
       <button class="small-action" data-action="account-recovery-preview" ${accountClient.hasSession ? '' : 'disabled'}>ANALYSER MA SAUVEGARDE</button>
       <button class="small-action" data-action="account-recovery-restore" disabled>RESTAURER MA CARRIÈRE</button>
