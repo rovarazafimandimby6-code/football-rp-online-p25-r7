@@ -294,7 +294,7 @@ test('P27 session Google : les lectures et écritures de compte acceptent la ses
       if (url.endsWith('/api/career')) return { ok: true, status: 200, json: async () => ({ career: { totals: {}, matches: [] } }) };
       if (url.endsWith('/api/account/snapshot')) { const snapshot = { schemaVersion: 1 }; return { ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed' }) }; }
       if (url.endsWith('/api/profile')) return { ok: true, status: 200, json: async () => ({ profile: {} }) };
-      return { ok: true, status: 200, json: async () => ({ progression: {} }) };
+      return { ok: true, status: 200, json: async () => ({ progression: { level: 1, experience: 0, coins: 0, trainingPoints: 0, attributes: { pace: 50, shooting: 50, passing: 50, defense: 50, stamina: 50, control: 50 }, processedMatchIds: [] } }) };
     }
   });
   await client.resumeCookieSession();
