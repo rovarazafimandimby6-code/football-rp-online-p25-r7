@@ -9,6 +9,14 @@ P27 distingue deux niveaux :
 
 L'association Google est recommandée, jamais obligatoire. Ne jamais présenter le profil local comme sauvegardé dans le cloud.
 
+## Identifiant joueur FRP
+
+- À la création locale du profil, le jeu génère un identifiant lisible au format `FRP-675757` (préfixe `FRP-` suivi de six chiffres).
+- Cet identifiant est indépendant du nom affiché, du club et du compte Google.
+- Il est conservé dans les données locales et présenté comme identifiant du joueur, pas comme un mot de passe ni un secret d'authentification.
+- La génération locale ne peut pas garantir à elle seule l'unicité mondiale. Avant d'exposer cet identifiant comme définitivement réservé sur toute la plateforme, le serveur devra effectuer une réservation atomique dans un registre central ; les collisions devront être rejetées et un nouvel identifiant attribué sans toucher aux données de carrière.
+- La réservation serveur et la liaison de cet identifiant à l'identité cloud font partie des travaux restants.
+
 ## Parcours sans Google
 - Le joueur choisit « Jouer » ou « Créer mon joueur ».
 - Il choisit son nom de footballeur et commence immédiatement.
@@ -59,7 +67,7 @@ L'association Google est recommandée, jamais obligatoire. Ne jamais présenter 
 - Les jetons Google/P27 ne sont jamais journalisés.
 
 ## État technique et limites
-Le dépôt contient des comptes serveur historiques avec mot de passe et sessions. Ils ne doivent pas être présentés comme le parcours cible du joueur. Le module LocalPlayerProfile ajoute une fondation de profil local sans mot de passe. L'interface du menu présente maintenant l'état du profil local et une carte de protection Google dans « Mon footballeur », « Profil et synchronisation » et les paramètres. Le bouton Google reste volontairement désactivé tant que le flux OAuth réel n'est pas intégré ; aucun écran de mot de passe n'est proposé dans le parcours visible du compte joueur.
+Le dépôt contient des comptes serveur historiques avec mot de passe et sessions. Ils ne doivent pas être présentés comme le parcours cible du joueur. Le module LocalPlayerProfile ajoute une fondation de profil local sans mot de passe et génère désormais un identifiant lisible au format FRP- suivi de six chiffres. Cet identifiant est local tant qu'un registre serveur ne l'a pas réservé. L'interface du menu présente maintenant l'état du profil local et une carte de protection Google dans « Mon footballeur », « Profil et synchronisation » et les paramètres. Le bouton Google reste volontairement désactivé tant que le flux OAuth réel n'est pas intégré ; aucun écran de mot de passe n'est proposé dans le parcours visible du compte joueur.
 
 Les stores serveur existent pour profil, progression, carrière, transferts, effectifs et sauvegardes locales périodiques. Cela ne prouve pas une sauvegarde cloud hors site, une authentification Google réelle, ni une synchronisation Android réelle.
 

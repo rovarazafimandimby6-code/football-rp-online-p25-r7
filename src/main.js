@@ -197,6 +197,19 @@ try {
 const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58, colors: club.colors });
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
+function renderGoogleProtectionCard({ compact = false } = {}) {
+  const playerId = localPlayerIdentity?.id || 'FRP en attente';
+  return `<section class="competition-panel google-protection-card">
+    <div class="panel-heading"><div><span class="eyebrow">IDENTITÉ FOOTBALL RP</span><h2>Protéger votre carrière</h2></div><span class="local-tag">LOCAL</span></div>
+    <p class="notice">Identifiant joueur : <strong>${escapeHTML(playerId)}</strong></p>
+    <p class="notice">${compact
+      ? "Votre carrière fonctionne sans compte Google. Associez Google plus tard pour la retrouver sur un autre appareil."
+      : "L'association Google est facultative. Elle protégera ce profil et cette carrière existants, sans créer un nouveau joueur."}</p>
+    <button class="small-action" type="button" disabled aria-disabled="true">CONNECTER AVEC GOOGLE · BIENTÔT DISPONIBLE</button>
+    <p class="notice">La connexion Google réelle et la synchronisation cloud ne sont pas encore activées.</p>
+  </section>`;
+}
+
 
 async function loadPlayerCareer(player) {
   const target = document.getElementById('player-career-stats');
@@ -514,7 +527,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     const profile = profileStore.profile;
     const localId = localPlayerIdentity?.id || 'Profil local';
     content.innerHTML = `<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">VOTRE IDENTITÉ FOOTBALL RP</span><h2>${escapeHTML(profile.identity.displayName)}</h2></div><span class="local-tag">PROFIL LOCAL ACTIF</span></div>
-      <p class="notice">Identifiant local : ${escapeHTML(localId)} · Niveau ${profile.progression.level} · Aucun mot de passe requis.</p>
+      <p class="notice">Identifiant joueur : ${escapeHTML(localId)} · Niveau ${profile.progression.level} · Aucun mot de passe requis.</p>
       <p class="notice">Vous pouvez jouer, créer votre footballeur et faire progresser votre carrière sans compte Google. L'association est un choix, pas une condition d'accès au jeu.</p>
     </section>${renderGoogleProtectionCard()}<section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">À SAVOIR</span><h2>Avant d'associer Google</h2></div></div><p class="notice">Une fois la fonction disponible, Google protégera ce profil existant : aucune nouvelle carrière ne sera créée et la synchronisation se fera automatiquement lorsque la connexion Internet sera disponible.</p><p class="notice">Tant que Google n'est pas associé, les données restent sur cet appareil. Un formatage ou une suppression des données de l'application peut les faire perdre.</p></section>`;
   } else if (page === 'mercato') {
