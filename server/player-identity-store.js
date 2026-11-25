@@ -23,7 +23,7 @@ export class JsonPlayerIdentityStore {
   if(!validUuid(localProfileKey))throw new Error('INVALID_LOCAL_PROFILE_KEY');if(!validProofSecret(localProofSecret))throw new Error('INVALID_LOCAL_PROFILE_PROOF');
   for(const row of this.state.identities){const credential=credentials(row).find(item=>item.localProfileKey===localProfileKey);if(!credential)continue;
    const supplied=proofDigest(localProofSecret);if(credential.proofHash&&!sameDigest(credential.proofHash,supplied))throw new Error('LOCAL_PROFILE_PROOF_INVALID');
-   if(!credential.proofHash){const previous=this.state;this.state=structuredClone(previous);try{const target=this.state.identities.find(item=>item.accountId===row.accountId);const item=credentials(target).find(x=>x.localProfileKey===localProfileKey);item.proofHash=supplied;this.persist();}catch(error){this.state=previous;throw error;}}
+   if(!credential.proofHash){const previous=this.state;this.state=structuredClone(previous);try{const target=this.state.identities.find(item=>item.accountId===row.accountId);if(target.localProfileKey===localProfileKey)target.proofHash=supplied;else{const item=(target.localProfiles||[]).find(x=>x.localProfileKey===localProfileKey);if(!item)throw new Error('LOCAL_PROFILE_NOT_FOUND');item.proofHash=supplied;}this.persist();}catch(error){this.state=previous;throw error;}}
    return{accountId:row.accountId,playerId:row.playerId,createdAt:credential.createdAt,alreadyReserved:true};
   }
   const previous=this.state;this.state=structuredClone(previous);
