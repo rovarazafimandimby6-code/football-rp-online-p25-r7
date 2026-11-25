@@ -99,3 +99,8 @@ Cette réduction du nombre d'écritures évite de réécrire le fichier complet 
 Le serveur Node limite la taille des en-têtes HTTP à 16 Kio, applique un délai de réception des en-têtes de 15 secondes, un délai de réception complet de requête de 30 secondes, une conservation keep-alive de 5 secondes et une limite de 1 000 requêtes par socket. Les corps de requête JSON restent limités à 8 Kio ; un corps trop volumineux renvoie HTTP 413 et un JSON invalide renvoie HTTP 400.
 
 Lors du déploiement, aligner les timeouts du proxy inverse et de la plateforme avec ces limites. Ces réglages réduisent l'exposition aux connexions lentes et aux requêtes excessives, mais ne constituent pas à eux seuls une protection contre un déni de service distribué.
+## 8. Simulation concurrente et travail de l'IA
+
+Lors de chaque mise à jour IA d'un salon, le serveur forme une liste des joueurs actifs et deux groupes d'équipe ; le joueur le plus proche du ballon est déterminé une fois par équipe et réutilisé par les bots. Cela évite les filtres complets et le tri de proximité répétés pour chaque bot. Les autres décisions tactiques (pression, appel de passe, choix de cible) restent conservées.
+
+Le test de charge déterministe couvre 30 salons, 14 joueurs chacun, sur 20 ticks. Il vérifie que les séquences progressent, que les effectifs ne disparaissent pas et que les positions restent numériques. Ce n'est pas un benchmark réseau/CPU : la capacité réelle, les latences p95/p99 et la mémoire doivent être mesurées sur l'hébergement cible.
