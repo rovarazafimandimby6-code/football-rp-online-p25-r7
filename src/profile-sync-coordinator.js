@@ -27,6 +27,9 @@ export class ProfileSyncCoordinator {
     if (!identity?.accountId || !identity?.id) {
       return { uploaded: 0, remaining: status.pending, blocked: 0, skipped: true };
     }
+    if (this.accountClient.account?.id !== identity.accountId || this.accountClient.account?.playerId !== identity.id) {
+      return { uploaded: 0, remaining: status.pending, blocked: status.pending, skipped: true, reason: 'ACCOUNT_LOCAL_IDENTITY_MISMATCH' };
+    }
     return this.accountClient.syncPendingProfileSnapshots(this.outbox, { localIdentity: identity });
   }
 }

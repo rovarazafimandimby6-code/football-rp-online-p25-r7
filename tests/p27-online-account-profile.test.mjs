@@ -264,7 +264,7 @@ test('P27 synchronisation automatique : ne transmet jamais une file au compte Go
     getLocalIdentity: () => ({ id: 'FRP-123456', accountId: 'local-account' })
   });
   coordinator.enqueueCurrentProfile();
-  await assert.rejects(() => coordinator.flush(), /ACCOUNT_LOCAL_IDENTITY_MISMATCH/);
+  assert.deepEqual(await coordinator.flush(), { uploaded: 0, remaining: 1, blocked: 1, skipped: true, reason: 'ACCOUNT_LOCAL_IDENTITY_MISMATCH' });
   assert.equal(requests, 0);
   assert.equal(outbox.status().pending, 1);
 });

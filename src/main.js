@@ -1081,6 +1081,7 @@ menu.addEventListener('submit', event => {
       if (!localPlayerIdentity) throw new Error('LOCAL_PLAYER_ID_UNAVAILABLE');
       hasSavedPlayerProfile = true;
       profileSyncCoordinator.enqueueCurrentProfile();
+      void profileSyncCoordinator.flush().catch(() => {});
       void reserveLocalPlayerIdentity();
       syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
       renderPage('home');
