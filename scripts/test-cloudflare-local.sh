@@ -64,10 +64,16 @@ assert.equal(second.alreadyReserved, true);
 NODE
 echo "checkpoint: reservation JSON validated"
 
-ACCOUNT_TOKEN="$(sed -n 's/^set-cookie: p27_account_session=\\([^;]*\\).*/\\1/ip' "$SECOND_HEADERS" | tr -d '\\r')"
-test -n "$ACCOUNT_TOKEN"
+ACCOUNT_TOKEN="$(awk 'tolower($1) == "set-cookie:" && $2 ~ /^p27_account_session=/ { sub(/^[^=]*=/, ""); sub(/;.*/, ""); print; exit }' "$SECOND_HEADERS")"
+if [[ -z "$ACCOUNT_TOKEN" ]]; then
+  echo "Cloudflare local D1: account session cookie header missing." >&2
+  sed -n '/^[Ss]et-[Cc]ookie:/s/=.*/=<redacted>/p' "$SECOND_HEADERS" >&2
+  exit 1
+fi
 echo "checkpoint: session cookie extracted"
-grep -Eiq '^set-cookie: p27_account_session=.*HttpOnly.*Secure.*SameSite=Lax' "$SECOND_HEADERS"
+grep -Eiq '^set-cookie: p27_account_session=.*HttpOnly' "$SECOND_HEADERS"
+grep -Eiq '^set-cookie: p27_account_session=.*Secure' "$SECOND_HEADERS"
+grep -Eiq '^set-cookie: p27_account_session=.*SameSite=Lax' "$SECOND_HEADERS"
 ME="$(curl --silent --show-error --fail \
   -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
 node --input-type=module - "$ME" "$FIRST" <<'NODE'
