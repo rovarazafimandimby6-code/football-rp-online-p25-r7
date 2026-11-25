@@ -68,6 +68,22 @@ export class D1PasswordlessAccountRepository {
     return { account: publicAccount(account), token, expiresAt: new Date(expiresAt).toISOString() };
   }
 
+  async hashSessionToken(token) {
+    if (typeof token !== "string" || token.length < 40 || token.length > 64) {
+      throw new Error("INVALID_SESSION_TOKEN");
+    }
+    return sha256(token);
+  }
+
+  async isSessionHashActive(tokenHash, accountId) {
+    if (typeof tokenHash !== "string" || !/^[a-f0-9]{64}$/i.test(tokenHash) ||
+        typeof accountId !== "string" || !UUID_RE.test(accountId)) return false;
+    const row = await this.db.prepare(
+      "SELECT token_hash FROM p27_account_sessions WHERE token_hash = ? AND account_id = ? AND expires_at > ?"
+    ).bind(tokenHash, accountId, this.now()).first();
+    return Boolean(row);
+  }
+
   async resolve(token) {
     if (typeof token !== "string" || token.length < 40 || token.length > 64) return null;
     const tokenHash = await sha256(token);

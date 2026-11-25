@@ -6,6 +6,7 @@ SQL migrations are applied locally in CI with Wrangler against its local SQLite-
 
 - 0001_identity.sql defines the first identity foundation.
 - 0002_rate_limits.sql adds D1-backed request throttling for local-player identity endpoints.
+- 0003_google_oidc_session_binding.sql binds an in-flight Google link to the initiating P27 session using only its SHA-256 token hash.
 - Player identity reservations are separate from authenticated accounts: a local profile can reserve its FRP identity before Google association.
 - Local profile credentials store only proof hashes, never raw proof secrets.
 - Google subject and account ownership are unique in the database.

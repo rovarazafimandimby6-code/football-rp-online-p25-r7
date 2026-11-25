@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import worker from "../src/cloudflare/worker.js";
 import { D1GoogleOidcTransactionRepository } from "../src/cloudflare/google-oidc-transaction-repository.js";
+import { D1PasswordlessAccountRepository } from "../src/cloudflare/passwordless-account-repository.js";
+import { D1GoogleIdentityRepository } from "../src/cloudflare/google-identity-repository.js";
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
@@ -20,21 +22,28 @@ class TransactionD1 {
       values: [],
       bind(...values) { this.values = values; return this; },
       async first() {
+        db.lastQuery = { sql, values: this.values };
         if (sql.includes("RETURNING attempt_count")) return { attempt_count: 1 };
         if (sql.includes("FROM p27_account_sessions")) return db.sessionRow || null;
+        if (sql.includes("FROM p27_google_oidc_transactions")) return db.rows.get(this.values[0]) || null;
         return null;
       },
       async run() {
         const v = this.values;
         if (sql.startsWith("DELETE FROM p27_rate_limit_buckets")) return { meta: { changes: 0 } };
         if (sql.startsWith("DELETE FROM p27_google_oidc_transactions")) {
+          if (sql.includes("state_hash = ?")) {
+            const existed = db.rows.delete(v[0]);
+            return { meta: { changes: existed ? 1 : 0 } };
+          }
           db.prunedTransactions++;
           return { meta: { changes: 0 } };
         }
         if (sql.startsWith("INSERT INTO p27_google_oidc_transactions")) {
           db.rows.set(v[0], {
             state_hash: v[0], nonce: v[1], code_verifier: v[2],
-            binding_hash: v[3], purpose: v[4], account_id: v[5], expires_at: v[6],
+            binding_hash: v[3], purpose: v[4], account_id: v[5],
+            session_token_hash: v[6], expires_at: v[7],
           });
           return { meta: { changes: 1 } };
         }
@@ -136,4 +145,87 @@ test("Google link start requires proof of the existing local player profile", as
   assert.equal(response.status, 401);
   assert.equal((await response.json()).error, "LOCAL_PROFILE_PROOF_INVALID");
   assert.equal(settings.P27_DB.rows.size, 0);
+});
+
+test("Google link OIDC transaction stores only the originating session token hash", async () => {
+  const db = new TransactionD1();
+  const repository = new D1GoogleOidcTransactionRepository(db);
+  const sessionTokenHash = "a".repeat(64);
+  const created = await repository.create({
+    accountId: "123e4567-e89b-42d3-a456-426614174000",
+    sessionBinding: binding,
+    sessionTokenHash,
+    purpose: "link",
+  });
+  const row = [...db.rows.values()][0];
+  assert.equal(row.session_token_hash, sessionTokenHash);
+  assert.equal(row.session_token_hash.includes(binding), false);
+  const consumed = await repository.consume({ state: created.state, sessionBinding: binding });
+  assert.equal(consumed.sessionTokenHash, sessionTokenHash);
+  assert.equal(db.rows.size, 0);
+});
+
+test("Google link OIDC transaction refuses missing session hash and login session binding", async () => {
+  const repository = new D1GoogleOidcTransactionRepository(new TransactionD1());
+  await assert.rejects(
+    repository.create({
+      accountId: "123e4567-e89b-42d3-a456-426614174000",
+      sessionBinding: binding,
+      purpose: "link",
+    }),
+    /INVALID_OIDC_SESSION_TOKEN_HASH/,
+  );
+  await assert.rejects(
+    repository.create({ sessionBinding: binding, sessionTokenHash: "a".repeat(64), purpose: "login" }),
+    /OIDC_LOGIN_MUST_NOT_SPECIFY_ACCOUNT/,
+  );
+});
+
+test("passwordless repository hashes bearer tokens and checks the exact live session", async () => {
+  const db = new TransactionD1();
+  const accountId = "123e4567-e89b-42d3-a456-426614174000";
+  const fixedNow = 1_800_000_000_000;
+  const repository = new D1PasswordlessAccountRepository(db, { now: () => fixedNow });
+  const token = "p27-session-token-value-that-is-not-stored-raw";
+  const tokenHash = await repository.hashSessionToken(token);
+  assert.match(tokenHash, /^[a-f0-9]{64}$/);
+  assert.notEqual(tokenHash, token);
+  db.sessionRow = { token_hash: tokenHash };
+  assert.equal(await repository.isSessionHashActive(tokenHash, accountId), true);
+  assert.match(db.lastQuery.sql, /token_hash = \? AND account_id = \? AND expires_at > \?/);
+  assert.deepEqual(db.lastQuery.values, [tokenHash, accountId, fixedNow]);
+  db.sessionRow = null;
+  assert.equal(await repository.isSessionHashActive(tokenHash, accountId), false);
+});
+
+test("Google identity link is atomically conditioned on the initiating live P27 session", async () => {
+  const accountId = "123e4567-e89b-42d3-a456-426614174000";
+  const sessionTokenHash = "b".repeat(64);
+  let sessionActive = false;
+  const db = {
+    prepare(sql) {
+      return {
+        sql, values: [],
+        bind(...values) { this.values = values; return this; },
+      };
+    },
+    async batch(statements) {
+      assert.match(statements[0].sql, /INSERT INTO p27_google_identity_links[\s\S]*SELECT[\s\S]*EXISTS/);
+      assert.match(statements[0].sql, /p27_account_sessions WHERE token_hash = \?/);
+      assert.equal(statements[0].values[3], sessionTokenHash);
+      assert.equal(statements[0].values[4], accountId);
+      return sessionActive
+        ? [{ meta: { changes: 1 } }, { meta: { changes: 1 } }]
+        : [{ meta: { changes: 0 } }, { meta: { changes: 0 } }];
+    },
+  };
+  const repository = new D1GoogleIdentityRepository(db);
+  const args = {
+    accountId, googleSubject: "google-subject-12345678",
+    googleIdentityVerified: true, sessionTokenHash,
+  };
+  await assert.rejects(repository.linkInitialForActiveSession(args), /SESSION_EXPIRED/);
+  sessionActive = true;
+  const linked = await repository.linkInitialForActiveSession(args);
+  assert.equal(linked.accountId, accountId);
 });

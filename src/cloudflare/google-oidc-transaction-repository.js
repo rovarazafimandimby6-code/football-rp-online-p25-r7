@@ -27,10 +27,11 @@ export class D1GoogleOidcTransactionRepository {
     this.now = now;
     this.ttlMs = Math.max(60_000, Math.min(MAX_TTL_MS, Number(ttlMs) || DEFAULT_TTL_MS));
   }
-  async create({ accountId, sessionBinding, purpose = accountId ? "link" : "login" } = {}) {
+  async create({ accountId, sessionBinding, sessionTokenHash, purpose = accountId ? "link" : "login" } = {}) {
     if (!PURPOSES.has(purpose)) throw new Error("INVALID_OIDC_PURPOSE");
     if (purpose === "link" && (typeof accountId !== "string" || !UUID_RE.test(accountId))) throw new Error("INVALID_OIDC_ACCOUNT_ID");
-    if (purpose === "login" && accountId !== undefined) throw new Error("OIDC_LOGIN_MUST_NOT_SPECIFY_ACCOUNT");
+    if (purpose === "login" && (accountId !== undefined || sessionTokenHash !== undefined)) throw new Error("OIDC_LOGIN_MUST_NOT_SPECIFY_ACCOUNT");
+    if (purpose === "link" && (typeof sessionTokenHash !== "string" || !/^[a-f0-9]{64}$/i.test(sessionTokenHash))) throw new Error("INVALID_OIDC_SESSION_TOKEN_HASH");
     if (typeof sessionBinding !== "string" || sessionBinding.length < 24 || sessionBinding.length > 256) throw new Error("INVALID_OIDC_SESSION_BINDING");
 
     const state = randomValue();
@@ -42,8 +43,8 @@ export class D1GoogleOidcTransactionRepository {
     const expiresAt = this.now() + this.ttlMs;
     await this.db.prepare(
       "INSERT INTO p27_google_oidc_transactions " +
-      "(state_hash, nonce, code_verifier, binding_hash, purpose, account_id, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).bind(stateHash, nonce, codeVerifier, bindingHash, purpose, accountId ?? null, expiresAt).run();
+      "(state_hash, nonce, code_verifier, binding_hash, purpose, account_id, session_token_hash, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).bind(stateHash, nonce, codeVerifier, bindingHash, purpose, accountId ?? null, sessionTokenHash ?? null, expiresAt).run();
     return {
       state, nonce, codeVerifier, codeChallenge, codeChallengeMethod: "S256",
       expiresAt: new Date(expiresAt).toISOString(),
@@ -55,11 +56,14 @@ export class D1GoogleOidcTransactionRepository {
     const stateHash = await sha256Hex(state);
     const bindingHash = await sha256Hex(sessionBinding);
     const row = await this.db.prepare(
-      "SELECT state_hash, nonce, code_verifier, binding_hash, purpose, account_id, expires_at FROM p27_google_oidc_transactions WHERE state_hash = ?"
+      "SELECT state_hash, nonce, code_verifier, binding_hash, purpose, account_id, session_token_hash, expires_at FROM p27_google_oidc_transactions WHERE state_hash = ?"
     ).bind(stateHash).first();
     if (!row || row.expires_at <= this.now() || row.binding_hash !== bindingHash) return null;
-    if (!PURPOSES.has(row.purpose) || (row.purpose === "link" && !UUID_RE.test(row.account_id || "")) ||
-        (row.purpose === "login" && row.account_id !== null)) throw new Error("GOOGLE_OIDC_TRANSACTION_CORRUPT");
+    if (!PURPOSES.has(row.purpose) ||
+        (row.purpose === "link" && (!UUID_RE.test(row.account_id || "") || !/^[a-f0-9]{64}$/i.test(row.session_token_hash || ""))) ||
+        (row.purpose === "login" && (row.account_id !== null || row.session_token_hash !== null))) {
+      throw new Error("GOOGLE_OIDC_TRANSACTION_CORRUPT");
+    }
     const deleted = await this.db.prepare(
       "DELETE FROM p27_google_oidc_transactions WHERE state_hash = ? AND binding_hash = ? AND expires_at > ?"
     ).bind(stateHash, bindingHash, this.now()).run();
@@ -67,6 +71,7 @@ export class D1GoogleOidcTransactionRepository {
     return {
       nonce: row.nonce, codeVerifier: row.code_verifier, purpose: row.purpose,
       ...(row.account_id ? { accountId: row.account_id } : {}),
+      ...(row.session_token_hash ? { sessionTokenHash: row.session_token_hash } : {}),
       expiresAt: new Date(row.expires_at).toISOString(),
     };
   }

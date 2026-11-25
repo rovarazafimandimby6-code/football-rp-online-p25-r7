@@ -55,6 +55,31 @@ export class D1GoogleIdentityRepository {
     return { accountId, linkedAt };
   }
 
+  async linkInitialForActiveSession({
+    accountId, googleSubject, googleIdentityVerified = false, sessionTokenHash,
+  } = {}) {
+    validateIdentity({ accountId, googleSubject, googleIdentityVerified });
+    if (typeof sessionTokenHash !== "string" || !/^[a-f0-9]{64}$/i.test(sessionTokenHash)) {
+      throw new Error("INVALID_SESSION_TOKEN_HASH");
+    }
+    const linkedAt = new Date(this.now()).toISOString();
+    const results = await this.db.batch([
+      this.db.prepare(
+        "INSERT INTO p27_google_identity_links (account_id, google_subject, linked_at) " +
+        "SELECT ?, ?, ? WHERE EXISTS (" +
+        "SELECT 1 FROM p27_account_sessions WHERE token_hash = ? AND account_id = ? AND expires_at > ?)"
+      ).bind(accountId, googleSubject, linkedAt, sessionTokenHash, accountId, this.now()),
+      this.db.prepare(
+        "INSERT INTO p27_google_identity_audit (id, account_id, event_type, previous_subject, new_subject, occurred_at) " +
+        "SELECT ?, ?, 'google_linked', NULL, NULL, ? WHERE EXISTS (" +
+        "SELECT 1 FROM p27_google_identity_links WHERE account_id = ? AND google_subject = ? AND linked_at = ?)"
+      ).bind(auditId(), accountId, linkedAt, accountId, googleSubject, linkedAt),
+    ]);
+    if (Number(results?.[0]?.meta?.changes) !== 1) throw new Error("SESSION_EXPIRED");
+    if (Number(results?.[1]?.meta?.changes) !== 1) throw new Error("GOOGLE_IDENTITY_LINK_AUDIT_FAILED");
+    return { accountId, linkedAt };
+  }
+
   async transfer({
     accountId, currentGoogleSubject, newGoogleSubject,
     currentIdentityVerified = false, newIdentityVerified = false, confirmed = false,

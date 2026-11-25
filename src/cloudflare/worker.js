@@ -97,7 +97,8 @@ function errorResponse(error) {
     code === "GOOGLE_OIDC_CODE_INVALID" ||
     code === "GOOGLE_OIDC_REDIRECT_INVALID" ? 400 :
     code === "LOCAL_PROFILE_PROOF_INVALID" ||
-    code === "GOOGLE_IDENTITY_NOT_VERIFIED" ? 401 :
+    code === "GOOGLE_IDENTITY_NOT_VERIFIED" ||
+    code === "SESSION_EXPIRED" ? 401 :
     code === "PLAYER_IDENTITY_RATE_LIMITED" ? 429 :
     code === "LOCAL_PROFILE_REPLICA_LIMIT" ||
     code === "GOOGLE_IDENTITY_ALREADY_LINKED" ? 409 :
@@ -126,10 +127,13 @@ async function startGoogleAuthorization(request, env, purpose) {
   }
   const config = googleConfig(env);
   let account = null;
+  let sessionTokenHash = null;
   if (purpose === "link") {
-    const token = (request.headers.get("authorization") || "").replace(/^Bearer\\s+/i, "");
-    account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(token);
+    const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    const accountRepository = new D1PasswordlessAccountRepository(env.P27_DB);
+    account = await accountRepository.resolve(token);
     if (!account) return json(401, { error: "SESSION_EXPIRED" });
+    sessionTokenHash = await accountRepository.hashSessionToken(token);
     const body = await readJson(request);
     const provenIdentity = await new D1PlayerIdentityRepository(env.P27_DB).verifyLocalProof({
       localProfileKey: body.localProfileKey,
@@ -149,7 +153,7 @@ async function startGoogleAuthorization(request, env, purpose) {
   const transactions = new D1GoogleOidcTransactionRepository(env.P27_DB);
   await transactions.pruneExpired();
   const transaction = await transactions.create({
-    ...(account ? { accountId: account.id } : {}),
+    ...(account ? { accountId: account.id, sessionTokenHash } : {}),
     sessionBinding: binding,
     purpose,
   });
@@ -204,6 +208,11 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
   if (!transaction || !["link", "login"].includes(transaction.purpose)) {
     return json(400, { error: "GOOGLE_OIDC_TRANSACTION_INVALID" });
   }
+  const accounts = new D1PasswordlessAccountRepository(env.P27_DB);
+  if (transaction.purpose === "link" &&
+      !await accounts.isSessionHashActive(transaction.sessionTokenHash, transaction.accountId)) {
+    return json(401, { error: "SESSION_EXPIRED" });
+  }
 
   let tokenResponse;
   try {
@@ -240,8 +249,7 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
   });
   const identities = new D1GoogleIdentityRepository(env.P27_DB);
   const playerIdentities = new D1PlayerIdentityRepository(env.P27_DB);
-  const accounts = new D1PasswordlessAccountRepository(env.P27_DB);
-
+  
   if (transaction.purpose === "link") {
     const identity = await playerIdentities.getByAccountId(transaction.accountId);
     if (!identity) return json(404, { error: "PLAYER_IDENTITY_NOT_FOUND" });
@@ -249,10 +257,11 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
     const existingAccount = await identities.getByAccountId(transaction.accountId);
     if (existingGoogle || existingAccount) return json(409, { error: "GOOGLE_IDENTITY_ALREADY_LINKED" });
     try {
-      await identities.linkInitial({
+      await identities.linkInitialForActiveSession({
         accountId: transaction.accountId,
         googleSubject: verified.googleSubject,
         googleIdentityVerified: true,
+        sessionTokenHash: transaction.sessionTokenHash,
       });
     } catch (error) {
       if (String(error?.message || "").includes("UNIQUE")) {
