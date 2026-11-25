@@ -948,3 +948,53 @@ body:has(#main-menu){overflow:hidden}
   #main-menu .settings-card label{gap:5px}
   #main-menu .settings-card select{min-height:36px}
 }
+
+/* P27 REBIRTH — player editor and training panels.
+   Presentation only; all profile and training actions remain unchanged. */
+#main-menu .profile-editor{
+  min-width:0;padding:clamp(14px,2vw,22px);
+}
+#main-menu .profile-editor h3{
+  margin:0 0 14px;color:#f2f7ff;font-size:18px;font-weight:850;
+}
+#main-menu .profile-editor>p{
+  color:#aebed2;line-height:1.55;
+}
+#main-menu .profile-editor .editor-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;
+}
+#main-menu .profile-editor .editor-grid label,
+#main-menu .training-controls label{
+  display:flex;flex-direction:column;gap:7px;min-width:0;
+  color:#c2d1e4;font-size:12px;font-weight:750;
+}
+#main-menu .profile-editor .editor-grid input,
+#main-menu .profile-editor .editor-grid select,
+#main-menu .training-controls select{
+  width:100%;min-width:0;box-sizing:border-box;min-height:42px;
+  padding:0 11px;border:1px solid rgba(139,183,231,.24);border-radius:7px;
+  background:#0b1421;color:#f2f6ff;font-size:13px;
+}
+#main-menu .profile-editor .editor-grid input:focus-visible,
+#main-menu .profile-editor .editor-grid select:focus-visible,
+#main-menu .training-controls select:focus-visible{
+  outline:2px solid #78baff;outline-offset:2px;
+}
+#main-menu .profile-editor>button.primary-cta{width:100%;min-height:46px}
+#main-menu .training-controls{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
+  align-items:end;margin-top:14px;
+}
+#main-menu .training-controls button{grid-column:1/-1;min-height:44px}
+#main-menu .profile-editor .notice{font-size:11px;line-height:1.5}
+@media(max-width:680px){
+  #main-menu .profile-editor .editor-grid{grid-template-columns:1fr}
+  #main-menu .training-controls{grid-template-columns:1fr}
+  #main-menu .training-controls button{grid-column:auto}
+}
+@media(max-height:520px) and (orientation:landscape){
+  #main-menu .profile-editor{padding:12px}
+  #main-menu .profile-editor .editor-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  #main-menu .training-controls{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  #main-menu .training-controls button{grid-column:1/-1}
+}
