@@ -47,7 +47,7 @@ class FakeD1 {
           return { meta: { changes: 1 } };
         }
         if (sql.startsWith("INSERT INTO p27_google_identity_audit") && sql.includes("'google_transferred'")) {
-          const row = db.links.find(item => item.account_id === v[6] && item.google_subject === v[7] && item.linked_at === v[8]);
+          const row = db.links.find(item => item.account_id === v[5] && item.google_subject === v[6] && item.linked_at === v[7]);
           if (row) db.audit.push({ id: v[0], account_id: v[1], event_type: "google_transferred", previous_subject: v[2], new_subject: v[3], occurred_at: v[4] });
           return { meta: { changes: row ? 1 : 0 } };
         }
