@@ -435,7 +435,7 @@ test('P27 synchronisation automatique : conserve les changements hors ligne puis
   assert.equal(calls[1].options.method, 'PUT');
   assert.equal(JSON.parse(calls[1].options.body).expectedRevision, 0);
   assert.equal(calls[1].options.credentials, 'same-origin');
-  assert.equal(JSON.parse(calls[0].options.body).profile.progression, undefined);
+  assert.equal(JSON.parse(calls[1].options.body).profile.progression, undefined);
 });
 
 test('P27 synchronisation automatique : ne transmet jamais une file au compte Google différent', async () => {
