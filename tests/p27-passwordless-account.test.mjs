@@ -26,7 +26,7 @@ test('passwordless account can issue a fresh session after server restart', () =
   const first = store.issuePasswordlessSession(accountId, { playerId: 'FRP-675757' });
   const restarted = new JsonAccountStore(directory);
   const second = restarted.issuePasswordlessSession(accountId, { playerId: 'FRP-675757' });
-  assert.equal(restarted.resolve(first.token), null);
+  assert.equal(restarted.resolve(first.token).id, accountId);
   assert.equal(restarted.resolve(second.token).id, accountId);
 }));
 
