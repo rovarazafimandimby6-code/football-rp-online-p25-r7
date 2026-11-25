@@ -236,6 +236,7 @@ async function reserveLocalPlayerIdentity() {
   if (!localPlayerProfileStore || !localPlayerIdentity || localPlayerIdentity.identityStatus === 'reserved') return;
   try {
     localPlayerIdentity = await localPlayerProfileStore.reserveWithServer();
+    await accountClient.resumeCookieSession().catch(() => null);
     document.querySelectorAll('[data-player-id]').forEach(node => { node.textContent = localPlayerIdentity.id; });
     void profileSyncCoordinator?.flush().catch(() => {});
   } catch (_) {
@@ -1066,7 +1067,7 @@ menu.addEventListener('click', event => {
         else {
           const identity = localPlayerProfileStore && localPlayerProfileStore.load();
           if (!identity || identity.identityStatus !== 'reserved') throw new Error('LOCAL_IDENTITY_NOT_SERVER_RESERVED');
-          response = await fetch('/api/auth/google/start', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ localProfileKey: identity.localProfileKey, localProofSecret: identity.localProofSecret }) });
+          response = await fetch('/api/auth/google/link/start', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ localProfileKey: identity.localProfileKey, localProofSecret: identity.localProofSecret }) });
         }
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'GOOGLE_AUTH_START_FAILED');

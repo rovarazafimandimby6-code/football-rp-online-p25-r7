@@ -17,6 +17,8 @@ test('Google association stays optional and the linked recovery actions are wire
   assert.match(source, /data-action="google-link"/);
   assert.match(source, /data-action="google-login"/);
   assert.match(source, /LOCAL_IDENTITY_NOT_SERVER_RESERVED/);
+  assert.ok(source.includes("/api/auth/google/link/start"));
+  assert.ok(source.includes("accountClient.resumeCookieSession().catch"));
   assert.match(source, /Google OAuth doit encore être configuré sur le serveur/);
   assert.match(accountPage, /L'association est un choix, pas une condition d'accès au jeu/);
   assert.match(accountPage, /Tant que Google n'est pas associé, les données restent sur cet appareil/);

@@ -252,3 +252,49 @@ test("Google identity link is atomically conditioned on the initiating live P27 
   const linked = await repository.linkInitialForActiveSession(args);
   assert.equal(linked.accountId, accountId);
 });
+
+test("passwordless account session can resume through an HttpOnly browser cookie", async () => {
+  const settings = env();
+  settings.P27_DB.sessionRow = {
+    id: "123e4567-e89b-42d3-a456-426614174000",
+    username: "FRP-123456",
+    display_name: "Player",
+    passwordless: 1,
+    player_id: "FRP-123456",
+    created_at: "2026-11-25T00:00:00.000Z",
+  };
+  const token = "browser-session-token-value-that-is-long-enough-123";
+  const response = await worker.fetch(new Request("https://p27.example.test/api/accounts/me", {
+    headers: { cookie: "p27_account_session=" + token },
+  }), settings);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).account.playerId, "FRP-123456");
+  assert.match(settings.P27_DB.lastQuery.sql, /FROM p27_account_sessions/);
+});
+
+test("Google link start accepts the HttpOnly account cookie but still requires local proof", async () => {
+  const settings = env();
+  settings.P27_DB.sessionRow = {
+    id: "123e4567-e89b-42d3-a456-426614174000",
+    username: "FRP-123456",
+    display_name: "Player",
+    passwordless: 1,
+    player_id: "FRP-123456",
+    created_at: "2026-11-25T00:00:00.000Z",
+  };
+  const response = await worker.fetch(new Request("https://p27.example.test/api/auth/google/link/start", {
+    method: "POST",
+    headers: {
+      origin: "https://p27.example.test",
+      cookie: "p27_account_session=browser-session-token-value-that-is-long-enough-123",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      localProfileKey: "123e4567-e89b-42d3-a456-426614174001",
+      localProofSecret: "x".repeat(64),
+    }),
+  }), settings);
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error, "LOCAL_PROFILE_PROOF_INVALID");
+  assert.equal(settings.P27_DB.rows.size, 0);
+});

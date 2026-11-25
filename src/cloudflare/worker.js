@@ -9,6 +9,8 @@ import { verifyGoogleWorkerIdToken } from "./google-id-token-verifier.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const OIDC_BINDING_COOKIE = "p27_google_oidc_binding";
+const ACCOUNT_SESSION_COOKIE = "p27_account_session";
+const ACCOUNT_SESSION_MAX_AGE = 30 * 24 * 60 * 60;
 const GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 
@@ -33,6 +35,30 @@ function cookieValue(request, name) {
     }
   }
   return null;
+}
+
+function sessionTokenFromRequest(request) {
+  const authorization = request.headers.get("authorization") || "";
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  if (bearer) return bearer;
+  return cookieValue(request, ACCOUNT_SESSION_COOKIE);
+}
+
+function accountSessionCookie(token) {
+  return `${ACCOUNT_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${ACCOUNT_SESSION_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function clearAccountSessionCookie() {
+  return `${ACCOUNT_SESSION_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function redirectToApp(request, query = "") {
+  const destination = new URL("/", request.url);
+  if (query) destination.searchParams.set("google", query);
+  return new Response(null, {
+    status: 303,
+    headers: { location: destination.toString(), "cache-control": "no-store" },
+  });
 }
 
 function randomBase64Url(size = 32) {
@@ -129,7 +155,7 @@ async function startGoogleAuthorization(request, env, purpose) {
   let account = null;
   let sessionTokenHash = null;
   if (purpose === "link") {
-    const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    const token = sessionTokenFromRequest(request);
     const accountRepository = new D1PasswordlessAccountRepository(env.P27_DB);
     account = await accountRepository.resolve(token);
     if (!account) return json(401, { error: "SESSION_EXPIRED" });
@@ -269,15 +295,12 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
       }
       throw error;
     }
-    return json(200, {
-      linked: true,
-      authenticated: false,
-      accountId: transaction.accountId,
-      playerId: identity.playerId,
-      purpose: "link",
-    }, {
-      "set-cookie": `${OIDC_BINDING_COOKIE}=; Path=${config.redirect.pathname}; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
-    });
+    const response = redirectToApp(request, "linked");
+    response.headers.append(
+      "set-cookie",
+      `${OIDC_BINDING_COOKIE}=; Path=${config.redirect.pathname}; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
+    );
+    return response;
   }
 
   const linked = await identities.getByGoogleSubject(verified.googleSubject);
@@ -285,14 +308,13 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
   const identity = await playerIdentities.getByAccountId(linked.accountId);
   if (!identity) return json(503, { error: "GOOGLE_ACCOUNT_IDENTITY_INCONSISTENT" });
   const session = await accounts.issuePasswordlessSession(linked.accountId, { playerId: identity.playerId });
-  return json(200, {
-    authenticated: true,
-    linked: false,
-    purpose: "login",
-    ...session,
-  }, {
-    "set-cookie": `${OIDC_BINDING_COOKIE}=; Path=${config.redirect.pathname}; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
-  });
+  const response = redirectToApp(request, "connected");
+  response.headers.append("set-cookie", accountSessionCookie(session.token));
+  response.headers.append(
+    "set-cookie",
+    `${OIDC_BINDING_COOKIE}=; Path=${config.redirect.pathname}; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
+  );
+  return response;
 }
 
 export default {
@@ -359,12 +381,11 @@ export default {
           const session = await new D1PasswordlessAccountRepository(env.P27_DB)
             .issuePasswordlessSession(reservation.accountId, { playerId: reservation.playerId });
           return json(200, {
-            ...session,
             accountId: reservation.accountId,
             playerId: reservation.playerId,
             reserved: true,
             alreadyReserved: reservation.alreadyReserved,
-          });
+          }, { "set-cookie": accountSessionCookie(session.token) });
         }
         const identity = await identities.verifyLocalProof({
           localProfileKey: body.localProfileKey,
@@ -380,20 +401,20 @@ export default {
         return json(503, { error: "D1_BINDING_MISSING" });
       }
       const accounts = new D1PasswordlessAccountRepository(env.P27_DB);
-      const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      const token = sessionTokenFromRequest(request);
       if (request.method === "GET" && url.pathname === "/api/accounts/me") {
         const account = await accounts.resolve(token);
         return account ? json(200, { account }) : json(401, { error: "SESSION_EXPIRED" });
       }
       if (request.method === "POST" && url.pathname === "/api/accounts/logout") {
         await accounts.revoke(token);
-        return json(200, { loggedOut: true });
+        return json(200, { loggedOut: true }, { "set-cookie": clearAccountSessionCookie() });
       }
       if (request.method === "POST" && url.pathname === "/api/accounts/sessions/revoke-all") {
         const account = await accounts.resolve(token);
         if (!account) return json(401, { error: "SESSION_EXPIRED" });
         const revokedSessions = await accounts.revokeAll(account.id);
-        return json(200, { revoked: true, revokedSessions });
+        return json(200, { revoked: true, revokedSessions }, { "set-cookie": clearAccountSessionCookie() });
       }
     }
 
