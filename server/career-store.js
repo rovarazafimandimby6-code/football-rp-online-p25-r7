@@ -80,7 +80,7 @@ export class JsonCareerStore {
       }
       const stats = Object.fromEntries(['goals','assists','shots','passes','completedPasses','tackles','interceptions','saves'].map(field => [field,safeCount(input.stats?.[field])]));
       stats.completedPasses = Math.min(stats.passes,stats.completedPasses);
-      const entry = { matchId, result:input.result, finalizedAt:Number.isFinite(input.finalizedAt)?input.finalizedAt:Date.now(), teamName:clean(input.teamName,48), opponent:clean(input.opponent,48), role:row.role, minutesPlayedMs:safeCount(input.minutesPlayedMs), rating:safeRating(input.rating), playerOfMatch:input.playerOfMatch===true, stats };
+      const entry = { matchId, result:input.result, finalizedAt:Number.isFinite(input.finalizedAt)?input.finalizedAt:Date.now(), teamName:clean(input.teamName,48), opponent:clean(input.opponent,48), role:row.role, minutesPlayedMs:safeCount(input.minutesPlayedMs), rating:safeRating(input.rating), cleanSheet:input.cleanSheet===true, playerOfMatch:input.playerOfMatch===true, stats };
       row.matches.push(entry); row.matches=row.matches.slice(-this.maxMatchesPerCareer);
       row.processedMatchIds=[...row.processedMatchIds,matchId].slice(-5000);
       row.totals.matches++; row.totals.minutesPlayedMs+=entry.minutesPlayedMs;

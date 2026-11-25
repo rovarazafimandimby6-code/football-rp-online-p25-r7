@@ -3,6 +3,25 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 
 const snapshotRevision = snapshot => createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+const completeRecoverySnapshot = () => ({
+  schemaVersion: 1,
+  player: { playerId: 'FRP-123456', createdAt: '2026-01-01T00:00:00.000Z' },
+  profile: {
+    schemaVersion: 1,
+    identity: { displayName: 'Rova', number: 10, preferredFoot: 'right', role: 'MID' },
+    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic' }
+  },
+  progression: {
+    level: 4, experience: 20, coins: 500, trainingPoints: 2,
+    attributes: { pace: 55, shooting: 50, passing: 50, defense: 45, stamina: 55, control: 50 },
+    processedMatchIds: []
+  },
+  career: { totals: { matches: 3 }, matches: [] },
+  playerCareer: { player: null, totals: { matches: 3 }, matches: [] },
+  seasonStats: { totals: { matches: 3 }, matches: [], processedMatchIds: [] },
+  contract: { playerId: 'human-test', wallet: 2500, clubId: null, contract: null, offers: [], history: [], loanOffers: [], loanHistory: [], transferWindowOpen: false }
+});
+
 import { OnlineAccountClient } from '../src/online-account-client.js';
 
 test('P27 profil cloud : GET et PUT utilisent uniquement la session persistante', async () => {
@@ -66,7 +85,7 @@ test('P27 récupération cloud : refuse un snapshot dont le contenu ne correspon
 });
 
 test('P27 récupération cloud : prévisualise sans écrire quand le nouvel appareil est vierge', async () => {
-  const snapshot = { schemaVersion: 1, player: { playerId: 'FRP-123456' }, progression: { level: 4 }, career: { totals: { matches: 3 }, matches: [] } };
+  const snapshot = completeRecoverySnapshot();
   const client = new OnlineAccountClient({
     storage: null,
     fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed', generatedAt: '2026-11-25T07:00:00.000Z' }) })
@@ -84,8 +103,27 @@ test('P27 récupération cloud : prévisualise sans écrire quand le nouvel appa
   assert.equal(preview.snapshot.career.totals.matches, 3);
 });
 
+
+test('P27 récupération cloud : bloque une sauvegarde dont des sections de carrière manquent', async () => {
+  const snapshot = completeRecoverySnapshot();
+  delete snapshot.seasonStats;
+  const client = new OnlineAccountClient({
+    storage: null,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed' }) })
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  const preview = await client.previewAccountRecovery({
+    outbox: { status: () => ({ pending: 0 }) },
+    localState: { profile: false, career: false, progression: false, seasonStats: false }
+  });
+  assert.equal(preview.ready, false);
+  assert.equal(preview.reason, 'SNAPSHOT_INCOMPLETE');
+  assert.deepEqual(preview.missingSections, ['seasonStats']);
+});
+
 test('P27 récupération cloud : bloque les changements locaux en attente et les données déjà présentes', async () => {
-  const snapshot = { schemaVersion: 1, player: { playerId: 'FRP-123456' } };
+  const snapshot = completeRecoverySnapshot();
   const client = new OnlineAccountClient({
     storage: null,
     fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed' }) })

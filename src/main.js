@@ -879,7 +879,8 @@ async function previewAccountRecoveryFromUi() {
         LOCAL_CHANGES_PENDING: 'Des changements locaux attendent leur synchronisation. La récupération est bloquée pour les préserver.',
         LOCAL_STATE_NOT_ASSESSED: 'L’état des données locales ne peut pas être vérifié.',
         LOCAL_DATA_PRESENT: 'Des données de carrière existent déjà sur cet appareil. Aucun remplacement automatique n’est autorisé.',
-        LOCAL_OUTBOX_INVALID: 'La file de synchronisation locale est invalide.'
+        LOCAL_OUTBOX_INVALID: 'La file de synchronisation locale est invalide.',
+        SNAPSHOT_INCOMPLETE: 'La sauvegarde cloud est partielle. Les sections manquantes doivent être synchronisées avant toute récupération.'
       };
       status.textContent = reasons[preview.reason] || 'La récupération est bloquée par une vérification de sécurité.';
       return;

@@ -465,13 +465,31 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       const identity = playerIdentityStore.getByAccountId(account.id);
+      const playerCareer = identity ? careerStore.getPlayerCareer(identity.playerId) : null;
+      const seasonStats = playerCareer ? {
+        totals: playerCareer.totals,
+        matches: playerCareer.matches.map(match => ({
+          ...match.stats,
+          result: match.result,
+          rating: match.rating,
+          minutesPlayedMs: match.minutesPlayedMs,
+          role: match.role,
+          cleanSheet: match.cleanSheet === true,
+          playerOfMatch: match.playerOfMatch === true,
+          matchId: match.matchId,
+          opponent: match.opponent,
+          date: new Date(match.finalizedAt).toISOString()
+        })),
+        processedMatchIds: playerCareer.matches.map(match => match.matchId).filter(id => typeof id === 'string' && id)
+      } : null;
       const snapshot = {
         schemaVersion: 1,
         player: identity ? { playerId: identity.playerId, createdAt: identity.createdAt } : null,
         profile: playerProfileStore.get(account.id),
         progression: progressionStore.get(account.id),
         career: careerStore.get(account.id),
-        playerCareer: identity ? careerStore.getPlayerCareer(identity.playerId) : null,
+        playerCareer,
+        seasonStats,
         contract: transferStore.getCareer(account.id)
       };
       const revision = createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');

@@ -1,4 +1,37 @@
 /** HTTP client for persistent player accounts; separate from short-lived match-room tokens. */
+function recoverySnapshotMissingSections(snapshot) {
+  const missing = [];
+  const isObject = value => Boolean(value && typeof value === 'object' && !Array.isArray(value));
+  const isCount = value => Number.isSafeInteger(value) && value >= 0;
+  const profile = snapshot?.profile;
+  if (!isObject(profile?.identity) || !isObject(profile?.appearance)
+    || typeof profile.identity.displayName !== 'string'
+    || !isCount(profile.identity.number)
+    || !['GK','DEF','MID','FWD'].includes(profile.identity.role)) missing.push('profile');
+
+  const progression = snapshot?.progression;
+  const attributes = progression?.attributes;
+  if (!isObject(progression) || !isCount(progression.level) || progression.level < 1 || progression.level > 99
+    || !isCount(progression.experience) || !isCount(progression.coins) || !isCount(progression.trainingPoints)
+    || !isObject(attributes) || !['pace','shooting','passing','defense','stamina','control'].every(key => isCount(attributes[key]))
+    || !Array.isArray(progression.processedMatchIds)) missing.push('progression');
+
+  if (!isObject(snapshot?.career?.totals) || !Array.isArray(snapshot.career.matches)) missing.push('career');
+  if (!isObject(snapshot?.playerCareer) || !isObject(snapshot.playerCareer.totals)
+    || !Array.isArray(snapshot.playerCareer.matches)) missing.push('playerCareer');
+
+  if (!isObject(snapshot?.seasonStats?.totals) || !Array.isArray(snapshot.seasonStats.matches)
+    || !Array.isArray(snapshot.seasonStats.processedMatchIds)) missing.push('seasonStats');
+
+  const contract = snapshot?.contract;
+  if (!isObject(contract) || !isCount(contract.wallet)
+    || !Object.hasOwn(contract, 'clubId') || !Object.hasOwn(contract, 'contract')
+    || !Array.isArray(contract.offers) || !Array.isArray(contract.history)
+    || !Array.isArray(contract.loanOffers) || !Array.isArray(contract.loanHistory)) missing.push('contract');
+
+  return missing;
+}
+
 export class OnlineAccountClient {
   constructor({ baseUrl = '', fetchImpl = globalThis.fetch, storage = globalThis.localStorage } = {}) {
     this.baseUrl = String(baseUrl).replace(/\/$/, '');
@@ -111,6 +144,10 @@ export class OnlineAccountClient {
     }
     if (localIdentity && (localIdentity.id !== playerId || localIdentity.accountId !== this.account?.id)) {
       return { ready: false, reason: 'LOCAL_IDENTITY_MISMATCH', revision: result.revision };
+    }
+    const missingSections = recoverySnapshotMissingSections(result.snapshot);
+    if (missingSections.length) {
+      return { ready: false, reason: 'SNAPSHOT_INCOMPLETE', missingSections, revision: result.revision };
     }
     if (!outbox || typeof outbox.status !== 'function') {
       return { ready: false, reason: 'LOCAL_OUTBOX_NOT_ASSESSED', revision: result.revision };

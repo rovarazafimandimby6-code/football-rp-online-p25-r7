@@ -49,6 +49,9 @@ test('P27 API compte : inscription, authentification, session protégée et rév
     assert.equal(cloudSnapshot.snapshot.career.totals.matches, 1);
     assert.equal(cloudSnapshot.snapshot.career.totals.goals, 1);
     assert.equal(cloudSnapshot.snapshot.profile, null);
+    assert.ok(cloudSnapshot.snapshot.seasonStats);
+    assert.equal(cloudSnapshot.snapshot.seasonStats.totals.matches, 1);
+    assert.equal(cloudSnapshot.snapshot.seasonStats.matches[0].goals, 1);
     const forbiddenSnapshot = await fetch(`${base}/api/account/snapshot`);
     assert.equal(forbiddenSnapshot.status, 401);
 
