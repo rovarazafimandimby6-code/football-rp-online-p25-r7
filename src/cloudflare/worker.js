@@ -7,6 +7,7 @@ import { D1GoogleIdentityRepository } from "./google-identity-repository.js";
 import { D1GoogleOidcTransactionRepository } from "./google-oidc-transaction-repository.js";
 import { verifyGoogleWorkerIdToken } from "./google-id-token-verifier.js";
 import { D1PlayerProfileRepository } from "./player-profile-repository.js";
+import { D1PlayerProgressionRepository } from "./player-progression-repository.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const OIDC_BINDING_COOKIE = "p27_google_oidc_binding";
@@ -121,6 +122,8 @@ function errorResponse(error) {
     code === "INVALID_PLAYER_PROFILE" ||
     code === "INVALID_PROFILE_REVISION" ||
     code === "PLAYER_PROFILE_TOO_LARGE" ||
+    code === "INVALID_ATTRIBUTE" ||
+    code === "INVALID_PROGRESSION_MODE" ||
     code === "INVALID_JSON" ||
     code === "BODY_TOO_LARGE" ||
     code === "GOOGLE_OIDC_TRANSACTION_INVALID" ||
@@ -132,7 +135,8 @@ function errorResponse(error) {
     code === "PLAYER_IDENTITY_RATE_LIMITED" ? 429 :
     code === "LOCAL_PROFILE_REPLICA_LIMIT" ||
     code === "GOOGLE_IDENTITY_ALREADY_LINKED" ||
-    code === "PROFILE_REVISION_CONFLICT" ? 409 :
+    code === "PROFILE_REVISION_CONFLICT" ||
+    code === "PROGRESSION_CONCURRENT_UPDATE" ? 409 :
     code === "PLAYER_IDENTITY_NOT_FOUND" ||
     code === "GOOGLE_ACCOUNT_NOT_LINKED" ? 404 :
     503;
@@ -433,6 +437,37 @@ export default {
           return json(409, { error: "PROFILE_REVISION_CONFLICT", currentRevision: error.currentRevision });
         }
         return response;
+      }
+    }
+
+    if (url.pathname === "/api/progression/me" && ["GET", "POST"].includes(request.method)) {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+      const token = sessionTokenFromRequest(request);
+      const accounts = new D1PasswordlessAccountRepository(env.P27_DB);
+      const account = await accounts.resolve(token);
+      if (!account) return json(401, { error: "SESSION_EXPIRED" });
+      const repository = new D1PlayerProgressionRepository(env.P27_DB);
+      if (request.method === "GET") {
+        try { return json(200, await repository.get(account.id)); }
+        catch (error) { return errorResponse(error); }
+      }
+      const origin = request.headers.get("origin");
+      if (origin) {
+        try {
+          if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+        } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
+      }
+      try {
+        const body = await readJson(request);
+        const mode = body.action === "train" ? "training" : body.action === "practice" ? "practice" : null;
+        if (!mode) return json(400, { error: "INVALID_PROGRESSION_ACTION" });
+        const result = await repository.spend(account.id, body.attribute, body.amount, mode);
+        return json(result.ok ? 200 : 409, result);
+      } catch (error) {
+        if (error?.message === "PROGRESSION_CONCURRENT_UPDATE") return json(409, { error: error.message });
+        return errorResponse(error);
       }
     }
 

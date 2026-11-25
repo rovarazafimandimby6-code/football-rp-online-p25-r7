@@ -86,6 +86,40 @@ assert.equal(me.account.passwordless, true);
 NODE
 echo "checkpoint: cookie session resumed"
 
+PROGRESSION_BEFORE="$(curl --silent --show-error --fail \
+  -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" "$BASE_URL/api/progression/me")"
+node --input-type=module - "$PROGRESSION_BEFORE" <<'NODE'
+import assert from "node:assert/strict";
+const snapshot = JSON.parse(process.argv[2]);
+assert.equal(snapshot.revision, 0);
+assert.equal(snapshot.progression.level, 1);
+assert.equal(snapshot.progression.coins, 250);
+NODE
+PRACTICE="$(curl --silent --show-error --fail \
+  -X POST -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"action":"practice","attribute":"pace","amount":1}' \
+  "$BASE_URL/api/progression/me")"
+node --input-type=module - "$PRACTICE" <<'NODE'
+import assert from "node:assert/strict";
+const result = JSON.parse(process.argv[2]);
+assert.equal(result.ok, true);
+assert.equal(result.progression.attributes.pace, 56);
+assert.equal(result.progression.coins, 170);
+assert.equal(result.progression.experience, 25);
+assert.equal(result.revision, 2);
+NODE
+echo "checkpoint: D1 progression read and practice validated"
+
+REWARD_ROUTE_STATUS="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+  -X POST -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"action":"grantMatchReward","attribute":"pace"}' \
+  "$BASE_URL/api/progression/me")"
+test "$REWARD_ROUTE_STATUS" = "400"
+echo "checkpoint: client cannot submit match rewards"
+
+
 curl --silent --show-error --fail \
   -X POST -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" \
   "$BASE_URL/api/accounts/logout" | node --input-type=module -e '
