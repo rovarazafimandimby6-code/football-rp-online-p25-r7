@@ -266,13 +266,11 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
           googleCookieOptions(0),
           accountSessionCookieOptions(session.token, maxAge)
         ]);
-        return json(res, 200, {
-          linked: result.purpose === 'link',
-          authenticated: true,
-          account: session.account,
-          expiresAt: session.expiresAt,
-          ...(result.linkedAt ? { linkedAt: result.linkedAt } : {})
-        });
+        res.statusCode = 303;
+        res.setHeader('location', '/');
+        res.setHeader('cache-control', 'no-store');
+        res.end();
+        return;
       } catch (error) {
         res.setHeader('set-cookie', googleCookieOptions(0));
         throw error;
