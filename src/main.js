@@ -129,6 +129,7 @@ let avatarPreview = null;
 function disposeAvatarPreview() {
   if (!avatarPreview) return;
   cancelAnimationFrame(avatarPreview.raf);
+  if (avatarPreview.onVisibilityChange) document.removeEventListener('visibilitychange', avatarPreview.onVisibilityChange);
   avatarPreview.resizeObserver?.disconnect();
   avatarPreview.player.visual.dispose?.();
   avatarPreview.scene.traverse((obj) => { obj.geometry?.dispose?.(); const mats = Array.isArray(obj.material) ? obj.material : [obj.material]; for (const mat of mats) { if (!mat) continue; for (const value of Object.values(mat)) if (value?.isTexture) value.dispose(); mat.dispose?.(); } });
@@ -160,9 +161,15 @@ function mountAvatarPreview(profile) {
     const player = new Player({ id: 'avatar-preview', team: 'blue', number: profile.identity.number, name: profile.identity.displayName, role: profile.identity.role, slotIndex: 0, homePos: { x: 0, z: 0 }, appearance: profile.appearance, attributes: profile.progression.attributes, preferredFoot: profile.identity.preferredFoot });
     player.isControlled = true; player.visual.ring.visible = false; player.visual.root.rotation.y = 0.12; scene.add(player.visual.root);
     let last = performance.now();
-    const state = { scene, renderer, player, raf: 0, dragging: false, pointerId: null, lastPointerX: 0, resumeAutoAt: 0, resizeObserver: null };
+    const state = {
+      scene, renderer, player, raf: 0, dragging: false, pointerId: null,
+      lastPointerX: 0, resumeAutoAt: 0, resizeObserver: null,
+      reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+      onVisibilityChange: null
+    };
     avatarPreview = state;
     const canvas = renderer.domElement;
+    canvas.setAttribute('aria-label', 'Aperçu 3D du joueur. Faites glisser pour le faire tourner.');
     canvas.style.touchAction = 'none';
     canvas.style.cursor = 'grab';
     const onPointerDown = (event) => {
@@ -214,12 +221,24 @@ function mountAvatarPreview(profile) {
       if (avatarPreview !== state) return;
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
       last = now;
-      player.updateVisual(dt);
-      if (!state.dragging && now >= state.resumeAutoAt) player.visual.root.rotation.y += dt * 0.12;
+      if (!state.reducedMotion) {
+        player.updateVisual(dt);
+        if (!state.dragging && now >= state.resumeAutoAt) player.visual.root.rotation.y += dt * 0.12;
+      }
       renderer.render(scene, camera);
       state.raf = requestAnimationFrame(frame);
     };
-    state.raf = requestAnimationFrame(frame);
+    state.onVisibilityChange = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(state.raf);
+        state.raf = 0;
+      } else if (avatarPreview === state) {
+        last = performance.now();
+        state.raf = requestAnimationFrame(frame);
+      }
+    };
+    document.addEventListener('visibilitychange', state.onVisibilityChange);
+    if (!document.hidden) state.raf = requestAnimationFrame(frame);
   } catch (error) { host.textContent = 'Aperçu 3D indisponible sur ce navigateur.'; }
 }
 
