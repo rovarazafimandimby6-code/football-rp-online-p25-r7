@@ -143,8 +143,8 @@ function mountAvatarPreview(profile) {
     const width = Math.max(180, host.clientWidth || 280);
     const height = Math.max(220, host.clientHeight || 300);
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x10251f);
-    scene.fog = new THREE.Fog(0x10251f, 7, 15);
+    scene.background = new THREE.Color(0x0b1422);
+    scene.fog = new THREE.Fog(0x0b1422, 7, 15);
     const camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 30);
     camera.position.set(0.15, 2.05, 5.8); camera.lookAt(0, 1.12, 0);
     const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: 'low-power' });
@@ -152,10 +152,10 @@ function mountAvatarPreview(profile) {
     renderer.setSize(width, height); renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
     host.replaceChildren(renderer.domElement);
-    scene.add(new THREE.HemisphereLight(0xe9fff3, 0x26382d, 1.8));
-    const key = new THREE.DirectionalLight(0xffe7c5, 2.2); key.position.set(-3, 5, 4); scene.add(key);
-    const rim = new THREE.DirectionalLight(0x8bd9ff, 1.1); rim.position.set(3, 3, -3); scene.add(rim);
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(1.2, 32), new THREE.MeshStandardMaterial({ color: 0x1b4735, roughness: 0.95 }));
+    scene.add(new THREE.HemisphereLight(0xe6f2ff, 0x17243a, 1.65));
+    const key = new THREE.DirectionalLight(0xf4f0e8, 2.0); key.position.set(-3, 5, 4); scene.add(key);
+    const rim = new THREE.DirectionalLight(0x70baff, 1.25); rim.position.set(3, 3, -3); scene.add(rim);
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(1.2, 32), new THREE.MeshStandardMaterial({ color: 0x172a3b, roughness: 0.95 }));
     floor.rotation.x = -Math.PI / 2; floor.position.y = 0.015; scene.add(floor);
     const player = new Player({ id: 'avatar-preview', team: 'blue', number: profile.identity.number, name: profile.identity.displayName, role: profile.identity.role, slotIndex: 0, homePos: { x: 0, z: 0 }, appearance: profile.appearance, attributes: profile.progression.attributes, preferredFoot: profile.identity.preferredFoot });
     player.isControlled = true; player.visual.ring.visible = false; player.visual.root.rotation.y = 0.12; scene.add(player.visual.root);
