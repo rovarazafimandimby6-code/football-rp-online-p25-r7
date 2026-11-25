@@ -12,7 +12,7 @@ const clientSecret = "test-secret-not-for-production";
 const redirectUri = "https://p27.example.test/api/auth/google/callback";
 
 class TransactionD1 {
-  constructor() { this.rows = new Map(); }
+  constructor() { this.rows = new Map(); this.prunedTransactions = 0; }
   async batch(statements) { return Promise.all(statements.map(statement => statement.run())); }
   prepare(sql) {
     const db = this;
@@ -27,6 +27,10 @@ class TransactionD1 {
       async run() {
         const v = this.values;
         if (sql.startsWith("DELETE FROM p27_rate_limit_buckets")) return { meta: { changes: 0 } };
+        if (sql.startsWith("DELETE FROM p27_google_oidc_transactions")) {
+          db.prunedTransactions++;
+          return { meta: { changes: 0 } };
+        }
         if (sql.startsWith("INSERT INTO p27_google_oidc_transactions")) {
           db.rows.set(v[0], {
             state_hash: v[0], nonce: v[1], code_verifier: v[2],
@@ -69,6 +73,7 @@ test("Google login start creates a PKCE S256 authorization URL and secure browse
   assert.match(cookie, /Secure/);
   assert.match(cookie, /SameSite=Lax/);
   assert.equal(settings.P27_DB.rows.size, 1);
+  assert.equal(settings.P27_DB.prunedTransactions, 1);
   assert.equal([...settings.P27_DB.rows.values()][0].purpose, "login");
 });
 

@@ -147,6 +147,7 @@ async function startGoogleAuthorization(request, env, purpose) {
 
   const binding = randomBase64Url();
   const transactions = new D1GoogleOidcTransactionRepository(env.P27_DB);
+  await transactions.pruneExpired();
   const transaction = await transactions.create({
     ...(account ? { accountId: account.id } : {}),
     sessionBinding: binding,
