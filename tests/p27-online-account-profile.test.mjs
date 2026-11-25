@@ -31,15 +31,17 @@ test('P27 profil cloud : GET et PUT utilisent uniquement la session persistante'
     storage: null,
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
-      return { ok: true, status: 200, json: async () => ({ profile: { identity: { displayName: 'Rova' }, appearance: { kit: 'emerald' } } }) };
+      return { ok: true, status: 200, json: async () => ({ profile: { identity: { displayName: 'Rova' }, appearance: { kit: 'emerald' } }, revision: options.method === 'PUT' ? 1 : 0 }) };
     }
   });
   client.token = 'account-token-with-more-than-32-characters';
   await client.getProfile();
   await client.saveProfile({ identity: { displayName: 'Rova' }, appearance: { kit: 'crimson' }, progression: { coins: 999 } });
   assert.equal(calls[0].options.headers.authorization, `Bearer ${client.token}`);
-  assert.equal(calls[1].options.headers.authorization, `Bearer ${client.token}`);
-  assert.equal(JSON.parse(calls[1].options.body).profile.progression.coins, 999);
+  assert.equal(calls[2].options.headers.authorization, `Bearer ${client.token}`);
+  assert.equal(calls[2].url, 'https://game.example/api/player-profile/me');
+  assert.equal(JSON.parse(calls[2].options.body).expectedRevision, 0);
+  assert.equal(JSON.parse(calls[2].options.body).profile.progression.coins, 999);
 });
 
 test('P27 profil cloud : refuse la synchronisation sans compte connecté', async () => {
@@ -228,7 +230,7 @@ test('P27 synchronisation : met en file uniquement identité et apparence, puis 
     baseUrl: 'https://game.example', storage: null,
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
-      return { ok: true, status: 200, json: async () => ({ profile: { identity: { displayName: 'Rova' }, appearance: { kit: 'crimson' } } }) };
+      return { ok: true, status: 200, json: async () => ({ profile: { identity: { displayName: 'Rova' }, appearance: { kit: 'crimson' } }, revision: options.method === 'PUT' ? 1 : 0 }) };
     }
   });
   client.token = 'account-token-with-more-than-32-characters';
@@ -243,9 +245,11 @@ test('P27 synchronisation : met en file uniquement identité et apparence, puis 
   assert.equal(Object.hasOwn(operation.payload, 'progression'), false);
   const result = await client.syncPendingProfileSnapshots(outbox, { localIdentity });
   assert.deepEqual(result, { uploaded: 1, remaining: 0, blocked: 0 });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].url, 'https://game.example/api/profile');
-  assert.equal(calls[0].options.headers.authorization, `Bearer ${client.token}`);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].url, 'https://game.example/api/player-profile/me');
+  assert.equal(calls[1].options.method, 'PUT');
+  assert.equal(JSON.parse(calls[1].options.body).expectedRevision, 0);
+  assert.equal(calls[1].options.headers.authorization, `Bearer ${client.token}`);
   assert.equal(outbox.status().state, 'synced');
 });
 
@@ -325,7 +329,7 @@ test('P27 session Google : les lectures et écritures de compte acceptent la ses
       if (url.endsWith('/api/accounts/me')) return { ok: true, status: 200, json: async () => ({ account: { id: 'account-123' } }) };
       if (url.endsWith('/api/career')) return { ok: true, status: 200, json: async () => ({ career: { totals: {}, matches: [] } }) };
       if (url.endsWith('/api/account/snapshot')) { const snapshot = { schemaVersion: 1 }; return { ok: true, status: 200, json: async () => ({ snapshot, revision: snapshotRevision(snapshot), authority: 'server-confirmed' }) }; }
-      if (url.endsWith('/api/profile')) return { ok: true, status: 200, json: async () => ({ profile: {} }) };
+      if (url.endsWith('/api/player-profile/me')) return { ok: true, status: 200, json: async () => ({ profile: {}, revision: options.method === 'PUT' ? 1 : 0 }) };
       return { ok: true, status: 200, json: async () => ({ progression: { level: 1, experience: 0, coins: 0, trainingPoints: 0, attributes: { pace: 50, shooting: 50, passing: 50, defense: 50, stamina: 50, control: 50 }, processedMatchIds: [] } }) };
     }
   });
@@ -351,7 +355,7 @@ test('P27 progression cloud : valide les champs et bornes avant utilisation', as
   const client = new OnlineAccountClient({
     baseUrl: 'https://game.example', storage: null,
     fetchImpl: async (url, options) => {
-      assert.equal(url, 'https://game.example/api/progression');
+      assert.equal(url, 'https://game.example/api/progression/me');
       assert.equal(options.headers.authorization, `Bearer ${client.token}`);
       return { ok: true, status: 200, json: async () => ({ progression }) };
     }
@@ -415,7 +419,7 @@ test('P27 synchronisation automatique : conserve les changements hors ligne puis
     baseUrl: 'https://game.example', storage: null,
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
-      return { ok: true, status: 200, json: async () => ({ profile: { identity: { displayName: 'Rova' }, appearance: { kit: 'crimson' } } }) };
+      return { ok: true, status: 200, json: async () => ({ profile: { identity: { displayName: 'Rova' }, appearance: { kit: 'crimson' } }, revision: options.method === 'PUT' ? 1 : 0 }) };
     }
   });
   let profile = { identity: { displayName: 'Rova', number: 9, role: 'FWD' }, appearance: { kit: 'crimson' }, progression: { coins: 999 } };
@@ -427,8 +431,10 @@ test('P27 synchronisation automatique : conserve les changements hors ligne puis
   client.account = { id: 'account-123', playerId: 'FRP-123456' };
   client.cookieSession = true;
   assert.deepEqual(await coordinator.flush(), { uploaded: 1, remaining: 0, blocked: 0 });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].options.credentials, 'same-origin');
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].options.method, 'PUT');
+  assert.equal(JSON.parse(calls[1].options.body).expectedRevision, 0);
+  assert.equal(calls[1].options.credentials, 'same-origin');
   assert.equal(JSON.parse(calls[0].options.body).profile.progression, undefined);
 });
 

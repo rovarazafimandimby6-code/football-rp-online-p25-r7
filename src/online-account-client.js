@@ -167,7 +167,9 @@ export class OnlineAccountClient {
 
   async getProfile() {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    return this.request('/api/profile', { auth: true });
+    const result = await this.request('/api/player-profile/me', { auth: true });
+    if (!Number.isSafeInteger(result?.revision) || result.revision < 0 || !(result.profile === null || (result.profile && typeof result.profile === 'object' && !Array.isArray(result.profile)))) throw new Error('INVALID_PLAYER_PROFILE_RESPONSE');
+    return result;
   }
 
   async getCareer() {
@@ -233,7 +235,10 @@ export class OnlineAccountClient {
 
   async saveProfile(profile) {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    return this.request('/api/profile', { method: 'PUT', auth: true, body: { profile } });
+    const current = await this.getProfile();
+    const saved = await this.request('/api/player-profile/me', { method: 'PUT', auth: true, body: { profile, expectedRevision: current.revision } });
+    if (!Number.isSafeInteger(saved?.revision) || saved.revision <= current.revision) throw new Error('INVALID_PLAYER_PROFILE_RESPONSE');
+    return saved;
   }
 
   enqueueProfileSnapshot(profile, outbox) {
@@ -269,8 +274,8 @@ export class OnlineAccountClient {
     for (const operation of pending) {
       if (operation.type !== 'profile_snapshot') { result.blocked++; break; }
       outbox.markAttempt(operation.operationId);
-      await this.saveProfile(operation.payload);
-      const nextVersion = outbox.status().serverVersion + 1;
+      const saved = await this.saveProfile(operation.payload);
+      const nextVersion = saved.revision;
       if (!outbox.acknowledge({ operationId: operation.operationId, serverVersion: nextVersion })) throw new Error('SYNC_ACKNOWLEDGEMENT_FAILED');
       result.uploaded++;
     }
@@ -280,19 +285,19 @@ export class OnlineAccountClient {
 
   async getProgression() {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    const result = await this.request('/api/progression', { auth: true });
+    const result = await this.request('/api/progression/me', { auth: true });
     if (!validProgressionResponse(result)) throw new Error('INVALID_PROGRESSION_RESPONSE');
     return result;
   }
 
   async trainAttribute(attribute, amount = 1) {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    return this.request('/api/progression', { method: 'POST', auth: true, body: { action: 'train', attribute, amount } });
+    return this.request('/api/progression/me', { method: 'POST', auth: true, body: { action: 'train', attribute, amount } });
   }
 
   async practiceAttribute(attribute, amount = 1) {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    return this.request('/api/progression', { method: 'POST', auth: true, body: { action: 'practice', attribute, amount } });
+    return this.request('/api/progression/me', { method: 'POST', auth: true, body: { action: 'practice', attribute, amount } });
   }
 
   async logout() {
