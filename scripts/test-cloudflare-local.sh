@@ -107,9 +107,9 @@ node --input-type=module - "$VERIFIED" <<'NODE'
 import assert from "node:assert/strict";
 const result = JSON.parse(process.argv[2]);
 assert.equal(result.verified, true);
-echo "checkpoint: local proof verified";
 assert.match(result.playerId, /^FRP-\d{6}$/);
 NODE
+echo "checkpoint: local proof verified"
 
 BAD_SECRET="$(printf 'b%.0s' {1..64})"
 BAD_PAYLOAD="$(printf '{"localProfileKey":"%s","localProofSecret":"%s"}' "$LOCAL_PROFILE_KEY" "$BAD_SECRET")"
