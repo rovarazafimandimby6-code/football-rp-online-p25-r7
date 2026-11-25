@@ -76,6 +76,8 @@ test('P27 synchronisation : met en file uniquement identité et apparence, puis 
     }
   });
   client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  const localIdentity = { accountId: 'account-123', id: 'FRP-123456' };
   const operation = client.enqueueProfileSnapshot({
     identity: { displayName: 'Rova', role: 'FWD' },
     appearance: { kit: 'crimson' },
@@ -83,7 +85,7 @@ test('P27 synchronisation : met en file uniquement identité et apparence, puis 
   }, outbox);
   assert.equal(operation.type, 'profile_snapshot');
   assert.equal(Object.hasOwn(operation.payload, 'progression'), false);
-  const result = await client.syncPendingProfileSnapshots(outbox);
+  const result = await client.syncPendingProfileSnapshots(outbox, { localIdentity });
   assert.deepEqual(result, { uploaded: 1, remaining: 0, blocked: 0 });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://game.example/api/profile');
@@ -101,8 +103,9 @@ test('P27 synchronisation : conserve les opérations si le serveur refuse le PUT
     fetchImpl: async () => ({ ok: false, status: 503, json: async () => ({ error: 'SERVER_UNAVAILABLE' }) })
   });
   client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
   client.enqueueProfileSnapshot({ identity: { displayName: 'Rova' }, appearance: {} }, outbox);
-  await assert.rejects(() => client.syncPendingProfileSnapshots(outbox), /SERVER_UNAVAILABLE/);
+  await assert.rejects(() => client.syncPendingProfileSnapshots(outbox, { localIdentity: { accountId: 'account-123', id: 'FRP-123456' } }), /SERVER_UNAVAILABLE/);
   assert.equal(outbox.status().pending, 1);
   assert.equal(outbox.pending()[0].attempts, 1);
 });
@@ -189,7 +192,7 @@ test('P27 session Google : logout révoque aussi une session portée par cookie'
     baseUrl: 'https://game.example', storage: null,
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
-      return { ok: true, status: 200, json: async () => url.endsWith('/api/accounts/me') ? { account: { id: 'account-123' } } : { loggedOut: true };
+      return { ok: true, status: 200, json: async () => (url.endsWith('/api/accounts/me') ? { account: { id: 'account-123' } } : { loggedOut: true }) };
     }
   });
   await client.resumeCookieSession();
@@ -198,4 +201,20 @@ test('P27 session Google : logout révoque aussi une session portée par cookie'
   assert.equal(calls[1].options.method, 'POST');
   assert.equal(calls[1].options.credentials, 'same-origin');
   assert.equal(client.hasSession, false);
+});
+
+
+test('P27 synchronisation : bloque tout envoi si le compte ne correspond pas au profil local', async () => {
+  const { PlayerSyncOutbox } = await import('../src/player-sync-outbox.js');
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const outbox = new PlayerSyncOutbox({ storage, operationIdFactory: () => 'profile-sync-operation-identity' });
+  let requests = 0;
+  const client = new OnlineAccountClient({ storage: null, fetchImpl: async () => { requests++; throw new Error('SHOULD_NOT_FETCH'); } });
+  client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'another-account', playerId: 'FRP-999999' };
+  client.enqueueProfileSnapshot({ identity: { displayName: 'Rova' }, appearance: {} }, outbox);
+  await assert.rejects(() => client.syncPendingProfileSnapshots(outbox, { localIdentity: { accountId: 'local-account', id: 'FRP-123456' } }), /ACCOUNT_LOCAL_IDENTITY_MISMATCH/);
+  assert.equal(requests, 0);
+  assert.equal(outbox.status().pending, 1);
 });

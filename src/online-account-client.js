@@ -119,8 +119,15 @@ export class OnlineAccountClient {
     return outbox.enqueue('profile_snapshot', snapshot);
   }
 
-  async syncPendingProfileSnapshots(outbox, { limit = 50 } = {}) {
+  assertLocalIdentity(identity) {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!identity || typeof identity.accountId !== 'string' || !/^FRP-\\d{6}$/.test(identity.id || '')
+      || this.account?.id !== identity.accountId || this.account?.playerId !== identity.id) throw new Error('ACCOUNT_LOCAL_IDENTITY_MISMATCH');
+    return true;
+  }
+
+  async syncPendingProfileSnapshots(outbox, { limit = 50, localIdentity } = {}) {
+    this.assertLocalIdentity(localIdentity);
     if (!outbox || typeof outbox.pending !== 'function' || typeof outbox.acknowledge !== 'function'
       || typeof outbox.markAttempt !== 'function' || typeof outbox.status !== 'function') throw new Error('SYNC_OUTBOX_UNAVAILABLE');
     const pending = outbox.pending(limit);
