@@ -12,7 +12,7 @@ test('creates an offline local player profile without password or account creden
 });
 test('prevents accidental duplicate local profile creation', () => { const store = new LocalPlayerProfile({ storage: memoryStorage(), idFactory: () => '000001' }); store.create({ displayName: 'Player' }); assert.throws(() => store.create({ displayName: 'Second Player' }), { message: 'LOCAL_PROFILE_ALREADY_EXISTS' }); });
 test('updates display name without changing local identity or cloud-link state', () => {
-  let n = 0; const store = new LocalPlayerProfile({ storage: memoryStorage(), now: () => '2026-11-25T08:00:0' + n++ + '.000Z', idFactory: () => 'p1' });
+  let n = 0; const store = new LocalPlayerProfile({ storage: memoryStorage(), now: () => '2026-11-25T08:00:0' + n++ + '.000Z', idFactory: () => '000001' });
   const initial = store.create({ displayName: 'Player One' }); const updated = store.update({ displayName: 'Player Two', id: 'attacker-id', cloudSync: { googleLinked: true } });
   assert.equal(updated.id, initial.id); assert.equal(updated.displayName, 'Player Two'); assert.deepEqual(updated.cloudSync, { status: 'not-linked', googleLinked: false });
 });

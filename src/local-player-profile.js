@@ -18,7 +18,7 @@ export class LocalPlayerProfile {
     const name = cleanDisplayName(displayName); if (!name) throw new Error('INVALID_PLAYER_DISPLAY_NAME');
     const timestamp = this.now();
     const playerNumber = String(this.idFactory());
-    if (!/^\\d{6}$/.test(playerNumber)) throw new Error('INVALID_PLAYER_ID');
+    if (!/^\d{6}$/.test(playerNumber)) throw new Error('INVALID_PLAYER_ID');
     const profile = { id: `FRP-${playerNumber}`, displayName: name, createdAt: timestamp, updatedAt: timestamp, cloudSync: { status: 'not-linked', googleLinked: false } };
     this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, profile })); return structuredClone(profile);
   }
