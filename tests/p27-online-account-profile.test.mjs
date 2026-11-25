@@ -94,6 +94,7 @@ test('P27 récupération cloud : prévisualise sans écrire quand le nouvel appa
   client.account = { id: 'account-123', playerId: 'FRP-123456' };
   const outbox = { status: () => ({ pending: 0 }) };
   const preview = await client.previewAccountRecovery({
+    localIdentity: { id: 'FRP-123456', accountId: 'account-123' },
     outbox,
     localState: { profile: false, career: false, progression: false, seasonStats: false }
   });
@@ -114,6 +115,7 @@ test('P27 récupération cloud : bloque une sauvegarde dont des sections de carr
   client.token = 'account-token-with-more-than-32-characters';
   client.account = { id: 'account-123', playerId: 'FRP-123456' };
   const preview = await client.previewAccountRecovery({
+    localIdentity: { id: 'FRP-123456', accountId: 'account-123' },
     outbox: { status: () => ({ pending: 0 }) },
     localState: { profile: false, career: false, progression: false, seasonStats: false }
   });
@@ -141,6 +143,7 @@ test('P27 récupération cloud : refuse les sections présentes mais mal formée
     client.token = 'account-token-with-more-than-32-characters';
     client.account = { id: 'account-123', playerId: 'FRP-123456' };
     const preview = await client.previewAccountRecovery({
+      localIdentity: { id: 'FRP-123456', accountId: 'account-123' },
       outbox: { status: () => ({ pending: 0 }) },
       localState: { profile: false, career: false, progression: false, seasonStats: false }
     });
@@ -159,10 +162,11 @@ test('P27 récupération cloud : bloque les changements locaux en attente et les
   client.token = 'account-token-with-more-than-32-characters';
   client.account = { id: 'account-123', playerId: 'FRP-123456' };
   const localState = { profile: false, career: false, progression: false, seasonStats: false };
-  const pending = await client.previewAccountRecovery({ outbox: { status: () => ({ pending: 2 }) }, localState });
+  const pending = await client.previewAccountRecovery({ localIdentity: { id: 'FRP-123456', accountId: 'account-123' }, outbox: { status: () => ({ pending: 2 }) }, localState });
   assert.equal(pending.ready, false);
   assert.equal(pending.reason, 'LOCAL_CHANGES_PENDING');
   const existing = await client.previewAccountRecovery({
+    localIdentity: { id: 'FRP-123456', accountId: 'account-123' },
     outbox: { status: () => ({ pending: 0 }) },
     localState: { ...localState, career: true }
   });

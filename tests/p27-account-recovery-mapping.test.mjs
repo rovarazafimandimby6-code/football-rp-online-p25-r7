@@ -47,7 +47,7 @@ test('P27 mapping : conserve le contrat et les données de prêt sans conversion
   input.contract.loanHistory = [{ type: 'loan-return' }];
   const plan = buildAccountRecoveryPlan(input);
   assert.deepEqual(plan.stores.transferCareerArchive, input.contract);
-  assert.equal(plan.mapping.transferCareerArchive, 'server.contract (not flattened into CareerManager)');
+  assert.equal(plan.mapping.transferCareerArchive, 'server.contract (complete; includes loans)');
 });
 
 test('P27 mapping : ne modifie jamais le snapshot source', () => {
