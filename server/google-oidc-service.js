@@ -29,6 +29,7 @@ export async function completeGoogleAuthorization({
   if (!config?.configured || !config.clientId || !config.clientSecret || !config.redirectUri) throw new Error('GOOGLE_OIDC_NOT_CONFIGURED');
   if (!validCode(code)) throw new Error('GOOGLE_OIDC_CODE_INVALID');
   if (typeof fetchImpl !== 'function') throw new Error('GOOGLE_OIDC_FETCH_UNAVAILABLE');
+  if (!validCode(code)) throw new Error('GOOGLE_OIDC_CODE_INVALID');
   const transaction = transactionStore.consume({ state, sessionBinding });
   if (!transaction?.accountId) throw new Error('GOOGLE_OIDC_TRANSACTION_INVALID');
   const response = await fetchImpl(config.tokenEndpoint, {
