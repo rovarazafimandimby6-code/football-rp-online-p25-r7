@@ -119,6 +119,13 @@ test('P27 récupération cloud : refuse une identité locale ou un compte qui ne
   });
   assert.equal(mismatch.ready, false);
   assert.equal(mismatch.reason, 'LOCAL_IDENTITY_MISMATCH');
+  const unlinkedLocalIdentity = await client.previewAccountRecovery({
+    localIdentity: { id: 'FRP-123456', identityStatus: 'local-pending' },
+    outbox: { status: () => ({ pending: 0 }) },
+    localState: { profile: false, career: false, progression: false, seasonStats: false }
+  });
+  assert.equal(unlinkedLocalIdentity.ready, false);
+  assert.equal(unlinkedLocalIdentity.reason, 'LOCAL_IDENTITY_MISMATCH');
   client.account.playerId = 'FRP-999999';
   const wrongAccount = await client.previewAccountRecovery({
     outbox: { status: () => ({ pending: 0 }) },

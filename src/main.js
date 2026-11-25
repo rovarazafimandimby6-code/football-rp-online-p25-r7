@@ -866,7 +866,7 @@ async function previewAccountRecoveryFromUi() {
     };
     const preview = await accountClient.previewAccountRecovery({
       outbox: profileSyncOutbox,
-      localIdentity: localPlayerIdentity?.accountId ? localPlayerIdentity : null,
+      localIdentity: localPlayerIdentity || null,
       localState
     });
     if (!status?.isConnected) return;
