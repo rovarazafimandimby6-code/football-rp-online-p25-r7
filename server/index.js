@@ -1,4 +1,6 @@
 import http from 'node:http';
+import { createGoogleAuthorizationUrl, completeGoogleAuthorization, createGoogleBrowserBinding } from './google-oidc-service.js';
+import { JsonGoogleIdentityStore } from './google-identity-store.js';
 import { readFile, realpath } from 'node:fs/promises';
 import { JsonResultStore } from './result-store.js';
 import { JsonRoomStore } from './room-store.js';
@@ -87,6 +89,8 @@ const accountStore = new JsonAccountStore(accountDirectory);
 const googleOidcConfig = readGoogleOidcConfig(process.env);
 const googleOidcTransactionDirectory = process.env.GOOGLE_OIDC_TRANSACTIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'google-oidc-transactions');
 const googleOidcTransactionStore = new GoogleOidcTransactionStore({ directory: googleOidcTransactionDirectory });
+const googleIdentityDirectory = process.env.GOOGLE_IDENTITIES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'google-identities');
+const googleIdentityStore = new JsonGoogleIdentityStore(googleIdentityDirectory);
 const playerIdentityDirectory = process.env.PLAYER_IDENTITIES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'player-identities');
 const playerIdentityStore = new JsonPlayerIdentityStore(playerIdentityDirectory);
 const accountAttempts = new Map();
@@ -180,6 +184,40 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         playerId:body.playerId, fee:body.fee
       });
       return json(res, result.ok ? 200 : (result.pending ? 202 : 409), result);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/google/start') {
+      if (!googleOidcConfig.configured) return json(res, 503, { error: 'GOOGLE_OIDC_NOT_CONFIGURED' });
+      if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'GOOGLE_OIDC_RATE_LIMITED' });
+      const origin = req.headers.origin;
+      if (origin && origin !== new URL(googleOidcConfig.redirectUri).origin) return json(res, 403, { error: 'GOOGLE_OIDC_ORIGIN_INVALID' });
+      const body = await readBody(req);
+      const identity = playerIdentityStore.verifyLocalProof({
+        localProfileKey: body.localProfileKey, localProofSecret: body.localProofSecret
+      });
+      if (!identity) return json(res, 401, { error: 'LOCAL_PROFILE_PROOF_INVALID' });
+      const sessionBinding = createGoogleBrowserBinding();
+      const authorization = createGoogleAuthorizationUrl({
+        config: googleOidcConfig, transactionStore: googleOidcTransactionStore,
+        accountId: identity.accountId, sessionBinding
+      });
+      res.setHeader('set-cookie', `${googleBindingCookie}=${sessionBinding}; HttpOnly; SameSite=Lax; Path=/api/auth/google; Max-Age=600${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`);
+      return json(res, 200, authorization);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/auth/google/callback') {
+      if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'GOOGLE_OIDC_RATE_LIMITED' });
+      const sessionBinding = cookieValue(req, googleBindingCookie);
+      try {
+        const result = await completeGoogleAuthorization({
+          config: googleOidcConfig, transactionStore: googleOidcTransactionStore,
+          identityStore: googleIdentityStore, state: url.searchParams.get('state'),
+          code: url.searchParams.get('code'), sessionBinding
+        });
+        res.setHeader('set-cookie', googleCookieOptions(0));
+        return json(res, 200, { linked: true, accountId: result.accountId, linkedAt: result.linkedAt });
+      } catch (error) {
+        res.setHeader('set-cookie', googleCookieOptions(0));
+        throw error;
+      }
     }
     if (req.method === 'POST' && url.pathname === '/api/player-identities/reserve') {
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'PLAYER_ID_RESERVATION_RATE_LIMITED' });
@@ -481,7 +519,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
     return json(res, 404, { error: 'NOT_FOUND' });
   } catch (error) {
     const code = error.message || 'INTERNAL_ERROR';
-    const status = code === 'ROOM_NOT_FOUND' || code === 'COMPETITION_FIXTURE_NOT_FOUND' ? 404 : code === 'COMPETITION_FIXTURE_NOT_READY' || code === 'COMPETITION_FIXTURE_MISMATCH' ? 409 : (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED' || code === 'INVALID_CREDENTIALS') ? 401 : code === 'RATE_LIMIT' ? 429 : code === 'USERNAME_TAKEN' ? 409 : code === 'BODY_TOO_LARGE' ? 413 : code === 'INVALID_JSON' || code.startsWith('INVALID_') || code === 'STALE_INPUT' ? 400 : 409;
+    const status = code === 'GOOGLE_OIDC_NOT_CONFIGURED' ? 503 : code === 'GOOGLE_OIDC_RATE_LIMITED' ? 429 : code === 'GOOGLE_OIDC_ORIGIN_INVALID' ? 403 : code === 'GOOGLE_OIDC_TRANSACTION_INVALID' || code === 'GOOGLE_OIDC_TOKEN_EXCHANGE_FAILED' || code === 'GOOGLE_OIDC_ID_TOKEN_MISSING' || code === 'GOOGLE_ID_TOKEN_SIGNATURE_INVALID' || code === 'GOOGLE_ID_TOKEN_NONCE_INVALID' || code === 'GOOGLE_ID_TOKEN_AUDIENCE_INVALID' || code === 'GOOGLE_ID_TOKEN_ISSUER_INVALID' ? 401 : code === 'ROOM_NOT_FOUND' || code === 'COMPETITION_FIXTURE_NOT_FOUND' ? 404 : code === 'COMPETITION_FIXTURE_NOT_READY' || code === 'COMPETITION_FIXTURE_MISMATCH' ? 409 : (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED' || code === 'INVALID_CREDENTIALS') ? 401 : code === 'RATE_LIMIT' ? 429 : code === 'USERNAME_TAKEN' ? 409 : code === 'BODY_TOO_LARGE' ? 413 : code === 'INVALID_JSON' || code.startsWith('INVALID_') || code === 'STALE_INPUT' ? 400 : 409;
     return json(res, status, { error: code });
   }
 });

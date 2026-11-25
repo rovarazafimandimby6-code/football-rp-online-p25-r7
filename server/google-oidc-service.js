@@ -24,7 +24,7 @@ export function createGoogleAuthorizationUrl({ config, transactionStore, account
 
 export async function completeGoogleAuthorization({
   config, transactionStore, identityStore, state, code, sessionBinding,
-  fetchImpl = globalThis.fetch, jwksCache, now = () => Date.now()
+  fetchImpl = globalThis.fetch, jwksCache, now = () => Date.now(), verifyToken = verifyGoogleIdToken
 } = {}) {
   if (!config?.configured || !config.clientId || !config.clientSecret || !config.redirectUri) throw new Error('GOOGLE_OIDC_NOT_CONFIGURED');
   if (!validCode(code)) throw new Error('GOOGLE_OIDC_CODE_INVALID');
@@ -44,7 +44,7 @@ export async function completeGoogleAuthorization({
   if (!response.ok) throw new Error('GOOGLE_OIDC_TOKEN_EXCHANGE_FAILED');
   const tokens = await response.json();
   if (!tokens || typeof tokens.id_token !== 'string' || tokens.id_token.length > 16_384) throw new Error('GOOGLE_OIDC_ID_TOKEN_MISSING');
-  const identity = await verifyGoogleIdToken(tokens.id_token, {
+  const identity = await verifyToken(tokens.id_token, {
     clientId: config.clientId, expectedNonce: transaction.nonce, jwksCache, now
   });
   const linked = identityStore.linkInitial({

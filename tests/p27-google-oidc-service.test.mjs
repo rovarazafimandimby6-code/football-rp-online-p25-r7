@@ -44,25 +44,32 @@ test('Google callback exchanges code with PKCE and links only the account stored
     calls.push(['consume', args]);
     return { accountId, nonce: 'n'.repeat(43), codeVerifier: 'v'.repeat(43) };
   } };
-  const identityStore = { linkInitial: args => { calls.push(['link', args]); return { accountId, linkedAt: '2026-11-25T00:00:00.000Z' }; } };
+  const identityStore = { linkInitial: args => {
+    calls.push(['link', args]);
+    return { accountId, linkedAt: '2026-11-25T00:00:00.000Z' };
+  } };
   const fetchImpl = async (url, options) => {
     calls.push(['fetch', url, options]);
     return { ok: true, json: async () => ({ id_token: 'signed.id-token' }) };
   };
-  const verifier = await import('../server/google-id-token-verifier.js');
-  const original = verifier.verifyGoogleIdToken;
-  // The service's verifier is deliberately exercised through a test seam in a later integration test;
-  // here token exchange failure behavior is asserted without accepting an unverified subject.
-  await assert.rejects(() => completeGoogleAuthorization({
+  const verifyToken = async (token, context) => {
+    calls.push(['verify', token, context]);
+    return { googleSubject: 'google-subject-0001' };
+  };
+  const result = await completeGoogleAuthorization({
     config, transactionStore, identityStore, state: 's'.repeat(43),
     code: 'authorization-code-123', sessionBinding: 'b'.repeat(43),
-    fetchImpl: async (url, options) => {
-      calls.push(['fetch', url, options]);
-      return { ok: false, json: async () => ({}) };
-    }
-  }), /GOOGLE_OIDC_TOKEN_EXCHANGE_FAILED/);
-  assert.equal(calls.some(call => call[0] === 'link'), false);
-  assert.equal(original, verifier.verifyGoogleIdToken);
+    fetchImpl, verifyToken
+  });
+  assert.equal(result.linked, true);
+  assert.equal(result.accountId, accountId);
+  const exchange = calls.find(call => call[0] === 'fetch')[2];
+  const params = new URLSearchParams(exchange.body);
+  assert.equal(params.get('code_verifier'), 'v'.repeat(43));
+  assert.equal(params.get('client_secret'), config.clientSecret);
+  assert.deepEqual(calls.find(call => call[0] === 'link')[1], {
+    accountId, googleSubject: 'google-subject-0001', googleIdentityVerified: true
+  });
 });
 
 test('Google browser binding is high entropy and URL-safe', () => {
