@@ -53,14 +53,16 @@ async function toggleMobileFullscreen() {
 for (const button of fullscreenButtons) button.addEventListener('click', () => { toggleMobileFullscreen().catch(() => {}); });
 document.addEventListener('fullscreenchange', refreshFullscreenControls);
 const clubs = new ClubManager();
+let hasSavedPlayerProfile = false;
+try { hasSavedPlayerProfile = Boolean(globalThis.localStorage?.getItem('football-rp-online.player-profile.v1')); } catch (_) {}
 const profileStore = new PlayerProfileStore();
 let localPlayerProfileStore = null;
 let localPlayerIdentity = null;
 try {
   localPlayerProfileStore = new LocalPlayerProfile();
   localPlayerIdentity = localPlayerProfileStore.load();
-  if (!localPlayerIdentity) localPlayerIdentity = localPlayerProfileStore.create({ displayName: profileStore.profile.identity.displayName });
-  else if (localPlayerIdentity.displayName !== profileStore.profile.identity.displayName) localPlayerIdentity = localPlayerProfileStore.update({ displayName: profileStore.profile.identity.displayName });
+  if (!localPlayerIdentity && hasSavedPlayerProfile) localPlayerIdentity = localPlayerProfileStore.create({ displayName: profileStore.profile.identity.displayName });
+  else if (localPlayerIdentity && localPlayerIdentity.displayName !== profileStore.profile.identity.displayName) localPlayerIdentity = localPlayerProfileStore.update({ displayName: profileStore.profile.identity.displayName });
 } catch (_) {
   // The football career remains playable even if local profile metadata storage is unavailable.
 }
@@ -367,7 +369,20 @@ function renderPage(page = 'home') {
   const title = document.getElementById('menu-page-title');
   const subtitle = document.getElementById('menu-page-subtitle');
   document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page));
-  if (page === 'home') {
+  if (page === 'onboarding') {
+    title.textContent = 'Créer votre footballeur';
+    subtitle.textContent = 'Votre aventure commence par votre identité Football RP.';
+    content.innerHTML = `<section class="competition-panel onboarding-panel">
+      <span class="eyebrow">PREMIÈRE ÉTAPE · PROFIL JOUEUR</span>
+      <h2>Bienvenue dans Football RP Online</h2>
+      <p>Créez votre footballeur pour recevoir automatiquement votre identifiant permanent au format FRP-000000 et commencer votre carrière.</p>
+      <form id="player-onboarding-form" class="career-form">
+        <label>Nom de votre footballeur<input name="displayName" maxlength="20" autocomplete="nickname" value="${escapeHTML(profileStore.profile.identity.displayName === 'Nouveau joueur' ? '' : profileStore.profile.identity.displayName)}" placeholder="Votre nom de joueur" required></label>
+        <button class="primary-cta" type="submit">CRÉER MON JOUEUR</button>
+      </form>
+      <p class="notice">Aucun e-mail, mot de passe ou compte Google n'est nécessaire. Google restera facultatif et pourra être associé plus tard pour protéger votre carrière.</p>
+    </section>`;
+  } else if (page === 'home') {
     const profile = profileStore.profile;
     const season = seasonStats.snapshot().totals;
     const latestMatch = seasonStats.snapshot().matches.slice(-1)[0];
@@ -1026,6 +1041,25 @@ menu.addEventListener('keydown', event => {
 });
 
 menu.addEventListener('submit', event => {
+  if (event.target.id === 'player-onboarding-form') {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const displayName = String(data.get('displayName') || '').trim();
+    try {
+      profileStore.updateIdentity({ displayName });
+      localPlayerIdentity = localPlayerIdentity
+        ? localPlayerProfileStore?.update({ displayName }) || localPlayerIdentity
+        : localPlayerProfileStore?.create({ displayName }) || null;
+      if (!localPlayerIdentity) throw new Error('LOCAL_PLAYER_ID_UNAVAILABLE');
+      hasSavedPlayerProfile = true;
+      syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      renderPage('home');
+    } catch (error) {
+      const status = event.target.querySelector('.onboarding-status');
+      if (status) status.textContent = `Création impossible : ${String(error?.message || error)}`;
+    }
+    return;
+  }
   if (event.target.id !== 'profile-editor') return;
   event.preventDefault();
   const data = new FormData(event.target);
@@ -1038,7 +1072,7 @@ menu.addEventListener('submit', event => {
   if(status) status.textContent='Profil mis à jour et sauvegardé sur cet appareil.';
 });
 
-renderPage('home');
+renderPage(hasSavedPlayerProfile ? 'home' : 'onboarding');
 window.addEventListener('pagehide', () => game?.dispose?.(), { once: true });
 
 const filterPlayerLibrary = () => {

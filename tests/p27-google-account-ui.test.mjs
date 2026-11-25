@@ -25,3 +25,11 @@ test('Google protection entry points are present on player page and settings', (
   assert.match(source, /Compte et synchronisation/);
   assert.match(source, /data-page="account"/);
 });
+
+test('first launch creates a password-free player profile before opening the dashboard', () => {
+  assert.match(source, /page === 'onboarding'/);
+  assert.match(source, /id="player-onboarding-form"/);
+  assert.match(source, /renderPage\(hasSavedPlayerProfile \? 'home' : 'onboarding'\)/);
+  assert.match(source, /localPlayerProfileStore\?\.create\(\{ displayName \}\)/);
+  assert.match(source, /FRP-000000/);
+});

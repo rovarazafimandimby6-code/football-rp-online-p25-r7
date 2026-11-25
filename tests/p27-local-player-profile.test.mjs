@@ -20,4 +20,4 @@ test('rejects blank names and handles missing storage', () => {
   const store = new LocalPlayerProfile({ storage: memoryStorage() }); assert.throws(() => store.create({ displayName: '   ' }), { message: 'INVALID_PLAYER_DISPLAY_NAME' });
   assert.equal(new LocalPlayerProfile({ storage: null }).load(), null); assert.throws(() => new LocalPlayerProfile({ storage: null }).create({ displayName: 'Player' }), { message: 'LOCAL_PROFILE_STORAGE_UNAVAILABLE' });
 });
-test('clears only the device-local profile', () => { const storage = memoryStorage(); const store = new LocalPlayerProfile({ storage, idFactory: () => 'p1' }); store.create({ displayName: 'Player' }); assert.equal(store.clear(), true); assert.equal(store.load(), null); });
+test('clears only the device-local profile', () => { const storage = memoryStorage(); const store = new LocalPlayerProfile({ storage, idFactory: () => '000001' }); store.create({ displayName: 'Player' }); assert.equal(store.clear(), true); assert.equal(store.load(), null); });
