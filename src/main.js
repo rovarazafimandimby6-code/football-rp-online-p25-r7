@@ -897,6 +897,7 @@ async function previewAccountRecoveryFromUi() {
       if (restoreButton) restoreButton.disabled = true;
       const reasons = {
         ACCOUNT_PLAYER_ID_MISMATCH: 'Le compte connecté ne correspond pas à l’identifiant joueur de la sauvegarde.',
+        LOCAL_IDENTITY_MISSING: 'L’identité locale sécurisée n’est pas encore disponible sur cet appareil. Réessayez après la connexion au compte associé.',
         LOCAL_IDENTITY_MISMATCH: 'L’identité locale ne correspond pas à ce compte. Aucune donnée n’a été modifiée.',
         LOCAL_OUTBOX_NOT_ASSESSED: 'La file de synchronisation locale ne peut pas être vérifiée.',
         LOCAL_CHANGES_PENDING: 'Des changements locaux attendent leur synchronisation. La récupération est bloquée pour les préserver.',
@@ -952,14 +953,19 @@ async function restoreAccountRecoveryFromUi() {
     });
     if (!result.ok) throw new Error(result.reason || 'RESTORE_FAILED');
     const displayName = fresh.snapshot.profile.identity.displayName;
-    if (localPlayerProfileStore && localPlayerIdentity?.displayName !== displayName) {
-      localPlayerIdentity = localPlayerProfileStore.update({ displayName });
-    }
-    syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+    let identityMetadataUpdated = true;
+    try {
+      if (localPlayerProfileStore && localPlayerIdentity?.displayName !== displayName) {
+        localPlayerIdentity = localPlayerProfileStore.update({ displayName });
+      }
+    } catch (_) { identityMetadataUpdated = false; }
+    try { syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile }); } catch (_) {}
     pendingAccountRecoveryPreview = null;
     renderPage('account');
     const restoredStatus = document.getElementById('account-recovery-status');
-    if (restoredStatus) restoredStatus.textContent = 'Restauration terminée : profil, progression, statistiques de saison et carrière mercato importés. Les historiques détaillés restent conservés dans les archives locales.';
+    if (restoredStatus) restoredStatus.textContent = identityMetadataUpdated
+      ? 'Restauration terminée : profil, progression, statistiques de saison et carrière mercato importés. Les historiques détaillés restent conservés dans les archives locales.'
+      : 'Restauration des données terminée. La mise à jour du nom dans les métadonnées locales reste à effectuer.';
   } catch (error) {
     if (status?.isConnected) {
       const messages = {

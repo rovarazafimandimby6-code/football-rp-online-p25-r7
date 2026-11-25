@@ -196,7 +196,10 @@ export class OnlineAccountClient {
     if (!/^FRP-[0-9]{6}$/.test(playerId || '') || this.account?.playerId !== playerId) {
       return { ready: false, reason: 'ACCOUNT_PLAYER_ID_MISMATCH', revision: result.revision };
     }
-    if (localIdentity && (localIdentity.id !== playerId || localIdentity.accountId !== this.account?.id)) {
+    if (!localIdentity) {
+      return { ready: false, reason: 'LOCAL_IDENTITY_MISSING', revision: result.revision };
+    }
+    if (localIdentity.id !== playerId || localIdentity.accountId !== this.account?.id) {
       return { ready: false, reason: 'LOCAL_IDENTITY_MISMATCH', revision: result.revision };
     }
     const missingSections = recoverySnapshotMissingSections(result.snapshot);
