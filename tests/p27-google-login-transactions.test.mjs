@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { GoogleOidcTransactionStore } from '../server/google-oidc-transactions.js';
 const binding='browser-session-binding-value-0001';
 test('Google login transaction is explicitly marked and has no account ID',()=>{
@@ -9,7 +12,6 @@ test('Google login transaction is explicitly marked and has no account ID',()=>{
  assert.equal(consumed.purpose,'login');assert.equal(consumed.accountId,undefined);
 });
 test('Google login transaction survives restart with purpose preserved',()=>{
- const {mkdtempSync,rmSync}=require('node:fs');const os=require('node:os');const path=require('node:path');
  const directory=mkdtempSync(path.join(os.tmpdir(),'p27-login-oidc-'));
  try{
   const first=new GoogleOidcTransactionStore({directory});

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { verifyGoogleIdToken } from './google-id-token-verifier.js';
-const validCode=value=>typeof value==='string'&&value.length>=8&&value.length<=4096&&!/\\s/.test(value);
+const validCode=value=>typeof value==='string'&&value.length>=8&&value.length<=4096&&!/\s/.test(value);
 export function createGoogleAuthorizationUrl({config,transactionStore,accountId,sessionBinding,purpose='link'}) {
   if(!config?.configured||!config.clientId||!config.redirectUri)throw new Error('GOOGLE_OIDC_NOT_CONFIGURED');
   const transaction=transactionStore.create({accountId,sessionBinding,purpose});
