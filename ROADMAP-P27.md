@@ -1255,3 +1255,21 @@ La validation automatisée de la phase 1 est consolidée. Les contrôles d'inté
 - [x] CI GitHub Actions : [run 45546059142](https://github.com/rovarazafimandimby6-code/football-rp-online-p25-r7/actions/runs/45546059142), **733/733 tests réussis**, 0 échec ; préflight et syntaxe réussis.
 - Résultat mesuré : le test automatisé fait avancer 30 salons et 420 joueurs enregistrés (14 par salon) sur 20 ticks sans perte d'état. Ce test valide l'intégrité sous charge déterministe, pas un nombre maximal de salons par seconde ni une capacité d'hébergement.
 - Limite : aucun benchmark de latence p95/p99 ni de consommation mémoire n'a été effectué sur un hébergeur ou un appareil Android réel.
+
+
+## Compte joueur Google et synchronisation automatique — spécification retenue
+- Un compte joueur P27 possède une seule identité Google active à la fois ; un identifiant Google stable (claim OpenID Connect sub) ne peut être lié qu'à un seul compte joueur.
+- La connexion Google retrouve le compte existant ; elle ne crée une nouvelle identité P27 que si aucun lien n'existe et que le joueur confirme la création.
+- La progression est synchronisée automatiquement dès que le réseau est disponible. Le serveur est la source de vérité ; chaque mutation persistante doit être confirmée par le serveur avant d'être présentée comme définitivement enregistrée.
+- Une file locale peut conserver les opérations hors ligne en attente, avec identifiants idempotents et ordre/version. Au retour du réseau, elle est rejouée sans doublon ; une opération non confirmée reste explicitement « en attente ».
+- Le changement de compte Google est autorisé, y compris pour transmettre volontairement le compte joueur à une autre personne. Il exige une réauthentification récente de l'identité actuelle et la preuve de contrôle du nouveau compte Google.
+- Le transfert du lien Google doit être atomique : unicité vérifiée, nouvelle association créée et ancienne retirée dans une seule transaction ; si une étape échoue, l'ancien lien reste actif.
+- Après transfert, toutes les sessions et tous les jetons des appareils précédents sont révoqués ; le nouvel appareil reçoit une session fraîche. Le nouvel identifiant Google devient l'unique propriétaire d'authentification.
+- Un changement d'adresse e-mail Google ne change pas l'identité du joueur : l'identifiant sub, jamais l'e-mail, est la clé de liaison.
+- Les jetons Google sont vérifiés côté serveur (signature, issuer, audience/client ID, expiration, nonce et état anti-rejeu). Aucun identifiant Google envoyé librement par le client n'est accepté comme preuve.
+- La récupération en cas de perte de l'ancien compte Google nécessite un parcours séparé et contrôlé ; le simple fait de connaître le nom du joueur ou son e-mail ne suffit pas.
+- Les carrières, profils, progression, contrats, transferts, historique, statistiques et appartenances de club restent rattachés à l'identifiant interne P27, jamais directement à l'adresse e-mail ou à l'appareil.
+- La persistance durable, les sauvegardes hors site et les tests de restauration, la récupération Google, la validation OAuth/OIDC réelle et les essais Android multi-appareils sont des critères bloquants avant d'annoncer le système prêt.
+
+Voir la spécification détaillée : [docs/P27-GOOGLE-ACCOUNT-OWNERSHIP.md](docs/P27-GOOGLE-ACCOUNT-OWNERSHIP.md).
+
