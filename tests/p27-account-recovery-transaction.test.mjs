@@ -22,7 +22,7 @@ test('P27 restauration : exige une confirmation explicite avant toute écriture'
   const events = [];
   const result = await restoreAccountSnapshot({ preview: preview(), currentRevision: revision, adapters: [adapter('profile', events)] });
   assert.deepEqual(result, { ok: false, reason: 'RESTORE_CONFIRMATION_REQUIRED' });
-  assert.deepEqual(events, ['prepare:profile']);
+  assert.deepEqual(events, []);
 });
 
 test('P27 restauration : refuse une révision qui a changé depuis la prévisualisation', async () => {
