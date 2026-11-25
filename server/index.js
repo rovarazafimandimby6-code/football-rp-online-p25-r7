@@ -127,7 +127,7 @@ function cookieValue(req, name) {
 }
 const googleBindingCookie = 'p27_google_binding';
 function googleCookieOptions(maxAge) {
-  return `${googleBindingCookie}=; HttpOnly; SameSite=Lax; Path=/api/auth/google; Max-Age=${maxAge}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
+  return `${googleBindingCookie}=; HttpOnly; SameSite=Lax; Path=/api/auth/google; Max-Age=${maxAge}${process.env.NODE_ENV !== 'development' ? '; Secure' : ''}`;
 }
 
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -216,7 +216,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         config: googleOidcConfig, transactionStore: googleOidcTransactionStore,
         accountId: identity.accountId, sessionBinding
       });
-      res.setHeader('set-cookie', `${googleBindingCookie}=${sessionBinding}; HttpOnly; SameSite=Lax; Path=/api/auth/google; Max-Age=600${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`);
+      res.setHeader('set-cookie', `${googleBindingCookie}=${sessionBinding}; HttpOnly; SameSite=Lax; Path=/api/auth/google; Max-Age=600${process.env.NODE_ENV !== 'development' ? '; Secure' : ''}`);
       return json(res, 200, authorization);
     }
     if (req.method === 'GET' && url.pathname === '/api/auth/google/callback') {
@@ -535,7 +535,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
     return json(res, 404, { error: 'NOT_FOUND' });
   } catch (error) {
     const code = error.message || 'INTERNAL_ERROR';
-    const status = code === 'GOOGLE_OIDC_NOT_CONFIGURED' ? 503 : code === 'GOOGLE_OIDC_RATE_LIMITED' ? 429 : code === 'GOOGLE_OIDC_ORIGIN_INVALID' ? 403 : code === 'GOOGLE_OIDC_TRANSACTION_INVALID' || code === 'GOOGLE_OIDC_TOKEN_EXCHANGE_FAILED' || code === 'GOOGLE_OIDC_ID_TOKEN_MISSING' || code === 'GOOGLE_ID_TOKEN_SIGNATURE_INVALID' || code === 'GOOGLE_ID_TOKEN_NONCE_INVALID' || code === 'GOOGLE_ID_TOKEN_AUDIENCE_INVALID' || code === 'GOOGLE_ID_TOKEN_ISSUER_INVALID' ? 401 : code === 'ROOM_NOT_FOUND' || code === 'COMPETITION_FIXTURE_NOT_FOUND' ? 404 : code === 'COMPETITION_FIXTURE_NOT_READY' || code === 'COMPETITION_FIXTURE_MISMATCH' ? 409 : (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED' || code === 'INVALID_CREDENTIALS') ? 401 : code === 'RATE_LIMIT' ? 429 : code === 'USERNAME_TAKEN' ? 409 : code === 'BODY_TOO_LARGE' ? 413 : code === 'INVALID_JSON' || code === 'GOOGLE_OIDC_CODE_INVALID' || code.startsWith('INVALID_') || code === 'STALE_INPUT' ? 400 : 409;
+    const status = code === 'GOOGLE_OIDC_NOT_CONFIGURED' ? 503 : code === 'GOOGLE_OIDC_RATE_LIMITED' ? 429 : code === 'GOOGLE_OIDC_ORIGIN_INVALID' ? 403 : code === 'GOOGLE_OIDC_TRANSACTION_INVALID' || code === 'GOOGLE_OIDC_TOKEN_EXCHANGE_FAILED' || code === 'GOOGLE_OIDC_ID_TOKEN_MISSING' || code === 'GOOGLE_ID_TOKEN_SIGNATURE_INVALID' || code === 'GOOGLE_ID_TOKEN_NONCE_INVALID' || code === 'GOOGLE_ID_TOKEN_AUDIENCE_INVALID' || code.startsWith('GOOGLE_ID_TOKEN_') ? 401 : code === 'ROOM_NOT_FOUND' || code === 'COMPETITION_FIXTURE_NOT_FOUND' ? 404 : code === 'COMPETITION_FIXTURE_NOT_READY' || code === 'COMPETITION_FIXTURE_MISMATCH' ? 409 : (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED' || code === 'INVALID_CREDENTIALS') ? 401 : code === 'RATE_LIMIT' ? 429 : code === 'USERNAME_TAKEN' ? 409 : code === 'BODY_TOO_LARGE' ? 413 : code === 'INVALID_JSON' || code === 'GOOGLE_OIDC_CODE_INVALID' || code.startsWith('INVALID_') || code === 'STALE_INPUT' ? 400 : 409;
     return json(res, status, { error: code });
   }
 });

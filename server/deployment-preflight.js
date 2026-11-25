@@ -18,6 +18,7 @@ const STORAGE_PATHS = [
   ['ACCOUNTS_DIR', 'accounts'],
   ['PLAYER_IDENTITIES_DIR', 'player-identities'],
   ['GOOGLE_OIDC_TRANSACTIONS_DIR', 'google-oidc-transactions'],
+  ['GOOGLE_IDENTITIES_DIR', 'google-identities'],
   ['P27_BACKUPS_DIR', 'backups'],
 ];
 

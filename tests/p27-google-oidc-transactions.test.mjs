@@ -66,3 +66,16 @@ test('Google OIDC transaction persistence rejects corrupt files without resettin
     assert.equal(store.consume({ state: tx.state, sessionBinding: binding }).nonce, tx.nonce);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('Google OIDC transaction persists the proven account owner across restart', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'fpro-oidc-account-'));
+  const accountId = '123e4567-e89b-42d3-a456-426614174000';
+  try {
+    const first = new GoogleOidcTransactionStore({ directory });
+    const tx = first.create({ sessionBinding: binding, accountId });
+    const restarted = new GoogleOidcTransactionStore({ directory });
+    const consumed = restarted.consume({ state: tx.state, sessionBinding: binding });
+    assert.equal(consumed.accountId, accountId);
+    assert.equal(restarted.consume({ state: tx.state, sessionBinding: binding }), null);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
