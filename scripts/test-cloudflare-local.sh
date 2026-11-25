@@ -62,9 +62,11 @@ assert.equal(second.accountId, first.accountId);
 assert.equal(second.playerId, first.playerId);
 assert.equal(second.alreadyReserved, true);
 NODE
+echo "checkpoint: reservation JSON validated"
 
 ACCOUNT_TOKEN="$(sed -n 's/^set-cookie: p27_account_session=\\([^;]*\\).*/\\1/ip' "$SECOND_HEADERS" | tr -d '\\r')"
 test -n "$ACCOUNT_TOKEN"
+echo "checkpoint: session cookie extracted"
 grep -Eiq '^set-cookie: p27_account_session=.*HttpOnly.*Secure.*SameSite=Lax' "$SECOND_HEADERS"
 ME="$(curl --silent --show-error --fail \
   -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
@@ -76,6 +78,7 @@ assert.equal(me.account.id, first.accountId);
 assert.equal(me.account.playerId, first.playerId);
 assert.equal(me.account.passwordless, true);
 NODE
+echo "checkpoint: cookie session resumed"
 
 curl --silent --show-error --fail \
   -X POST -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" \
@@ -85,9 +88,11 @@ let raw = "";
 for await (const chunk of process.stdin) raw += chunk;
 assert.equal(JSON.parse(raw).loggedOut, true);
 '
+echo "checkpoint: logout completed"
 REVOKED_STATUS="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
   -H "Cookie: p27_account_session=$ACCOUNT_TOKEN" "$BASE_URL/api/accounts/me")"
 test "$REVOKED_STATUS" = "401"
+echo "checkpoint: revoked cookie rejected"
 
 VERIFIED="$(curl --silent --show-error --fail \
   -H 'content-type: application/json' \
@@ -96,6 +101,7 @@ node --input-type=module - "$VERIFIED" <<'NODE'
 import assert from "node:assert/strict";
 const result = JSON.parse(process.argv[2]);
 assert.equal(result.verified, true);
+echo "checkpoint: local proof verified";
 assert.match(result.playerId, /^FRP-\d{6}$/);
 NODE
 
