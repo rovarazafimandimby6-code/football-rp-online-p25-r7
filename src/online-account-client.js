@@ -66,6 +66,13 @@ export class OnlineAccountClient {
     return this.request('/api/profile', { auth: true });
   }
 
+  async getAccountSnapshot() {
+    if (!this.token) throw new Error('NOT_AUTHENTICATED');
+    const result = await this.request('/api/account/snapshot', { auth: true });
+    if (!result?.snapshot || result.snapshot.schemaVersion !== 1 || !/^[a-f0-9]{64}$/.test(result.revision || '') || result.authority !== 'server-confirmed') throw new Error('INVALID_ACCOUNT_SNAPSHOT');
+    return result;
+  }
+
   async saveProfile(profile) {
     if (!this.token) throw new Error('NOT_AUTHENTICATED');
     return this.request('/api/profile', { method: 'PUT', auth: true, body: { profile } });
