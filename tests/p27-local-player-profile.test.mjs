@@ -31,3 +31,17 @@ test('server reservation replaces provisional number and retries idempotently', 
 });
 
 test('migrates an existing local profile by adding a device-held proof secret', () => { const storage = memoryStorage(); const profile = { id: 'FRP-123456', localProfileKey: '123e4567-e89b-42d3-a456-426614174000', displayName: 'Player' }; storage.setItem(LOCAL_PLAYER_PROFILE_STORAGE_KEY, JSON.stringify({ version: 1, profile })); const loaded = new LocalPlayerProfile({ storage }).load(); assert.match(loaded.localProofSecret, /^[a-f0-9]{64}$/); assert.equal(JSON.parse(storage.getItem(LOCAL_PLAYER_PROFILE_STORAGE_KEY)).profile.localProofSecret, loaded.localProofSecret); });
+
+test('adopts a trusted cloud identity on a new device without changing its FRP ID', () => {
+  const store = new LocalPlayerProfile({ storage: memoryStorage(), now: () => '2026-11-25T09:00:00.000Z' });
+  const profile = store.adoptFromServer({
+    accountId: '123e4567-e89b-42d3-a456-426614174099', playerId: 'FRP-675757',
+    localProfileKey: '123e4567-e89b-42d3-a456-426614174098',
+    localProofSecret: 'b'.repeat(64), createdAt: '2026-11-25T08:00:00.000Z'
+  });
+  assert.equal(profile.id, 'FRP-675757');
+  assert.equal(profile.identityStatus, 'reserved');
+  assert.deepEqual(profile.cloudSync, { status: 'linked', googleLinked: true });
+  assert.equal(store.load().localProofSecret, 'b'.repeat(64));
+  assert.throws(() => store.adoptFromServer({}), { message: 'LOCAL_PROFILE_ALREADY_EXISTS' });
+});

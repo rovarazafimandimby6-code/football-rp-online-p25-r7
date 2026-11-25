@@ -278,6 +278,20 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         throw error;
       }
     }
+    if (req.method === 'POST' && url.pathname === '/api/player-identities/replica') {
+      if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'PLAYER_ID_REPLICA_RATE_LIMITED' });
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      if (!googleIdentityStore.getByAccountId(account.id)) return json(res, 403, { error: 'GOOGLE_IDENTITY_NOT_LINKED' });
+      const identity = playerIdentityStore.getByAccountId(account.id);
+      if (!identity || account.playerId !== identity.playerId) return json(res, 409, { error: 'PLAYER_IDENTITY_NOT_FOUND' });
+      try {
+        const replica = playerIdentityStore.createReplica(account.id);
+        return json(res, 201, { ...replica, reserved: true });
+      } catch (error) {
+        return json(res, 409, { error: String(error?.message || 'PLAYER_ID_REPLICA_FAILED') });
+      }
+    }
     if (req.method === 'POST' && url.pathname === '/api/player-identities/reserve') {
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'PLAYER_ID_RESERVATION_RATE_LIMITED' });
       const body = await readBody(req);

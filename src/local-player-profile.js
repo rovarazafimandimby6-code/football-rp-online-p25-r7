@@ -34,6 +34,24 @@ export class LocalPlayerProfile {
     if (Object.hasOwn(patch, 'displayName')) { const name = cleanDisplayName(patch.displayName); if (!name) throw new Error('INVALID_PLAYER_DISPLAY_NAME'); next.displayName = name; }
     next.updatedAt = this.now(); this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, profile: next })); return structuredClone(next);
   }
+  adoptFromServer({ accountId, playerId, localProfileKey, localProofSecret, createdAt, displayName } = {}) {
+    if (!this.storage) throw new Error('LOCAL_PROFILE_STORAGE_UNAVAILABLE');
+    if (this.load()) throw new Error('LOCAL_PROFILE_ALREADY_EXISTS');
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuid.test(accountId || '') || !uuid.test(localProfileKey || '')
+      || !/^FRP-\d{6}$/.test(playerId || '') || !/^[a-f0-9]{64}$/i.test(localProofSecret || '')) {
+      throw new Error('INVALID_LOCAL_PROFILE_REPLICA');
+    }
+    const timestamp = typeof createdAt === 'string' && Number.isFinite(Date.parse(createdAt)) ? createdAt : this.now();
+    const profile = {
+      id: playerId, localProfileKey, localProofSecret, accountId,
+      identityStatus: 'reserved', displayName: cleanDisplayName(displayName) || playerId,
+      createdAt: timestamp, updatedAt: this.now(),
+      cloudSync: { status: 'linked', googleLinked: true }
+    };
+    this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, profile }));
+    return structuredClone(profile);
+  }
   async reserveWithServer({ fetchImpl = globalThis.fetch, endpoint = '/api/player-identities/reserve' } = {}) {
     const current = this.load();
     if (!current) throw new Error('LOCAL_PROFILE_NOT_FOUND');

@@ -148,6 +148,23 @@ export class OnlineAccountClient {
     return this.account;
   }
 
+  async createLocalReplica(localProfileStore) {
+    if (!this.hasSession || !/^FRP-[0-9]{6}$/.test(this.account?.playerId || '')
+      || !localProfileStore || typeof localProfileStore.adoptFromServer !== 'function') {
+      throw new Error('LOCAL_PROFILE_REPLICA_NOT_AVAILABLE');
+    }
+    const current = localProfileStore.load?.();
+    if (current) {
+      if (current.accountId === this.account.id && current.id === this.account.playerId) return current;
+      throw new Error('LOCAL_PROFILE_ALREADY_EXISTS');
+    }
+    const replica = await this.request('/api/player-identities/replica', { method: 'POST', auth: true });
+    if (replica?.accountId !== this.account.id || replica?.playerId !== this.account.playerId || replica?.reserved !== true) {
+      throw new Error('INVALID_LOCAL_PROFILE_REPLICA_RESPONSE');
+    }
+    return localProfileStore.adoptFromServer(replica);
+  }
+
   async getProfile() {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     return this.request('/api/profile', { auth: true });

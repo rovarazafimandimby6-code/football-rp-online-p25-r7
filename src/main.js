@@ -93,7 +93,19 @@ const queueAndSyncCurrentProfile = async () => {
   profileSyncCoordinator.enqueueCurrentProfile();
   return profileSyncCoordinator.flush();
 };
-void accountClient.resumeCookieSession().then(() => { void profileSyncCoordinator.flush(); const button = document.querySelector('[data-action="account-recovery-preview"]'); if (button) button.disabled = false; }).catch(() => {});
+void accountClient.resumeCookieSession().then(async () => {
+  if (!localPlayerIdentity && localPlayerProfileStore && /^FRP-[0-9]{6}$/.test(accountClient.account?.playerId || '')) {
+    try {
+      localPlayerIdentity = await accountClient.createLocalReplica(localPlayerProfileStore);
+      document.querySelectorAll('[data-player-id]').forEach(node => { node.textContent = localPlayerIdentity.id; });
+    } catch (_) {
+      // Do not overwrite or fabricate a local identity if safe adoption is unavailable.
+    }
+  }
+  void profileSyncCoordinator.flush();
+  const button = document.querySelector('[data-action="account-recovery-preview"]');
+  if (button) button.disabled = false;
+}).catch(() => {});
 window.addEventListener('online', () => { void profileSyncCoordinator.flush().catch(() => {}); });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') void profileSyncCoordinator.flush().catch(() => {});

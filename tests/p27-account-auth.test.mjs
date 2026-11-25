@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { JsonAccountStore } from '../server/account-store.js';
 import { OnlineAccountClient } from '../src/online-account-client.js';
+import { LocalPlayerProfile } from '../src/local-player-profile.js';
 
 function tempStore(options = {}) {
   const directory = mkdtempSync(path.join(tmpdir(), 'fpro-accounts-'));
@@ -81,4 +82,27 @@ test('P27 compte client : inscription, restauration locale, actualisation et dé
   assert.equal(await restored.logout(), true);
   assert.equal(restored.token, null);
   assert.equal(values.has('fpro.account.session'), false);
+});
+
+test('P27 compte client : adopte une réplique locale uniquement pour le FRP du compte connecté', async () => {
+  const values = new Map();
+  const storage = { setItem:(k,v)=>values.set(k,v), getItem:k=>values.get(k)??null, removeItem:k=>values.delete(k) };
+  const accountId = '123e4567-e89b-42d3-a456-426614174099';
+  const fetchImpl = async (url, options = {}) => {
+    assert.equal(url, 'https://game.example/api/player-identities/replica');
+    assert.equal(options.method, 'POST');
+    assert.equal(options.headers.authorization, 'Bearer ' + 'x'.repeat(43));
+    return { ok:true, status:201, json:async()=>({
+      accountId, playerId:'FRP-675757', localProfileKey:'123e4567-e89b-42d3-a456-426614174098',
+      localProofSecret:'b'.repeat(64), createdAt:'2026-11-25T08:00:00.000Z', reserved:true
+    }) };
+  };
+  const client = new OnlineAccountClient({ baseUrl:'https://game.example', fetchImpl, storage });
+  client.token = 'x'.repeat(43);
+  client.account = { id:accountId, playerId:'FRP-675757' };
+  const local = new LocalPlayerProfile({ storage });
+  const adopted = await client.createLocalReplica(local);
+  assert.equal(adopted.id, 'FRP-675757');
+  assert.equal(adopted.accountId, accountId);
+  assert.equal((await client.createLocalReplica(local)).id, 'FRP-675757');
 });
