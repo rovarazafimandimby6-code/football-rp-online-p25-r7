@@ -32,8 +32,9 @@ test("Cloudflare readiness verifies the D1 binding before reporting ready", asyn
   };
   const response = await worker.fetch(request("/readyz"), env);
   assert.equal(response.status, 200);
-  assert.equal((await response.json()).storage, "d1-connected");
-  assert.equal((await response.json()).stage, "local-player-identity");
+  const body = await response.json();
+  assert.equal(body.storage, "d1-connected");
+  assert.equal(body.stage, "local-player-identity");
 });
 
 test("Cloudflare readiness reports D1 failures without exposing internal errors", async () => {
