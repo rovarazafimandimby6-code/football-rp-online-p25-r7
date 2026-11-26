@@ -97,42 +97,6 @@ if (P27_OFFLINE_TEST) {
   const modeLabel = document.querySelector('.menu-status');
   if (modeLabel) modeLabel.textContent = 'MODE TEST · CARRIÈRE LOCALE';
 }
-const fullscreenButtons = [document.getElementById('menu-fullscreen'), document.getElementById('match-fullscreen')].filter(Boolean);
-function refreshFullscreenControls() {
-  const active = Boolean(document.fullscreenElement);
-  for (const button of fullscreenButtons) {
-    button.setAttribute('aria-pressed', String(active));
-    button.setAttribute('aria-label', active ? 'Quitter le plein écran' : 'Passer en plein écran');
-    const label = button.querySelector('span');
-    if (label) label.textContent = active ? 'QUITTER PLEIN ÉCRAN' : 'PLEIN ÉCRAN';
-  }
-  window.dispatchEvent(new Event('resize'));
-}
-async function toggleMobileFullscreen() {
-  const target = shell.classList.contains('hidden') ? menu : shell;
-  if (document.fullscreenElement) {
-    if (document.exitFullscreen) await document.exitFullscreen();
-    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (_) {}
-    return;
-  }
-  if (!target || !target.requestFullscreen) {
-    const message = 'Plein écran non pris en charge. Sur Android, ouvre le menu du navigateur puis choisis « Ajouter à l’écran d’accueil » pour lancer le jeu sans barre de navigation.';
-    const status = document.getElementById('menu-page-subtitle');
-    if (!shell.classList.contains('hidden')) document.getElementById('status').textContent = 'PLEIN ÉCRAN INDISPONIBLE · OUVREZ LE JEU DEPUIS L’ÉCRAN D’ACCUEIL';
-    else if (status) status.textContent = message;
-    return;
-  }
-  try {
-    try { await target.requestFullscreen({ navigationUI: 'hide' }); }
-    catch (_) { await target.requestFullscreen(); }
-    try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (_) {}
-  } catch (_) {
-    const status = document.getElementById('menu-page-subtitle');
-    if (status && shell.classList.contains('hidden')) status.textContent = 'Le navigateur a refusé le plein écran. Réessaie depuis le bouton après une interaction directe.';
-  }
-}
-for (const button of fullscreenButtons) button.addEventListener('click', () => { toggleMobileFullscreen().catch(() => {}); });
-document.addEventListener('fullscreenchange', refreshFullscreenControls);
 const clubs = new ClubManager();
 let hasSavedPlayerProfile = false;
 try { hasSavedPlayerProfile = Boolean(globalThis.localStorage?.getItem('football-rp-online.player-profile.v1')); } catch (_) {}
