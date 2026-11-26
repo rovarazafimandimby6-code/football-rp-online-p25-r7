@@ -1553,3 +1553,11 @@
  #main-menu #menu-content .club-discovery-toolbar .club-division-tabs,
  #main-menu #menu-content .club-discovery-toolbar .club-library-pagination{grid-column:1/-1}
 }
+
+
+@media(max-width:760px) and (orientation:landscape){
+ #main-menu #menu-content .player-library-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+ #main-menu #menu-content .club-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+ #main-menu #menu-content .player-library-card{min-height:58px}
+ #main-menu #menu-content .club-card.compact-club-card{min-height:48px}
+}
