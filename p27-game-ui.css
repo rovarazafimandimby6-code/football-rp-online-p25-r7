@@ -1561,3 +1561,154 @@
  #main-menu #menu-content .player-library-card{min-height:58px}
  #main-menu #menu-content .club-card.compact-club-card{min-height:48px}
 }
+
+
+/* P27 player library — mandatory horizontal rectangle cards with tap-to-expand. */
+#main-menu #menu-content .player-library-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  align-items:start;
+  gap:8px;
+}
+#main-menu #menu-content .player-library-card{
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr);
+  grid-template-rows:minmax(52px,auto);
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  min-height:68px;
+  padding:6px;
+  overflow:hidden;
+  cursor:pointer;
+  text-align:left;
+  transition:border-color .15s,background .15s,transform .15s;
+}
+#main-menu #menu-content .player-library-card:focus-visible{
+  outline:2px solid #8bc8fa;
+  outline-offset:2px;
+}
+#main-menu #menu-content .player-card-portrait{
+  grid-column:1;
+  grid-row:1;
+  width:38px;
+  height:50px;
+  flex-basis:38px;
+  font-size:25px;
+}
+#main-menu #menu-content .player-card-compact-copy{
+  grid-column:2;
+  grid-row:1;
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  align-items:stretch;
+  gap:3px;
+}
+#main-menu #menu-content .player-card-name-line{
+  display:flex;
+  min-width:0;
+  align-items:center;
+  gap:4px;
+}
+#main-menu #menu-content .player-card-name-line strong{
+  min-width:0;
+  overflow:hidden;
+  color:#f4f8ff;
+  font-size:9px;
+  font-weight:950;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#main-menu #menu-content .player-origin-dot{
+  flex:0 0 7px;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#d94b50;
+  box-shadow:0 0 5px rgba(217,75,80,.25);
+}
+#main-menu #menu-content .player-origin-dot.human{
+  background:#27bd75;
+  box-shadow:0 0 5px rgba(39,189,117,.25);
+}
+#main-menu #menu-content .player-card-name-line .player-card-rating{
+  flex:0 0 25px;
+  width:25px;
+  height:25px;
+  margin:0 0 0 auto;
+  font-size:12px;
+}
+#main-menu #menu-content .player-card-compact-copy>small{
+  overflow:hidden;
+  color:#a9bfd6;
+  font-size:7px;
+  font-weight:800;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#main-menu #menu-content .player-card-more{
+  align-self:flex-end;
+  margin:1px 0 0;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:#8ebbe6;
+  font-size:7px;
+  font-weight:750;
+  line-height:1.2;
+  cursor:pointer;
+}
+#main-menu #menu-content .player-card-more:hover{text-decoration:underline;color:#c5e3ff}
+#main-menu #menu-content .player-card-expanded-details{
+  display:none;
+  grid-column:1/-1;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:4px;
+  padding-top:6px;
+  border-top:1px solid rgba(145,184,222,.18);
+}
+#main-menu #menu-content .player-card-expanded-details>span{
+  display:flex;
+  min-width:0;
+  align-items:center;
+  justify-content:space-between;
+  gap:3px;
+  padding:4px 5px;
+  border-radius:3px;
+  background:rgba(0,0,0,.2);
+}
+#main-menu #menu-content .player-card-expanded-details small{
+  color:#91aac4;
+  font-size:7px;
+  font-weight:800;
+}
+#main-menu #menu-content .player-card-expanded-details b{
+  color:#f4f8ff;
+  font-size:9px;
+  font-variant-numeric:tabular-nums;
+}
+#main-menu #menu-content .player-card-expanded-details .player-card-physical{
+  grid-column:1/-1;
+  color:#a9bfd6;
+  font-size:8px;
+}
+#main-menu #menu-content .player-library-card.is-expanded{
+  grid-column:span 2;
+  grid-template-rows:minmax(52px,auto) auto;
+  border-color:rgba(120,184,238,.65);
+  background:linear-gradient(145deg,rgba(30,69,105,.98),rgba(5,16,28,.99));
+  box-shadow:0 0 0 1px rgba(102,171,228,.13),0 7px 16px rgba(0,0,0,.26);
+}
+#main-menu #menu-content .player-library-card.is-expanded .player-card-expanded-details{
+  display:grid;
+}
+@media(max-width:760px) and (orientation:landscape){
+  #main-menu #menu-content .player-library-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  #main-menu #menu-content .player-library-card{min-height:62px;padding:5px;gap:5px}
+  #main-menu #menu-content .player-card-portrait{width:34px;height:46px;flex-basis:34px;font-size:23px}
+}
+@media(max-width:420px) and (orientation:portrait){
+  #main-menu #menu-content .player-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu #menu-content .player-library-card.is-expanded{grid-column:1/-1}
+}
