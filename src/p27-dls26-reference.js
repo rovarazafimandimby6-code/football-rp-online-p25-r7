@@ -70,7 +70,7 @@ const ROLE_PROFILE_IDS = Object.freeze({
 });
 const PROFILE_BY_ID = new Map(DLS26_REFERENCE_PROFILES.map(profile => [profile.id, profile]));
 
-export function findDls26Reference(role, archetype, random = Math.random) {
+export function findDls26Reference(role, archetype, random = Math.random, excludedProfileIds = new Set()) {
   const ids = ROLE_PROFILE_IDS[role] || ROLE_PROFILE_IDS.FWD;
   const eligible = ids.map(id => PROFILE_BY_ID.get(id)).filter(Boolean);
   const preferred = eligible.filter(profile => {
@@ -89,7 +89,9 @@ export function findDls26Reference(role, archetype, random = Math.random) {
     if (archetype === 'Finisseur de surface') return profile.id.includes('finisher') || profile.id.includes('target');
     return true;
   });
-  const pool = preferred.length ? preferred : eligible;
+  const preferredAvailable = preferred.filter(profile => !excludedProfileIds.has(profile.id));
+  const allAvailable = eligible.filter(profile => !excludedProfileIds.has(profile.id));
+  const pool = preferredAvailable.length ? preferredAvailable : allAvailable.length ? allAvailable : (preferred.length ? preferred : eligible);
   return pool[Math.floor(random() * pool.length)] || null;
 }
 
