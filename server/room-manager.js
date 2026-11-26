@@ -508,8 +508,12 @@ export class RoomManager {
       return true;
     } catch (error) {
       room.finalizationError = String(error?.message || 'RESULT_FINALIZATION_FAILED').slice(0, 160);
-      // Keep a durable fulltime checkpoint until every finalization step succeeds.
-      if (room.phase === 'fulltime' && !room.result) this.persistRoom(room);
+      // Keep one durable fulltime checkpoint until every finalization step succeeds.
+      // Do not rewrite the checkpoint on every server tick while storage is failing.
+      if (room.phase === 'fulltime' && !room.result && !room.finalizationCheckpointed) {
+        room.finalizationCheckpointed = true;
+        if (!this.persistRoom(room)) delete room.finalizationCheckpointed;
+      }
       return false;
     }
   }
