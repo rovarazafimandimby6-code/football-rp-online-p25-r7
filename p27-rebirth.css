@@ -997,3 +997,48 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
   #main-menu .training-controls{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   #main-menu .training-controls button{grid-column:1/-1}
 }
+
+/* P27 HOME/NAV REFIT — menu-only layout; gameplay DOM remains untouched. */
+#main-menu .menu-topbar-actions{display:flex;align-items:center;justify-content:flex-end}
+#main-menu .menu-settings-icon{width:42px;height:42px;min-height:42px;padding:0;border:1px solid var(--p27-border-strong);border-radius:10px;background:rgba(15,28,44,.9);font-size:19px}
+#main-menu .p27-career-home{display:grid;gap:clamp(12px,1.8vw,20px)}
+#main-menu .p27-career-topline{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--p27-border);border-radius:10px;background:rgba(8,17,29,.82)}
+#main-menu .p27-progression{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#main-menu .p27-stars{color:#f2b91d;letter-spacing:2px;font-size:clamp(16px,2vw,23px)}
+#main-menu .p27-progression b{font-size:11px;letter-spacing:.8px;color:#dce8f8}
+#main-menu .p27-currency{display:grid;gap:3px;text-align:right}
+#main-menu .p27-currency span{font-size:9px;color:#91a8c5;font-weight:850;letter-spacing:.7px}
+#main-menu .p27-currency b{font-size:clamp(16px,2vw,22px);font-variant-numeric:tabular-nums;color:#f4f7ff}
+#main-menu .p27-career-hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(150px,.7fr);align-items:center;gap:20px;min-height:clamp(190px,25vh,270px);padding:clamp(18px,3vw,32px);border:1px solid rgba(136,185,233,.2);border-radius:14px;background:radial-gradient(ellipse at 85% 15%,rgba(43,105,171,.36),transparent 46%),linear-gradient(120deg,#101f34,#08121f 78%);overflow:hidden}
+#main-menu .p27-career-hero h2{margin:8px 0;font-size:clamp(30px,5vw,56px);line-height:.98;letter-spacing:-1.5px;font-weight:950;color:#f5f8ff}
+#main-menu .p27-career-hero p{max-width:470px;color:#aebfd4;line-height:1.5;font-size:clamp(11px,1.2vw,14px)}
+#main-menu .p27-career-hero-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+#main-menu .p27-career-hero-actions button{min-height:43px}
+#main-menu .p27-career-hero-identity{display:grid;justify-items:center;gap:8px;text-align:center}
+#main-menu .p27-player-number{display:grid;place-items:center;width:clamp(74px,10vw,112px);aspect-ratio:1;border:1px solid rgba(166,204,242,.35);border-radius:50%;background:linear-gradient(145deg,rgba(48,91,139,.7),rgba(9,20,34,.95));font-size:clamp(25px,4vw,43px);font-weight:950;color:#f5f8ff}
+#main-menu .p27-career-hero-identity>b{font-size:clamp(15px,2vw,22px);color:#fff}
+#main-menu .p27-career-hero-identity>small{color:#a6bad2;font-size:10px}
+#main-menu .p27-home-section-title{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 2px}
+#main-menu .p27-home-section-title>span{font-size:12px;font-weight:950;letter-spacing:1px;color:#edf4ff}
+#main-menu .p27-home-section-title>small{font-size:9px;font-weight:850;letter-spacing:.7px;color:#7f98b6}
+#main-menu .p27-home-primary{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+#main-menu .p27-home-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;grid-column:span 2;min-width:0;min-height:124px;padding:16px;border:1px solid rgba(140,178,219,.18);border-radius:11px;background:linear-gradient(145deg,rgba(23,39,59,.97),rgba(9,17,28,.98));text-align:left}
+#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{grid-column:span 3;min-height:148px;background:linear-gradient(130deg,rgba(26,64,106,.96),rgba(9,19,32,.98))}
+#main-menu .p27-home-card-friendly{background:linear-gradient(130deg,rgba(29,48,68,.98),rgba(9,17,28,.98))}
+#main-menu .p27-home-card .p27-card-kicker{font-size:9px;font-weight:850;letter-spacing:.7px;color:#86b9eb}
+#main-menu .p27-home-card>b{font-size:clamp(16px,2vw,23px);font-weight:950;letter-spacing:.2px;color:#f3f7ff}
+#main-menu .p27-home-card>small{font-size:10px;line-height:1.4;color:#aabbd0}
+#main-menu .p27-home-card>i{position:absolute;right:15px;bottom:13px;font-style:normal;color:#85c4ff;font-size:18px}
+#main-menu .p27-home-card:hover{border-color:rgba(122,190,255,.55);background-color:#18304a}
+#main-menu .p27-career-summary{display:grid;gap:11px;padding:15px;border:1px solid var(--p27-border);border-radius:11px;background:rgba(8,16,27,.78)}
+#main-menu .p27-career-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#main-menu .p27-career-facts>div{display:grid;gap:5px;min-width:0;padding:10px;border-radius:7px;background:rgba(255,255,255,.035)}
+#main-menu .p27-career-facts span{font-size:9px;font-weight:850;letter-spacing:.6px;color:#8ea6c3}
+#main-menu .p27-career-facts b{font-size:clamp(12px,1.4vw,16px);color:#eaf2fd;overflow-wrap:anywhere}
+#main-menu .p27-last-performance{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;padding-top:9px;border-top:1px solid var(--p27-border)}
+#main-menu .p27-last-performance>span{font-size:9px;font-weight:850;letter-spacing:.65px;color:#8ea6c3}
+#main-menu .p27-last-performance>b{font-size:16px;color:#f4f8ff}
+#main-menu .p27-last-performance>small{font-size:10px;color:#a8bad0}
+#main-menu .menu-sidebar [data-action="choose-match"]{border-color:rgba(123,189,255,.18)}
+@media(max-width:760px){#main-menu .p27-home-primary{grid-template-columns:repeat(2,minmax(0,1fr))}#main-menu .p27-home-card,#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{grid-column:span 1;min-height:125px}#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{min-height:145px}#main-menu .p27-career-hero{grid-template-columns:minmax(0,1fr) 100px;gap:10px}#main-menu .p27-career-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){#main-menu .p27-career-hero{grid-template-columns:1fr}#main-menu .p27-career-hero-identity{display:none}#main-menu .p27-career-hero h2{font-size:34px}#main-menu .p27-career-hero-actions{display:grid;grid-template-columns:1fr}#main-menu .p27-home-primary{gap:7px}#main-menu .p27-home-card{padding:11px;min-height:115px}#main-menu .p27-home-card>b{font-size:15px}#main-menu .p27-home-card>small{font-size:9px}#main-menu .p27-career-topline{padding:9px}#main-menu .p27-stars{letter-spacing:0;font-size:15px}}
