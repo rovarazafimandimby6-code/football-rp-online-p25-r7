@@ -1,4 +1,5 @@
 import { createSystemPlayerContract } from './p27-player-contracts.js';
+import { applyDls26Reference, findDls26Reference } from './p27-dls26-reference.js';
 const NATIONAL_POOLS = Object.freeze({
   MG: { names: ['Toky','Hery','Mika','Tiana','Njaka','Kanto','Mamy','Faneva','Rado','Ando','Lova','Tahina','Faly','Niry','Hasina','Miora','Soa','Voary','Nantenaina','Fitia','Tsanta','Haja'], surnames: ['Rakoto','Randria','Andrian','Raveloson','Razafindrakoto','Rasolo','Ramanantsoa','Rakotomalala','Randrianarisoa','Andriamihaja','Razanakoto','Rajaonarison','Rafalimanana','Rakotondrabe','Ratsimbazafy','Rasoanaivo','Andriatsiferana','Rakotovao'] },
   FR: { names: ['Noah','Elias','Mathis','Yanis','Enzo','Sami','Lucas','Nolan','Theo','Mael','Bastien','Adrien','Ilyes','Remy'], surnames: ['Morel','Diallo','Laurent','Bernard','Camara','Leroy','Petit','Garnier','Fontaine','Chevalier','Roux','Marchand','Giraud','Perrin','Colin','Andre'] },
@@ -239,6 +240,10 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
     const bodyBuild = pick(['lean','athletic','strong'], random);
     const archetype = pick(ARCHETYPES[role], random);
     const attributes = generateAttributes(overall, role, archetype, random);
+    const dls26Reference = findDls26Reference(role, archetype, random);
+    const dls26Profile = dls26Reference
+      ? applyDls26Reference(dls26Reference, { targetOverall: overall, random })
+      : null;
     const skinTone = pick((({
       MG: ['light','tan','tan','medium','brown','dark','medium','brown'],
       SN: ['brown','dark','dark','deep','medium','brown'], NG: ['brown','dark','dark','deep','medium','brown'], KE: ['light','tan','medium','brown','dark','medium'],
@@ -261,6 +266,12 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
       contract: createSystemPlayerContract({ clubId: club.id, playerId: `${club.id}-ai-${String(index + 1).padStart(2,'0')}`, division: club.division, rating: overall }),
       name, nationality: code, age, role, number: index + 1,
       rating: overall, potential: talent.potential, potentialBand: talent.potentialBand, attributes,
+      ...(dls26Profile ? {
+        dls26Stats: dls26Profile.stats,
+        dls26Reference: dls26Profile.reference,
+        heightCm: dls26Profile.heightCm,
+        ...(dls26Profile.preferredFoot ? { preferredFoot: dls26Profile.preferredFoot } : {})
+      } : {}),
       loyalty: { clubLoyalty, transferWillingness, departurePolicy },
       preferredFoot: random() < 0.28 ? 'left' : 'right',
       archetype,
