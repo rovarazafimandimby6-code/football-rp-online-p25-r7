@@ -123,3 +123,12 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Cette règle découle de l'unicité d'appartenance : un compte ne peut être membre que d'un seul Club RP à la fois.
 - Un test couvre les deux chemins d'entrée, avec plusieurs clubs, puis recharge le stockage pour vérifier que l'appartenance et le nettoyage persistent.
 - Le code et le test sont enregistrés sur `p27-dls26-global-adaptation`. L'exécution CI reste à confirmer ; aucune réussite de test n'est revendiquée.
+
+
+## Révocation des accès après exclusion ou départ — 26/11/2026
+
+- Contrôle renforcé par tests : après exclusion par le président ou départ volontaire, le compte ne doit plus accéder aux données réservées aux membres (getMemberAccounts) ni publier dans le chat du Club RP.
+- Les contrôles serveur s'appuient sur l'appartenance actuelle, et non sur l'ancien statut du compte.
+- Le test vérifie également que la révocation reste effective après rechargement du stockage.
+- Cette vérification concerne les accès Club RP côté serveur. Elle ne force pas l'interruption d'un match de défi déjà engagé : une admission validée au démarrage du match reste distincte de l'appartenance communautaire pendant le match.
+- Test ajouté sur p27-dls26-global-adaptation. Résultat d'exécution à confirmer par CI ; aucune réussite n'est revendiquée.
