@@ -8,7 +8,7 @@ const STAT_FIELDS = Object.freeze({
 });
 const safeCount = value => Number.isFinite(Number(value))
   ? Math.max(0, Math.min(1_000_000_000, Math.floor(Number(value)))) : 0;
-const clean = (value, max = 64) => String(value ?? "").replace(/[<>\\u0000-\\u001f]/g, "").trim().slice(0, max);
+const clean = (value, max = 64) => String(value ?? "").replace(/[<>\u0000-\u001f]/g, "").trim().slice(0, max);
 const safeRating = value => value === null || value === undefined || value === "" || !Number.isFinite(Number(value))
   ? null : Math.round(Math.max(1, Math.min(10, Number(value))) * 10) / 10;
 
