@@ -1429,3 +1429,112 @@
 #main-menu #menu-content .player-choice.active{border-color:#62b8ff;background:rgba(35,104,163,.36);color:#fff}
 #main-menu #menu-content .choice-swatch{width:13px;height:13px;border:1px solid rgba(255,255,255,.32);border-radius:50%;background:var(--choice-color)}
 @media(max-width:520px){#main-menu #menu-content .player-visual-customizer{grid-template-columns:1fr}}
+
+
+/* P27 compact library pass: more cards visible, no long profile tiles. */
+#main-menu #menu-content .player-library-grid{
+  grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;
+}
+#main-menu #menu-content .player-library-card{
+  display:flex;align-items:center;gap:7px;min-height:66px;padding:6px;
+  overflow:hidden;cursor:pointer;
+}
+#main-menu #menu-content .player-card-portrait{
+  display:grid;place-items:center;flex:0 0 34px;width:34px;height:44px;
+  border:1px solid rgba(135,181,224,.24);border-radius:3px;
+  background:linear-gradient(160deg,rgba(64,104,143,.48),rgba(5,17,29,.96));
+  font-size:25px;line-height:1;
+}
+#main-menu #menu-content .player-card-compact-copy{
+  display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 4px;
+  min-width:0;width:100%;
+}
+#main-menu #menu-content .player-card-compact-copy strong{
+  grid-column:1/-1;overflow:hidden;color:#edf5fc;font-size:9px;font-weight:950;
+  text-overflow:ellipsis;white-space:nowrap
+}
+#main-menu #menu-content .player-card-compact-copy small{
+  overflow:hidden;color:#91aac4;font-size:7px;font-weight:800;text-overflow:ellipsis;white-space:nowrap
+}
+#main-menu #menu-content .player-card-compact-copy .player-card-rating{
+  grid-column:2;grid-row:2/4;width:27px;height:27px;margin:0;font-size:13px
+}
+#main-menu #menu-content .player-library-footer.compact-library-pagination{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px
+}
+#main-menu #menu-content .compact-library-pagination>div{display:flex;align-items:center;gap:8px}
+#main-menu #menu-content .compact-library-pagination button{
+  min-width:30px;min-height:29px;padding:3px 8px;font-size:15px
+}
+#main-menu #menu-content .compact-library-pagination button:disabled{opacity:.35;cursor:default}
+#main-menu #menu-content .player-library-overview{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-bottom:7px
+}
+#main-menu #menu-content .player-library-overview>div{padding:6px 8px}
+#main-menu #menu-content .player-library-toolbar{
+  display:grid;grid-template-columns:1.5fr repeat(4,minmax(80px,1fr));gap:5px;padding:7px;margin:7px 0
+}
+#main-menu #menu-content .player-library-toolbar label{display:grid;gap:3px;min-width:0}
+#main-menu #menu-content .player-library-toolbar label>span{font-size:7px}
+#main-menu #menu-content .player-library-toolbar input,
+#main-menu #menu-content .player-library-toolbar select{
+  min-width:0;min-height:29px;padding:4px 6px;font-size:8px
+}
+#main-menu #menu-content .player-library-resultline{margin:5px 1px;font-size:7px}
+#main-menu #menu-content .club-division-tabs{
+  display:flex;gap:5px;flex-wrap:wrap;margin:7px 0 9px
+}
+#main-menu #menu-content .club-division-tab{
+  min-width:43px;min-height:29px;padding:5px 10px;border:1px solid rgba(134,178,219,.22);
+  border-radius:3px;background:rgba(9,27,44,.9);color:#a9bfd4;
+  font-size:9px;font-weight:950;cursor:pointer
+}
+#main-menu #menu-content .club-division-tab.active{
+  border-color:#67baff;background:linear-gradient(130deg,rgba(36,111,174,.5),rgba(10,34,55,.95));color:#fff
+}
+#main-menu #menu-content .club-division{margin:7px 0}
+#main-menu #menu-content .club-division-heading{padding:5px 8px;margin-bottom:6px;font-size:10px}
+#main-menu #menu-content .club-grid{
+  grid-template-columns:repeat(6,minmax(0,1fr));gap:5px
+}
+#main-menu #menu-content .club-card.compact-club-card{
+  display:grid;grid-template-columns:minmax(0,1fr) 34px;align-items:center;gap:5px;
+  min-height:54px;padding:6px;border-radius:4px
+}
+#main-menu #menu-content .compact-club-card .club-card-copy{display:grid;gap:2px;min-width:0}
+#main-menu #menu-content .compact-club-card .club-card-kickers{display:flex;gap:4px;align-items:center;color:#83a9cc;font-size:7px;font-weight:950}
+#main-menu #menu-content .compact-club-card .club-card-copy h3{
+  overflow:hidden;margin:0;color:#edf5fc;font-size:8px;font-weight:950;text-overflow:ellipsis;white-space:nowrap
+}
+#main-menu #menu-content .compact-club-card .club-meta-line{font-size:7px}
+#main-menu #menu-content .compact-club-card .club-meta-line span:not(:first-child){display:none}
+#main-menu #menu-content .compact-club-card .club-card-copy>button{
+  justify-self:start;min-height:20px;padding:2px 5px;font-size:6px
+}
+#main-menu #menu-content .compact-club-card .club-crest,
+#main-menu #menu-content .compact-club-card svg{width:34px!important;height:34px!important}
+#main-menu #menu-content .club-discovery-toolbar{
+  display:grid;grid-template-columns:1.5fr repeat(4,minmax(72px,1fr));gap:5px;padding:7px
+}
+#main-menu #menu-content .club-discovery-toolbar label{display:grid;gap:3px;min-width:0}
+#main-menu #menu-content .club-discovery-toolbar label>span{font-size:7px}
+#main-menu #menu-content .club-discovery-toolbar input,
+#main-menu #menu-content .club-discovery-toolbar select{min-width:0;min-height:28px;padding:4px 5px;font-size:8px}
+@media(max-width:700px){
+ #main-menu #menu-content .player-library-grid,
+ #main-menu #menu-content .club-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+ #main-menu #menu-content .player-library-toolbar,
+ #main-menu #menu-content .club-discovery-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #main-menu #menu-content .player-library-toolbar label:first-child,
+ #main-menu #menu-content .club-discovery-toolbar label:first-child{grid-column:1/-1}
+}
+@media(max-width:420px){
+ #main-menu #menu-content .player-library-grid,
+ #main-menu #menu-content .club-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #main-menu #menu-content .player-library-card{min-height:62px;padding:4px;gap:4px}
+ #main-menu #menu-content .player-card-portrait{flex-basis:27px;width:27px;height:38px;font-size:20px}
+ #main-menu #menu-content .player-card-compact-copy strong{font-size:8px}
+ #main-menu #menu-content .club-card.compact-club-card{grid-template-columns:minmax(0,1fr) 27px;min-height:50px;padding:4px}
+ #main-menu #menu-content .compact-club-card .club-crest,
+ #main-menu #menu-content .compact-club-card svg{width:27px!important;height:27px!important}
+}
