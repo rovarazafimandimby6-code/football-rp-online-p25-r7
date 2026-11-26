@@ -404,3 +404,11 @@ test('P27 bibliothèque joueurs: toucher agrandit la carte, Voir plus ouvre la f
   assert.match(source, /renderPage\('player-detail'\)/);
   assert.match(source, /aria-expanded="false"/);
 });
+
+
+test('P27 bibliothèque joueurs: une seule carte peut être agrandie à la fois', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(source, /player-library-card\.is-expanded'\)\.forEach\(card=>\{if\(card!==playerCard\)/);
+  assert.match(source, /player-library-card\.is-expanded'\)\.forEach\(item=>\{if\(item!==card\)/);
+  assert.match(source, /setAttribute\('aria-expanded','false'\)/);
+});
