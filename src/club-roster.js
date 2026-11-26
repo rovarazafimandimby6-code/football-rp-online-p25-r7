@@ -156,27 +156,66 @@ function pickWeightedNationality(codes, random, nationalityCounts = new Map()) {
 function nationalityPlan(club, count, random, nationalityCounts = new Map(), malagasyQuota = null) {
   const homeCode = /^[A-Z]{2}$/.test(club.countryCode || '') ? club.countryCode : 'MG';
   const recruitment = club.recruitmentProfile;
-  if (recruitment?.mode === 'country' && NATIONAL_POOLS[recruitment.countryCode]) return Array(count).fill(recruitment.countryCode);
-  if (recruitment?.mode === 'continent' && Array.isArray(recruitment.nationalityCodes)) {
-    const eligible = recruitment.nationalityCodes.filter(code => NATIONAL_POOLS[code] && (!RARE_NATIONALITIES.has(code) || (nationalityCounts.get(code) || 0) < 2));
-    if (eligible.length) return shuffled(Array.from({ length: count }, (_, index) => eligible[index % eligible.length]), random);
-  }
-  // Fixed world-level quotas: with the 47 Malagasy / 109 international club
-  // split, five locals in Malagasy clubs and three Malagasy players in foreign
-  // clubs produce a 30% Malagasy player population across the full catalogue.
-  const malagasyCount = Number.isInteger(malagasyQuota)
+  const plan = [];
+  const workingCounts = new Map(nationalityCounts);
+  const add = code => {
+    if (!NATIONAL_POOLS[code]) return false;
+    if (RARE_NATIONALITIES.has(code) && (workingCounts.get(code) || 0) >= 2) return false;
+    plan.push(code);
+    workingCounts.set(code, (workingCounts.get(code) || 0) + 1);
+    return true;
+  };
+  const hasFixedMalagasyQuota = Number.isInteger(malagasyQuota);
+  const malagasyCount = hasFixedMalagasyQuota
     ? Math.max(0, Math.min(count, malagasyQuota))
     : homeCode === 'MG' ? Math.min(count, Math.round(count * 5 / 12)) : Math.min(count, Math.round(count * 3 / 12));
-  const localCount = homeCode === 'MG' ? malagasyCount : Math.min(count - malagasyCount, Math.round(count * 3 / 12));
-  const plan = [];
-  if (homeCode === 'MG') plan.push(...Array(malagasyCount).fill('MG'));
-  else {
-    plan.push(...Array(malagasyCount).fill('MG'));
-    plan.push(...Array(localCount).fill(homeCode));
+
+  for (let index = 0; index < malagasyCount; index++) add('MG');
+
+  // Explicit country recruitment is respected, except when it would violate
+  // the Malagasy world quota or the hard cap for very rare nationalities.
+  if (recruitment?.mode === 'country' && NATIONAL_POOLS[recruitment.countryCode]) {
+    const target = recruitment.countryCode;
+    if (target !== 'MG' || !hasFixedMalagasyQuota) {
+      while (plan.length < count && add(target)) {}
+    }
+  } else if (recruitment?.mode === 'continent' && Array.isArray(recruitment.nationalityCodes)) {
+    const eligible = recruitment.nationalityCodes.filter(code =>
+      NATIONAL_POOLS[code] &&
+      (!hasFixedMalagasyQuota || code !== 'MG') &&
+      (!RARE_NATIONALITIES.has(code) || (workingCounts.get(code) || 0) < 2)
+    );
+    let cursor = 0;
+    let stalled = 0;
+    while (plan.length < count && eligible.length && stalled < eligible.length) {
+      const code = eligible[cursor % eligible.length];
+      cursor++;
+      if (add(code)) stalled = 0;
+      else stalled++;
+    }
   }
+
+  // Keep a credible local presence while reserving the agreed Malagasy share.
+  if (plan.length < count && homeCode !== 'MG') {
+    const localTarget = Math.min(count - plan.length, Math.round(count * 3 / 12));
+    for (let index = 0; index < localTarget; index++) {
+      if (!add(homeCode)) break;
+    }
+  }
+
   const excluded = new Set(['MG', homeCode]);
   const internationalCodes = Object.keys(NATIONAL_POOLS).filter(code => !excluded.has(code));
-  while (plan.length < count) plan.push(pickWeightedNationality(internationalCodes, random, nationalityCounts));
+  let safety = 0;
+  while (plan.length < count && safety++ < count * 4) {
+    const code = pickWeightedNationality(internationalCodes, random, workingCounts);
+    if (!add(code)) {
+      const fallback = internationalCodes.find(candidate =>
+        !RARE_NATIONALITIES.has(candidate) || (workingCounts.get(candidate) || 0) < 2
+      );
+      if (!fallback || !add(fallback)) break;
+    }
+  }
+  while (plan.length < count) add('FR');
   return shuffled(plan, random);
 }
 function createUniqueName(code, random, usedNames, index, clubId) {
