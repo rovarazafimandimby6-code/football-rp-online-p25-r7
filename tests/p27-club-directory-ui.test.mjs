@@ -44,3 +44,10 @@ test('P27 club identity UI: uses the approved red/system and green/human managem
   assert.doesNotMatch(main,/intelligence artificielle/);
   assert.match(css,/\.club-control-indicator\.human i/);
 });
+
+
+test('P27 Club RP UI : une réponse réseau ancienne ne remplace pas le dernier écran demandé',()=>{
+  assert.match(main,/let rpClubPageRequestSequence = 0/);
+  assert.match(main,/const requestId = \+\+rpClubPageRequestSequence/);
+  assert.match(main,/requestId !== rpClubPageRequestSequence \|\| !document\.getElementById\('rp-club-root'\)/);
+});
