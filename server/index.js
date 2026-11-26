@@ -11,6 +11,7 @@ import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
 import { JsonRpClubStore } from './rp-club-store.js';
 import { JsonRpClubChallengeStore } from './rp-club-challenge-store.js';
+import { JsonRpClubSeasonStore } from './rp-club-season-store.js';
 import { RpClubMatchService } from './rp-club-match-service.js';
 import { readGoogleOidcConfig } from './google-oidc-config.js';
 import { GoogleOidcTransactionStore } from './google-oidc-transactions.js';
@@ -100,7 +101,9 @@ const rpClubDirectory = process.env.RP_CLUBS_DIR || path.join(path.dirname(fileU
 const rpClubStore = new JsonRpClubStore(rpClubDirectory);
 const rpClubChallengeDirectory = process.env.RP_CLUB_CHALLENGES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rp-club-challenges');
 const rpClubChallengeStore = new JsonRpClubChallengeStore(rpClubChallengeDirectory);
-const rpClubMatchService = new RpClubMatchService({ clubStore:rpClubStore, challengeStore:rpClubChallengeStore, roomManager:manager });
+const rpClubSeasonDirectory = process.env.RP_CLUB_SEASONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rp-club-seasons');
+const rpClubSeasonStore = new JsonRpClubSeasonStore(rpClubSeasonDirectory);
+const rpClubMatchService = new RpClubMatchService({ clubStore:rpClubStore, challengeStore:rpClubChallengeStore, seasonStore:rpClubSeasonStore, roomManager:manager });
 manager.onResultFinalized = (result, room) => rpClubMatchService.recordFinalizedResult(result, room);
 const googleOidcConfig = readGoogleOidcConfig(process.env);
 const googleOidcTransactionDirectory = process.env.GOOGLE_OIDC_TRANSACTIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'google-oidc-transactions');
@@ -235,6 +238,27 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         playerId:body.playerId, fee:body.fee
       });
       return json(res, result.ok ? 200 : (result.pending ? 202 : 409), result);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/admin/rp-club-seasons') {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
+      const body = await readBody(req);
+      const result = rpClubSeasonStore.create({ id:body.id, name:body.name, startsAt:body.startsAt, endsAt:body.endsAt });
+      return json(res, result.ok ? 201 : 409, result);
+    }
+    const rpClubSeasonActivate = url.pathname.match(/^\/api\/admin\/rp-club-seasons\/([a-z0-9_-]{3,48})\/activate$/i);
+    if (req.method === 'POST' && rpClubSeasonActivate) {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
+      const result = rpClubSeasonStore.activate(rpClubSeasonActivate[1]);
+      return json(res, result.ok ? 200 : 409, result);
+    }
+    const rpClubSeasonClose = url.pathname.match(/^\/api\/admin\/rp-club-seasons\/([a-z0-9_-]{3,48})\/close$/i);
+    if (req.method === 'POST' && rpClubSeasonClose) {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
+      const result = rpClubSeasonStore.close(rpClubSeasonClose[1]);
+      return json(res, result.ok ? 200 : 409, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/google/start') {
       if (!googleOidcConfig.configured) return json(res, 503, { error: 'GOOGLE_OIDC_NOT_CONFIGURED' });
@@ -598,6 +622,18 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
       return json(res, 200, { standings:rpClubMatchService.leaderboard() });
     }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs/seasons/current') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      return json(res, 200, { season:rpClubSeasonStore.current() });
+    }
+    const rpClubSeasonLeaderboard = url.pathname.match(/^\/api\/rp-clubs\/seasons\/([a-z0-9_-]{3,48})\/leaderboard$/i);
+    if (req.method === 'GET' && rpClubSeasonLeaderboard) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const standings = rpClubMatchService.seasonLeaderboard(rpClubSeasonLeaderboard[1]);
+      return standings ? json(res, 200, { standings }) : json(res, 404, { error:'RP_CLUB_SEASON_NOT_FOUND' });
+    }
     if (req.method === 'GET' && url.pathname === '/api/rp-clubs/challenges/me') {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
@@ -927,4 +963,4 @@ if (isMainModule) {
   process.once('SIGTERM', () => handleSignal('SIGTERM'));
   process.once('SIGINT', () => handleSignal('SIGINT'));
 }
-export { server, manager, clubFinance, serverClubManager, clubWorld, rpClubStore, accountStore, playerIdentityStore, playerBackupScheduler, careerSyncQueue, careerSyncService, careerStore, shutdownP27Server };
+export { server, manager, clubFinance, serverClubManager, clubWorld, rpClubStore, accountStore, playerIdentityStore, playerBackupScheduler, careerSyncQueue, careerSyncService, careerStore, rpClubSeasonStore, shutdownP27Server };
