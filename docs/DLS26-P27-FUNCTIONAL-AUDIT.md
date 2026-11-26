@@ -248,3 +248,20 @@ Le Club RP est désormais séparé du catalogue des 156 clubs de football et des
 
 ### Périmètre volontairement non prétendu
 Cette première brique est un socle serveur et des parcours API testables, pas encore l'interface complète du Club RP. Elle n'implémente pas encore les invitations, la délégation de rôles, les transferts de présidence, les objectifs/XP collectifs, les matchs inter-clubs, les classements, le chat, les récompenses ni l'intégration visuelle au hub. Ces fonctions seront ajoutées au-dessus de ce modèle après validation de cette fondation. Le Club RP n'affecte pas automatiquement le footballeur à un club de championnat et ne modifie pas le moteur de match.
+
+
+### Interface Club RP — premier raccordement au hub P27
+
+L'entrée **CLUB RP** est maintenant intégrée au hub principal sans ajouter un panneau supplémentaire : le panneau communautaire remplace l'ancien raccourci ambigu « Mon club ». Dans le hub Carrière, l'accès aux clubs de championnat est explicitement nommé **Mon équipe / Équipe de championnat**. Cette séparation évite de confondre le collectif social avec l'équipe sportive du joueur.
+
+L'écran Club RP est relié aux routes serveur :
+- état du compte et de l'appartenance ;
+- création avec nom, sigle et description ;
+- annuaire public et demandes d'adhésion ;
+- consultation des membres et des rôles ;
+- validation/refus des demandes par les responsables ;
+- départ du Club RP.
+
+L'interface utilise les composants visuels du jeu et conserve le format paysage. Les mutations nécessitent un compte P27 authentifié et une identité joueur réservée. L'annuaire reste consultable sans compte ; les actions de création et d'adhésion sont verrouillées tant que l'identité n'est pas disponible.
+
+Cette intégration ne prétend toujours pas livrer les invitations, le chat, les changements de rôles, la cession de présidence, les objectifs/XP collectifs ou les rencontres inter-clubs.
