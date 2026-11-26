@@ -140,3 +140,33 @@ test('finalized Club RP challenge results also enter the active season exactly o
   assert.equal(calls[0].seasonId, 'season-2026');
   assert.deepEqual(calls[0].challenger, { id:'club-a', name:'Alpha', tag:'ALP' });
 });
+
+test('completed Club RP results can retry seasonal reconciliation after a transient save failure', () => {
+  const challenge = {
+    id:'challenge-retry-season', status:'completed', roomId:'room-retry-season',
+    challengerClubId:'club-a', challengerName:'Alpha', challengerTag:'ALP',
+    targetClubId:'club-b', targetName:'Bravo', targetTag:'BRV'
+  };
+  let writes = 0;
+  const challengeStore = {
+    state:{ challenges:[challenge] },
+    completeFromMatch() { return { ok:true, challenge, duplicate:true }; },
+    leaderboard() { return []; }
+  };
+  const result = {
+    phase:'fulltime', roomId:'room-retry-season', finalizedAt:Date.parse('2026-11-26T12:00:00Z'),
+    score:{ blue:1, red:1 }, rpClubChallenge:{ challengeId:challenge.id }
+  };
+  const seasonStore = {
+    current() { return { id:'season-current' }; },
+    recordResult() { writes++; return writes === 1 ? { ok:false, reason:'TEMPORARY_WRITE_FAILURE' } : { ok:true, duplicate:false }; },
+    leaderboard() { return []; }
+  };
+  const service = new RpClubMatchService({
+    clubStore:{}, challengeStore, seasonStore,
+    roomManager:{ resultStore:{ get:() => result } }
+  });
+  assert.equal(service.reconcileChallenge(challenge.id).seasonResult.reason, 'TEMPORARY_WRITE_FAILURE');
+  assert.equal(service.reconcileChallenge(challenge.id).seasonResult.ok, true);
+  assert.equal(writes, 2);
+});
