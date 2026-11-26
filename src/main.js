@@ -1222,7 +1222,13 @@ menu.addEventListener('click', event => {
   if (careerButton) { const index = Number(careerButton.dataset.playerIndex); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = 'players'; if(selectedPlayerProfile) renderPage('player-detail'); return; }
   const playerCard = event.target.closest('[data-player-profile]');
   if (playerCard && event.target.closest('.player-card-details')) return;
-  if (playerCard) { const expanded=playerCard.classList.toggle('is-expanded'); playerCard.setAttribute('aria-expanded',String(expanded)); playerCard.querySelector('.player-card-expanded-details')?.setAttribute('aria-hidden',String(!expanded)); return; }
+  if (playerCard) {
+    menu.querySelectorAll('.player-library-card.is-expanded').forEach(card=>{if(card!==playerCard){card.classList.remove('is-expanded');card.setAttribute('aria-expanded','false');card.querySelector('.player-card-expanded-details')?.setAttribute('aria-hidden','true');}});
+    const expanded=playerCard.classList.toggle('is-expanded');
+    playerCard.setAttribute('aria-expanded',String(expanded));
+    playerCard.querySelector('.player-card-expanded-details')?.setAttribute('aria-hidden',String(!expanded));
+    return;
+  }
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'club-division-tab') {
     const tab=event.target.closest('[data-division]');
@@ -1452,6 +1458,7 @@ menu.addEventListener('keydown', event => {
   const card = event.target.closest('[data-player-profile]');
   if (!card || event.target.closest('summary,button,a,input,select,textarea')) return;
   event.preventDefault();
+  menu.querySelectorAll('.player-library-card.is-expanded').forEach(item=>{if(item!==card){item.classList.remove('is-expanded');item.setAttribute('aria-expanded','false');item.querySelector('.player-card-expanded-details')?.setAttribute('aria-hidden','true');}});
   const expanded=card.classList.toggle('is-expanded');
   card.setAttribute('aria-expanded',String(expanded));
   card.querySelector('.player-card-expanded-details')?.setAttribute('aria-hidden',String(!expanded));
