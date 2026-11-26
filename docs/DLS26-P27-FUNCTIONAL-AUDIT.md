@@ -204,3 +204,19 @@ Le Club RP est une communauté structurée, pas un simple nom d'équipe :
 7. Ajouter progressivement événements, infrastructures et fonctions en ligne, uniquement quand le backend les prend réellement en charge.
 
 Chaque lot doit être livré avec tests de non-régression, compatibilité des sauvegardes et vérification de la build Android. Le travail existant P27 reste la base de départ.
+
+
+## 9. Inventaire confirmé des fondations P27 à préserver
+
+L'inspection des modules et tests existants confirme les éléments suivants sur la branche de travail :
+
+- **Compte local** : P27 peut démarrer sans Google ni inscription obligatoire. Le profil local est créé sur l'appareil.
+- **Compte cloud facultatif** : association Google et identité P27 séparée du nom affiché ; les règles de propriété et de transfert de compte sont documentées dans `docs/P27-GOOGLE-ACCOUNT-OWNERSHIP.md`.
+- **Synchronisation** : client de compte, synchronisation de carrière, file d'attente/outbox et coordination du profil sont déjà présents. Conserver le serveur comme source de vérité des données synchronisées.
+- **Sauvegardes** : les stores comptes, identités, profils, progression, carrières, transferts et effectifs de clubs sont inclus dans le système de sauvegarde vérifiée. Ne pas remplacer ce circuit par une sauvegarde locale naïve.
+- **Profil footballeur** : identité, numéro, pied préféré, poste, tenue, teint, coiffure, couleur des cheveux, morphologie, progression et attributs sont déjà modélisés.
+- **Studio visuel** : l'écran joueur contient déjà un aperçu 3D manipulable et des choix d'apparence ; le modèle 3D prend en charge plusieurs coiffures et morphologies. L'adaptation DLS 19 doit étendre cette base, pas créer un second éditeur parallèle.
+- **Bibliothèque** : `src/p27-player-library.js` construit déjà un répertoire depuis les effectifs des clubs et les joueurs libérés, avec filtres et états actif/libre/prêté.
+- **Clubs sportifs** : le catalogue serveur des 156 clubs fictifs et les compétitions P27 sont déjà établis. Ils restent des entités sportives et ne deviennent pas les Clubs RP communautaires.
+
+Conséquence : les prochains changements doivent prioritairement porter sur la cohérence des parcours, la présentation, les relations entre données et les fonctionnalités manquantes. Toute extension de schéma doit inclure validation, migration rétrocompatible, sauvegarde et tests.
