@@ -98,3 +98,18 @@ test("progression route does not expose match reward submission to clients", asy
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error, "INVALID_PROGRESSION_ACTION");
 });
+
+test("progression route rejects stale full-snapshot replacement instead of accepting client state", async () => {
+  const db = new ProgressionRouteD1();
+  const response = await worker.fetch(request("POST", {
+    action: "restore",
+    progression: {
+      level: 1, experience: 0, coins: 999999, trainingPoints: 0,
+      attributes: { pace: 55, shooting: 50, passing: 50, defense: 45, stamina: 55, control: 50 },
+      processedMatchIds: [],
+    },
+  }), { P27_DB: db });
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).error, "INVALID_PROGRESSION_ACTION");
+  assert.equal(db.progression, null);
+});
