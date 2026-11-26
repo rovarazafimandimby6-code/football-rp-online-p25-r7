@@ -167,8 +167,12 @@ function createUniqueName(code, random, usedNames, index, clubId) {
     const key = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (!FORBIDDEN_REAL_NAMES.has(key) && !usedNames.has(key)) { usedNames.add(key); return name; }
   }
-  const fallback = `${pick(pool.names, random)} ${pick(pool.surnames, random)} ${String(clubId).replace(/[^a-z0-9]/gi,'').slice(-6).toUpperCase()}${index + 1}`;
-  usedNames.add(fallback.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase());
+  const base = `${pick(pool.names, random)} ${pick(pool.surnames, random)} ${String(clubId).replace(/[^a-z0-9]/gi,'').slice(-6).toUpperCase()}${index + 1}`;
+  let fallback = base;
+  let suffix = 1;
+  const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  while (usedNames.has(normalize(fallback))) fallback = `${base}-${suffix++}`;
+  usedNames.add(normalize(fallback));
   return fallback;
 }
 
