@@ -326,3 +326,24 @@ Les salons issus d'un défi conservent une référence au défi dans la session 
 Le classement est dérivé des seuls défis terminés : victoire = 3 points, nul = 1 point, défaite = 0 ; départage par différence de buts puis buts marqués. L'interface Club RP expose ce classement et affiche le score final dans la ligne du défi. Si la liaison de résultat échoue momentanément après l'archivage du match, l'ouverture ultérieure de la boîte des défis tente de réconcilier le résultat depuis l'archive serveur.
 
 **Limites actuelles :** il s'agit d'un classement global de tous les défis terminés, sans saison, récompenses, sanctions ni arbitrage manuel. Le résultat est celui du moteur P27 ; aucune saisie de score par les joueurs n'est acceptée. Les tests et le build Android de cette livraison restent à exécuter/confirmer.
+
+
+## 10. Saisons et historique compétitif du Club RP
+
+Le Club RP dispose désormais d'un store saisonnier distinct du classement général :
+- saisons persistées avec identifiant, nom, dates et états planifiée / active / terminée ;
+- activation et clôture réservées à l'administration via le jeton serveur ;
+- une seule saison active à la fois et périodes qui ne se chevauchent pas ;
+- rattachement automatique des résultats de défis inter-clubs finalisés par le moteur P27 à la saison active ;
+- classements saisonniers calculés avec 3 points pour une victoire, 1 pour un nul, 0 pour une défaite, puis différence de buts et buts marqués ;
+- idempotence par défi et salon : le même résultat n'est jamais compté deux fois ;
+- aucun résultat manuel, récompense, XP ou crédit artificiel.
+
+Routes disponibles :
+- `GET /api/rp-clubs/seasons/current`
+- `GET /api/rp-clubs/seasons/:seasonId/leaderboard`
+- `POST /api/admin/rp-club-seasons`
+- `POST /api/admin/rp-club-seasons/:seasonId/activate`
+- `POST /api/admin/rp-club-seasons/:seasonId/close`
+
+La création admin attend `id`, `name`, `startsAt` et `endsAt` (dates ISO 8601). L'activation doit intervenir pendant la période définie. Les résultats finalisés hors de cette période ne sont pas ajoutés à la saison. Le classement général inter-clubs reste indépendant et conserve l'ensemble des résultats validés.
