@@ -601,7 +601,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
     if (req.method === 'GET' && url.pathname === '/api/rp-clubs/challenges/me') {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
-      return json(res, 200, { challenges:rpClubChallengeStore.listForAccount(account.id) });
+      return json(res, 200, { challenges:rpClubMatchService.reconcileForAccount(account.id) });
     }
     const rpClubChallengeCreateMatch = url.pathname.match(new RegExp('^/api/rp-clubs/([a-f0-9-]{36})/challenges$','i'));
     if (req.method === 'POST' && rpClubChallengeCreateMatch) {
