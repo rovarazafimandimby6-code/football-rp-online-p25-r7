@@ -203,3 +203,24 @@ test('P27 game header: affiche les crédits réels du profil sans valeur fictive
   assert.match(main, /Number\(profileStore\.profile\.progression\.coins \|\| 0\)\.toLocaleString\('fr-FR'\)/);
   assert.doesNotMatch(main, /\\\\n  const topCoins/);
 });
+
+
+test('P27 quality: tous les écrans secondaires ont des états clavier et indisponibles lisibles', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.match(css, /#menu-content :focus-visible/);
+  assert.match(css, /button:disabled/);
+  assert.match(css, /outline:2px solid/);
+});
+
+test('P27 quality: tableaux et formulaires restent utilisables sur petit écran', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.match(css, /\.roster-table-wrap[\s\S]*?overflow:auto/);
+  assert.match(css, /\.table-scroll table,[\s\S]*?min-width:560px/);
+  assert.match(css, /input,[\s\S]*?width:100%/);
+  assert.match(css, /max-width:420px/);
+});
+
+test('P27 quality: feuille de style sans séquence \u005c\u005cn littérale hors commentaire', () => {
+  const css = readFileSync(new URL('../p27-rebirth.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(css, /\\\\n\\\\n/);
+});
