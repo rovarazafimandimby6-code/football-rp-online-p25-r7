@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 
 const clone = value => structuredClone(value);
 const MAX_CHALLENGES = 5000;
-const MANAGER_ROLES = new Set(['founder','president','vice_president','recruiter']);
 
 export class JsonRpClubChallengeStore {
   constructor(directory, { now = () => Date.now(), idFactory = randomUUID } = {}) {
