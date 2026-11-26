@@ -15,6 +15,24 @@ const NATIONAL_POOLS = Object.freeze({
   MA: { names: ['Yassine','Amine','Hamza','Anas','Ilyas','Mehdi','Rayan','Sofiane'], surnames: ['El Amrani','Bennani','Alaoui','Idrissi','Boukhris','Mansouri','Ziani','Chakir'] },
   DZ: { names: ['Yacine','Amir','Karim','Nassim','Walid','Samir','Riad','Adel'], surnames: ['Bensaid','Bouzid','Mansouri','Haddad','Belkacem','Ait Ali','Mebarki','Khelifi'] },
   TN: { names: ['Aymen','Fares','Malek','Wassim','Tarek','Nizar','Sami','Zied'], surnames: ['Trabelsi','Ben Youssef','Gharbi','Jaziri','Khemiri','Saidi','Mabrouk','Ayari'] },
+  CD: { names:['Cedric','Chancel','Gael','Jonathan','Meschack','Noel','Arthur','Dieumerci'], surnames:['Mbemba','Bakambu','Bongonda','Tshibola','Mukendi','Kalulu','Kabasele','Lukebakio'] },
+  CG: { names:['Thievy','Prince','Jordan','Gaius','Durel','Fabrice','Junior','Ruddy'], surnames:['Bifouma','Makouta','Ngouabi','Massengo','Nkouka','Mabiala','Mouandza','Okemba'] },
+  CR: { names:['Keylor','Manfred','Joel','Brandon','Anthony','Josue','Alonso','Bryan'], surnames:['Navas','Campbell','Bennette','Ruiz','Ugalde','Matarrita','Gamboa','Moya'] },
+  EC: { names:['Enner','Moisés','Piero','Kendry','Jeremy','Gonzalo','Alan','Angel'], surnames:['Valencia','Caicedo','Hincapie','Estupinan','Plata','Mena','Preciado','Angulo'] },
+  PY: { names:['Miguel','Julio','Diego','Matias','Gustavo','Oscar','Alex','Cesar'], surnames:['Almiron','Enciso','Gomez','Romero','Cardozo','Villasanti','Gimenez','Rojas'] },
+  VE: { names:['Salomon','Yeferson','Jefferson','Josef','Tomas','Eduard','Rafael','Samuel'], surnames:['Rondon','Soteldo','Sav arino','Martinez','Rincon','Machis','Herrera','Aramburu'] },
+  JM: { names:['Leon','Michail','Andre','Demarai','Shamar','Kemar','Bobby','Daniel'], surnames:['Bailey','Antonio','Gray','Nicholson','Brown','Reid','Ethan','Lowe'] },
+  PA: { names:['Anibal','Ismael','Adalberto','Cecilio','Alberto','Freddy','Jose','Luis'], surnames:['Godoy','Diaz','Carr asquilla','Blackman','Barcenas','Quintero','Andrade','Rodriguez'] },
+  SA: { names:['Salem','Firas','Abdullah','Sultan','Nawaf','Fahad','Rakan','Hassan'], surnames:['Al-Dawsari','Al-Shehri','Al-Buraikan','Al-Muwallad','Al-Ghannam','Al-Tambakti','Al-Hamdan','Al-Qahtani'] },
+  IR: { names:['Mehdi','Sardar','Alireza','Amir','Morteza','Saman','Omid','Reza'], surnames:['Taremi','Azmoun','Jahanbakhsh','Gholizadeh','Pouraliganji','Ansarifard','Torabi','Hosseini'] },
+  DK: { names:['Mikkel','Andreas','Christian','Jonas','Rasmus','Kasper','Victor','Emil'], surnames:['Nielsen','Jensen','Hansen','Andersen','Pedersen','Christensen','Larsen','Sorensen'] },
+  SE: { names:['Alexander','Viktor','Emil','Hugo','Lucas','Isak','Noah','Oscar'], surnames:['Andersson','Johansson','Karlsson','Nilsson','Eriksson','Larsson','Olsson','Persson'] },
+  NO: { names:['Erling','Martin','Sander','Oscar','Kristian','Andreas','Jorgen','Tobias'], surnames:['Hansen','Johansen','Olsen','Larsen','Andersen','Pedersen','Nilsen','Berg'] },
+  CH: { names:['Granit','Xherdan','Breel','Denis','Noah','Fabian','Ruben','Michel'], surnames:['Xhaka','Shaqiri','Embolo','Zakaria','Okafor','Frei','Vargas','Aebischer'] },
+  AT: { names:['David','Marko','Marcel','Konrad','Christoph','Florian','Stefan','Patrick'], surnames:['Alaba','Arnautovic','Sabitzer','Laimer','Baumgartner','Posch','Lienhart','Gregoritsch'] },
+  UA: { names:['Oleksandr','Andriy','Mykhailo','Artem','Viktor','Ruslan','Danylo','Illia'], surnames:['Zinchenko','Yarmolenko','Mudryk','Dovbyk','Tsygankov','Malinovskyi','Sudakov','Zabarnyi'] },
+  CZ: { names:['Tomas','Patrik','Adam','Lukas','Vaclav','Jakub','David','Antonin'], surnames:['Soucek','Schick','Hlozek','Krejci','Cerny','Coufal','Barak','Kral'] },
+  RO: { names:['Radu','Ian is','Denis','Florin','Alexandru','Razvan','Andrei','Mihai'], surnames:['Marin','Hagi','Dragus','Coman','Man','Moldovan','Popescu','Stanciu'] },
   IE: { names:['Conor','Cian','Evan','Rory','Finn','Darragh','Sean','Callum'], surnames:['Murphy','Kelly','Byrne','Ryan','Doyle','Walsh','O’Sullivan','McCarthy'] },
   DE: { names:['Lukas','Leon','Finn','Jonas','Niklas','Felix','Noah','Elias'], surnames:['Muller','Schneider','Fischer','Weber','Wagner','Becker','Hoffmann','Schulz'] },
   NL: { names:['Daan','Sem','Milan','Luuk','Jesse','Thijs','Bram','Lars'], surnames:['de Jong','Jansen','de Vries','van den Berg','Bakker','Visser','Smit','Meijer'] },
@@ -124,7 +142,7 @@ const NATIONALITY_WEIGHTS = Object.freeze({
   FR:9, BR:9, AR:8, ES:8, GB:8, DE:8, IT:7, PT:7, NL:6,
   SN:5, NG:5, MA:5, JP:5, US:4, CA:4, CO:4, MX:4, CI:4, GH:4,
   BE:4, HR:3, RS:3, PE:3, UY:3, CL:3, KE:3, DZ:3, TN:3, EG:3,
-  AU:3, ZA:3, KR:3, TR:3, GR:2, PL:2, HT:0.15, IS:0.1, NZ:0.1, LU:0.08
+  AU:3, ZA:3, KR:3, TR:3, GR:2, PL:2, CD:3, CG:2, CR:2, EC:3, PY:2, VE:2, JM:2, PA:1.5, SA:2, IR:2, DK:2, SE:2, NO:2, CH:2, AT:2, UA:2, CZ:2, RO:2, HT:0.15, IS:0.1, NZ:0.1, LU:0.08
 });
 function pickWeightedNationality(codes, random, nationalityCounts = new Map()) {
   const eligible = codes.filter(code => NATIONAL_POOLS[code] &&
