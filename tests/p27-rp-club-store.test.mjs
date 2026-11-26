@@ -79,7 +79,7 @@ test('Club RP : fondateur protégé, membre peut partir, demandes refusées nett
       actorAccountId: 'founder', decision: 'reject'
     }).decision, 'reject');
     assert.equal(store.get(club.id).memberCount, 1);
-    assert.equal(store.leave(club.id, 'founder').reason, 'FOUNDER_MUST_TRANSFER_PRESIDENCY');
+    assert.equal(store.leave(club.id, 'founder').reason, 'FOUNDER_CANNOT_LEAVE');
     const req2 = store.requestJoin(club.id, {
       accountId: 'member', playerId: 'FRP-100012', displayName: 'Tovo'
     });
@@ -87,6 +87,37 @@ test('Club RP : fondateur protégé, membre peut partir, demandes refusées nett
     assert.equal(store.leave(club.id, 'member').memberCount, 1);
     assert.equal(store.getForAccount('member'), null);
   } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('Club RP : transfert réel de présidence, permissions et journal persistants', () => {
+  const { directory, store } = fixture();
+  try {
+    const club = store.create({
+      accountId:'founder', playerId:'FRP-210001', displayName:'Rova',
+      name:'Présidence RP', tag:'PRP'
+    }).club;
+    const request = store.requestJoin(club.id, {
+      accountId:'member', playerId:'FRP-210002', displayName:'Mika'
+    });
+    store.decideJoinRequest(club.id, request.request.id, { actorAccountId:'founder', decision:'accept' });
+    assert.equal(store.canLead(club.id, 'founder'), true);
+    assert.equal(store.transferPresidency(club.id, 'FRP-210002', 'founder').ok, true);
+    assert.equal(store.getForAccount('founder').membership.isPresident, false);
+    assert.equal(store.getForAccount('member').membership.isPresident, true);
+    assert.equal(store.canLead(club.id, 'founder'), false);
+    assert.equal(store.canLead(club.id, 'member'), true);
+    assert.equal(store.assignRole(club.id, 'FRP-210001', {
+      actorAccountId:'founder', role:'recruiter'
+    }).reason, 'RP_CLUB_PERMISSION_DENIED');
+    assert.equal(store.removeMember(club.id, 'FRP-210001', 'member').reason, 'RP_CLUB_MEMBER_PROTECTED');
+    assert.equal(store.leave(club.id, 'member').reason, 'PRESIDENT_MUST_TRANSFER_PRESIDENCY');
+    assert.equal(store.leave(club.id, 'founder').reason, 'FOUNDER_CANNOT_LEAVE');
+    const restored = new JsonRpClubStore(directory);
+    assert.equal(restored.getForAccount('member').membership.isPresident, true);
+    assert.equal(restored.getForAccount('founder').membership.isPresident, false);
+    assert.ok(restored.getForAccount('member').governanceLog.some(event => event.action === 'presidency_transferred'));
+    assert.equal(restored.getForAccount('member').governanceLog.some(event => Object.hasOwn(event, 'accountId')), false);
+  } finally { rmSync(directory, { recursive:true, force:true }); }
 });
 
 test('Club RP : valide identité, nom, tag et limites de rôle', () => {
