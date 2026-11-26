@@ -1898,6 +1898,8 @@
 #main-menu .rp-club-activity-stats>span{display:flex;align-items:center;justify-content:center;gap:7px;min-height:37px;border:1px solid rgba(143,183,214,.16);border-radius:3px;background:rgba(4,15,26,.68)}
 #main-menu .rp-club-activity-stats b{color:#f1d27d;font-size:17px;font-weight:1000}
 #main-menu .rp-club-activity-stats small{color:#8eaac2;font-size:7px;font-weight:950;letter-spacing:.06em}
+#main-menu .rp-club-contribution-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:9px 0 5px;color:#dceaf7;font-size:8px;font-weight:950;letter-spacing:.06em}
+#main-menu .rp-club-contribution-heading small{color:#819db5;font-size:6px;font-weight:800;text-align:right}
 #main-menu .rp-club-contributors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
 #main-menu .rp-club-contributor{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 8px;border:1px solid rgba(143,183,214,.13);border-radius:3px;background:rgba(4,15,26,.5)}
 #main-menu .rp-club-contributor>b{display:grid;place-items:center;flex:0 0 21px;width:21px;height:21px;border-radius:3px;background:#173c58;color:#eacb77;font-size:9px}
