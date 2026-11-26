@@ -19,8 +19,8 @@ test('P27 catalogue serveur : les 156 clubs sont résolus avec leur division et 
 
 test('P27 localisation serveur : le pays de la ville ne se confond pas avec le profil de recrutement', () => {
   const club = resolveMatchClub('manparis-sporting');
-  assert.equal(club.city, 'Manchester / Paris');
-  assert.equal(club.countryCode, 'FR');
+  assert.equal(club.city, 'Manchester');
+  assert.equal(club.countryCode, 'GB');
   assert.deepEqual(club.location, { city:'Manchester', country:'Royaume-Uni', countryCode:'GB' });
   assert.equal(Object.isFrozen(club.location), true);
 });
