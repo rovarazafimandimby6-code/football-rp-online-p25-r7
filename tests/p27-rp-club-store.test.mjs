@@ -129,6 +129,66 @@ test('Club RP : transfert réel de présidence, permissions et journal persistan
   } finally { rmSync(directory, { recursive:true, force:true }); }
 });
 
+test('Club RP : rejoindre un club annule les demandes et invitations dans tous les autres clubs', () => {
+  const { directory, store } = fixture();
+  try {
+    const first = store.create({
+      accountId:'president-a', playerId:'FRP-310001', displayName:'A',
+      name:'Club Alpha', tag:'ALP'
+    }).club;
+    const second = store.create({
+      accountId:'president-b', playerId:'FRP-310002', displayName:'B',
+      name:'Club Bravo', tag:'BRV'
+    }).club;
+
+    const request = store.requestJoin(first.id, {
+      accountId:'joiner', playerId:'FRP-310003', displayName:'Joueur'
+    });
+    const invitation = store.invite(second.id, {
+      actorAccountId:'president-b', accountId:'joiner',
+      playerId:'FRP-310003', displayName:'Joueur'
+    });
+    assert.equal(request.ok, true);
+    assert.equal(invitation.ok, true);
+    assert.equal(store.getInvitationsForAccount('joiner').length, 1);
+
+    assert.equal(store.decideJoinRequest(first.id, request.request.id, {
+      actorAccountId:'president-a', decision:'accept'
+    }).ok, true);
+    assert.equal(store.getInvitationsForAccount('joiner').length, 0);
+    assert.equal(store.getForAccount('president-b').pendingRequests.length, 0);
+    assert.equal(store.getForAccount('joiner').club.id, first.id);
+
+    const third = store.create({
+      accountId:'president-c', playerId:'FRP-310004', displayName:'C',
+      name:'Club Charlie', tag:'CHA'
+    }).club;
+    const fourth = store.create({
+      accountId:'president-d', playerId:'FRP-310005', displayName:'D',
+      name:'Club Delta', tag:'DEL'
+    }).club;
+    const secondRequest = store.requestJoin(fourth.id, {
+      accountId:'invitee', playerId:'FRP-310006', displayName:'Invité'
+    });
+    const secondInvitation = store.invite(third.id, {
+      actorAccountId:'president-c', accountId:'invitee',
+      playerId:'FRP-310006', displayName:'Invité'
+    });
+    assert.equal(secondRequest.ok, true);
+    assert.equal(secondInvitation.ok, true);
+    assert.equal(store.respondInvitation(third.id, secondInvitation.invitation.id, {
+      accountId:'invitee', decision:'accept'
+    }).ok, true);
+    assert.equal(store.getForAccount('president-d').pendingRequests.length, 0);
+    assert.equal(store.getForAccount('invitee').club.id, third.id);
+
+    const restored = new JsonRpClubStore(directory);
+    assert.equal(restored.getForAccount('joiner').club.id, first.id);
+    assert.equal(restored.getForAccount('invitee').club.id, third.id);
+    assert.equal(restored.getInvitationsForAccount('joiner').length, 0);
+  } finally { rmSync(directory, { recursive:true, force:true }); }
+});
+
 test('Club RP : valide identité, nom, tag et limites de rôle', () => {
   const { directory, store } = fixture();
   try {
