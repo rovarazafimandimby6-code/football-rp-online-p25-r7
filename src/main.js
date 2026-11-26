@@ -438,6 +438,9 @@ async function loadPublicClubDirectory() {
     const html=groups.map(group=>{
       const cards=group.clubs.slice().sort((a,b)=>(numericValue(b.rating)??-1)-(numericValue(a.rating)??-1)).map(club=>{
         const conference=club.conference?'<span class="club-conference-tag">'+escapeHTML(club.conference)+'</span>':'';
+        const admission=club.humanAdmission==='system-only'?'RÉSERVÉ AUX JOUEURS DU SYSTÈME':'ADMISSION OUVERTE';
+        const managerLabel=club.managementType==='human'?'CLUB DIRIGÉ PAR UN JOUEUR':'CLUB DIRIGÉ PAR LE SYSTÈME';
+        const managerClass=club.managementType==='human'?'human':'system';
         const rating=numericValue(club.rating);
         const rosterCount=numericValue(club.rosterCount??club.roster?.length);
         const reputation=numericValue(club.reputation);
