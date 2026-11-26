@@ -125,6 +125,9 @@ export function applyDls26Reference(profile, { targetOverall, random = Math.rand
     ...(profile.preferredFoot ? { preferredFoot: profile.preferredFoot } : {}),
     reference: {
       profileId: profile.id,
+      sourceGame: profile.sourceGame || 'DLS26',
+      sourceRecordId: profile.sourceRecordId || null,
+      archetype: profile.archetype || null,
       cardType: profile.cardType,
       version: profile.version,
       baseOverall: profile.overall,
