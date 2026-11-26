@@ -562,7 +562,22 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         matches:sum.matches+member.matches, wins:sum.wins+member.wins,
         goals:sum.goals+member.goals, assists:sum.assists+member.assists
       }), { matches:0, wins:0, goals:0, assists:0 });
-      return json(res, 200, { periodStart, totals, members:contributions });
+      const objectiveDefinitions = [
+        { id:'matches', label:'Jouer des matchs', metric:'matches', target:10 },
+        { id:'wins', label:'Remporter des matchs', metric:'wins', target:5 },
+        { id:'goals', label:'Inscrire des buts', metric:'goals', target:20 },
+        { id:'assists', label:'Délivrer des passes décisives', metric:'assists', target:10 }
+      ];
+      const objectives = objectiveDefinitions.map(objective => {
+        const value = totals[objective.metric];
+        return {
+          id:objective.id, label:objective.label, metric:objective.metric,
+          value, target:objective.target,
+          progressPercent:Math.min(100, Math.floor(value / objective.target * 100)),
+          completed:value >= objective.target
+        };
+      });
+      return json(res, 200, { periodStart, periodEnd:periodStart + 7 * 24 * 60 * 60 * 1000, totals, members:contributions, objectives });
     }
     const rpClubPublicMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})$/i);
     if (req.method === 'GET' && rpClubPublicMatch) {
