@@ -340,6 +340,7 @@ Le Club RP dispose désormais d'un store saisonnier distinct du classement gén�
 - aucun résultat manuel, récompense, XP ou crédit artificiel.
 
 Routes disponibles :
+- `GET /api/rp-clubs/seasons` (historique des saisons)
 - `GET /api/rp-clubs/seasons/current`
 - `GET /api/rp-clubs/seasons/:seasonId/leaderboard`
 - `POST /api/admin/rp-club-seasons`
