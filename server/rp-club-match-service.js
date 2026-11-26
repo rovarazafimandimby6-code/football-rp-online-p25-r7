@@ -13,7 +13,7 @@ export class RpClubMatchService {
     if (challenge.status !== 'accepted') return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_ACCEPTED' };
     const actorMembership = this.clubStore.getForAccount(accountId);
     if (!actorMembership || actorMembership.club.id !== challenge.challengerClubId
-      || !['founder','president','vice_president','recruiter'].includes(actorMembership.membership.role))
+      || !this.clubStore.canLead(challenge.challengerClubId, accountId))
       return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
     if (challenge.roomId) {
       const existing = this.roomManager.rooms.get(challenge.roomId);
