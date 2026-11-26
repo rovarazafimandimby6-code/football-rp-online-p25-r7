@@ -883,7 +883,8 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
     if (req.method === 'GET' && resultMatch) return json(res, 200, manager.getResult(resultMatch[1]));
     const stateMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})$/);
     if (req.method === 'GET' && stateMatch) {
-      const since = Number(url.searchParams.get('sinceSequence'));
+      const rawSince = url.searchParams.get('sinceSequence');
+      const since = rawSince === null ? NaN : Number(rawSince);
       const afterEventId = Number(url.searchParams.get('afterEventId') || 0);
       if (Number.isSafeInteger(since) && since >= -1) {
         const delta = manager.getDelta(stateMatch[1], { afterSequence: since, afterEventId: Number.isSafeInteger(afterEventId) ? afterEventId : 0 });
