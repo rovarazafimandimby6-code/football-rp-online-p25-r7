@@ -8,8 +8,8 @@ const completeRecoverySnapshot = () => ({
   player: { playerId: 'FRP-123456', createdAt: '2026-01-01T00:00:00.000Z' },
   profile: {
     schemaVersion: 1,
-    identity: { displayName: 'Rova', number: 10, preferredFoot: 'right', role: 'MID' },
-    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic' }
+    identity: { displayName: 'Rova', number: 10, preferredFoot: 'both', role: 'MID' },
+    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic', faceShape: 'angular', eyeShape: 'hooded' }
   },
   progression: {
     level: 4, experience: 20, coins: 500, trainingPoints: 2,
@@ -24,7 +24,7 @@ const completeRecoverySnapshot = () => ({
 
 import { OnlineAccountClient } from '../src/online-account-client.js';
 
-test('P27 profil cloud : GET et PUT utilisent uniquement la session persistante', async () => {
+test('P27 profil cloud : GET et PUT conservent le pied ambidextre et les formes DLS19', async () => {
   const calls = [];
   const client = new OnlineAccountClient({
     baseUrl: 'https://game.example',
@@ -36,12 +36,15 @@ test('P27 profil cloud : GET et PUT utilisent uniquement la session persistante'
   });
   client.token = 'account-token-with-more-than-32-characters';
   await client.getProfile();
-  await client.saveProfile({ identity: { displayName: 'Rova' }, appearance: { kit: 'crimson' }, progression: { coins: 999 } });
+  await client.saveProfile({ identity: { displayName: 'Rova', preferredFoot: 'both' }, appearance: { kit: 'crimson', faceShape: 'angular', eyeShape: 'hooded' }, progression: { coins: 999 } });
   assert.equal(calls[0].options.headers.authorization, `Bearer ${client.token}`);
   assert.equal(calls[2].options.headers.authorization, `Bearer ${client.token}`);
   assert.equal(calls[2].url, 'https://game.example/api/player-profile/me');
   assert.equal(JSON.parse(calls[2].options.body).expectedRevision, 0);
   assert.equal(JSON.parse(calls[2].options.body).profile.progression, undefined);
+  assert.equal(JSON.parse(calls[2].options.body).profile.identity.preferredFoot, 'both');
+  assert.equal(JSON.parse(calls[2].options.body).profile.appearance.faceShape, 'angular');
+  assert.equal(JSON.parse(calls[2].options.body).profile.appearance.eyeShape, 'hooded');
 });
 
 test('P27 profil cloud : refuse la synchronisation sans compte connecté', async () => {
@@ -104,6 +107,8 @@ test('P27 récupération cloud : prévisualise sans écrire quand le nouvel appa
   assert.equal(preview.reason, 'EXPLICIT_RESTORE_CONFIRMATION_REQUIRED');
   assert.equal(preview.playerId, 'FRP-123456');
   assert.equal(preview.snapshot.career.totals.matches, 3);
+  assert.equal(preview.snapshot.profile.identity.preferredFoot, 'both');
+  assert.equal(preview.snapshot.profile.appearance.faceShape, 'angular');
 });
 
 
@@ -237,8 +242,8 @@ test('P27 synchronisation : met en file uniquement identité et apparence, puis 
   client.account = { id: 'account-123', playerId: 'FRP-123456' };
   const localIdentity = { accountId: 'account-123', id: 'FRP-123456' };
   const operation = client.enqueueProfileSnapshot({
-    identity: { displayName: 'Rova', role: 'FWD' },
-    appearance: { kit: 'crimson' },
+    identity: { displayName: 'Rova', role: 'FWD', preferredFoot: 'both' },
+    appearance: { kit: 'crimson', faceShape: 'angular', eyeShape: 'hooded' },
     progression: { level: 99, coins: 999999 }
   }, outbox);
   assert.equal(operation.type, 'profile_snapshot');
@@ -249,6 +254,9 @@ test('P27 synchronisation : met en file uniquement identité et apparence, puis 
   assert.equal(calls[1].url, 'https://game.example/api/player-profile/me');
   assert.equal(calls[1].options.method, 'PUT');
   assert.equal(JSON.parse(calls[1].options.body).expectedRevision, 0);
+  assert.equal(JSON.parse(calls[1].options.body).profile.identity.preferredFoot, 'both');
+  assert.equal(JSON.parse(calls[1].options.body).profile.appearance.faceShape, 'angular');
+  assert.equal(JSON.parse(calls[1].options.body).profile.appearance.eyeShape, 'hooded');
   assert.equal(calls[1].options.headers.authorization, `Bearer ${client.token}`);
   assert.equal(outbox.status().state, 'synced');
 });
