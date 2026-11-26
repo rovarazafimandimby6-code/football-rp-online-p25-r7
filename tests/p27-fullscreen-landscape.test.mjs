@@ -30,7 +30,7 @@ test('P27 Android: le workflow verrouille le paysage et masque les barres systè
   assert.match(workflow, /WindowInsets\.Type\.navigationBars\(\)/);
   assert.match(workflow, /BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE/);
   assert.match(workflow, /LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES/);
-  assert.match(workflow, /WindowCompat\\.setDecorFitsSystemWindows\\(getWindow\\(\\), false\\)/);
+  assert.match(workflow, /WindowCompat\.setDecorFitsSystemWindows\(getWindow\(\), false\)/);
 });
 
 test('P27 fullscreen: accueil et match occupent tout le viewport sans conteneur 16:9 letterbox', async () => {
