@@ -1319,3 +1319,15 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
   #main-menu .player-library-resultline{flex-direction:column;gap:4px}
 }
 @media(prefers-reduced-motion:reduce){#main-menu .player-library-card{transition:none}}
+
+#main-menu .list-row{
+  display:grid;grid-template-columns:minmax(90px,1fr) auto minmax(150px,auto);
+  align-items:center;gap:12px;padding:11px 13px;border-bottom:1px solid rgba(151,184,222,.1);
+  color:#dce8f6;font-size:11px;
+}
+#main-menu .list-row>span:nth-child(2){color:#a9c9eb;font-variant-numeric:tabular-nums;font-weight:850}
+#main-menu .list-row .training-controls{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+@media(max-width:560px){
+  #main-menu .list-row{grid-template-columns:1fr auto;gap:7px}
+  #main-menu .list-row .training-controls{grid-column:1/-1;justify-content:flex-start}
+}
