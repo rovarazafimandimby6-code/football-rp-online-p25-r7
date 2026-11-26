@@ -412,3 +412,24 @@ test('P27 bibliothèque joueurs: une seule carte peut être agrandie à la fois'
   assert.match(source, /player-library-card\.is-expanded'\)\.forEach\(item=>\{if\(item!==card\)/);
   assert.match(source, /setAttribute\('aria-expanded','false'\)/);
 });
+
+
+test('P27 bibliothèque clubs: cartes horizontales compactes, note globale et métadonnées du championnat', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.match(source, /club-card-expanded-details/);
+  assert.match(source, /NOTE GLOBALE/);
+  assert.match(source, /VOIR EFFECTIF/);
+  assert.match(source, /CHAMPIONNAT/);
+  assert.match(source, /aria-expanded="false"/);
+  assert.match(styles, /club-grid\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(styles, /club-card\.compact-club-card\.is-expanded\{grid-column:span 2/);
+});
+
+test('P27 bibliothèque clubs: toucher développe une seule carte sans bloquer les actions', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(source, /clubCard\.classList\.toggle\('is-expanded',opening\)/);
+  assert.match(source, /club-card\.compact-club-card\.is-expanded/);
+  assert.match(source, /data-action="view-roster"/);
+  assert.match(source, /data-action="take-club"/);
+});
