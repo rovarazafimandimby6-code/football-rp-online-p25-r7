@@ -12,8 +12,10 @@ export class RpClubMatchService {
     if (!challenge) return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_FOUND' };
     if (challenge.status !== 'accepted') return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_ACCEPTED' };
     const actorMembership = this.clubStore.getForAccount(accountId);
-    if (!actorMembership || actorMembership.club.id !== challenge.challengerClubId
-      || !this.clubStore.canLead(challenge.challengerClubId, accountId))
+    const canLead = typeof this.clubStore.canLead === 'function'
+      ? this.clubStore.canLead(challenge.challengerClubId, accountId)
+      : Boolean(actorMembership && ['founder','president','vice_president','recruiter'].includes(actorMembership.membership?.role));
+    if (!actorMembership || actorMembership.club.id !== challenge.challengerClubId || !canLead)
       return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
     if (challenge.roomId) {
       const existing = this.roomManager.rooms.get(challenge.roomId);
