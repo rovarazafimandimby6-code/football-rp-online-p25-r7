@@ -44,6 +44,10 @@ test('Club RP : demande, acceptation par responsable, sauvegarde et restauration
       accountId: 'member', playerId: 'FRP-100002', displayName: 'Mika'
     });
     assert.equal(request.ok, true);
+    const parallelInvitation = store.invite(clubId, {
+      actorAccountId:'founder', accountId:'member', playerId:'FRP-100002', displayName:'Mika'
+    });
+    assert.equal(parallelInvitation.ok, true);
     assert.equal(store.requestJoin(clubId, {
       accountId: 'member', playerId: 'FRP-100002', displayName: 'Mika'
     }).reason, 'JOIN_REQUEST_ALREADY_PENDING');
@@ -55,6 +59,8 @@ test('Club RP : demande, acceptation par responsable, sauvegarde et restauration
     });
     assert.deepEqual(accepted, { ok: true, decision: 'accept', memberCount: 2 });
     assert.equal(store.getForAccount('member').membership.role, 'member');
+    assert.equal(store.getForAccount('member').club.memberCount, 2);
+    assert.equal(store.getInvitationsForAccount('member').length, 0);
     assert.equal(store.getForAccount('founder').pendingRequests.length, 0);
     const restored = new JsonRpClubStore(directory);
     assert.equal(restored.get(clubId).memberCount, 2);
@@ -145,6 +151,10 @@ test('Club RP : invitations privées, acceptation par le destinataire et rôles 
     assert.equal(store.invite(club.id, {
       actorAccountId:'stranger', accountId:'invitee', playerId:'FRP-200002', displayName:'Tiana'
     }).reason, 'RP_CLUB_PERMISSION_DENIED');
+    const pendingJoin = store.requestJoin(club.id, {
+      accountId:'invitee', playerId:'FRP-200002', displayName:'Tiana'
+    });
+    assert.equal(pendingJoin.ok, true);
     const invitation = store.invite(club.id, {
       actorAccountId:'founder', accountId:'invitee', playerId:'FRP-200002', displayName:'Tiana'
     });
@@ -157,6 +167,7 @@ test('Club RP : invitations privées, acceptation par le destinataire et rôles 
       accountId:'invitee', decision:'accept'
     }).memberCount, 2);
     assert.equal(store.getInvitationsForAccount('invitee').length, 0);
+    assert.equal(store.getForAccount('founder').pendingRequests.length, 0);
     assert.equal(store.assignRole(club.id, 'FRP-200002', {
       actorAccountId:'founder', role:'recruiter'
     }).role, 'recruiter');
