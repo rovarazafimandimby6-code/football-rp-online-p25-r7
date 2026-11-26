@@ -27,7 +27,7 @@ Chaque profil conserve une URL de fiche individuelle et une marque de vérificat
 - La note finale reste déterminée par les limites de niveau de la division P27.
 - L'écart de note est appliqué à 72 % sur les statistiques, puis chaque caractéristique reçoit un ajustement individuel de ±2 points. Cela conserve la signature du profil sans transformer brutalement toutes ses qualités.
 - Les six attributs historiques du gameplay sont alimentés par les statistiques de la fiche : vitesse moyenne SPE/ACC, tir, passe, défense/tacle, endurance et contrôle.
-- Les statistiques DLS complètes restent disponibles dans `dls26Stats`; la provenance est stockée dans `dls26Reference`.
+- Les statistiques DLS complètes restent disponibles dans `dls26Stats`; la provenance est stockée dans `dls26Reference`. Le générateur évite aussi de réutiliser deux fois la même carte dans un même effectif lorsqu'il dispose d'assez de profils pour le poste.
 
 ## Identité fictive
 
