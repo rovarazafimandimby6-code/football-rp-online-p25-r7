@@ -61,7 +61,7 @@ test('P27 UI: accueil en hub de huit tuiles et accès aux pages existantes', () 
   assert.match(main, /p27-home-tiles/);
   for (const label of ['CARRIÈRE','MATCH AMICAL','MON JOUEUR','COMPÉTITIONS','MERCATO','CLASSEMENTS','CLUBS','RÉSULTATS']) assert.ok(main.includes(label), `tuile manquante: ${label}`);
   assert.match(main, /data-action="choose-match"/);
-  for (const page of ['career-hub','player','clubs','competitions','results','mercato']) assert.match(main,new RegExp(`data-page="${page}"`));
+  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato']) assert.match(main,new RegExp(`data-page="${page}"`));
   assert.match(main, /const topName = document\.getElementById\('p27-top-player-name'\)/);
   assert.match(main, /const topClub = document\.getElementById\('p27-top-player-club'\)/);
   assert.match(main, /const seasonSnapshot = seasonStats\.snapshot\(\)/);
