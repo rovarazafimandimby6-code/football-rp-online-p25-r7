@@ -24,7 +24,7 @@ export const DLS26_REFERENCE_PROFILES = Object.freeze([
   PROFILE('forward-wing-85','LW',85,176,{SPE:93,ACC:95,STA:83,STR:62,CON:93,PAS:87,SHO:85,TAC:26},
     'https://sakibpro.com/players/normal/vinicius-junior/16320/statistics/','right'),
   PROFILE('forward-finisher-84','CF',84,174,{SPE:77,ACC:83,STA:84,STR:84,CON:84,PAS:80,SHO:92,TAC:49},
-    'https://sakibpro.com/players/normal/lautaro-martinez/16329/changelog/','right'),
+    'https://sakibpro.com/players/normal/lautaro-martinez/16329/statistics/','right'),
   PROFILE('forward-target-77','CF',77,190,{SPE:82,ACC:73,STA:71,STR:84,CON:76,PAS:72,SHO:81,TAC:25},
     'https://sakibpro.com/players/normal/dusan-vlahovic/17816/changelog/','left'),
   PROFILE('midfielder-controller-85','CM',85,174,{SPE:74,ACC:86,STA:85,STR:70,CON:90,PAS:92,SHO:73,TAC:76},
@@ -44,8 +44,7 @@ export const DLS26_REFERENCE_PROFILES = Object.freeze([
   PROFILE('defender-fullback-75','RB',75,173,{SPE:82,ACC:85,STA:72,STR:58,CON:77,PAS:74,SHO:46,TAC:70},
     'https://sakibpro.com/players/normal/sergino-dest/17190/changelog/','right'),
   PROFILE('goalkeeper-reflex-85','GK',85,196,{SPE:58,ACC:55,STA:60,STR:68,CON:61,PAS:66,GKR:84,GKH:80},
-    'https://sakibpro.com/players/normal/gianluigi-donnarumma/14078/','right')
-,
+    'https://sakibpro.com/players/normal/gianluigi-donnarumma/14078/','right'),
   PROFILE('forward-wing-84','RW',84,175,{SPE:85,ACC:86,STA:82,STR:72,CON:86,PAS:88,SHO:88,TAC:39},
     'https://sakibpro.com/players/normal/mohamed-salah/12027/statistics/','left'),
   PROFILE('forward-complete-86','CF',86,188,{SPE:75,ACC:70,STA:86,STR:91,CON:88,PAS:90,SHO:96,TAC:50},
