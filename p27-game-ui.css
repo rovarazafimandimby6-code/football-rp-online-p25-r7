@@ -1920,3 +1920,18 @@
 @media(max-width:420px) and (orientation:portrait){
  #main-menu #menu-content .player-library-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Club RP — objectifs hebdomadaires calculés depuis les statistiques serveur. */
+#main-menu .rp-club-objectives{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0 8px}
+#main-menu .rp-club-objectives-heading{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px}
+#main-menu .rp-club-objectives-heading>small{color:#819db5;font-size:7px;font-weight:900;letter-spacing:.08em}
+#main-menu .rp-club-objective{min-width:0;padding:8px;border:1px solid rgba(118,158,190,.18);border-radius:7px;background:linear-gradient(135deg,rgba(25,48,69,.82),rgba(9,19,31,.88))}
+#main-menu .rp-club-objective>div:first-child{display:flex;justify-content:space-between;align-items:center;gap:6px}
+#main-menu .rp-club-objective>div:first-child>b{overflow:hidden;color:#e5f0fa;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+#main-menu .rp-club-objective>div:first-child>strong{flex:none;color:#f1d58b;font-size:8px;font-variant-numeric:tabular-nums}
+#main-menu .rp-club-objective-track{height:4px;margin-top:7px;overflow:hidden;border-radius:9px;background:#26394b}
+#main-menu .rp-club-objective-track>span{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#4b9bd2,#e0bd70)}
+#main-menu .rp-club-objective>small{display:block;margin-top:5px;color:#7895ae;font-size:6px;font-weight:900;letter-spacing:.07em}
+#main-menu .rp-club-objective.is-complete{border-color:rgba(108,183,145,.42)}
+#main-menu .rp-club-objective.is-complete>small{color:#8bd5ad}
+@media(orientation:portrait){#main-menu .rp-club-objectives{grid-template-columns:1fr}}
