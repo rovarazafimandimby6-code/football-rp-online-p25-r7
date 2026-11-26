@@ -582,7 +582,7 @@ function renderPage(page = 'home') {
         <button class="p27-hub-panel p27-hub-market" data-page="mercato">
           <span class="p27-hub-kicker">MARCHÉ</span><strong>MERCATO</strong><small>${pendingOffers} offre(s) en attente</small><i>›</i>
         </button>
-        <button class="p27-hub-panel p27-hub-club" data-page="clubs">
+        <button class="p27-hub-panel p27-hub-club" data-action="view-roster" data-club="${careerClub?.id || ''}">
           <span class="p27-hub-kicker">INSTITUTION</span><strong>${escapeHTML(careerClub?.name || 'MON CLUB')}</strong><small>${careerClub ? `NOTE ${careerClub.rating} · ${escapeHTML(careerClub.stadium || 'Stade')}` : 'Choisir un club'}</small><i>›</i>
         </button>
         <button class="p27-hub-panel p27-hub-results" data-page="results">
