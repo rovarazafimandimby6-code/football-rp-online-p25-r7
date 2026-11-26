@@ -11,6 +11,7 @@ import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
 import { JsonRpClubStore } from './rp-club-store.js';
 import { JsonRpClubChallengeStore } from './rp-club-challenge-store.js';
+import { RpClubMatchService } from './rp-club-match-service.js';
 import { readGoogleOidcConfig } from './google-oidc-config.js';
 import { GoogleOidcTransactionStore } from './google-oidc-transactions.js';
 import { JsonPlayerIdentityStore } from './player-identity-store.js';
@@ -99,6 +100,7 @@ const rpClubDirectory = process.env.RP_CLUBS_DIR || path.join(path.dirname(fileU
 const rpClubStore = new JsonRpClubStore(rpClubDirectory);
 const rpClubChallengeDirectory = process.env.RP_CLUB_CHALLENGES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rp-club-challenges');
 const rpClubChallengeStore = new JsonRpClubChallengeStore(rpClubChallengeDirectory);
+const rpClubMatchService = new RpClubMatchService({ clubStore:rpClubStore, challengeStore:rpClubChallengeStore, roomManager:manager });
 const googleOidcConfig = readGoogleOidcConfig(process.env);
 const googleOidcTransactionDirectory = process.env.GOOGLE_OIDC_TRANSACTIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'google-oidc-transactions');
 const googleOidcTransactionStore = new GoogleOidcTransactionStore({ directory: googleOidcTransactionDirectory });
@@ -582,6 +584,14 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       });
       return json(res, 200, { periodStart, periodEnd:periodStart + 7 * 24 * 60 * 60 * 1000, totals, members:contributions, objectives });
     }
+    const rpClubChallengeMatchCreate = url.pathname.match(/^\\/api\\/rp-clubs\\/challenges\\/([a-f0-9-]{36})\\/match$/i);
+    if (req.method === 'POST' && rpClubChallengeMatchCreate) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const result = rpClubMatchService.createRoom(rpClubChallengeMatchCreate[1], account.id);
+      const status = result.ok ? 201 : result.reason === 'RP_CLUB_CHALLENGE_NOT_FOUND' ? 404 : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
     if (req.method === 'GET' && url.pathname === '/api/rp-clubs/challenges/me') {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
@@ -741,6 +751,14 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const account = accountToken ? accountStore.resolve(accountToken) : null;
       if (accountToken && !account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       const playerIdentity = account ? playerIdentityStore.getByAccountId(account.id) : null;
+      const room = manager.rooms.get(joinMatch[1]);
+      if (room?.rpClubChallenge) {
+        if (!account) return json(res, 401, { error:'SESSION_REQUIRED' });
+        const admission = rpClubMatchService.resolveJoin(joinMatch[1], account.id);
+        if (!admission.ok) return json(res, admission.reason === 'ROOM_NOT_FOUND' ? 404 : 403, admission);
+        if (!playerIdentity || playerIdentity.playerId !== account.playerId) return json(res, 403, { error:'PLAYER_IDENTITY_REQUIRED' });
+        body.preferredTeam = admission.team;
+      }
       return json(res, 200, manager.join(joinMatch[1], {
         ...body,
         accountId: account?.id || null,
