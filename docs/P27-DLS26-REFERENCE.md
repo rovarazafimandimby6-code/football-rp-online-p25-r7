@@ -1,18 +1,18 @@
-# P27 — Référentiel statistique DLS 26
+# P27 — Référentiel de profils statistiques DLS
 
 ## Décision de conception
 
-Les joueurs fictifs générés par P27 prennent comme base des cartes **normales DLS 26 vérifiées individuellement**, version v13.430 (16 septembre 2026). Le générateur sélectionne un profil selon le rôle et l'archétype, puis ajuste ses caractéristiques au niveau de la division P27.
+Les joueurs fictifs générés par P27 prennent en priorité des cartes **normales DLS 26 vérifiées individuellement**, version v13.430 (16 septembre 2026). Quand la bibliothèque DLS 26 ne suffit pas à varier les profils, le générateur peut utiliser des cartes d'éditions antérieures, actuellement DLS 23 v10.20. Le choix reste guidé par le rôle et l'archétype, puis les caractéristiques sont adaptées au niveau de la division P27. DLS 26 reste prioritaire ; DLS 23 intervient comme complément de diversité.
 
 ## Catalogue vérifié embarqué
 
-Le premier catalogue contrôlé contient **21 fiches individuelles** :
+La bibliothèque embarquée contient actuellement **36 profils statistiques anonymisés** : 21 cartes DLS 26 vérifiées individuellement et 15 profils DLS 23 issus d'une base communautaire.
 - 7 profils d'attaquants : avant-centre rapide, puissant, complet, ailier, finisseur et joueur de pivot
 - 5 profils de milieux : organisateur, créateur, récupérateur, relayeur box-to-box et meneur de jeu
 - 6 profils de défenseurs : latéral offensif, piston gauche, défenseur central physique, central plus mobile, latéral polyvalent et central technique
 - 3 profils de gardiens
 
-Chaque profil conserve une URL de fiche individuelle et une marque de vérification. Les statistiques de terrain sont les valeurs entières affichées sur la carte DLS 26. Pour les gardiens, GKR et GKH remplacent SHO et TAC dans le jeu de référence.
+Les 21 profils DLS 26 conservent une URL de fiche individuelle et le statut `individual-player-card`. Les 15 profils DLS 23 conservent la version `10.20`, l'identifiant de ligne source et le statut `community-dataset-record` ; ils ne sont pas présentés comme des cartes vérifiées individuellement. Les statistiques de terrain sont les valeurs entières enregistrées dans la source. Pour les gardiens, GKR et GKH remplacent SHO et TAC dans le jeu de référence.
 
 ## Données conservées
 
@@ -29,13 +29,15 @@ Chaque profil conserve une URL de fiche individuelle et une marque de vérificat
 - Les six attributs historiques du gameplay sont alimentés par les statistiques de la fiche : vitesse moyenne SPE/ACC, tir, passe, défense/tacle, endurance et contrôle.
 - Les statistiques DLS complètes restent disponibles dans `dls26Stats`; la provenance est stockée dans `dls26Reference`. Le générateur évite aussi de réutiliser deux fois la même carte dans un même effectif lorsqu'il dispose d'assez de profils pour le poste.
 
-## Identité fictive
+## Identité fictive et personnalisation
 
-Les noms, nationalités, clubs, numéros, contrats, historique et apparences restent générés par P27. Aucune identité réelle, photo, tenue, emblème ou donnée de club réel n'est copiée. La fiche source sert de modèle statistique et physique, pas de personnage à reproduire.
+La référence DLS ne devient jamais le personnage P27. Les noms, nationalités, clubs, numéros, contrats, historique, âge et apparences restent générés séparément par P27. Le code n'embarque aucun nom de joueur réel dans les profils DLS 23 ; il conserve seulement un identifiant source technique, la version, les attributs, la taille et le pied préféré. La référence sert à transmettre une signature footballistique (vitesse, puissance, finition, créativité, défense, etc.), pas à reproduire une personne réelle.
 
-## Limite actuelle et suite
+Chaque joueur fictif reçoit donc une identité propre et une personnalisation indépendante : nom adapté à sa nationalité, poste et archétype, taille légèrement ajustée, pied préféré, morphologie, teint, coupe et couleur de cheveux, forme du visage, numéro, potentiel, loyauté et contrats. La provenance interne (`playerReference`) permet de retrouver le profil statistique d'inspiration sans afficher le joueur réel dans le jeu. Les anciens champs `dls26Stats` et `dls26Reference` sont conservés comme alias de compatibilité.
 
-Les 14 fiches constituent un premier lot vérifié, pas encore l'import exhaustif des milliers de cartes DLS 26. Le format permet d'ajouter d'autres joueurs par lots, avec vérification individuelle de la note, du poste, de la taille, du pied et des huit statistiques avant intégration. Les profils provisoires précédemment utilisés avec des sources génériques d'équipes ont été retirés.
+## Limites et suite
+
+Les 36 profils sont un catalogue de modèles diversifiés, pas un import exhaustif des bases DLS. La source DLS 23 est une base communautaire non officielle ; ses valeurs sont identifiées comme telles et ne remplacent jamais une fiche DLS 26 vérifiée. Les profils de gardiens restent actuellement issus de DLS 26, car la source DLS 23 consultée ne fournit pas toutes les valeurs nécessaires de manière cohérente. La suite consiste à élargir les profils par poste et archétype, puis à vérifier individuellement les nouvelles références DLS 26 ou à documenter clairement leur édition d'origine. Les profils provisoires précédemment utilisés avec des sources génériques d'équipes ont été retirés.
 
 ## Sources de référence
 
@@ -62,4 +64,6 @@ Les 14 fiches constituent un premier lot vérifié, pas encore l'import exhausti
 - https://sakibpro.com/players/normal/alisson/14939/changelog/
 - https://sakibpro.com/players/normal/thibaut-courtois/7458/statistics/
 
-SakibPro est une base indépendante et non une source officielle First Touch Games. Les pages de statistiques détaillées permettent de vérifier les données de carte utilisées.
+SakibPro est une base indépendante et non une source officielle First Touch Games. Les pages de statistiques détaillées permettent de vérifier les données DLS 26 utilisées. Le jeu de données DLS 23 est également communautaire et non officiel ; il est publié dans le dépôt CodeModeYT/DLS-Player-search et sa version de données est `v10.20`.
+
+- https://github.com/CodeModeYT/DLS-Player-search/blob/main/Data/json/players_23.json
