@@ -168,10 +168,10 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     assert.equal(challengeCreate.status, 201);
     const challenge = (await challengeCreate.json()).challenge;
     assert.equal(challenge.status, 'pending');
-    const memberChallengeInbox = await fetch(`${base}/api/rp-clubs/challenges/me`, {
-      headers:{ authorization:`Bearer ${member.token}` }
+    const founderChallengeInbox = await fetch(`${base}/api/rp-clubs/challenges/me`, {
+      headers:{ authorization:`Bearer ${founder.token}` }
     });
-    assert.equal((await memberChallengeInbox.json()).challenges[0].id, challenge.id);
+    assert.equal((await founderChallengeInbox.json()).challenges[0].id, challenge.id);
 
     const targetInbox = await fetch(`${base}/api/rp-clubs/challenges/me`, {
       headers:{ authorization:`Bearer ${targetFounder.token}` }
