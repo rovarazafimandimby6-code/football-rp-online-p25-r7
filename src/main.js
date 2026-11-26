@@ -7,6 +7,7 @@ import { PlayerSeasonStats } from './player-season-stats.js';
 import { resolveOnlinePlayerPerformance } from './online-career-sync.js';
 import { renderClubCrest } from './club-identity.js';
 import { Player } from './player.js';
+import { listP27Players } from './p27-player-library.js';
 import { createMatchSquad } from './match-squad.js';
 import { OnlineMatchClient } from './online-client.js';
 import { OnlineAccountClient } from './online-account-client.js';
@@ -677,35 +678,47 @@ ${renderGoogleProtectionCard({ compact: true })}
       <section class="profile-editor training-panel"><h3>Centre d’entraînement</h3><p>Choisis comment financer ta progression : séance individuelle avec crédits et expérience, ou entraînement encadré avec les points gagnés à chaque niveau.</p><div class="training-controls"><label>Capacité<select id="practice-attribute"><option value="pace">Vitesse</option><option value="shooting">Finition</option><option value="passing">Passe</option><option value="defense">Défense</option><option value="stamina">Endurance</option><option value="control">Contrôle</option></select></label><label>Programme<select id="training-method"><option value="practice">Séance individuelle · 80 crédits / point + XP</option><option value="train">Entraînement encadré · 1 point d’entraînement + 40 crédits / point</option></select></label><label>Intensité<select id="practice-amount"><option value="1">Légère · 1 point</option><option value="2">Moyenne · 2 points</option><option value="3">Intense · 3 points</option></select></label><button class="small-action" data-action="practice-player">EFFECTUER LA SÉANCE</button></div><p class="notice">Crédits : ${p.progression.coins} · Points d’entraînement : ${p.progression.trainingPoints} · Attributs plafonnés à 99.</p></section>`;
     mountAvatarPreview(p);
   } else if (page === 'players') {
-    const rosterPlayers=clubs.listClubs().flatMap(club=>club.roster.map(player=>({...player,clubId:club.id,clubName:club.name,clubDivision:club.division})));
-    playerLibraryProfiles = rosterPlayers.map(player => ({...player,careerPlayerId:`club-${player.clubId}-${player.id}`}));
+    const directoryClubs=clubs.listClubs();
+    const firstPlayerPage=listP27Players({clubs:directoryClubs,filters:{limit:100,offset:0}});
+    const rosterPlayers=[...firstPlayerPage.players];
+    for(let offset=firstPlayerPage.limit;offset<firstPlayerPage.total;offset+=firstPlayerPage.limit){
+      rosterPlayers.push(...listP27Players({clubs:directoryClubs,filters:{limit:firstPlayerPage.limit,offset}}).players);
+    }
+    rosterPlayers.forEach(player=>{
+      player.clubDivision=player.division||'';
+      player.clubName=player.clubName||null;
+      player.careerPlayerId=`club-${player.clubId||player.lastClubId||'unknown'}-${player.id}`;
+    });
+    playerLibraryProfiles = rosterPlayers;
     const roleNames={GK:'Gardien',DEF:'Défenseur',MID:'Milieu',FWD:'Attaquant'};
     const average=rosterPlayers.length?Math.round(rosterPlayers.reduce((sum,p)=>sum+p.rating,0)/rosterPlayers.length):0;
     playerLibraryLimit=24;
     title.textContent='Bibliothèque des joueurs';
-    subtitle.textContent='Explorez les joueurs des effectifs connus, comparez leurs notes et leurs potentiels.';
+    subtitle.textContent='Effectifs, joueurs libres et prêts · comparez les notes et les potentiels.';
     content.innerHTML=`<div class="player-library">
-      <div class="player-library-overview"><div><b>${rosterPlayers.length}</b><span>JOUEURS RÉPERTORIÉS</span></div><div><b>${clubs.listClubs().length}</b><span>CLUBS COUVERTS</span></div><div><b>${average}</b><span>NOTE MOYENNE</span></div><div><b>${rosterPlayers.filter(p=>p.nationality==='MG').length}</b><span>JOUEURS MALGACHES</span></div></div>
+      <div class="player-library-overview"><div><b>${firstPlayerPage.total}</b><span>JOUEURS RÉPERTORIÉS</span></div><div><b>${directoryClubs.length}</b><span>CLUBS COUVERTS</span></div><div><b>${firstPlayerPage.facets.statuses.free}</b><span>JOUEURS LIBRES</span></div><div><b>${average}</b><span>NOTE MOYENNE</span></div></div>
       <div class="player-library-toolbar">
         <label><span>RECHERCHE</span><input id="library-search" type="search" placeholder="Nom, archétype…" autocomplete="off"></label>
         <label><span>CLUB</span><select id="library-club"><option value="all">Tous les clubs</option>${clubs.listClubs().map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('')}</select></label>
         <label><span>POSTE</span><select id="library-role"><option value="all">Tous les postes</option><option value="GK">Gardiens</option><option value="DEF">Défenseurs</option><option value="MID">Milieux</option><option value="FWD">Attaquants</option></select></label>
+        <label><span>STATUT</span><select id="library-status"><option value="all">Tous</option><option value="active">Sous contrat</option><option value="free">Joueurs libres</option><option value="loaned">En prêt</option></select></label>
+        <label><span>ORIGINE</span><select id="library-type"><option value="all">Tous les joueurs</option><option value="human">Joueurs RP</option><option value="system">Joueurs du monde</option></select></label>
         <label><span>TRI</span><select id="library-sort"><option value="rating">Note générale</option><option value="potential">Potentiel</option><option value="age">Âge</option><option value="name">Nom A–Z</option></select></label>
         <label><span>NOTE MIN.</span><select id="library-min-rating"><option value="0">Toutes</option><option value="60">60+</option><option value="70">70+</option><option value="80">80+</option></select></label>
       </div>
-      <div class="player-library-resultline"><span id="library-count">${rosterPlayers.length} joueurs</span><span>DONNÉES ISSUES DES EFFECTIFS LOCAUX</span></div>
-      <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>{const origin=(player.isHuman===true||player.ownerType==='human'||player.source==='human'||player.createdBy==='user')?'human':'system';const attrs=player.attributes||{};const cardAttributes=[['RAP',attrs.pace],['ACC',attrs.acceleration],['END',attrs.stamina],['PUI',attrs.strength],['CON',attrs.control],['PAS',attrs.passing],['TIR',attrs.shooting],['TAC',attrs.defense]];return `<article class="player-library-card" role="button" tabindex="0" aria-label="Afficher la carte de ${escapeHTML(player.name)}" aria-expanded="false" data-player-profile="${index}" data-profile-origin="players" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
-        <span class="player-card-portrait" aria-hidden="true">${['👨🏽‍🦱','👱🏽‍♂️','👨🏽‍🦰','👨🏽‍🦲','👨🏽‍🦳','👨🏽‍🦲','👨🏽‍🦳','👨🏽‍🦲','👨🏽‍🦰','👨🏽‍🦰','👱🏽‍♂️','🧝🏽‍♂️'][index%12]}</span>
+      <div class="player-library-resultline"><span id="library-count">${rosterPlayers.length} joueurs</span><span>EFFECTIFS · LIBRES · PRÊTS</span></div>
+      <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>{const origin=(player.isHuman===true||player.ownerType==='human'||player.source==='human'||player.createdBy==='user')?'human':'system';const attrs=player.attributes||{};const cardAttributes=[['RAP',attrs.pace],['ACC',attrs.acceleration],['END',attrs.stamina],['PUI',attrs.strength],['CON',attrs.control],['PAS',attrs.passing],['TIR',attrs.shooting],['TAC',attrs.defense]];return `<article class="player-library-card" role="button" tabindex="0" aria-label="Afficher la carte de ${escapeHTML(player.name)}" aria-expanded="false" data-player-profile="${index}" data-profile-origin="players" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId||'')}" data-club-name="${escapeHTML((player.clubName||'').toLocaleLowerCase('fr'))}" data-last-club="${escapeHTML((player.lastClubName||'').toLocaleLowerCase('fr'))}" data-status="${escapeHTML(player.status||'active')}" data-type="${escapeHTML(player.playerType||'system')}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
+        <span class="player-card-portrait" aria-hidden="true"><b>${escapeHTML(String(player.name||'').split(/\\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase())}</b><small>${escapeHTML(player.position||roleNames[player.role]||player.role||'')}</small></span>
         <span class="player-card-compact-copy">
           <span class="player-card-name-line"><i class="player-origin-dot ${origin}" aria-hidden="true"></i><strong>${escapeHTML(player.name)}</strong><b class="player-card-rating" aria-label="Note globale ${player.rating}">${player.rating}</b></span>
-          <small>${countryFlag(player.nationality)} · ${escapeHTML(player.clubName)}</small>
-          <small>${escapeHTML(player.clubDivision||'')} · ${escapeHTML(player.position||roleNames[player.role]||player.role)} · #${player.number}</small>
+          <small>${countryFlag(player.nationality)} · ${escapeHTML(player.clubName||player.lastClubName||(player.status==='free'?'Joueur libre':'Club non renseigné'))}</small>
+          <small>${player.status==='free'?'LIBRE':player.status==='loaned'?'EN PRÊT':'SOUS CONTRAT'} · ${escapeHTML(player.clubDivision||player.position||roleNames[player.role]||player.role)} · #${player.number}</small>
           <button type="button" class="player-card-more" data-action="open-player-profile" data-player-index="${index}">Voir plus ›</button>
         </span>
-        <span class="player-card-expanded-details" aria-hidden="true">${cardAttributes.map(([label,value])=>`<span><small>${label}</small><b>${value!==undefined&&value!==null&&value!==''&&Number.isFinite(Number(value))?Number(value):'—'}</b></span>`).join('')}<small class="player-card-physical">Profil physique : informations disponibles dans la fiche complète</small></span>
+        <span class="player-card-expanded-details" aria-hidden="true">${cardAttributes.map(([label,value])=>`<span><small>${label}</small><b>${value!==undefined&&value!==null&&value!==''&&Number.isFinite(Number(value))?Number(value):'—'}</b></span>`).join('')}<small class="player-card-physical">POTENTIEL ${player.potential} · ${player.status==='free'?'JOUEUR LIBRE':player.status==='loaned'?'PRÊT ACTIF':'SOUS CONTRAT'}</small></span>
       </article>`}).join('')}</div>
       <div class="player-library-footer compact-library-pagination"><span id="library-visible-count">0 affiché</span><div><button class="small-action" data-action="players-page" data-page="-1" id="library-page-prev" aria-label="Page précédente">‹</button><span id="library-page-label">1 / 1</span><button class="small-action" data-action="players-page" data-page="1" id="library-page-next" aria-label="Page suivante">›</button></div></div>
-      <p class="notice">Cette bibliothèque recense les joueurs actuellement présents dans les effectifs locaux connus. Les joueurs libres, les transferts et les prêts ne sont pas inventés : ils seront intégrés quand leurs statuts seront reliés à une source de données fiable.</p>
+      <p class="notice">Les statuts proviennent des effectifs et de l'historique des joueurs libérés. Un joueur transféré reste rattaché à son club actuel ; seuls les contrats expirés ou libérations vérifiés apparaissent comme joueurs libres.</p>
     </div>`;
     filterPlayerLibrary();
   } else if (page === 'player-detail') {
