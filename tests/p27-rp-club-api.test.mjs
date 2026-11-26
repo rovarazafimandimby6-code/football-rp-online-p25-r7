@@ -101,7 +101,7 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     assert.equal(memberMessage.status, 201);
     assert.equal((await memberMessage.json()).message.text, 'Salut le club !');
     const founderChat = await fetch(base + '/api/rp-clubs/me', { headers:{ authorization:'Bearer ' + founder.token } });
-    assert.equal((await founderChat.json()).messages[0].text, 'Salut le club !');
+    assert.equal((await founderChat.json()).membership.messages[0].text, 'Salut le club !');
     const memberSpam = await fetch(base + '/api/rp-clubs/' + created.club.id + '/messages', {
       method:'POST', headers:{ authorization:'Bearer ' + member.token, 'content-type':'application/json' },
       body:JSON.stringify({ text:'Spam immédiat' })
@@ -141,7 +141,7 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     });
     assert.equal(leave.status, 200);
     const formerMemberView = await fetch(base + '/api/rp-clubs/me', { headers:{ authorization:'Bearer ' + member.token } });
-    assert.equal((await formerMemberView.json()).club, null);
+    assert.equal((await formerMemberView.json()).membership, null);
     const targetFounder = await createPlayerSession();
     const targetCreate = await fetch(`${base}/api/rp-clubs`, {
       method:'POST', headers:{ authorization:`Bearer ${targetFounder.token}`, 'content-type':'application/json' },
