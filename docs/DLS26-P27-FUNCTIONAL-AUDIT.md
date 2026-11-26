@@ -220,3 +220,31 @@ L'inspection des modules et tests existants confirme les éléments suivants sur
 - **Clubs sportifs** : le catalogue serveur des 156 clubs fictifs et les compétitions P27 sont déjà établis. Ils restent des entités sportives et ne deviennent pas les Clubs RP communautaires.
 
 Conséquence : les prochains changements doivent prioritairement porter sur la cohérence des parcours, la présentation, les relations entre données et les fonctionnalités manquantes. Toute extension de schéma doit inclure validation, migration rétrocompatible, sauvegarde et tests.
+
+
+## 10. Première brique fonctionnelle du Club RP — intégrée
+
+Le Club RP est désormais séparé du catalogue des 156 clubs de football et des effectifs de championnat. Une première brique serveur dédiée existe dans `server/rp-club-store.js`, avec persistance JSON atomique dans `data/rp-clubs/rp-clubs.json` (chemin configurable par `RP_CLUBS_DIR`).
+
+### Parcours déjà codé
+- Création d'un Club RP par un compte authentifié associé à une identité joueur P27 réservée (`FRP-xxxxxx`).
+- Fondateur enregistré comme premier membre avec rôle `founder`.
+- Nom, tag et description contrôlés ; unicité du nom normalisé et du tag.
+- Annuaire public paginé, recherche par nom/tag et fiche publique.
+- Demande d'adhésion, détection des demandes en doublon et limite initiale de 30 membres.
+- Acceptation/refus des demandes par fondateur, président ou recruteur.
+- Départ volontaire des membres ; protection du fondateur tant que la présidence n'a pas été transférée.
+- Un compte ne peut appartenir qu'à un seul Club RP à la fois.
+- Les identifiants de compte ne sont jamais exposés dans l'annuaire public ; les routes de mutation exigent une session authentifiée et une identité joueur liée au compte.
+
+### API initiale
+- `GET /api/rp-clubs` : annuaire public avec recherche et pagination.
+- `GET /api/rp-clubs/:id` : fiche publique du Club RP.
+- `GET /api/rp-clubs/me` : appartenance et demandes en attente accessibles au responsable.
+- `POST /api/rp-clubs` : création authentifiée.
+- `POST /api/rp-clubs/:id/join-requests` : demande d'adhésion authentifiée.
+- `POST /api/rp-clubs/:id/join-requests/:requestId/decision` : décision d'un responsable.
+- `POST /api/rp-clubs/:id/leave` : départ d'un membre.
+
+### Périmètre volontairement non prétendu
+Cette première brique est un socle serveur et des parcours API testables, pas encore l'interface complète du Club RP. Elle n'implémente pas encore les invitations, la délégation de rôles, les transferts de présidence, les objectifs/XP collectifs, les matchs inter-clubs, les classements, le chat, les récompenses ni l'intégration visuelle au hub. Ces fonctions seront ajoutées au-dessus de ce modèle après validation de cette fondation. Le Club RP n'affecte pas automatiquement le footballeur à un club de championnat et ne modifie pas le moteur de match.
