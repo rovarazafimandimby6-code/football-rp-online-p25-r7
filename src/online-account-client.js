@@ -14,13 +14,15 @@ function recoverySnapshotMissingSections(snapshot) {
   if (!isObject(identity) || !isObject(appearance)
     || typeof identity.displayName !== 'string' || !identity.displayName.trim() || identity.displayName.length > 20
     || !Number.isSafeInteger(identity.number) || identity.number < 1 || identity.number > 99
-    || !['left','right'].includes(identity.preferredFoot)
+    || !['left','right','both'].includes(identity.preferredFoot)
     || !['GK','DEF','MID','FWD'].includes(identity.role)
     || !['emerald','crimson','gold','violet','monochrome'].includes(appearance.kit)
     || !['light','medium','dark'].includes(appearance.skinTone)
     || !['short','curly','shaved','fade','afro'].includes(appearance.hairStyle)
     || !['dark','brown','blond'].includes(appearance.hairColor)
-    || !['lean','athletic','strong'].includes(appearance.bodyBuild)) missing.push('profile');
+    || !['lean','athletic','strong'].includes(appearance.bodyBuild)
+    || !['oval','round','angular','long','square'].includes(appearance.faceShape)
+    || !['almond','round','hooded'].includes(appearance.eyeShape)) missing.push('profile');
 
   const progression = snapshot?.progression;
   const attributes = progression?.attributes;
@@ -244,7 +246,8 @@ export class OnlineAccountClient {
       appearance: profile?.appearance && typeof profile.appearance === 'object' ? {
         kit: profile.appearance.kit, skinTone: profile.appearance.skinTone,
         hairStyle: profile.appearance.hairStyle, hairColor: profile.appearance.hairColor,
-        bodyBuild: profile.appearance.bodyBuild
+        bodyBuild: profile.appearance.bodyBuild,
+        faceShape: profile.appearance.faceShape, eyeShape: profile.appearance.eyeShape
       } : {}
     };
     const saved = await this.request('/api/player-profile/me', { method: 'PUT', auth: true, body: { profile: safeProfile, expectedRevision: current.revision } });
@@ -263,7 +266,8 @@ export class OnlineAccountClient {
       appearance: profile.appearance && typeof profile.appearance === 'object' ? {
         kit: profile.appearance.kit, skinTone: profile.appearance.skinTone,
         hairStyle: profile.appearance.hairStyle, hairColor: profile.appearance.hairColor,
-        bodyBuild: profile.appearance.bodyBuild
+        bodyBuild: profile.appearance.bodyBuild,
+        faceShape: profile.appearance.faceShape, eyeShape: profile.appearance.eyeShape
       } : {}
     };
     return outbox.enqueue('profile_snapshot', snapshot);
