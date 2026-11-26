@@ -50,3 +50,13 @@ test('P27 fullscreen: le rendu 3D suit la vraie taille du viewport et les change
   assert.match(scene, /this\.camera\.aspect\s*=\s*w\s*\/\s*h/);
   assert.match(scene, /this\.renderer\.setSize\(w, h, false\)/);
 });
+
+test('P27: aucun bouton ni script de bascule manuelle plein écran ne subsiste', async () => {
+  const html = await read('../index.html');
+  const main = await read('../src/main.js');
+  const css = await read('../style.css');
+  assert.doesNotMatch(html, /match-fullscreen|fullscreen-toggle|⛶/);
+  assert.doesNotMatch(main, /toggleMobileFullscreen|fullscreenButtons|requestFullscreen|exitFullscreen/);
+  assert.doesNotMatch(css, /\.fullscreen-toggle|#match-fullscreen/);
+  assert.match(html, /id="pause"/);
+});
