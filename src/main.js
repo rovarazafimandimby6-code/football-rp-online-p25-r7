@@ -562,33 +562,33 @@ function renderPage(page = 'home') {
         <article class="p27-hub-career">
           <div class="p27-hub-career-copy">
             <span class="p27-hub-kicker">MODE CARRIÈRE · SAISON PERSONNELLE</span>
-            <h2>\${escapeHTML(profile.identity.displayName || 'Votre joueur')}</h2>
-            <p>\${escapeHTML(clubLabel)} · NIVEAU \${level}</p>
-            <div class="p27-hub-xp"><span>PROGRESSION</span><div><i style="width:\${xpProgress}%"></i></div><b>\${xpProgress}%</b></div>
+            <h2>${escapeHTML(profile.identity.displayName || 'Votre joueur')}</h2>
+            <p>${escapeHTML(clubLabel)} · NIVEAU ${level}</p>
+            <div class="p27-hub-xp"><span>PROGRESSION</span><div><i style="width:${xpProgress}%"></i></div><b>${xpProgress}%</b></div>
             <button data-page="career-hub">ACCÉDER À LA CARRIÈRE <span>›</span></button>
           </div>
-          <div class="p27-hub-rating"><small>NOTE GLOBALE</small><strong>\${overall}</strong><span>JOUEUR</span></div>
+          <div class="p27-hub-rating"><small>NOTE GLOBALE</small><strong>${overall}</strong><span>JOUEUR</span></div>
           <div class="p27-hub-watermark" aria-hidden="true">P27</div>
         </article>
         <button class="p27-hub-panel p27-hub-match" data-action="choose-match">
           <span class="p27-hub-kicker">JOUER</span><strong>MATCH AMICAL</strong><small>5 contre 5 · Local</small><i>›</i>
         </button>
         <button class="p27-hub-panel p27-hub-team" data-page="players">
-          <span class="p27-hub-kicker">RECRUTEMENT</span><strong>JOUEURS</strong><small>\${clubs.listClubs().reduce((n,c)=>n+c.roster.length,0)} profils</small><i>›</i>
+          <span class="p27-hub-kicker">RECRUTEMENT</span><strong>JOUEURS</strong><small>${clubs.listClubs().reduce((n,c)=>n+c.roster.length,0)} profils</small><i>›</i>
         </button>
         <button class="p27-hub-panel p27-hub-competitions" data-page="competitions">
-          <span class="p27-hub-kicker">SAISON</span><strong>COMPÉTITIONS</strong><small>\${clubs.listDivisions().length} divisions</small><i>›</i>
+          <span class="p27-hub-kicker">SAISON</span><strong>COMPÉTITIONS</strong><small>${clubs.listDivisions().length} divisions</small><i>›</i>
         </button>
         <button class="p27-hub-panel p27-hub-market" data-page="mercato">
-          <span class="p27-hub-kicker">MARCHÉ</span><strong>MERCATO</strong><small>\${pendingOffers} offre(s) en attente</small><i>›</i>
+          <span class="p27-hub-kicker">MARCHÉ</span><strong>MERCATO</strong><small>${pendingOffers} offre(s) en attente</small><i>›</i>
         </button>
         <button class="p27-hub-panel p27-hub-club" data-page="clubs">
-          <span class="p27-hub-kicker">INSTITUTION</span><strong>\${escapeHTML(careerClub?.name || 'MON CLUB')}</strong><small>\${careerClub ? \`NOTE \${careerClub.rating} · \${escapeHTML(careerClub.stadium || 'Stade')}\` : 'Choisir un club'}</small><i>›</i>
+          <span class="p27-hub-kicker">INSTITUTION</span><strong>${escapeHTML(careerClub?.name || 'MON CLUB')}</strong><small>${careerClub ? `NOTE ${careerClub.rating} · ${escapeHTML(careerClub.stadium || 'Stade')}` : 'Choisir un club'}</small><i>›</i>
         </button>
         <button class="p27-hub-panel p27-hub-results" data-page="results">
-          <span class="p27-hub-kicker">HISTORIQUE</span><strong>RÉSULTATS</strong><small>\${latestMatch ? \`\${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · \${latestMatch.rating.toFixed(1)}/10\` : 'Aucun match enregistré'}</small><i>›</i>
+          <span class="p27-hub-kicker">HISTORIQUE</span><strong>RÉSULTATS</strong><small>${latestMatch ? `${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · ${latestMatch.rating.toFixed(1)}/10` : 'Aucun match enregistré'}</small><i>›</i>
         </button>
-      </section>\`;
+      </section>`;
   } else if (page === 'player') {
     const p = profileStore.profile;
     const a = p.progression.attributes;
