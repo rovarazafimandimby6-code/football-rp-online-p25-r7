@@ -1,4 +1,6 @@
-// Verified DLS 26 normal-card references, game data v13.430 (16 Sep 2026).
+import { DLS23_REFERENCE_PROFILES } from './p27-dls23-reference.js';
+
+// DLS 26 is the primary reference pool; older DLS cards are a controlled fallback.
 // Only card statistics and physical measurements are used to shape fictional P27 players.
 // Real player names, nationalities, clubs, photos and biographies are never copied.
 export const DLS26_ATTRIBUTE_KEYS = Object.freeze([
@@ -9,7 +11,7 @@ export const DLS26_GOALKEEPER_ATTRIBUTE_KEYS = Object.freeze([
 ]);
 
 const PROFILE = (id, position, overall, heightCm, stats, source, preferredFoot) => Object.freeze({
-  id, cardType: 'normal', version: '13.430', position, overall, heightCm,
+  id, cardType: 'normal', sourceGame: 'DLS26', version: '13.430', position, overall, heightCm,
   stats: Object.freeze(stats),
   source,
   ...(preferredFoot ? { preferredFoot } : {}),
@@ -63,11 +65,12 @@ export const DLS26_REFERENCE_PROFILES = Object.freeze([
 
 const ROLE_PROFILE_IDS = Object.freeze({
   GK: ['goalkeeper-reflex-85','goalkeeper-balanced-84','goalkeeper-tall-84'],
-  DEF: ['defender-wingback-85','defender-leftwingback-84','defender-centre-84','defender-centre-76','defender-fullback-75','defender-centre-84b'],
-  MID: ['midfielder-controller-85','midfielder-creator-80','midfielder-anchor-84','midfielder-box-to-box-84','midfielder-playmaker-83'],
-  FWD: ['forward-pace-86','forward-power-86','forward-wing-85','forward-finisher-84','forward-target-77','forward-wing-84','forward-complete-86']
+  DEF: ['defender-wingback-85','defender-leftwingback-84','defender-centre-84','defender-centre-76','defender-fullback-75','defender-centre-84b','dls23-16288','dls23-7821','dls23-2517','dls23-12375','dls23-11063'],
+  MID: ['midfielder-controller-85','midfielder-creator-80','midfielder-anchor-84','midfielder-box-to-box-84','midfielder-playmaker-83','dls23-1498','dls23-10297','dls23-12427','dls23-4739','dls23-12434'],
+  FWD: ['forward-pace-86','forward-power-86','forward-wing-85','forward-finisher-84','forward-target-77','forward-wing-84','forward-complete-86','dls23-19392','dls23-17319','dls23-382','dls23-15403','dls23-5403']
 });
-const PROFILE_BY_ID = new Map(DLS26_REFERENCE_PROFILES.map(profile => [profile.id, profile]));
+export const DLS_REFERENCE_PROFILES = Object.freeze([...DLS26_REFERENCE_PROFILES, ...DLS23_REFERENCE_PROFILES]);
+const PROFILE_BY_ID = new Map(DLS_REFERENCE_PROFILES.map(profile => [profile.id, profile]));
 
 export function findDls26Reference(role, archetype, random = Math.random, excludedProfileIds = new Set()) {
   const ids = ROLE_PROFILE_IDS[role] || ROLE_PROFILE_IDS.FWD;
@@ -90,7 +93,17 @@ export function findDls26Reference(role, archetype, random = Math.random, exclud
   });
   const preferredAvailable = preferred.filter(profile => !excludedProfileIds.has(profile.id));
   const allAvailable = eligible.filter(profile => !excludedProfileIds.has(profile.id));
-  const pool = preferredAvailable.length ? preferredAvailable : allAvailable.length ? allAvailable : (preferred.length ? preferred : eligible);
+  const legacyAvailable = preferredAvailable.filter(profile => profile.sourceGame !== 'DLS26');
+  const currentAvailable = preferredAvailable.filter(profile => profile.sourceGame === 'DLS26');
+  // DLS 26 remains the default (78%); older editions broaden diversity without
+  // displacing current cards. Legacy data is selected only as a secondary pool.
+  const useLegacy = legacyAvailable.length > 0 && random() >= 0.78;
+  const pool = useLegacy
+    ? legacyAvailable
+    : currentAvailable.length ? currentAvailable
+    : legacyAvailable.length ? legacyAvailable
+    : allAvailable.length ? allAvailable
+    : (preferred.length ? preferred : eligible);
   return pool[Math.floor(random() * pool.length)] || null;
 }
 
