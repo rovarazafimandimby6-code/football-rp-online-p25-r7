@@ -133,7 +133,7 @@ test('P27 UI: le centre avant-match compare les clubs et leurs meilleurs joueurs
 
 
 test('P27 UI: bibliothèque joueurs compacte en cartes avec portraits, tri par note et pagination', () => {
-  const css = cssText();
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
   assert.match(main, /page === 'players'/);
   assert.match(main, /data-library-card/);
   assert.match(main, /id="library-search"/);
@@ -375,7 +375,7 @@ test('P27 UI: bibliothèque des clubs compacte par division avec accès rapide D
   assert.match(main, /const clubLibraryLimit = 20/);
   assert.match(main, /data-action=\"club-page\"/);
   assert.match(main, /clubLibraryPage\*clubLibraryLimit/);
-  const css = cssText();
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
   for (const selector of ['.club-division-tabs','.club-division-tab','.compact-club-card','.club-grid','.club-library-pagination']) {
     assert.ok(css.includes(selector), `missing compact club library style: ${selector}`);
   }
