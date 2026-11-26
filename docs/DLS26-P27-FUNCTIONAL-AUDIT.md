@@ -348,3 +348,10 @@ Routes disponibles :
 - `POST /api/admin/rp-club-seasons/:seasonId/close`
 
 La création admin attend `id`, `name`, `startsAt` et `endsAt` (dates ISO 8601). L'activation doit intervenir pendant la période définie. Les résultats finalisés hors de cette période ne sont pas ajoutés à la saison. Le classement général inter-clubs reste indépendant et conserve l'ensemble des résultats validés. L'interface Club RP affiche l'état de la saison active, l'historique sélectionnable et le classement propre à chaque saison. Pour une saison terminée, le premier du classement est présenté comme champion ; pendant une saison active, il est explicitement indiqué comme leader provisoire. Une réconciliation peut être retentée même après clôture du défi si l'archivage du match existe mais qu'une écriture saisonnière a échoué temporairement.
+
+
+### Classement hebdomadaire des contributions individuelles — précision
+
+Le tableau d’activité du Club RP distingue maintenant les performances de chaque membre sur la semaine UTC. Le classement applique un ordre transparent : matchs joués, victoires, buts, passes décisives, puis nom en cas d’égalité complète. Chaque ligne expose les quatre statistiques et le rôle communautaire du membre. Les données restent calculées côté serveur depuis les matchs de carrière enregistrés ; l’interface ne peut pas modifier ces valeurs.
+
+Cette amélioration ne crée ni score de contribution arbitraire, ni portefeuille de Club RP, ni récompense. La trésorerie collective reste séparée de l’économie du footballeur et attend une définition explicite de ses règles de financement, de dépense et de contrôle.
