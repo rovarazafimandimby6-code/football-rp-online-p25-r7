@@ -47,6 +47,7 @@ test('P27 DLS 26 : les joueurs fictifs reçoivent une référence sans identité
     colors: ['#123456', '#234567', '#345678']
   }, { size: 12 });
   assert.equal(roster.length, 12);
+  assert.equal(new Set(roster.map(player => player.dls26Reference.profileId)).size, roster.length, 'aucun profil DLS ne doit être répété dans un même effectif');
   for (const player of roster) {
     assert.ok(player.dls26Stats && player.dls26Reference);
     assert.ok(player.heightCm >= 150 && player.heightCm <= 210);
