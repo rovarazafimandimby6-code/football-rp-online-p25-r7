@@ -1,14 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateClubRoster } from '../src/club-roster.js';
-import { applyDls26Reference, DLS26_ATTRIBUTE_KEYS, DLS26_GOALKEEPER_ATTRIBUTE_KEYS, DLS26_REFERENCE_PROFILES, findDls26Reference } from '../src/p27-dls26-reference.js';
+import { applyDls26Reference, DLS26_ATTRIBUTE_KEYS, DLS26_GOALKEEPER_ATTRIBUTE_KEYS, DLS26_REFERENCE_PROFILES, DLS_REFERENCE_PROFILES, findDls26Reference } from '../src/p27-dls26-reference.js';
+import { DLS23_REFERENCE_PROFILES } from '../src/p27-dls23-reference.js';
 
 test('P27 DLS 26 : catalogue de références normal cards couvrant les quatre rôles', () => {
   assert.equal(DLS26_REFERENCE_PROFILES.length, 21);
   for (const role of ['GK','DEF','MID','FWD']) {
     assert.ok(findDls26Reference(role, 'profil-test', () => 0), `aucun profil DLS 26 pour ${role}`);
   }
-  assert.ok(DLS26_REFERENCE_PROFILES.every(profile => profile.cardType === 'normal' && profile.version === '13.430' && profile.verification === 'individual-player-card'));
+  assert.ok(DLS26_REFERENCE_PROFILES.every(profile => profile.cardType === 'normal' && profile.sourceGame === 'DLS26' && profile.version === '13.430' && profile.verification === 'individual-player-card'));
   assert.equal(new Set(DLS26_REFERENCE_PROFILES.map(profile => profile.id)).size, DLS26_REFERENCE_PROFILES.length);
   assert.ok(DLS26_REFERENCE_PROFILES.every(profile => profile.heightCm >= 160 && profile.heightCm <= 205));
   assert.ok(DLS26_REFERENCE_PROFILES.every(profile => profile.source.startsWith('https://')));
@@ -55,7 +56,10 @@ test('P27 DLS 26 : les joueurs fictifs reçoivent une référence sans identité
     assert.equal(player.attributes.shooting, player.dls26Stats.SHO ?? 25, 'le gameplay utilise le tir de la carte DLS');
     assert.equal(player.attributes.passing, player.dls26Stats.PAS ?? 25, 'le gameplay utilise la passe de la carte DLS');
     assert.ok(player.dls26Reference.baseOverall >= 75 && player.dls26Reference.baseOverall <= 86);
-    assert.equal(player.dls26Reference.verification, 'individual-player-card');
+    assert.equal(player.dls26Reference.verification, player.dls26Reference.sourceGame === 'DLS26' ? 'individual-player-card' : 'community-dataset-record');
+    assert.ok(['DLS26','DLS23'].includes(player.playerReference.sourceGame));
+    assert.equal(player.playerReference.identityPersonalized, true);
+    assert.deepEqual(player.playerReferenceStats, player.dls26Stats);
     assert.ok(!/mbapp[eé]|hakimi|bruno fernandes|donnarumma|gabriel magalh[aã]es/i.test(player.name));
     assert.equal(player.dls26Reference.cardType, 'normal');
   }
@@ -75,4 +79,29 @@ test('P27 DLS 26 : les profils ajoutés correspondent aux cartes normales vérif
   assert.equal(byId.get('forward-finisher-84').stats.SPE, 77);
   assert.equal(byId.get('midfielder-controller-85').stats.SPE, 74);
   assert.equal(byId.get('midfielder-playmaker-83').stats.PAS, 92);
+});
+
+
+test('P27 : les profils DLS 23 complètent DLS 26 sans identité réelle embarquée', () => {
+  assert.equal(DLS23_REFERENCE_PROFILES.length, 15);
+  assert.equal(DLS_REFERENCE_PROFILES.length, DLS26_REFERENCE_PROFILES.length + DLS23_REFERENCE_PROFILES.length);
+  assert.ok(DLS23_REFERENCE_PROFILES.every(profile => profile.sourceGame === 'DLS23' && profile.version === '10.20' && profile.verification === 'community-dataset-record'));
+  assert.ok(DLS23_REFERENCE_PROFILES.every(profile => profile.cardType === 'normal' && profile.archetype && profile.source.startsWith('https://')));
+  for (const profile of DLS23_REFERENCE_PROFILES) {
+    assert.deepEqual(Object.keys(profile.stats), [...DLS26_ATTRIBUTE_KEYS]);
+    assert.ok(profile.heightCm >= 160 && profile.heightCm <= 205);
+    assert.ok(profile.overall >= 65 && profile.overall <= 86);
+  }
+});
+
+test('P27 : DLS 26 reste prioritaire et DLS 23 sert de complément ciblé', () => {
+  const current = findDls26Reference('FWD', 'Ailier percutant', () => 0);
+  const legacy = findDls26Reference('FWD', 'Ailier percutant', () => 0.99);
+  assert.equal(current.sourceGame, 'DLS26');
+  assert.equal(legacy.sourceGame, 'DLS23');
+  assert.equal(legacy.archetype, 'Ailier percutant');
+  const adapted = applyDls26Reference(legacy, { targetOverall: 70, random: () => 0.5 });
+  assert.equal(adapted.reference.sourceGame, 'DLS23');
+  assert.equal(adapted.reference.version, '10.20');
+  assert.equal(adapted.reference.sourceRecordId, legacy.sourceRecordId);
 });
