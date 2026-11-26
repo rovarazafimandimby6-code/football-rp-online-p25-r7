@@ -447,7 +447,7 @@ function renderPage(page = 'home') {
   const subtitle = document.getElementById('menu-page-subtitle');
   const topName = document.getElementById('p27-top-player-name');
   const topClub = document.getElementById('p27-top-player-club');
-  if (topName) topName.textContent = profileStore.profile.identity.displayName || 'Mon footballeur';
+  if (topName) topName.textContent = profileStore.profile.identity.displayName || 'Nouveau joueur';\n  const topCoins = document.getElementById('p27-top-player-coins');\n  if (topCoins) topCoins.textContent = Number(profileStore.profile.progression.coins || 0).toLocaleString('fr-FR');
   if (topClub) topClub.textContent = career.clubId ? (clubs.getClub(career.clubId)?.name || 'Sans club') : 'Sans club';
   const menuRoot = document.getElementById('main-menu');
   if (menuRoot) menuRoot.classList.toggle('p27-home-active', page === 'home');
@@ -477,10 +477,28 @@ function renderPage(page = 'home') {
     subtitle.textContent = page === 'career-hub' ? 'Votre parcours et votre progression.' : 'Choisissez votre prochaine étape.';
     const level = Number(profile.progression.level) || 1;
     const stars = Math.max(1, Math.min(5, Math.ceil(level / 20)));
-    content.innerHTML = page === 'career-hub' ? `
-      <section class="p27-career-hero"><div class="p27-career-hero-copy"><span class="eyebrow">ESPACE CARRIÈRE</span><h2>Ta carrière. Ton histoire.</h2><p>Joueur · niveau ${level} · ${escapeHTML(clubLabel)}</p><div class="p27-career-hero-actions"><button class="primary-cta" data-page="player">MON JOUEUR →</button><button class="secondary-cta" data-action="choose-match">MATCH AMICAL</button></div></div></section>
-      <section class="p27-career-summary"><div class="p27-career-facts"><div><span>NIVEAU</span><b>${level}</b></div><div><span>CRÉDITS</span><b>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</b></div><div><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div></div></section>
-      <button class="p27-home-return" data-page="home">← RETOUR AU HUB</button>` : `
+    content.innerHTML = page === 'career-hub' ? \`
+      <section class="p27-dls-career">
+        <div class="p27-dls-career-banner">
+          <div class="p27-dls-career-copy">
+            <span class="p27-game-kicker">CARRIÈRE · SAISON EN COURS</span>
+            <h2>VOTRE PROCHAINE SAISON COMMENCE ICI</h2>
+            <p>\${escapeHTML(profile.identity.displayName)} · NIVEAU \${level} · \${escapeHTML(clubLabel)}</p>
+          </div>
+          <div class="p27-career-rating"><small>NIVEAU</small><strong>\${level}</strong><span>JOUEUR</span></div>
+        </div>
+        <div class="p27-dls-career-grid" aria-label="Gestion de carrière">
+          <button class="p27-dls-mode p27-dls-next" data-action="choose-match"><span class="p27-dls-mode-kicker">PROCHAIN MATCH</span><span class="p27-dls-mode-art"><b>VS</b><i>⚽</i></span><strong>JOUER</strong><small>Préparer une rencontre amicale</small><em>›</em></button>
+          <button class="p27-dls-mode p27-dls-team" data-page="players"><span class="p27-dls-mode-kicker">GESTION DE L'ÉQUIPE</span><span class="p27-dls-mode-art"><b>XI</b><i>♟</i></span><strong>EFFECTIF</strong><small>Joueurs, postes et profils</small><em>›</em></button>
+          <button class="p27-dls-mode p27-dls-transfers" data-page="mercato"><span class="p27-dls-mode-kicker">MARCHÉ DES TRANSFERTS</span><span class="p27-dls-mode-art"><b>⇄</b><i>✦</i></span><strong>TRANSFERTS</strong><small>Contrats et opportunités</small><em>›</em></button>
+          <button class="p27-dls-mode p27-dls-club" data-page="clubs"><span class="p27-dls-mode-kicker">VOTRE INSTITUTION</span><span class="p27-dls-mode-art"><b>♜</b><i>★</i></span><strong>MON CLUB</strong><small>\${escapeHTML(clubLabel)}</small><em>›</em></button>
+        </div>
+        <div class="p27-dls-career-footer">
+          <div><small>CRÉDITS DISPONIBLES</small><strong>\${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</strong></div>
+          <div><small>POINTS D'ENTRAÎNEMENT</small><strong>\${Number(profile.progression.trainingPoints||0).toLocaleString('fr-FR')}</strong></div>
+          <button data-page="player">FICHE JOUEUR <b>›</b></button>
+        </div>
+      </section>\` : 
       <section class="p27-home-tiles" aria-label="Modes et rubriques">
         <button class="p27-tile p27-tile-career" data-page="career-hub"><span class="p27-tile-title">CARRIÈRE <i>›</i></span><span class="p27-tile-art"><b>★</b><small>${'★'.repeat(stars)}${'☆'.repeat(5-stars)} · NIVEAU ${level}</small></span><span class="p27-tile-info">Votre parcours et votre progression</span></button>
         <button class="p27-tile p27-tile-friendly" data-action="choose-match"><span class="p27-tile-title">MATCH AMICAL <i>›</i></span><span class="p27-tile-art"><b>⚽</b></span><span class="p27-tile-info">Jouer un match 5 contre 5</span></button>
@@ -497,7 +515,7 @@ function renderPage(page = 'home') {
     const seasonSnapshot = seasonStats.snapshot();
     const season = seasonSnapshot.totals;
     const recent = seasonSnapshot.matches.slice(-8).reverse();
-    title.textContent = 'Mon footballeur'; subtitle.textContent = 'Identité, apparence et progression personnelle.';
+    title.textContent = 'MON JOUEUR'; subtitle.textContent = 'PROFIL · APPARENCE · PROGRESSION';
     content.innerHTML = `<div class="profile-layout"><div class="player-card"><div id="avatar-preview" class="avatar-preview-stage" role="img" aria-label="Aperçu 3D de votre footballeur personnalisé"><span>${escapeHTML(p.identity.number)}</span></div><span class="eyebrow">JOUEUR · NIVEAU ${p.progression.level}</span><h2>${escapeHTML(p.identity.displayName)}</h2><p>${escapeHTML(p.identity.role)} · Pied ${p.identity.preferredFoot === 'left' ? 'gauche' : 'droit'}</p><div class="profile-meta"><span>${p.progression.coins} <small>CRÉDITS</small></span><span>${p.progression.trainingPoints} <small>POINTS D'ENTRAÎNEMENT</small></span></div></div><div class="attribute-list">${Object.entries(a).map(([key,val])=>`<div><span>${({pace:'Vitesse',shooting:'Finition',passing:'Passe',defense:'Défense',stamina:'Endurance',control:'Contrôle'})[key]}</span><b>${val}</b><i><em style="width:${val}%"></em></i></div>`).join('')}</div></div>
 ${renderGoogleProtectionCard({ compact: true })}
       <section class="competition-panel player-stats-panel"><div class="panel-heading"><div><span class="eyebrow">SAISON EN COURS · SAUVEGARDÉE SUR CET APPAREIL</span><h2>Statistiques personnelles</h2></div></div><div class="quick-grid"><div class="quick-card"><b>${season.matches}</b><small>Matchs</small></div><div class="quick-card"><b>${Math.floor(season.minutesPlayedMs/60000)}</b><small>Minutes</small></div><div class="quick-card"><b>${season.goals}</b><small>Buts</small></div><div class="quick-card"><b>${season.assists}</b><small>Passes décisives</small></div><div class="quick-card"><b>${season.passes ? Math.round(season.completedPasses/season.passes*100) : 0}%</b><small>Précision passes</small></div><div class="quick-card"><b>${season.playerOfMatch}</b><small>Homme du match</small></div><div class="quick-card"><b>${season.tackles}</b><small>Tacles</small></div><div class="quick-card"><b>${season.interceptions}</b><small>Interceptions</small></div></div><div class="career-form"><div class="panel-heading"><div><span class="eyebrow">DYNAMIQUE RÉCENTE</span><h3>Forme · 5 derniers matchs</h3></div><b>${seasonSnapshot.averageRating === null ? '—' : seasonSnapshot.averageRating.toFixed(1)+'/10'} <small>MOYENNE</small></b></div><div class="form-strip">${seasonSnapshot.currentForm.length ? seasonSnapshot.currentForm.map(m=>`<span class="form-chip ${m.result}" title="${new Date(m.date).toLocaleDateString('fr-FR')} · ${m.rating.toFixed(1)}/10">${m.result==='win'?'V':m.result==='draw'?'N':'D'}<small>${m.rating.toFixed(1)}</small></span>`).join('') : '<span class="notice">La forme apparaîtra après vos premiers matchs.</span>'}</div></div>${recent.length ? `<div class="history-list">${recent.map(m=>`<div><b>${m.rating.toFixed(1)} / 10 ${m.playerOfMatch?'★':''}</b><span>${m.result==='win'?'Victoire':m.result==='draw'?'Nul':'Défaite'} · ${m.goals} but(s) · ${m.assists} passe(s) décisive(s)${m.opponent?' · '+escapeHTML(m.opponent):''}</span><small>${Math.floor(m.minutesPlayedMs/60000)} min · ${new Date(m.date).toLocaleDateString('fr-FR')}</small></div>`).join('')}</div>` : '<p class="notice">Aucun match enregistré pour le moment.</p>'}<p class="notice">Historique et statistiques enregistrés sur cet appareil. Les notes en ligne proviennent du rapport autoritaire du serveur.</p></section>
@@ -592,7 +610,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     subtitle.textContent = 'Historique officiel des rencontres terminées sur le serveur.';
     renderResultsPage(0);
   } else if (page === 'settings') {
-    title.textContent = 'Paramètres'; subtitle.textContent = 'Préparez votre expérience de jeu.';
+    title.textContent = 'PARAMÈTRES'; subtitle.textContent = 'CONFIGURATION DU JEU';
     content.innerHTML = `<div class="settings-card"><label>Caméra du match<select id="pref-camera"><option value="player" ${preferences.cameraMode==='player'?'selected':''}>Immersion joueur · adaptée au poste</option><option value="touchline" ${preferences.cameraMode==='touchline'?'selected':''}>Ligne de touche · latérale</option><option value="broadcast" ${preferences.cameraMode==='broadcast'?'selected':''}>Retransmission · oblique</option><option value="close" ${preferences.cameraMode==='close'?'selected':''}>Rapprochée · joueurs plus grands</option><option value="tactical" ${preferences.cameraMode==='tactical'?'selected':''}>Tactique · vue large</option><option value="spectator" ${preferences.cameraMode==='spectator'?'selected':''}>Spectateur · panoramique</option></select></label><label>Zoom caméra · référence 55 %<input id="pref-zoom" type="range" min="0" max="100" value="${preferences.cameraZoom}"></label><label>Affichage des noms<select id="pref-names"><option value="standard" selected>Standard · joueur contrôlé + deux proches</option></select></label><label>Durée du match<select id="pref-duration"><option value="5" ${preferences.duration===5?'selected':''}>5 minutes · 2 × 2 min 30</option><option value="3" ${preferences.duration===3?'selected':''}>3 minutes · 2 × 1 min 30</option></select></label><label>Qualité graphique<select id="pref-quality"><option value="auto" ${preferences.quality==='auto'?'selected':''}>Automatique · recommandé</option><option value="low" ${preferences.quality==='low'?'selected':''}>Basse · appareils modestes</option><option value="medium" ${preferences.quality==='medium'?'selected':''}>Moyenne · recommandée</option><option value="high" ${preferences.quality==='high'?'selected':''}>Haute</option></select></label><button class="primary-cta" data-action="save-settings">ENREGISTRER</button></div><section class="competition-panel p27-cloud-only"><div class="panel-heading"><div><span class="eyebrow">PROFIL & SAUVEGARDE</span><h2>Compte et synchronisation</h2></div></div><p class="notice">L'association Google sera facultative et recommandée. Elle permettra de retrouver la carrière sur un autre appareil.</p><button class="small-action" type="button" data-page="account">GÉRER MON PROFIL JOUEUR</button></section><p class="notice">Les réglages graphiques s'appliquent au prochain lancement du match.</p>`;
   } else if (page === 'account') {
     title.textContent = 'Profil et synchronisation';
