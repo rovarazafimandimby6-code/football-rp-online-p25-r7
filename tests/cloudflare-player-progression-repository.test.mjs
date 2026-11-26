@@ -85,3 +85,19 @@ test("D1 progression rejects malformed account IDs and invalid match rewards", a
   await assert.rejects(repository.get("bad"), /INVALID_ACCOUNT_ID/);
   await assert.rejects(repository.grantMatchReward(accountId, { matchId: "", result: "win" }), /INVALID_MATCH_REWARD/);
 });
+
+test("D1 progression concurrent commands use compare-and-swap and never overwrite newer values", async () => {
+  const db = new ProgressionD1();
+  const repository = new D1PlayerProgressionRepository(db, { now: fixedNow });
+  const results = await Promise.all([
+    repository.spend(accountId, "pace", 1, "practice"),
+    repository.spend(accountId, "pace", 1, "practice"),
+    repository.spend(accountId, "pace", 1, "practice"),
+  ]);
+  assert.equal(results.every(result => result.ok), true);
+  const current = await repository.get(accountId);
+  assert.equal(current.progression.attributes.pace, 58);
+  assert.equal(current.progression.coins, 10);
+  assert.equal(current.progression.experience, 75);
+  assert.equal(current.revision, 4);
+});
