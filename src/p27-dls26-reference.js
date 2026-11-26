@@ -137,3 +137,7 @@ export function applyDls26Reference(profile, { targetOverall, random = Math.rand
     }
   };
 }
+
+// Generic names for the combined multi-edition catalogue; DLS26 aliases remain compatible.
+export const findPlayerReference = findDls26Reference;
+export const applyPlayerReference = applyDls26Reference;
