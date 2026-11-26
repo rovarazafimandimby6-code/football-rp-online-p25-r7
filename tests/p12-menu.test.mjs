@@ -380,3 +380,27 @@ test('P27 UI: bibliothèque des clubs compacte par division avec accès rapide D
     assert.ok(css.includes(selector), `missing compact club library style: ${selector}`);
   }
 });
+
+
+test('P27 bibliothèque joueurs: cartes horizontales, note globale et grille compacte à quatre colonnes', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.match(source, /player-card-name-line/);
+  assert.match(source, /player-origin-dot/);
+  assert.match(source, /aria-label="Note globale/);
+  assert.match(source, /player\.clubDivision/);
+  assert.match(source, /player-card-expanded-details/);
+  assert.match(source, /class="player-card-more"/);
+  assert.match(styles, /player-library-grid\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(styles, /player-library-card\.is-expanded\{[\s\S]*?grid-column:span 2/);
+  assert.match(styles, /@media\(max-width:760px\) and \(orientation:landscape\)[\s\S]*?player-library-grid\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+});
+
+test('P27 bibliothèque joueurs: toucher agrandit la carte, Voir plus ouvre la fiche de carrière', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(source, /playerCard\.classList\.toggle\('is-expanded'\)/);
+  assert.match(source, /card\.classList\.toggle\('is-expanded'\)/);
+  assert.match(source, /const careerButton = event\.target\.closest\('\.player-card-more'\)/);
+  assert.match(source, /renderPage\('player-detail'\)/);
+  assert.match(source, /aria-expanded="false"/);
+});
