@@ -1467,3 +1467,7 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
  #main-menu .p27-tile-career,#main-menu .p27-tile-friendly{grid-column:span 2}
  #main-menu.p27-home-active #menu-content{overflow:auto}
 }
+
+#main-menu .p27-market-shortcuts{margin-bottom:10px}
+#main-menu .p27-market-shortcut-actions{display:flex;flex-wrap:wrap;gap:8px}
+#main-menu .p27-market-shortcut-actions button{min-height:36px;padding:7px 12px;font-size:11px}
