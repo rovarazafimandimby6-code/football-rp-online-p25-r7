@@ -100,3 +100,39 @@ test('Club RP : valide identité, nom, tag et limites de rôle', () => {
     assert.equal(store.create({ accountId: 'a', playerId: 'FRP-100021', displayName: 'A', name: 'Second Club', tag: 'SC' }).reason, 'ALREADY_IN_RP_CLUB');
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('Club RP : invitations privées, acceptation par le destinataire et rôles de membres', () => {
+  const { directory, store } = fixture();
+  try {
+    const club = store.create({
+      accountId:'founder', playerId:'FRP-200001', displayName:'Rova',
+      name:'Les Invincibles', tag:'INV'
+    }).club;
+    assert.equal(store.invite(club.id, {
+      actorAccountId:'stranger', accountId:'invitee', playerId:'FRP-200002', displayName:'Tiana'
+    }).reason, 'RP_CLUB_PERMISSION_DENIED');
+    const invitation = store.invite(club.id, {
+      actorAccountId:'founder', accountId:'invitee', playerId:'FRP-200002', displayName:'Tiana'
+    });
+    assert.equal(invitation.ok, true);
+    assert.equal(store.getInvitationsForAccount('invitee')[0].club.id, club.id);
+    assert.equal(store.respondInvitation(club.id, invitation.invitation.id, {
+      accountId:'stranger', decision:'accept'
+    }).reason, 'RP_CLUB_INVITATION_NOT_FOUND');
+    assert.equal(store.respondInvitation(club.id, invitation.invitation.id, {
+      accountId:'invitee', decision:'accept'
+    }).memberCount, 2);
+    assert.equal(store.getInvitationsForAccount('invitee').length, 0);
+    assert.equal(store.assignRole(club.id, 'FRP-200002', {
+      actorAccountId:'founder', role:'recruiter'
+    }).role, 'recruiter');
+    assert.equal(store.assignRole(club.id, 'FRP-200002', {
+      actorAccountId:'invitee', role:'vice_president'
+    }).reason, 'RP_CLUB_PERMISSION_DENIED');
+    assert.equal(store.assignRole(club.id, 'FRP-200002', {
+      actorAccountId:'founder', role:'president'
+    }).reason, 'INVALID_RP_CLUB_ROLE');
+    const restored = new JsonRpClubStore(directory);
+    assert.equal(restored.getForAccount('invitee').club.members.find(member=>member.playerId==='FRP-200002').role, 'recruiter');
+  } finally { rmSync(directory, { recursive:true, force:true }); }
+});
