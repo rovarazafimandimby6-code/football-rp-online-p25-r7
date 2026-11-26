@@ -53,7 +53,7 @@ jobs:
 
           manifest_path = Path('android/app/src/main/AndroidManifest.xml')
           manifest = manifest_path.read_text()
-          match = re.search(r'<activity\\b[^>]*>', manifest)
+          match = re.search(r'<activity\b[^>]*>', manifest)
           if not match:
               raise SystemExit('Android launcher activity not found in manifest.')
           activity = match.group(0)
@@ -121,7 +121,7 @@ jobs:
               source = source.rstrip()
               if not source.endswith('}'):
                   raise SystemExit('Unexpected MainActivity.java class ending.')
-              source = source[:-1] + methods + '\\n}\\n'
+              source = source[:-1] + methods + '\n}\n'
               activity_path.write_text(source)
           else:
               print('P27 immersive fullscreen already configured.')
