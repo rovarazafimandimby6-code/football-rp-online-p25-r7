@@ -141,3 +141,12 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Le test couvre le départ du club, le changement vers un autre club, le maintien d'un membre valide et le retour dans le bon club.
 - Le contrôle est effectué au moment de la demande d'entrée dans la salle. Les joueurs déjà admis peuvent terminer le match en cours ; cette règle évite de perturber une rencontre engagée.
 - Test ajouté sur p27-dls26-global-adaptation. Son exécution reste à confirmer par CI.
+
+
+## Audit des jetons de contrôle des salons — 26/11/2026
+
+- Les jetons de contrôle sont générés avec 24 octets aléatoires et sont exigés pour les commandes de match, la rotation, la reconnexion, le heartbeat et la sortie du salon.
+- Les réponses publiques (état complet, delta et liste des salons) doivent exclure les jetons, identifiants de compte, identifiants de carrière privés et données internes de contrôle.
+- Les checkpoints privés conservent les jetons afin de restaurer la session du même joueur après un redémarrage. Le stockage est écrit avec les permissions de fichier `0600`.
+- Les nouveaux tests couvrent l'absence de secrets dans les vues publiques, le refus d'un jeton invalide sur les opérations de contrôle et la reconnexion valide du même avatar sans doublon.
+- Ce commit ajoute des tests de sécurité ; il ne modifie ni le moteur de match, ni le HUD, ni les commandes tactiles. L'exécution de la suite reste à confirmer par CI.
