@@ -330,3 +330,21 @@ test('P27 joueurs : nationalités affichées en drapeaux et création initiale v
   assert.match(onboarding, /<input name="displayName"/);
   assert.doesNotMatch(onboarding, /<select|<textarea|type="email"|type="password"/);
 });
+
+
+test('P27 créateur joueur : sélection visuelle des postes détaillés et drapeaux des pays', () => {
+  assert.match(main, /WORLD_COUNTRY_CODES = '[A-Z ]+'/);
+  assert.match(main, /new Intl\.DisplayNames\(\['fr'\], \{ type: 'region' \}\)/);
+  assert.match(main, /function renderCountryPicker\(\)/);
+  assert.match(main, /data-country-code=/);
+  assert.match(main, /function renderPositionPicker\(\)/);
+  for (const position of ['DC','DG','DD','MDC','MC','MOC','AG','AD','AC','BU']) {
+    assert.ok(main.includes(`code:'${position}'`), `missing position ${position}`);
+  }
+  assert.match(main, /data-action="save-player-editor"/);
+  assert.match(main, /fpro-player-creation-options\.v1/);
+  const styles = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.position-picker-groups','.position-option','.country-picker','.country-flag-grid','.country-flag-option']) {
+    assert.ok(styles.includes(selector), `missing creator selector: ${selector}`);
+  }
+});
