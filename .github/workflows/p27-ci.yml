@@ -2,7 +2,7 @@ name: P27 CI
 
 on:
   push:
-    branches: [p27-dev, p27-apk-build, p27-dls-inspired-redesign, p27-home-navigation-refit]
+    branches: [p27-dev, p27-apk-build, p27-dls-inspired-redesign, p27-home-navigation-refit, p27-dls26-global-adaptation]
   pull_request:
     branches: [p27-dev, p27-dls-inspired-redesign]
   workflow_dispatch:
