@@ -152,18 +152,19 @@ test('P27 UI: bibliothèque joueurs compacte en cartes avec portraits, tri par n
 });
 
 
-test('P27 mobile fullscreen: seul le match expose un contrôle plein écran', () => {
+test('P27 mobile fullscreen: aucun bouton de plein écran manuel ne subsiste', () => {
   assert.ok(!html.includes('id="menu-fullscreen"'));
-  assert.ok(html.includes('id="match-fullscreen"'));
-  assert.ok(main.includes("requestFullscreen({ navigationUI: 'hide' })"));
-  assert.ok(main.includes("screen.orientation.lock('landscape')"));
-  assert.ok(main.includes("addEventListener('fullscreenchange'"));
+  assert.ok(!html.includes('id="match-fullscreen"'));
+  assert.ok(!html.includes('fullscreen-toggle'));
+  assert.ok(!main.includes('requestFullscreen'));
+  assert.ok(!main.includes('toggleMobileFullscreen'));
+  assert.ok(html.includes('id="pause"'));
 });
 
-test('P27 mobile fullscreen: game and menu fill the dynamic viewport', () => {
+test('P27 mobile fullscreen: le menu et le match remplissent le viewport dynamique', () => {
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
   assert.ok(css.includes('height: 100dvh'));
-  assert.ok(css.includes('#main-menu:fullscreen, #game-shell:fullscreen'));
+  assert.ok(css.includes('#game-shell {'));
   assert.ok(css.includes('overscroll-behavior: none'));
 });
 
