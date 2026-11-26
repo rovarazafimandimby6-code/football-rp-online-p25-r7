@@ -1951,3 +1951,13 @@
 #main-menu .rp-club-challenge-directory .rp-club-directory-item{min-width:0}
 #main-menu .rp-club-challenge-directory .rp-club-directory-item button{grid-column:1/-1}
 @media(orientation:portrait){#main-menu .rp-club-challenge-directory{grid-template-columns:1fr}}
+
+
+/* Club RP inter-club standings */
+.rp-club-standing-row{display:grid;grid-template-columns:24px minmax(110px,1fr) 54px 64px 58px;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.07);font-size:12px}
+.rp-club-standing-row>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rp-club-standing-row>strong small{display:inline-block;margin-left:7px;opacity:.58;font-size:10px}
+.rp-club-standing-row>span,.rp-club-standing-row>b:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.rp-club-standing-row>b:first-child{opacity:.6}
+.rp-club-room-ready{display:block;margin:7px 0 0;color:var(--p27-accent,#9bd65a);font-size:10px;font-weight:800;letter-spacing:.06em}
+@media(max-width:560px){.rp-club-standing-row{grid-template-columns:20px minmax(90px,1fr) 42px 50px 48px;gap:5px;padding:8px 6px;font-size:10px}}
