@@ -1935,3 +1935,19 @@
 #main-menu .rp-club-objective.is-complete{border-color:rgba(108,183,145,.42)}
 #main-menu .rp-club-objective.is-complete>small{color:#8bd5ad}
 @media(orientation:portrait){#main-menu .rp-club-objectives{grid-template-columns:1fr}}
+
+/* Défis inter-Club RP : planification distincte des résultats de match. */
+#main-menu .rp-club-challenge-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(122,157,187,.16)}
+#main-menu .rp-club-challenge-versus{display:flex;align-items:center;gap:5px;color:#e8f1fa;font-size:9px;font-weight:1000}
+#main-menu .rp-club-challenge-versus>span{color:#829bb2;font-size:7px}
+#main-menu .rp-club-challenge-copy{min-width:0}
+#main-menu .rp-club-challenge-copy>strong{display:block;overflow:hidden;color:#e8f1fa;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
+#main-menu .rp-club-challenge-copy>small{display:block;margin-top:3px;color:#9bb4ca;font-size:7px;font-weight:900;letter-spacing:.05em}
+#main-menu .rp-club-challenge-controls{grid-column:1/-1;display:flex;align-items:end;gap:6px;flex-wrap:wrap}
+#main-menu .rp-club-challenge-controls label{display:grid;gap:4px;color:#8faac1;font-size:7px;font-weight:900}
+#main-menu .rp-club-challenge-controls input{min-width:180px;padding:6px;border:1px solid rgba(125,165,198,.28);border-radius:5px;background:#0b1724;color:#edf5fc;font-size:9px}
+#main-menu .rp-club-challenge-controls button,#main-menu .rp-club-challenge-directory button{padding:7px 9px;border:1px solid rgba(130,174,208,.28);border-radius:5px;background:#18334a;color:#eaf4fc;font-size:7px;font-weight:1000}
+#main-menu .rp-club-challenge-directory{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:9px}
+#main-menu .rp-club-challenge-directory .rp-club-directory-item{min-width:0}
+#main-menu .rp-club-challenge-directory .rp-club-directory-item button{grid-column:1/-1}
+@media(orientation:portrait){#main-menu .rp-club-challenge-directory{grid-template-columns:1fr}}
