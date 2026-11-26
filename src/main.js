@@ -606,6 +606,10 @@ ${renderGoogleProtectionCard({ compact: true })}
     title.textContent = 'Compétitions'; subtitle.textContent = 'Première base locale de championnat : calendrier et classement.';
     content.innerHTML = `<div class="competition-layout"><section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">CHAMPIONNAT LOCAL</span><h2>Classement</h2></div><span class="local-tag">HORS LIGNE</span></div>${rows.map(division=>`<div class="division-table-block"><div class="division-table-title"><b>${escapeHTML(division.id)}</b><span>${escapeHTML(division.name)}</span></div><div class="table-scroll"><table class="standings-table"><thead><tr><th>#</th><th>CLUB</th><th>J</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>PTS</th></tr></thead><tbody>${clubs.standings(division.id).map((club,i)=>`<tr><td>${i+1}</td><td>${escapeHTML(club.name)}</td><td>${club.played}</td><td>${club.wins}</td><td>${club.draws}</td><td>${club.losses}</td><td>${club.goalsFor}</td><td>${club.goalsAgainst}</td><td><b>${club.points}</b></td></tr>`).join('')}</tbody></table></div></div>`).join('')}<p class="notice">Aucun résultat officiel n'est simulé : les points restent à zéro tant qu'aucun résultat n'est enregistré.</p></section><section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">SAISON DE DÉMONSTRATION</span><h2>Calendrier</h2></div><button class="small-action" data-action="create-schedule">GÉNÉRER</button></div>${fixtures.length ? `<div class="fixture-list">${fixtures.map(f=>{const h=clubs.getClub(f.homeClubId),a=clubs.getClub(f.awayClubId);return `<div class="fixture-row"><span>${escapeHTML(h?.name||'Club')}</span><b>${f.status==='completed'?`${f.result.home} – ${f.result.away}`:'VS'}</b><span>${escapeHTML(a?.name||'Club')}</span><small>${new Date(f.scheduledAt).toLocaleDateString('fr-FR')}</small></div>`}).join('')}</div>` : `<div class="empty-fixtures"><b>Aucun match programmé</b><p>Générez un calendrier aller simple distinct pour chaque division.</p></div>`}</section></div><p class="notice">Calendrier, effectifs et classement sauvegardés localement sur cet appareil. La compétition en ligne, la validation des résultats officiels et la synchronisation serveur ne sont pas encore disponibles.</p>`;
     loadServerCompetitionOverview();
+  } else if (page === 'rankings') {
+    title.textContent = 'Classements';
+    subtitle.textContent = 'Positions officielles des clubs · saison serveur.';
+    renderRankingsPage();
   } else if (page === 'results') {
     title.textContent = 'Résultats des matchs';
     subtitle.textContent = 'Historique officiel des rencontres terminées sur le serveur.';
@@ -678,6 +682,35 @@ async function renderResultsPage(offset = 0, selectedRoomId = null) {
   } catch (error) {
     if (requestId !== resultsRequestSequence) return;
     content.innerHTML = `<section class="competition-panel results-panel"><span class="eyebrow">HISTORIQUE DES RENCONTRES</span><h2>Connexion au serveur impossible</h2><p class="notice">${escapeHTML(error?.message || 'Erreur de chargement.')}</p><button class="small-action" data-action="retry-results">RÉESSAYER</button><button class="text-cta" data-page="home">RETOUR À L’ACCUEIL</button></section>`;
+  }
+}
+
+async function renderRankingsPage() {
+  const host = document.getElementById('menu-content');
+  if (!host) return;
+  const requestId = ++publicCompetitionRequest;
+  host.innerHTML = '<section class="competition-panel ranking-screen"><p class="notice">Chargement des classements officiels…</p></section>';
+  try {
+    const response = await fetch('/api/competitions', { headers: { accept: 'application/json' }, cache: 'no-store' });
+    if (!response.ok) throw new Error('Le service des compétitions est indisponible.');
+    const snapshot = await response.json();
+    if (requestId !== publicCompetitionRequest || !document.getElementById('menu-content')) return;
+    const leagues = (snapshot.competitions || []).filter(item => item.type === 'league');
+    if (leagues.length !== 9 || !snapshot.scheduleAudit?.ok || snapshot.scheduleAudit.fixtureCount !== 1892) {
+      throw new Error('Les données de classement ne sont pas complètes ou validées.');
+    }
+    const order = { D1: 1, D2: 2, D3: 3, D4: 4, D5: 5 };
+    const conferenceOrder = { A: 1, B: 2, C: 3, D: 4 };
+    leagues.sort((a, b) => order[a.division] - order[b.division] || (conferenceOrder[a.conference] || 0) - (conferenceOrder[b.conference] || 0));
+    const panels = leagues.map(competition => {
+      const rows = (competition.standings || []).map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHTML(row.name || row.id)}</td><td>${Number(row.played || 0)}</td><td>${Number(row.wins || 0)}</td><td>${Number(row.draws || 0)}</td><td>${Number(row.losses || 0)}</td><td>${Number(row.goalsFor || 0)}</td><td>${Number(row.goalsAgainst || 0)}</td><td><b>${Number(row.points || 0)}</b></td></tr>`).join('');
+      const group = competition.conference ? 'CONFÉRENCE ' + competition.conference : 'CHAMPIONNAT NATIONAL';
+      return `<section class="division-table-block ranking-division"><div class="division-table-title"><b>${escapeHTML(competition.division)}</b><span>${escapeHTML(competition.name)} · ${group}</span><small>${(competition.members || []).length} clubs</small></div><div class="table-scroll"><table class="standings-table"><thead><tr><th>#</th><th>CLUB</th><th>J</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>PTS</th></tr></thead><tbody>${rows || '<tr><td colspan="9">Aucun classement disponible.</td></tr>'}</tbody></table></div></section>`;
+    }).join('');
+    host.innerHTML = `<section class="competition-panel ranking-screen"><div class="panel-heading"><div><span class="eyebrow">SAISON SERVEUR · ${escapeHTML(snapshot.season?.id || '')}</span><h2>Classements officiels</h2></div><span class="local-tag">DONNÉES VALIDÉES</span></div><div class="server-season-overview"><div><b>156</b><span>CLUBS</span></div><div><b>9</b><span>GROUPES</span></div><div><b>${Number(snapshot.scheduleAudit.fixtureCount)}</b><span>RENCONTRES</span></div></div><div class="ranking-division-list">${panels}</div><button class="text-cta" data-page="home">← RETOUR À L’ACCUEIL</button></section>`;
+  } catch (error) {
+    if (requestId !== publicCompetitionRequest) return;
+    host.innerHTML = `<section class="competition-panel ranking-screen"><span class="eyebrow">CLASSEMENTS SERVEUR</span><h2>Classements indisponibles</h2><p class="notice">${escapeHTML(error?.message || 'Erreur de chargement.')}</p><button class="small-action" data-action="retry-rankings">RÉESSAYER</button><button class="text-cta" data-page="home">← RETOUR À L’ACCUEIL</button></section>`;
   }
 }
 
@@ -1062,7 +1095,7 @@ async function submitAccountForm(action) {
 
 menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
-  if (pageButton) { renderPage(pageButton.dataset.page); return; }
+  if (pageButton) { renderPage(pageButton.dataset.view || pageButton.dataset.page); return; }
   const playerCard = event.target.closest('[data-player-profile]');
   if (playerCard && event.target.closest('.player-card-details')) return;
   if (playerCard) { const index = Number(playerCard.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = playerCard.dataset.profileOrigin || 'players'; renderPage('player-detail'); return; }
@@ -1076,6 +1109,7 @@ menu.addEventListener('click', event => {
   else if (action === 'show-result') { const roomId = event.target.closest('[data-room]')?.dataset.room; if (roomId) renderResultDetail(roomId); }
   else if (action === 'close-result') { document.getElementById('result-detail')?.replaceChildren(); }
   else if (action === 'retry-results') { renderResultsPage(0); }
+  else if (action === 'retry-rankings') { renderRankingsPage(); }
   else if (action === 'account-login') {
     submitAccountForm('login');
   } else if (action === 'account-register') {
