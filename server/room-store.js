@@ -22,7 +22,7 @@ export class JsonRoomStore {
     const ids = new Set();
     for (const room of parsed.rooms) {
       if (!room || typeof room.id !== 'string' || !room.id || ids.has(room.id) ||
-          !['lobby', 'playing', 'halftime'].includes(room.phase) ||
+          !['lobby', 'playing', 'halftime', 'fulltime'].includes(room.phase) ||
           !Array.isArray(room.players) || !room.score ||
           !Number.isSafeInteger(room.score.blue) || room.score.blue < 0 ||
           !Number.isSafeInteger(room.score.red) || room.score.red < 0 ||
@@ -42,7 +42,7 @@ export class JsonRoomStore {
     const incoming = new Map();
     for (const snapshot of snapshots) {
       if (!snapshot || typeof snapshot.id !== 'string' || !snapshot.id ||
-          !['lobby', 'playing', 'halftime'].includes(snapshot.phase) ||
+          !['lobby', 'playing', 'halftime', 'fulltime'].includes(snapshot.phase) ||
           !Array.isArray(snapshot.players) || !snapshot.score ||
           !Number.isSafeInteger(snapshot.score.blue) || snapshot.score.blue < 0 ||
           !Number.isSafeInteger(snapshot.score.red) || snapshot.score.red < 0 ||
