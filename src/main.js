@@ -1291,7 +1291,8 @@ menu.addEventListener('click', event => {
     const key = playerChoice.dataset.playerChoice;
     const value = playerChoice.dataset.choiceValue;
     if (key === 'preferredFoot') profileStore.updateIdentity({ preferredFoot:value });
-    else if (['kit','skinTone','hairStyle','hairColor','bodyBuild'].includes(key)) profileStore.updateAppearance({ [key]:value });
+    else if (['kit','skinTone','hairStyle','hairColor','bodyBuild','faceShape','eyeShape'].includes(key)) profileStore.updateAppearance({ [key]:value });
+    mountAvatarPreview(profileStore.profile);
     const group = playerChoice.closest('[data-choice-group]');
     group?.querySelectorAll('.player-choice').forEach(button => button.classList.toggle('active', button === playerChoice));
     return;
