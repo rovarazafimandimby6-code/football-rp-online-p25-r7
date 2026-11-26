@@ -17,7 +17,7 @@ export function createDefaultProfile() {
   return {
     schemaVersion: 1,
     identity: { displayName: 'Nouveau joueur', number: 10, preferredFoot: 'right', role: 'MID' },
-    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic' },
+    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic', faceShape:'oval', eyeShape:'almond' },
     progression: { level: 1, experience: 0, coins: 250, trainingPoints: 0, attributes: { ...DEFAULT_ATTRIBUTES } },
     appliedMatchIds: [],
     createdAt: new Date().toISOString(),
@@ -45,7 +45,9 @@ export function validateProfile(input) {
       skinTone: ['light', 'medium', 'dark'].includes(appearance.skinTone) ? appearance.skinTone : 'medium',
       hairStyle: ['short', 'curly', 'shaved', 'fade', 'afro'].includes(appearance.hairStyle) ? appearance.hairStyle : 'short',
       hairColor: ['dark', 'brown', 'blond'].includes(appearance.hairColor) ? appearance.hairColor : 'dark',
-      bodyBuild: ['lean', 'athletic', 'strong'].includes(appearance.bodyBuild) ? appearance.bodyBuild : 'athletic'
+      bodyBuild: ['lean', 'athletic', 'strong'].includes(appearance.bodyBuild) ? appearance.bodyBuild : 'athletic',
+      faceShape: ['oval','round','angular','long','square'].includes(appearance.faceShape) ? appearance.faceShape : 'oval',
+      eyeShape: ['almond','round','hooded'].includes(appearance.eyeShape) ? appearance.eyeShape : 'almond'
     },
     progression: {
       level: Math.round(clamp(progression.level, 1, 99)),
