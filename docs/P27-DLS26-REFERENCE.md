@@ -4,19 +4,18 @@
 
 Les joueurs fictifs générés par P27 prennent en priorité des cartes **normales DLS 26 vérifiées individuellement**, version v13.430 (16 septembre 2026). Quand la bibliothèque DLS 26 ne suffit pas à varier les profils, le générateur peut utiliser des cartes d'éditions antérieures, actuellement DLS 23 v10.20. Le choix reste guidé par le rôle et l'archétype, puis les caractéristiques sont adaptées au niveau de la division P27. DLS 26 reste prioritaire ; DLS 23 intervient comme complément de diversité.
 
-## Catalogue vérifié embarqué
+## Catalogue embarqué
 
 La bibliothèque embarquée contient actuellement **36 profils statistiques anonymisés** : 21 cartes DLS 26 vérifiées individuellement et 15 profils DLS 23 issus d'une base communautaire.
-- 7 profils d'attaquants : avant-centre rapide, puissant, complet, ailier, finisseur et joueur de pivot
-- 5 profils de milieux : organisateur, créateur, récupérateur, relayeur box-to-box et meneur de jeu
-- 6 profils de défenseurs : latéral offensif, piston gauche, défenseur central physique, central plus mobile, latéral polyvalent et central technique
-- 3 profils de gardiens
+- DLS 26 : 7 profils d'attaquants, 5 profils de milieux, 6 profils de défenseurs et 3 profils de gardiens
+- DLS 23 : 5 profils d'attaquants, 5 profils de milieux et 5 profils de défenseurs
+- Total : 12 profils d'attaquants, 10 profils de milieux, 11 profils de défenseurs et 3 profils de gardiens
 
 Les 21 profils DLS 26 conservent une URL de fiche individuelle et le statut `individual-player-card`. Les 15 profils DLS 23 conservent la version `10.20`, l'identifiant de ligne source et le statut `community-dataset-record` ; ils ne sont pas présentés comme des cartes vérifiées individuellement. Les statistiques de terrain sont les valeurs entières enregistrées dans la source. Pour les gardiens, GKR et GKH remplacent SHO et TAC dans le jeu de référence.
 
 ## Données conservées
 
-- Note générale de la carte source, conservée dans `dls26Reference.baseOverall`.
+- Note générale de la carte source, conservée dans `playerReference.baseOverall` (alias historique `dls26Reference`).
 - SPE, ACC, STA, STR, CON, PAS, SHO et TAC (ou GKR/GKH pour les gardiens).
 - Taille de référence, avec une variation P27 limitée à ±2 cm.
 - Pied préféré lorsqu'il est publié sur la fiche source.
@@ -27,7 +26,7 @@ Les 21 profils DLS 26 conservent une URL de fiche individuelle et le statut `ind
 - La note finale reste déterminée par les limites de niveau de la division P27.
 - L'écart de note est appliqué à 72 % sur les statistiques, puis chaque caractéristique reçoit un ajustement individuel de ±2 points. Cela conserve la signature du profil sans transformer brutalement toutes ses qualités.
 - Les six attributs historiques du gameplay sont alimentés par les statistiques de la fiche : vitesse moyenne SPE/ACC, tir, passe, défense/tacle, endurance et contrôle.
-- Les statistiques DLS complètes restent disponibles dans `dls26Stats`; la provenance est stockée dans `dls26Reference`. Le générateur évite aussi de réutiliser deux fois la même carte dans un même effectif lorsqu'il dispose d'assez de profils pour le poste.
+- Les statistiques de référence complètes restent disponibles dans `playerReferenceStats`; la provenance multi-éditions est stockée dans `playerReference`. Le générateur évite aussi de réutiliser deux fois la même carte dans un même effectif lorsqu'il dispose d'assez de profils pour le poste.
 
 ## Identité fictive et personnalisation
 
