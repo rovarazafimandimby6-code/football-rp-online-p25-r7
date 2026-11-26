@@ -18,6 +18,21 @@ import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from '.
 import * as THREE from 'three';
 
 const P27_OFFLINE_TEST = typeof __P27_OFFLINE_TEST__ !== 'undefined' && __P27_OFFLINE_TEST__;
+const COUNTRY_NAME_CODES = Object.freeze({
+  MADAGASCAR:'MG', FRANCE:'FR', COLOMBIE:'CO', CAMEROUN:'CM', 'RD CONGO':'CD',
+  'RÉPUBLIQUE DÉMOCRATIQUE DU CONGO':'CD', 'REPUBLIQUE DEMOCRATIQUE DU CONGO':'CD',
+  CANADA:'CA', BAHAMAS:'BS', ALGÉRIE:'DZ', ALGERIE:'DZ', 'CAP-VERT':'CV',
+  'CAP VERT':'CV', CENTRAFRIQUE:'CF', 'RÉPUBLIQUE CENTRAFRICAINE':'CF',
+  'REPUBLIQUE CENTRAFRICAINE':'CF', 'ÉTATS-UNIS':'US', 'ETATS-UNIS':'US',
+  ANGLETERRE:'GB', 'ROYAUME-UNI':'GB', 'CÔTE D’IVOIRE':'CI', 'COTE D’IVOIRE':'CI'
+});
+function countryFlag(value) {
+  const raw = String(value || '').trim().toUpperCase();
+  const code = COUNTRY_NAME_CODES[raw] || raw;
+  if (!/^[A-Z]{2}$/.test(code)) return '🏳️';
+  return String.fromCodePoint(...[...code].map(letter => 127397 + letter.charCodeAt(0)));
+}
+
 
 const shell = document.getElementById('game-shell');
 const menu = document.getElementById('main-menu');
@@ -461,9 +476,9 @@ function renderPage(page = 'home') {
     title.textContent = 'Créer votre footballeur';
     subtitle.textContent = 'Votre aventure commence par votre identité Football RP.';
     content.innerHTML = `<section class="competition-panel onboarding-panel">
-      <span class="eyebrow">PREMIÈRE ÉTAPE · PROFIL JOUEUR</span>
-      <h2>Bienvenue dans Football RP Online</h2>
-      <p>Créez votre footballeur pour recevoir automatiquement votre identifiant joueur au format FRP-000000 et commencer votre carrière.</p>
+      <span class="eyebrow">NOUVELLE CARRIÈRE</span>
+      <h2>Quel nom sur le maillot ?</h2>
+      <p>Un nom suffit pour commencer. Tu pourras personnaliser ton joueur plus tard.</p>
       <form id="player-onboarding-form" class="career-form">
         <label>Nom de votre footballeur<input name="displayName" maxlength="20" autocomplete="nickname" value="${escapeHTML(profileStore.profile.identity.displayName === 'Nouveau joueur' ? '' : profileStore.profile.identity.displayName)}" placeholder="Votre nom de joueur" required></label>
         <button class="primary-cta" type="submit">CRÉER MON JOUEUR</button>
@@ -544,7 +559,7 @@ ${renderGoogleProtectionCard({ compact: true })}
       <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>`<article class="player-library-card" role="button" tabindex="0" aria-label="Ouvrir le profil de ${escapeHTML(player.name)}" data-player-profile="${index}" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
         <div class="player-card-top"><span class="player-card-number">#${player.number}</span><span class="player-card-role">${roleNames[player.role]||player.role}</span><b class="player-card-rating">${player.rating}</b></div>
         <div class="player-card-identity"><span class="player-card-monogram">${escapeHTML(player.name.split(/\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase())}</span><div><h3>${escapeHTML(player.name)}</h3><p>${escapeHTML(player.clubName)}</p></div></div>
-        <div class="player-card-meta"><span>${escapeHTML(player.nationality)}</span><span>${player.age} ans</span><span>Pot. ${player.potential}</span></div>
+        <div class="player-card-meta"><span class="player-nationality" title="${escapeHTML(player.nationality)}"><b aria-hidden="true">${countryFlag(player.nationality)}</b><span>${escapeHTML(player.nationality)}</span></span><span>${player.age} ans</span><span>Pot. ${player.potential}</span></div>
         <div class="player-card-attributes">${[['pace','VIT'],['shooting','TIR'],['passing','PAS'],['defense','DEF'],['stamina','END'],['control','CTR']].map(([key,label])=>`<span><small>${label}</small><b>${player.attributes?.[key]??player.rating}</b></span>`).join('')}</div>
         <details class="player-card-details"><summary>Profil & archétype</summary><div><b>${escapeHTML(player.archetype)}</b><span>Pied préféré : ${player.preferredFoot==='left'?'Gauche':'Droit'}</span><span>Potentiel : ${player.potential}/99</span><span>Division : ${escapeHTML(player.clubDivision)}</span></div></details>
       </article>`).join('')}</div>
@@ -564,7 +579,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     content.innerHTML = `<button class="text-cta" data-action="back-player-library">← RETOUR À LA BIBLIOTHÈQUE</button>
       <section class="player-career-hero">
         <div class="player-career-avatar"><span>#${player.number}</span><b>${escapeHTML(initials)}</b></div>
-        <div class="player-career-identity"><span class="eyebrow">${escapeHTML(player.clubDivision)} · ${escapeHTML(roleNames[player.role]||player.role)}</span><h2>${escapeHTML(player.name)}</h2><p>${escapeHTML(player.clubName)} · ${escapeHTML(nationalityNames[player.nationality]||player.nationality)} · ${player.age} ans</p><div class="player-career-tags"><span>NOTE ${player.rating}</span><span>POTENTIEL ${player.potential}</span><span>PIED ${player.preferredFoot==='left'?'GAUCHE':'DROIT'}</span></div></div>
+        <div class="player-career-identity"><span class="eyebrow">${escapeHTML(player.clubDivision)} · ${escapeHTML(roleNames[player.role]||player.role)}</span><h2>${escapeHTML(player.name)}</h2><p>${escapeHTML(player.clubName)} · <span class="player-nationality"><b aria-hidden="true">${countryFlag(player.nationality)}</b> ${escapeHTML(nationalityNames[player.nationality]||player.nationality)}</span> · ${player.age} ans</p><div class="player-career-tags"><span>NOTE ${player.rating}</span><span>POTENTIEL ${player.potential}</span><span>PIED ${player.preferredFoot==='left'?'GAUCHE':'DROIT'}</span></div></div>
       </section>
       <div class="player-career-columns">
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ SPORTIVE</span><h2>Profil technique</h2></div></div><div class="player-career-attributes">${Object.entries(attributeNames).map(([key,label])=>{const value=Number(player.attributes?.[key]??player.rating);return `<div><span>${label}</span><b>${value}</b><i><em style="width:${Math.max(0,Math.min(99,value))}%"></em></i></div>`;}).join('')}</div><p class="notice">${escapeHTML(player.archetype)} · Les attributs décrivent le joueur dans l'effectif actuel.</p></section>
