@@ -445,7 +445,16 @@ function renderPage(page = 'home') {
   if (content) content.scrollTop = 0;
   const title = document.getElementById('menu-page-title');
   const subtitle = document.getElementById('menu-page-subtitle');
-  document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page));
+  const topName = document.getElementById('p27-top-player-name');
+  const topClub = document.getElementById('p27-top-player-club');
+  if (topName) topName.textContent = profileStore.profile.identity.displayName || 'Mon footballeur';
+  if (topClub) topClub.textContent = career.clubId ? (clubs.getClub(career.clubId)?.name || 'Sans club') : 'Sans club';
+  const menuRoot = document.getElementById('main-menu');
+  if (menuRoot) menuRoot.classList.toggle('p27-home-active', page === 'home');
+  const backButton = document.querySelector('.p27-back-home');
+  if (backButton) backButton.hidden = page === 'home';
+
+  document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page || (page === 'home' && button.dataset.page === 'career-hub')));
   if (page === 'onboarding') {
     title.textContent = 'Créer votre footballeur';
     subtitle.textContent = 'Votre aventure commence par votre identité Football RP.';
@@ -460,58 +469,28 @@ function renderPage(page = 'home') {
       </form>
       <p class="notice">Aucun e-mail, mot de passe ou compte Google n'est nécessaire. Google restera facultatif et pourra être associé plus tard pour protéger votre carrière.</p>
     </section>`;
-  } else if (page === 'home') {
+  } else if (page === 'home' || page === 'career-hub') {
     const profile = profileStore.profile;
-    const season = seasonStats.snapshot().totals;
-    const latestMatch = seasonStats.snapshot().matches.slice(-1)[0];
     const careerClub = career.clubId ? clubs.getClub(career.clubId) : null;
-    const contractStatus = career.getContractStatus?.();
-    const contractLabel = contractStatus?.active ? `Contrat actif · ${contractStatus.daysRemaining} j` : 'Agent libre';
     const clubLabel = careerClub?.name || 'Sans club';
-    title.textContent = 'ACCUEIL';
-    subtitle.textContent = `VOTRE CARRIÈRE · ${profile.identity.displayName}`;
-    content.innerHTML = `
-      <div class="home-dashboard">
-        <section class="home-feature">
-          <div class="feature-copy">
-            <span class="eyebrow">MODE CARRIÈRE · SAISON PERSONNELLE</span>
-            <h2>VOTRE<br>HISTOIRE.</h2>
-            <p>Un joueur. Une carrière. Chaque match compte. Gagnez votre place et écrivez votre légende.</p>
-            <div class="home-primary-actions">
-              <button class="primary-cta" data-action="choose-match">JOUER UN MATCH <span>→</span></button>
-              <button class="secondary-cta" data-action="online-menu">MODE EN LIGNE</button>
-            </div>
-          </div>
-          <div class="feature-ball" aria-hidden="true"></div>
-          <div class="feature-matchday"><span>FRP</span><b>PLAYER CAREER</b><i></i><small>5V5 · MATCHDAY EXPERIENCE</small></div>
-          <div class="feature-foot"><span>SAISON PERSONNELLE</span><span>·</span><span>5 CONTRE 5</span><span>·</span><span>CONTRÔLE INDIVIDUEL</span></div>
-        </section>
-        <aside class="home-side-panel">
-          <div class="home-player-heading">
-            <span class="user-avatar"><b>${escapeHTML(profile.identity.number)}</b><small>PRO</small></span>
-            <div><small>VOTRE FOOTBALLEUR</small><b>${escapeHTML(profile.identity.displayName)}</b><span>NIVEAU ${profile.progression.level} · ${escapeHTML(profile.identity.role)}</span></div>
-          </div>
-          <div class="home-career-row"><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div>
-          <div class="home-career-row"><span>CONTRAT</span><b>${escapeHTML(contractLabel)}</b></div>
-          <div class="home-stat-grid">
-            <div><b>${season.matches}</b><span>MATCHS</span></div>
-            <div><b>${season.goals}</b><span>BUTS</span></div>
-            <div><b>${season.shots}</b><span>TIRS</span></div>
-            <div><b>${season.tackles + season.interceptions}</b><span>RÉCUPÉRATIONS</span></div>
-          </div>
-          <div class="home-last-match">
-            <span class="eyebrow">DERNIÈRE PERFORMANCE</span>
-            ${latestMatch ? `<b>${latestMatch.rating.toFixed(1)} <small>/ 10</small></b><span>${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · ${latestMatch.goals} but(s)</span>` : '<b class="home-no-match">Aucun match joué</b><span>Votre première performance apparaîtra ici.</span>'}
-          </div>
-        </aside>
-        <nav class="quick-grid home-shortcuts" aria-label="Accès rapides">
-          <button class="quick-card" data-page="player"><span>01</span><b>MON JOUEUR</b><small>Profil · progression</small></button>
-          <button class="quick-card" data-page="clubs"><span>02</span><b>CLUBS</b><small>Équipes · effectifs</small></button>
-          <button class="quick-card" data-page="players"><span>03</span><b>JOUEURS</b><small>Profils · scouting</small></button>
-          <button class="quick-card" data-page="competitions"><span>04</span><b>COMPÉTITIONS</b><small>Ligues · classements</small></button>
-          <button class="quick-card" data-page="mercato"><span>05</span><b>MERCATO</b><small>Contrats · transferts</small></button>
-        </nav>
-      </div>`;
+    title.textContent = page === 'career-hub' ? 'Carrière' : 'Football RP Online';
+    subtitle.textContent = page === 'career-hub' ? 'Votre parcours et votre progression.' : 'Choisissez votre prochaine étape.';
+    const level = Number(profile.progression.level) || 1;
+    const stars = Math.max(1, Math.min(5, Math.ceil(level / 20)));
+    content.innerHTML = page === 'career-hub' ? `
+      <section class="p27-career-hero"><div class="p27-career-hero-copy"><span class="eyebrow">ESPACE CARRIÈRE</span><h2>Ta carrière. Ton histoire.</h2><p>Joueur · niveau ${level} · ${escapeHTML(clubLabel)}</p><div class="p27-career-hero-actions"><button class="primary-cta" data-page="player">MON JOUEUR →</button><button class="secondary-cta" data-action="choose-match">MATCH AMICAL</button></div></div></section>
+      <section class="p27-career-summary"><div class="p27-career-facts"><div><span>NIVEAU</span><b>${level}</b></div><div><span>CRÉDITS</span><b>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</b></div><div><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div></div></section>
+      <button class="p27-home-return" data-page="home">← RETOUR AU HUB</button>` : `
+      <section class="p27-home-tiles" aria-label="Modes et rubriques">
+        <button class="p27-tile p27-tile-career" data-page="career-hub"><span class="p27-tile-title">CARRIÈRE <i>›</i></span><span class="p27-tile-art"><b>★</b><small>${'★'.repeat(stars)}${'☆'.repeat(5-stars)} · NIVEAU ${level}</small></span><span class="p27-tile-info">Votre parcours et votre progression</span></button>
+        <button class="p27-tile p27-tile-friendly" data-action="choose-match"><span class="p27-tile-title">MATCH AMICAL <i>›</i></span><span class="p27-tile-art"><b>⚽</b></span><span class="p27-tile-info">Jouer un match 5 contre 5</span></button>
+        <button class="p27-tile p27-tile-player" data-page="player"><span class="p27-tile-title">MON JOUEUR <i>›</i></span><span class="p27-tile-art p27-tile-avatar"><b>♟</b></span><span class="p27-tile-info">${escapeHTML(profile.identity.displayName)}</span></button>
+        <button class="p27-tile p27-tile-compet" data-page="competitions"><span class="p27-tile-title">COMPÉTITIONS <i>›</i></span><span class="p27-tile-art"><b>🏆</b></span><span class="p27-tile-info">Championnats et coupes</span></button>
+        <button class="p27-tile p27-tile-market" data-page="mercato"><span class="p27-tile-title">MERCATO <i>›</i></span><span class="p27-tile-art"><b>⇄</b></span><span class="p27-tile-info">Transferts et contrats</span></button>
+        <button class="p27-tile p27-tile-rank" data-page="competitions" data-view="rankings"><span class="p27-tile-title">CLASSEMENTS <i>›</i></span><span class="p27-tile-art"><b>▤</b></span><span class="p27-tile-info">Voir les positions des clubs</span></button>
+        <button class="p27-tile p27-tile-clubs" data-page="clubs"><span class="p27-tile-title">CLUBS <i>›</i></span><span class="p27-tile-art"><b>⬟</b></span><span class="p27-tile-info">Explorer les clubs</span></button>
+        <button class="p27-tile p27-tile-results" data-page="results"><span class="p27-tile-title">RÉSULTATS <i>›</i></span><span class="p27-tile-art"><b>▣</b></span><span class="p27-tile-info">Historique des rencontres</span></button>
+      </section>`;
   } else if (page === 'player') {
     const p = profileStore.profile;
     const a = p.progression.attributes;
@@ -642,7 +621,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     const nextWindow = career.transferWindows.find(window => window.start > Date.now());
     const dateLabel = value => new Date(value).toLocaleDateString('fr-FR');
     title.textContent = 'Mercato & contrats'; subtitle.textContent = 'Votre parcours professionnel, vos offres et vos négociations.';
-    content.innerHTML = `<div class="career-summary"><div><span class="eyebrow">BUDGET DE TRANSFERT LOCAL</span><strong>${career.wallet.toLocaleString('fr-FR')} crédits</strong><small>Solde indépendant des crédits d'entraînement.</small></div><div><span class="eyebrow">FENÊTRE DE TRANSFERT</span><strong class="${open?'window-open':'window-closed'}">${open?'OUVERTE':'FERMÉE'}</strong><small>${open?'Les transferts peuvent être conclus.':nextWindow?`Prochaine ouverture : ${dateLabel(nextWindow.start)} au ${dateLabel(nextWindow.end)}.`:'Aucune fenêtre programmée.'}</small></div></div>
+    content.innerHTML = `<section class="competition-panel p27-market-shortcuts"><div class="panel-heading"><div><span class="eyebrow">EXPLORER LE MARCHÉ</span><h2>Bibliothèques</h2></div></div><div class="p27-market-shortcut-actions"><button class="secondary-cta" data-page="players">BIBLIOTHÈQUE JOUEURS →</button><button class="secondary-cta" data-page="clubs">BIBLIOTHÈQUE CLUBS →</button></div></section><div class="career-summary"><div><span class="eyebrow">BUDGET DE TRANSFERT LOCAL</span><strong>${career.wallet.toLocaleString('fr-FR')} crédits</strong><small>Solde indépendant des crédits d'entraînement.</small></div><div><span class="eyebrow">FENÊTRE DE TRANSFERT</span><strong class="${open?'window-open':'window-closed'}">${open?'OUVERTE':'FERMÉE'}</strong><small>${open?'Les transferts peuvent être conclus.':nextWindow?`Prochaine ouverture : ${dateLabel(nextWindow.start)} au ${dateLabel(nextWindow.end)}.`:'Aucune fenêtre programmée.'}</small></div></div>
       <section class="competition-panel contract-panel"><div class="panel-heading"><div><span class="eyebrow">SITUATION PROFESSIONNELLE</span><h2>Mon contrat</h2></div><span class="local-tag">CARRIÈRE LOCALE</span></div>${hasActiveContract?`<div class="contract-details"><b>${escapeHTML(currentClub?.name || career.contract.clubId)}</b><span>Salaire : ${career.contract.salary.toLocaleString('fr-FR')} crédits / semaine</span><span>Signé le ${dateLabel(career.contract.signedAt)} · Expire le ${dateLabel(career.contract.expiresAt)}</span><small>${salaryStatus?.paymentBeforeExpiry ? 'Prochain versement estimé : ' + dateLabel(salaryStatus.nextPaymentAt) + ' · ' + (salaryStatus.daysUntilPayment === 0 ? 'échéance atteinte' : 'dans ' + salaryStatus.daysUntilPayment + ' jour(s)') : 'Aucun versement hebdomadaire prévu avant la fin du contrat.'}</small><small>Statut : ${escapeHTML(career.getContractStatus()?.status || career.contract.status)} · ${career.getContractStatus()?.daysRemaining || 0} jour(s) restant(s)</small><div class="contract-actions"><label>Nouveau salaire / semaine<input id="renew-contract-salary" type="number" min="0" max="100000" value="${career.contract.salary}"></label><button class="small-action" data-action="renew-contract">RENOUVELER · 180 JOURS</button><button class="text-cta" data-action="terminate-contract">RÉSILIER LE CONTRAT</button></div></div>`:`<p class="notice">Vous n'avez pas encore de contrat. Choisissez un club pour commencer votre carrière.</p><div class="sign-contract-row"><label>Club<select id="contract-club">${clubsList.map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)} · niveau ${c.rating}</option>`).join('')}</select></label><label>Salaire / semaine<input id="contract-salary" type="number" min="0" max="100000" value="120"></label><button class="primary-cta" data-action="sign-contract">SIGNER MON PREMIER CONTRAT</button></div>`}</section>
       <section class="competition-panel market-panel"><div class="panel-heading"><div><span class="eyebrow">OFFRES DES CLUBS</span><h2>Table des négociations</h2></div><button class="small-action" data-action="generate-offers" ${hasActiveContract?'':'disabled'}>SOLLICITER DES OFFRES</button></div>${pending.length?`<div class="offer-list">${pending.map(offer=>{const club=clubs.getClub(offer.fromClubId);return `<article class="offer-card"><div class="offer-heading"><b>${escapeHTML(club?.name||offer.fromClubId)}</b><span>OFFRE EN ATTENTE</span></div><div class="offer-terms"><label>Salaire / semaine<input type="number" min="0" max="100000" id="salary-${escapeHTML(offer.id)}" value="${offer.salary}"></label><label>Indemnité de transfert<input type="number" min="0" max="1000000" id="fee-${escapeHTML(offer.id)}" value="${offer.fee}"></label></div><div class="offer-actions"><button class="small-action" data-action="negotiate-offer" data-offer="${escapeHTML(offer.id)}">NÉGOCIER</button><button class="small-action accept-action" data-action="accept-offer" data-offer="${escapeHTML(offer.id)}" ${open?'':'disabled'}>ACCEPTER</button><button class="text-cta" data-action="reject-offer" data-offer="${escapeHTML(offer.id)}">REFUSER</button></div></article>`;}).join('')}</div>`:`<div class="empty-fixtures"><b>Aucune offre en attente</b><p>${hasActiveContract?'Sollicitez les clubs pour recevoir des propositions de démonstration.':'Signez d’abord un contrat pour accéder au marché.'}</p></div>`}</section>
       <section class="competition-panel market-history"><div class="panel-heading"><div><span class="eyebrow">JOURNAL DE CARRIÈRE</span><h2>Historique</h2></div></div>${history.length?`<div class="history-list">${history.map(item=>`<div><b>${item.type==='signing'?'Signature':item.type==='transfer'?'Transfert':item.type==='renewal'?'Renouvellement':item.type==='termination'?'Résiliation':item.type==='contract-expired'?'Fin de contrat':item.type==='salary'?'Salaire':'Match'}</b><span>${item.type==='signing'?`Contrat avec ${escapeHTML(clubs.getClub(item.clubId)?.name||item.clubId)}`:item.type==='transfer'?`${escapeHTML(clubs.getClub(item.from)?.name||item.from||'Sans club')} → ${escapeHTML(clubs.getClub(item.to)?.name||item.to)}`:item.type==='renewal'?`Contrat renouvelé avec ${escapeHTML(clubs.getClub(item.clubId)?.name||item.clubId)} · ${item.salary} crédits / semaine`:item.type==='termination'?`Contrat résilié · ${escapeHTML(clubs.getClub(item.clubId)?.name||item.clubId)}`:item.type==='contract-expired'?`Contrat arrivé à échéance · ${escapeHTML(clubs.getClub(item.clubId)?.name||item.clubId)}`:item.type==='salary'?`${item.periods} semaine(s) payée(s) · +${item.amount.toLocaleString('fr-FR')} crédits`:`${item.result==='win'?'Victoire':item.result==='draw'?'Match nul':'Défaite'} · ${item.goals||0} but(s)`}</span><small>${dateLabel(item.date)}</small></div>`).join('')}</div>`:`<p class="notice">Votre historique apparaîtra ici après vos signatures et transferts.</p>`}</section><p class="notice">Mode prototype hors ligne : les offres sont générées localement à partir des niveaux des clubs. Aucun joueur réel, club réel ou serveur de transfert n'est connecté.</p>`;

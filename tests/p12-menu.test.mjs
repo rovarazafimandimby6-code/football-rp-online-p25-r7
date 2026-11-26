@@ -11,10 +11,15 @@ test('P12: le menu principal est affiché avant le conteneur de match', () => {
   assert.match(html, /<main id="game-shell" class="hidden"/);
 });
 
-test('P12: la navigation expose les espaces joueur, clubs et paramètres', () => {
-  for (const page of ['home', 'player', 'clubs', 'competitions', 'mercato', 'rankings', 'community', 'settings']) {
-    assert.match(html, new RegExp(`data-page="${page}"`));
+test('P12: le shell ne contient plus de navigation permanente ni de routes fantômes', () => {
+  assert.match(html, /p27-game-topbar/);
+  assert.match(html, /p27-back-home/);
+  assert.doesNotMatch(html, /menu-sidebar|menu-secondary-nav/);
+  for (const page of ['rankings', 'community']) assert.doesNotMatch(html, new RegExp(`data-page="${page}"`));
+  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato','account']) {
+    assert.match(main, new RegExp(`data-page="${page}"`));
   }
+  assert.match(html, /data-page="settings"/);
 });
 
 test('P12: le moteur de match est chargé seulement après la demande de lancement', () => {
@@ -53,12 +58,14 @@ test('P12.1: la liste des clubs et la pause utilisent le composant d’écusson 
 });
 
 
-test('P27 UI: accueil carrière présente les statistiques réelles et les accès rapides', () => {
-  assert.match(main, /home-dashboard/);
-  assert.match(main, /seasonStats\.snapshot\(\)\.totals/);
+test('P27 UI: accueil en hub de huit tuiles et accès aux pages existantes', () => {
+  assert.match(main, /p27-home-tiles/);
+  for (const label of ['CARRIÈRE','MATCH AMICAL','MON JOUEUR','COMPÉTITIONS','MERCATO','CLASSEMENTS','CLUBS','RÉSULTATS']) assert.ok(main.includes(label), `tuile manquante: ${label}`);
   assert.match(main, /data-action="choose-match"/);
-  assert.match(main, /data-action="online-menu"/);
-  assert.match(main, /data-page="mercato"/);
+  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato']) assert.match(main,new RegExp(`data-page="${page}"`));
+  assert.match(main, /const topName = document\.getElementById\('p27-top-player-name'\)/);
+  assert.match(main, /const topClub = document\.getElementById\('p27-top-player-club'\)/);
+  assert.match(main, /const seasonSnapshot = seasonStats\.snapshot\(\)/);
 });
 
 test('P27 UI: shell principal verrouillé en paysage sans défilement vertical', () => {
@@ -127,7 +134,6 @@ test('P27 UI: le centre avant-match compare les clubs et leurs meilleurs joueurs
 
 test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, filtres, tri et chargement progressif', () => {
   const css = cssText();
-  assert.match(html, /data-page="players"/);
   assert.match(main, /page === 'players'/);
   assert.match(main, /data-library-card/);
   assert.match(main, /id="library-search"/);
@@ -141,8 +147,8 @@ test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, fil
 });
 
 
-test('P27 mobile fullscreen: menu and match expose a touch fullscreen control', () => {
-  assert.ok(html.includes('id="menu-fullscreen"'));
+test('P27 mobile fullscreen: seul le match expose un contrôle plein écran', () => {
+  assert.ok(!html.includes('id="menu-fullscreen"'));
   assert.ok(html.includes('id="match-fullscreen"'));
   assert.ok(main.includes("requestFullscreen({ navigationUI: 'hide' })"));
   assert.ok(main.includes("screen.orientation.lock('landscape')"));

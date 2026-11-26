@@ -997,3 +997,477 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
   #main-menu .training-controls{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   #main-menu .training-controls button{grid-column:1/-1}
 }
+
+/* P27 HOME/NAV REFIT — menu-only layout; gameplay DOM remains untouched. */
+#main-menu .menu-topbar-actions{display:flex;align-items:center;justify-content:flex-end}
+#main-menu .menu-settings-icon{width:42px;height:42px;min-height:42px;padding:0;border:1px solid var(--p27-border-strong);border-radius:10px;background:rgba(15,28,44,.9);font-size:19px}
+#main-menu .p27-career-home{display:grid;gap:clamp(12px,1.8vw,20px)}
+#main-menu .p27-career-topline{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--p27-border);border-radius:10px;background:rgba(8,17,29,.82)}
+#main-menu .p27-progression{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#main-menu .p27-stars{color:#f2b91d;letter-spacing:2px;font-size:clamp(16px,2vw,23px)}
+#main-menu .p27-progression b{font-size:11px;letter-spacing:.8px;color:#dce8f8}
+#main-menu .p27-currency{display:grid;gap:3px;text-align:right}
+#main-menu .p27-currency span{font-size:9px;color:#91a8c5;font-weight:850;letter-spacing:.7px}
+#main-menu .p27-currency b{font-size:clamp(16px,2vw,22px);font-variant-numeric:tabular-nums;color:#f4f7ff}
+#main-menu .p27-career-hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(150px,.7fr);align-items:center;gap:20px;min-height:clamp(190px,25vh,270px);padding:clamp(18px,3vw,32px);border:1px solid rgba(136,185,233,.2);border-radius:14px;background:radial-gradient(ellipse at 85% 15%,rgba(43,105,171,.36),transparent 46%),linear-gradient(120deg,#101f34,#08121f 78%);overflow:hidden}
+#main-menu .p27-career-hero h2{margin:8px 0;font-size:clamp(30px,5vw,56px);line-height:.98;letter-spacing:-1.5px;font-weight:950;color:#f5f8ff}
+#main-menu .p27-career-hero p{max-width:470px;color:#aebfd4;line-height:1.5;font-size:clamp(11px,1.2vw,14px)}
+#main-menu .p27-career-hero-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+#main-menu .p27-career-hero-actions button{min-height:43px}
+#main-menu .p27-career-hero-identity{display:grid;justify-items:center;gap:8px;text-align:center}
+#main-menu .p27-player-number{display:grid;place-items:center;width:clamp(74px,10vw,112px);aspect-ratio:1;border:1px solid rgba(166,204,242,.35);border-radius:50%;background:linear-gradient(145deg,rgba(48,91,139,.7),rgba(9,20,34,.95));font-size:clamp(25px,4vw,43px);font-weight:950;color:#f5f8ff}
+#main-menu .p27-career-hero-identity>b{font-size:clamp(15px,2vw,22px);color:#fff}
+#main-menu .p27-career-hero-identity>small{color:#a6bad2;font-size:10px}
+#main-menu .p27-home-section-title{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 2px}
+#main-menu .p27-home-section-title>span{font-size:12px;font-weight:950;letter-spacing:1px;color:#edf4ff}
+#main-menu .p27-home-section-title>small{font-size:9px;font-weight:850;letter-spacing:.7px;color:#7f98b6}
+#main-menu .p27-home-primary{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+#main-menu .p27-home-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;grid-column:span 2;min-width:0;min-height:124px;padding:16px;border:1px solid rgba(140,178,219,.18);border-radius:11px;background:linear-gradient(145deg,rgba(23,39,59,.97),rgba(9,17,28,.98));text-align:left}
+#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{grid-column:span 3;min-height:148px;background:linear-gradient(130deg,rgba(26,64,106,.96),rgba(9,19,32,.98))}
+#main-menu .p27-home-card-friendly{background:linear-gradient(130deg,rgba(29,48,68,.98),rgba(9,17,28,.98))}
+#main-menu .p27-home-card .p27-card-kicker{font-size:9px;font-weight:850;letter-spacing:.7px;color:#86b9eb}
+#main-menu .p27-home-card>b{font-size:clamp(16px,2vw,23px);font-weight:950;letter-spacing:.2px;color:#f3f7ff}
+#main-menu .p27-home-card>small{font-size:10px;line-height:1.4;color:#aabbd0}
+#main-menu .p27-home-card>i{position:absolute;right:15px;bottom:13px;font-style:normal;color:#85c4ff;font-size:18px}
+#main-menu .p27-home-card:hover{border-color:rgba(122,190,255,.55);background-color:#18304a}
+#main-menu .p27-career-summary{display:grid;gap:11px;padding:15px;border:1px solid var(--p27-border);border-radius:11px;background:rgba(8,16,27,.78)}
+#main-menu .p27-career-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#main-menu .p27-career-facts>div{display:grid;gap:5px;min-width:0;padding:10px;border-radius:7px;background:rgba(255,255,255,.035)}
+#main-menu .p27-career-facts span{font-size:9px;font-weight:850;letter-spacing:.6px;color:#8ea6c3}
+#main-menu .p27-career-facts b{font-size:clamp(12px,1.4vw,16px);color:#eaf2fd;overflow-wrap:anywhere}
+#main-menu .p27-last-performance{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;padding-top:9px;border-top:1px solid var(--p27-border)}
+#main-menu .p27-last-performance>span{font-size:9px;font-weight:850;letter-spacing:.65px;color:#8ea6c3}
+#main-menu .p27-last-performance>b{font-size:16px;color:#f4f8ff}
+#main-menu .p27-last-performance>small{font-size:10px;color:#a8bad0}
+#main-menu .menu-sidebar [data-action="choose-match"]{border-color:rgba(123,189,255,.18)}
+@media(max-width:760px){#main-menu .p27-home-primary{grid-template-columns:repeat(2,minmax(0,1fr))}#main-menu .p27-home-card,#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{grid-column:span 1;min-height:125px}#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{min-height:145px}#main-menu .p27-career-hero{grid-template-columns:minmax(0,1fr) 100px;gap:10px}#main-menu .p27-career-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){#main-menu .p27-career-hero{grid-template-columns:1fr}#main-menu .p27-career-hero-identity{display:none}#main-menu .p27-career-hero h2{font-size:34px}#main-menu .p27-career-hero-actions{display:grid;grid-template-columns:1fr}#main-menu .p27-home-primary{gap:7px}#main-menu .p27-home-card{padding:11px;min-height:115px}#main-menu .p27-home-card>b{font-size:15px}#main-menu .p27-home-card>small{font-size:9px}#main-menu .p27-career-topline{padding:9px}#main-menu .p27-stars{letter-spacing:0;font-size:15px}}
+
+/* Hybrid secondary navigation: horizontally browsable tabs, compact on mobile landscape. */
+#main-menu .menu-secondary-nav{display:flex;align-items:center;gap:6px;max-width:100%;margin:0 0 14px;padding:8px 10px;border:1px solid var(--p27-border);border-radius:9px;background:rgba(7,15,25,.78);overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:thin}
+#main-menu .menu-secondary-nav>span{flex:0 0 auto;padding:0 7px;color:#7f98b6;font-size:9px;font-weight:900;letter-spacing:.7px}
+#main-menu .menu-secondary-nav button{flex:0 0 auto;min-height:34px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:#b8c9dd;font-size:10px;font-weight:850;white-space:nowrap}
+#main-menu .menu-secondary-nav button.active{border-color:rgba(113,181,242,.32);background:rgba(42,91,142,.32);color:#f0f7ff}
+#main-menu .menu-secondary-nav button:hover{background:rgba(85,151,216,.15);color:#fff}
+@media(max-height:520px) and (orientation:landscape){#main-menu .menu-secondary-nav{margin-bottom:8px;padding:5px 8px}#main-menu .menu-secondary-nav button{min-height:30px;padding:0 9px}}
+
+
+/* P27 GRAND MENU REDESIGN — full non-match application shell.
+   Presentation-only layer. Match shell (#game-shell), HUD and controls are untouched. */
+#main-menu{
+  --p27-bg:#070b12;--p27-surface:#101a28;--p27-surface-raised:#172538;
+  --p27-border:rgba(151,184,222,.16);--p27-border-strong:rgba(123,181,240,.34);
+  --p27-accent:#69b7ff;--p27-accent-hot:#a6d6ff;
+  background:
+    radial-gradient(ellipse at 72% 0%,rgba(35,104,169,.2),transparent 34%),
+    radial-gradient(ellipse at 10% 90%,rgba(20,51,83,.2),transparent 36%),
+    #070b12;
+}
+#main-menu .menu-topbar{
+  height:68px;flex-basis:68px;padding-inline:clamp(18px,3vw,44px);
+  background:rgba(5,9,16,.94);border-bottom:1px solid rgba(154,190,231,.14);
+}
+#main-menu .brand-mark{display:flex;align-items:center;gap:13px}
+#main-menu .brand-shield{width:39px;height:44px}
+#main-menu .brand-mark strong{font-size:14px;letter-spacing:2px}
+#main-menu .brand-mark small{display:block;margin-top:3px;font-size:9px;letter-spacing:3.5px}
+#main-menu .menu-layout{
+  display:grid;grid-template-columns:226px minmax(0,1fr);grid-template-rows:minmax(0,1fr);
+  gap:0;max-width:1660px;padding:0 clamp(16px,2.4vw,36px);overflow:hidden;
+}
+#main-menu .menu-sidebar{
+  order:0;display:flex;flex-direction:column;align-items:stretch;gap:5px;
+  min-width:0;padding:25px 15px 18px 0;overflow-y:auto;overflow-x:hidden;
+  border:0;border-right:1px solid rgba(154,190,231,.14);
+}
+#main-menu .menu-section-label{
+  display:block;padding:8px 11px 5px;color:#66819f;font-size:9px;
+  font-weight:900;letter-spacing:1.5px;
+}
+#main-menu .menu-section-label.secondary-label{margin-top:18px}
+#main-menu .sidebar-spacer{display:block;flex:1;min-height:20px}
+#main-menu .menu-sidebar button{
+  justify-content:flex-start;gap:12px;width:100%;min-height:46px;padding:0 13px;
+  border:1px solid transparent;border-radius:8px;color:#a9bad0;
+  font-size:11px;font-weight:800;text-align:left;
+}
+#main-menu .menu-sidebar button span{
+  display:grid;place-items:center;width:22px;height:22px;color:#85a8cc;font-size:16px;
+}
+#main-menu .menu-sidebar button.active{
+  border-color:rgba(105,183,255,.25);
+  background:linear-gradient(100deg,rgba(48,119,184,.27),rgba(22,47,73,.16));
+  box-shadow:inset 3px 0 #69b7ff;color:#fff;
+}
+#main-menu .menu-sidebar button.active span{color:#a6d6ff}
+#main-menu .menu-main{order:0;padding:26px 0 12px 28px;overflow:hidden}
+#main-menu .menu-heading{
+  min-height:78px;margin:0 0 17px;padding:0 2px 15px;
+  border-bottom:1px solid rgba(215,231,250,.1);
+}
+#main-menu .eyebrow{font-size:9px;letter-spacing:1.8px;font-weight:900}
+#main-menu .menu-heading h1{margin:7px 0 5px;font-size:clamp(23px,2.6vw,35px);letter-spacing:-.9px}
+#main-menu .menu-heading p{font-size:12px;color:#9aadc5}
+#main-menu .menu-secondary-nav{
+  gap:7px;margin:0 0 18px;padding:0 0 11px;border:0;border-bottom:1px solid rgba(215,231,250,.1);
+  border-radius:0;background:transparent;
+}
+#main-menu .menu-secondary-nav>span{padding-left:2px;padding-right:10px;font-size:8px;letter-spacing:1.2px}
+#main-menu .menu-secondary-nav button{
+  min-height:35px;padding:0 13px;border:1px solid rgba(151,184,222,.12);
+  border-radius:6px;background:rgba(255,255,255,.025);font-size:10px;
+}
+#main-menu .menu-secondary-nav button.active{
+  border-color:rgba(105,183,255,.36);background:rgba(52,119,181,.2);color:#eaf6ff;
+}
+#main-menu #menu-content{padding:0 5px 28px 1px}
+#main-menu #menu-content>section,
+#main-menu #menu-content>.competition-panel,
+#main-menu #menu-content>.coming-soon{margin-bottom:17px}
+#main-menu .competition-panel,
+#main-menu .profile-editor,
+#main-menu .career-form,
+#main-menu .player-card,
+#main-menu .attribute-list,
+#main-menu .settings-card,
+#main-menu .home-side-panel,
+#main-menu .market-history,
+#main-menu .contract-panel{
+  border:1px solid rgba(151,184,222,.15)!important;border-radius:12px!important;
+  background:linear-gradient(145deg,rgba(19,32,49,.97),rgba(10,18,29,.98))!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.2);
+}
+#main-menu .competition-panel,
+#main-menu .profile-editor,
+#main-menu .player-card,
+#main-menu .attribute-list{padding:clamp(16px,2vw,23px)}
+#main-menu .panel-heading{margin-bottom:15px}
+#main-menu .panel-heading h2,
+#main-menu .competition-panel h2,
+#main-menu .profile-editor h3{font-size:17px;letter-spacing:-.2px}
+#main-menu .notice,
+#main-menu .competition-panel p{font-size:12px;line-height:1.65}
+#main-menu .club-card,
+#main-menu .player-library-card,
+#main-menu .offer-card,
+#main-menu .result-card,
+#main-menu .fixture-row{
+  border:1px solid rgba(151,184,222,.14);border-radius:10px;
+  background:linear-gradient(145deg,rgba(25,42,63,.94),rgba(13,22,35,.98));
+  box-shadow:0 8px 22px rgba(0,0,0,.16);
+}
+#main-menu button{transition:transform .16s ease,border-color .16s ease,background .16s ease}
+#main-menu button:focus-visible,
+#main-menu a:focus-visible{outline:2px solid #8bcaff;outline-offset:3px}
+#main-menu input,#main-menu select,#main-menu textarea{
+  min-height:42px;border:1px solid rgba(151,184,222,.22);border-radius:7px;
+  background:#091321;color:#f3f7fc;
+}
+#main-menu .primary-cta{min-height:45px;border-radius:7px;background:linear-gradient(135deg,#a4d8ff,#4c9cde);color:#061321}
+#main-menu .small-action,#main-menu .secondary-cta{min-height:39px;border-radius:7px}
+#main-menu .menu-footer{padding-inline:clamp(18px,3vw,44px);background:rgba(5,9,16,.94)}
+@media(max-width:900px) and (min-width:761px){
+  #main-menu .menu-layout{grid-template-columns:190px minmax(0,1fr);padding-inline:12px}
+  #main-menu .menu-main{padding-left:18px}
+  #main-menu .menu-sidebar{padding-right:10px}
+  #main-menu .menu-sidebar button{font-size:10px}
+}
+@media(max-width:760px){
+  #main-menu .menu-topbar{height:54px;flex-basis:54px;padding-inline:12px}
+  #main-menu .brand-shield{width:31px;height:35px}
+  #main-menu .brand-mark strong{font-size:11px}
+  #main-menu .menu-layout{display:flex;flex-direction:column;padding:0 9px}
+  #main-menu .menu-sidebar{
+    order:2;flex:0 0 auto;display:flex;flex-direction:row;align-items:stretch;gap:3px;
+    margin:7px 0 0;padding:6px 3px max(7px,env(safe-area-inset-bottom));
+    overflow-x:auto;overflow-y:hidden;border:1px solid rgba(151,184,222,.17);
+    border-radius:11px 11px 0 0;background:rgba(6,11,19,.98);
+  }
+  #main-menu .menu-section-label,#main-menu .sidebar-spacer{display:none}
+  #main-menu .menu-sidebar button{
+    flex:1 0 66px;width:auto;min-width:0;min-height:49px;flex-direction:column;
+    justify-content:center;gap:3px;padding:4px 5px;font-size:8px;text-align:center;
+  }
+  #main-menu .menu-sidebar button span{width:auto;height:18px;font-size:15px}
+  #main-menu .menu-sidebar button.active{box-shadow:inset 0 -2px #69b7ff}
+  #main-menu .menu-main{order:1;flex:1;min-height:0;padding:12px 0 5px;overflow:hidden}
+  #main-menu .menu-heading{min-height:58px;margin-bottom:10px;padding-bottom:10px}
+  #main-menu .menu-heading h1{font-size:21px}
+  #main-menu .menu-heading p{font-size:10px}
+  #main-menu .menu-secondary-nav{margin-bottom:12px;padding-bottom:8px}
+  #main-menu .menu-secondary-nav button{min-height:32px;padding-inline:10px;font-size:9px}
+  #main-menu #menu-content{padding-bottom:15px}
+  #main-menu .competition-panel,#main-menu .profile-editor,#main-menu .player-card,#main-menu .attribute-list{padding:13px}
+}
+@media(max-height:520px) and (orientation:landscape){
+  #main-menu .menu-topbar{height:46px;flex-basis:46px}
+  #main-menu .menu-layout{grid-template-columns:174px minmax(0,1fr)}
+  #main-menu .menu-sidebar{padding-top:10px;gap:2px}
+  #main-menu .menu-sidebar button{min-height:36px}
+  #main-menu .menu-sidebar button span{font-size:14px}
+  #main-menu .menu-main{padding-top:12px;padding-left:17px}
+  #main-menu .menu-heading{min-height:54px;margin-bottom:8px;padding-bottom:8px}
+  #main-menu .menu-heading h1{font-size:20px}
+  #main-menu .menu-secondary-nav{margin-bottom:9px}
+  #main-menu .menu-footer{min-height:20px;flex-basis:20px}
+}
+@media(max-width:760px) and (max-height:520px) and (orientation:landscape){
+  #main-menu .menu-layout{display:flex;flex-direction:column}
+  #main-menu .menu-sidebar{order:2;flex-direction:row}
+  #main-menu .menu-main{order:1;padding:7px 0 3px}
+  #main-menu .menu-sidebar button{min-height:39px}
+}
+@media(prefers-reduced-motion:reduce){
+  #main-menu button{transition:none}
+}
+
+
+/* P27 detail pass — overlooked non-match components and dense data screens. */
+#main-menu .google-protection-card{position:relative;overflow:hidden}
+#main-menu .google-protection-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(#70c4ff,#4d82c2)}
+#main-menu .google-protection-card [data-player-id]{color:#d8edff;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+#main-menu .google-protection-card button{margin:5px 7px 5px 0}
+#main-menu .onboarding-panel{max-width:760px;margin:clamp(12px,4vh,44px) auto;padding:clamp(20px,4vw,38px)!important}
+#main-menu .onboarding-panel h2{margin:12px 0;font-size:clamp(22px,3vw,32px);letter-spacing:-.6px}
+#main-menu .onboarding-panel>p{max-width:620px;color:#aebfd4;line-height:1.7}
+#main-menu .onboarding-panel .career-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px;padding:15px;margin:20px 0}
+#main-menu .onboarding-panel .career-form label{display:grid;gap:7px;color:#b9cbe0;font-size:11px;font-weight:800}
+#main-menu .onboarding-panel .career-form .onboarding-status{grid-column:1/-1;margin:0}
+#main-menu .player-stats-panel .quick-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#main-menu .player-stats-panel .quick-card{min-height:78px}
+#main-menu .player-stats-panel .career-form{margin-top:14px;padding:15px;border:1px solid rgba(151,184,222,.12);border-radius:9px;background:rgba(5,12,21,.42)}
+#main-menu .player-stats-panel .form-strip{display:flex;flex-wrap:wrap;gap:7px}
+#main-menu .player-library{display:grid;gap:14px;min-width:0}
+#main-menu .player-library-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#main-menu .player-library-overview>div{
+  display:flex;flex-direction:column;gap:5px;padding:14px;
+  border:1px solid rgba(151,184,222,.15);border-radius:10px;
+  background:linear-gradient(145deg,#192b41,#101a28);
+}
+#main-menu .player-library-overview b{font-size:clamp(19px,2vw,27px);font-weight:900;color:#f5f8fd;font-variant-numeric:tabular-nums}
+#main-menu .player-library-overview span{color:#91a8c4;font-size:8px;font-weight:850;letter-spacing:1px}
+#main-menu .player-library-toolbar{
+  display:grid;grid-template-columns:1.5fr repeat(4,minmax(105px,1fr));gap:9px;
+  padding:14px;border:1px solid rgba(151,184,222,.15);border-radius:10px;background:rgba(14,23,36,.88)
+}
+#main-menu .player-library-toolbar label{display:grid;gap:6px;min-width:0;color:#9eb3ce;font-size:8px;font-weight:900;letter-spacing:.9px}
+#main-menu .player-library-toolbar input,#main-menu .player-library-toolbar select{width:100%;min-width:0;padding:0 10px;font-size:11px}
+#main-menu .player-library-resultline{display:flex;justify-content:space-between;gap:12px;color:#91a8c4;font-size:9px}
+#main-menu .player-library-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+#main-menu .player-library-card{min-width:0;padding:14px;cursor:pointer;transition:transform .16s,border-color .16s}
+#main-menu .player-library-card:hover{transform:translateY(-2px);border-color:rgba(105,183,255,.42)}
+#main-menu .player-library-card:focus-visible{outline:2px solid #8bcaff;outline-offset:3px}
+#main-menu .player-library-card .player-card-top{display:flex;align-items:center;gap:8px}
+#main-menu .player-library-card .player-card-number,
+#main-menu .player-library-card .player-card-role{color:#93a9c4;font-size:9px;font-weight:850}
+#main-menu .player-library-card .player-card-role{margin-left:auto}
+#main-menu .player-library-card .player-card-identity{display:flex;align-items:center;gap:11px;margin:13px 0}
+#main-menu .player-library-card .player-card-identity h3{margin:0;font-size:13px}
+#main-menu .player-library-card .player-card-identity p{margin:4px 0 0;color:#91a8c4;font-size:9px}
+#main-menu .player-library-card .player-card-meta{display:flex;flex-wrap:wrap;gap:7px;color:#b0c1d6;font-size:9px}
+#main-menu .player-library-card .player-card-attributes{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin-top:12px}
+#main-menu .player-library-card .player-card-attributes>span{display:grid;gap:3px;padding:6px 2px;border:1px solid rgba(151,184,222,.1);border-radius:5px;text-align:center}
+#main-menu .player-library-card .player-card-attributes small{font-size:7px;color:#849bb8}
+#main-menu .player-library-card .player-card-attributes b{font-size:10px;color:#e5f1ff}
+#main-menu .division-table-block{min-width:0;margin:12px 0;padding:13px;border:1px solid rgba(151,184,222,.13);border-radius:10px;background:rgba(7,14,23,.4)}
+#main-menu .division-table-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+#main-menu .division-table-title>b{padding:6px 9px;border-radius:5px;background:rgba(91,163,225,.16);color:#b5d9ff;font-size:10px}
+#main-menu .division-table-title>span{color:#e0eaf7;font-size:11px;font-weight:800}
+#main-menu .division-table-title>small{margin-left:auto;color:#8fa5c1;font-size:9px}
+#main-menu .table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border:1px solid rgba(151,184,222,.1);border-radius:7px}
+#main-menu .table-scroll table{min-width:580px;width:100%;border-collapse:collapse}
+#main-menu .table-scroll th,#main-menu .table-scroll td{padding:9px 10px;border-bottom:1px solid rgba(151,184,222,.09);white-space:nowrap;font-size:10px}
+#main-menu .cup-audit-ok{color:#79d8b3!important}
+#main-menu .cup-audit-warning{color:#ffb6a3!important}
+#main-menu .promotion-playoff-list{display:grid;gap:10px;margin-top:15px}
+#main-menu .promotion-playoff-block{margin:0;background:rgba(12,21,33,.7)}
+#main-menu .movement-list{display:grid;gap:7px;margin-top:12px}
+#main-menu .movement-list .fixture-row{display:grid;grid-template-columns:minmax(90px,1fr) auto minmax(130px,1fr) auto;align-items:center;gap:10px}
+#main-menu .movement-list .fixture-row>b{color:#9ed0ff;font-size:17px}
+#main-menu .p27-career-hero-copy{position:relative;z-index:1;max-width:560px}
+#main-menu .p27-career-hero-copy h2{font-size:clamp(34px,5vw,62px);line-height:.95;letter-spacing:-1.8px}
+#main-menu .p27-career-hero-copy p{max-width:440px;color:#c1d0e2;font-size:12px;line-height:1.65}
+#main-menu .p27-career-hero-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}
+#main-menu .p27-career-hero-identity{position:relative;z-index:1;align-self:end;min-width:180px;padding:14px;border:1px solid rgba(164,207,255,.2);border-radius:9px;background:rgba(4,12,22,.48);backdrop-filter:blur(8px)}
+#main-menu .p27-career-hero-identity .p27-player-number{display:block;color:#9dccf7;font-size:11px;font-weight:900}
+#main-menu .p27-career-hero-identity>b{display:block;margin:7px 0 3px;font-size:17px}
+#main-menu .p27-career-hero-identity>small{color:#a9bdd4;font-size:9px}
+@media(max-width:1050px){
+  #main-menu .player-library-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #main-menu .player-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  #main-menu .player-library-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu .player-library-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px}
+  #main-menu .player-library-toolbar label:first-child{grid-column:1/-1}
+  #main-menu .player-library-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  #main-menu .player-library-card{padding:10px}
+  #main-menu .player-library-card .player-card-attributes{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #main-menu .player-stats-panel .quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu .onboarding-panel .career-form{grid-template-columns:1fr}
+  #main-menu .onboarding-panel .career-form .onboarding-status{grid-column:auto}
+  #main-menu .division-table-title>small{margin-left:0}
+  #main-menu .movement-list .fixture-row{grid-template-columns:1fr auto;gap:6px}
+  #main-menu .movement-list .fixture-row span:nth-of-type(2){grid-column:1/-1}
+  #main-menu .movement-list .fixture-row small{grid-column:1/-1}
+  #main-menu .p27-career-hero-identity{min-width:0}
+}
+@media(max-width:420px){
+  #main-menu .player-library-grid{grid-template-columns:1fr}
+  #main-menu .player-library-toolbar{grid-template-columns:1fr}
+  #main-menu .player-library-toolbar label:first-child{grid-column:auto}
+  #main-menu .player-library-resultline{flex-direction:column;gap:4px}
+}
+@media(prefers-reduced-motion:reduce){#main-menu .player-library-card{transition:none}}
+
+#main-menu .list-row{
+  display:grid;grid-template-columns:minmax(90px,1fr) auto minmax(150px,auto);
+  align-items:center;gap:12px;padding:11px 13px;border-bottom:1px solid rgba(151,184,222,.1);
+  color:#dce8f6;font-size:11px;
+}
+#main-menu .list-row>span:nth-child(2){color:#a9c9eb;font-variant-numeric:tabular-nums;font-weight:850}
+#main-menu .list-row .training-controls{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+@media(max-width:560px){
+  #main-menu .list-row{grid-template-columns:1fr auto;gap:7px}
+  #main-menu .list-row .training-controls{grid-column:1/-1;justify-content:flex-start}
+}
+
+
+/* P27 mobile landscape correction — one navigation rail, content first. */
+@media (max-width: 760px) and (orientation: landscape) {
+  #main-menu .menu-layout {
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    padding-inline:10px;
+  }
+  #main-menu .menu-sidebar {
+    order:0 !important;
+    flex:0 0 40px;
+    min-height:40px;
+    max-height:40px;
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    gap:3px;
+    margin:0;
+    padding:2px 3px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    border:0;
+    border-bottom:1px solid rgba(151,184,222,.16);
+    border-radius:0;
+    background:rgba(6,11,19,.92);
+    box-shadow:none;
+    scrollbar-width:none;
+  }
+  #main-menu .menu-sidebar::-webkit-scrollbar {display:none}
+  #main-menu .menu-section-label,
+  #main-menu .sidebar-spacer {display:none !important}
+  #main-menu .menu-sidebar button {
+    flex:0 0 auto;
+    width:auto;
+    min-width:58px;
+    min-height:34px;
+    flex-direction:row;
+    justify-content:center;
+    gap:5px;
+    padding:3px 7px;
+    font-size:9px;
+    line-height:1;
+    white-space:nowrap;
+  }
+  #main-menu .menu-sidebar button span {
+    display:inline-grid;
+    width:16px;
+    height:18px;
+    font-size:14px;
+    line-height:1;
+  }
+  #main-menu .menu-main {
+    order:1 !important;
+    flex:1 1 auto;
+    min-height:0;
+    padding:7px 0 2px;
+    overflow:hidden;
+  }
+  #main-menu .menu-secondary-nav {display:none !important}
+  #main-menu .menu-heading {
+    min-height:43px;
+    margin:0 0 7px;
+    padding:0 2px 6px;
+  }
+  #main-menu .menu-heading h1 {margin:2px 0;font-size:18px}
+  #main-menu .menu-heading p {font-size:9px;line-height:1.2}
+  #main-menu .eyebrow {font-size:8px}
+  #main-menu #menu-content {padding:0 3px 10px 1px}
+  #main-menu .menu-footer {display:none}
+}
+@media (max-width: 760px) and (orientation: landscape) and (max-height: 420px) {
+  #main-menu .menu-topbar {height:42px;flex-basis:42px;padding-inline:10px}
+  #main-menu .brand-shield {width:28px;height:31px}
+  #main-menu .brand-mark strong {font-size:10px}
+  #main-menu .brand-mark small {font-size:7px}
+  #main-menu .menu-sidebar {flex-basis:36px;min-height:36px;max-height:36px}
+  #main-menu .menu-sidebar button {min-height:30px;font-size:8px}
+  #main-menu .menu-main {padding-top:5px}
+  #main-menu .menu-heading {min-height:37px;margin-bottom:5px}
+  #main-menu .menu-heading h1 {font-size:16px}
+}
+
+
+/* P27 game hub: tile-first home and full-height internal screens. */
+#main-menu {background:radial-gradient(ellipse at 50% -18%,rgba(35,112,205,.32),transparent 58%),linear-gradient(155deg,#0b2b59 0%,#07172f 48%,#050b17 100%)}
+#main-menu .p27-game-topbar{height:48px;min-height:48px;flex-basis:48px;display:flex;align-items:center;gap:9px;padding:4px 12px;background:rgba(4,12,27,.9);border-bottom:1px solid rgba(190,220,255,.25)}
+#main-menu .p27-back-home{width:36px;height:36px;border:1px solid rgba(190,220,255,.35);border-radius:8px;background:#142c4b;color:#fff;font-size:28px;line-height:1}
+#main-menu .p27-back-home[hidden]{display:none}
+#main-menu .p27-top-player{margin-left:auto;display:flex;flex-direction:column;text-align:right;line-height:1.1;min-width:0}
+#main-menu .p27-top-player strong{font-size:13px;letter-spacing:.04em}
+#main-menu .p27-top-player span{font-size:10px;color:#b8c9e6}
+#main-menu .p27-game-topbar .menu-settings-icon{order:-1;width:36px;height:36px}
+#main-menu .p27-screen-layout{display:flex;min-height:0;overflow:hidden;padding:0 12px}
+#main-menu .menu-main{width:100%;min-width:0;padding:8px 0 4px;overflow:hidden}
+#main-menu .menu-heading{min-height:0;margin:0 0 7px;padding:0 2px 5px}
+#main-menu .menu-heading h1{font-size:18px;margin:1px 0}
+#main-menu .menu-heading p{font-size:9px}
+#main-menu #menu-content{height:calc(100% - 38px);min-height:0;overflow:auto;padding:0 2px 12px}
+#main-menu.p27-home-active .menu-heading{display:none}
+#main-menu.p27-home-active .menu-main{padding-top:8px}
+#main-menu.p27-home-active #menu-content{height:100%;overflow:hidden}
+#main-menu .p27-home-tiles{height:100%;min-height:0;display:grid;grid-template-columns:1.25fr 1.25fr 1fr;grid-template-rows:repeat(3,minmax(0,1fr));gap:9px}
+#main-menu .p27-tile{--tile:#245da4;min-width:0;min-height:0;display:flex;flex-direction:column;padding:0;border:1px solid rgba(207,230,255,.58);border-radius:7px;overflow:hidden;color:#f7fbff;text-align:left;background:linear-gradient(145deg,rgba(255,255,255,.13),transparent 43%),linear-gradient(160deg,color-mix(in srgb,var(--tile),#142b4a 32%),#09172c);box-shadow:inset 0 1px rgba(255,255,255,.24),0 5px 18px rgba(0,0,0,.28)}
+#main-menu .p27-tile-career{grid-column:span 2;--tile:#c72c3c}
+#main-menu .p27-tile-friendly{grid-column:3;grid-row:1;--tile:#1d70c9}
+#main-menu .p27-tile-player{--tile:#149bd0}
+#main-menu .p27-tile-compet{--tile:#245da4}
+#main-menu .p27-tile-market{--tile:#31435b}
+#main-menu .p27-tile-rank{--tile:#2568a5}
+#main-menu .p27-tile-clubs{--tile:#3b526e}
+#main-menu .p27-tile-results{--tile:#27384d}
+#main-menu .p27-tile-title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 9px;background:linear-gradient(90deg,var(--tile),color-mix(in srgb,var(--tile),#071328 45%));font-size:clamp(12px,2.7vh,21px);font-style:italic;font-weight:900;letter-spacing:.025em}
+#main-menu .p27-tile-title i{font-size:1.4em;font-style:normal}
+#main-menu .p27-tile-art{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;text-shadow:0 4px 10px #000;font-size:clamp(28px,8vh,64px);background:radial-gradient(ellipse,rgba(150,205,255,.18),transparent 65%)}
+#main-menu .p27-tile-art small{font-size:10px;color:#d5e9ff}
+#main-menu .p27-tile-info{padding:4px 8px;background:rgba(0,0,0,.34);color:#d4e2f3;font-size:clamp(9px,1.8vh,13px);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#main-menu .p27-home-return{margin-top:12px}
+#main-menu .menu-footer{display:none}
+@media(max-width:760px) and (orientation:landscape){
+ #main-menu .p27-game-topbar{height:40px;min-height:40px;flex-basis:40px}
+ #main-menu .p27-back-home,#main-menu .p27-game-topbar .menu-settings-icon{width:32px;height:32px}
+ #main-menu .p27-home-tiles{gap:6px;grid-template-columns:1.25fr 1.25fr 1fr;grid-template-rows:repeat(3,minmax(0,1fr))}
+ #main-menu .p27-tile-title{padding:2px 6px;font-size:clamp(10px,2.6vh,17px)}
+ #main-menu .p27-tile-info{padding:2px 4px;font-size:clamp(8px,1.7vh,11px)}
+ #main-menu .menu-heading{display:block}
+ #main-menu:not(.p27-home-active) .menu-heading{min-height:30px;margin-bottom:4px}
+ #main-menu:not(.p27-home-active) .menu-heading h1{font-size:16px}
+ #main-menu:not(.p27-home-active) #menu-content{height:calc(100% - 30px)}
+}
+@media(orientation:portrait){
+ #main-menu .p27-home-tiles{grid-template-columns:1fr 1fr;grid-template-rows:repeat(4,minmax(125px,1fr));overflow:auto}
+ #main-menu .p27-tile-career,#main-menu .p27-tile-friendly{grid-column:span 2}
+ #main-menu.p27-home-active #menu-content{overflow:auto}
+}
+
+#main-menu .p27-market-shortcuts{margin-bottom:10px}
+#main-menu .p27-market-shortcut-actions{display:flex;flex-wrap:wrap;gap:8px}
+#main-menu .p27-market-shortcut-actions button{min-height:36px;padding:7px 12px;font-size:11px}
