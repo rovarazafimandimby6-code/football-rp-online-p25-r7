@@ -380,7 +380,7 @@ test('clubs: chaque club starter possède une implantation principale structuré
   const manparis = clubs.getClub('manparis-sporting');
   const antananarivo = clubs.getClub('antananarivo-fc');
   assert.deepEqual(manparis.location, { city:'Manchester', country:'Royaume-Uni', countryCode:'GB' });
-  assert.equal(manparis.countryCode, 'FR');
+  assert.equal(manparis.countryCode, 'GB');
   assert.deepEqual(antananarivo.location, { city:'Antananarivo', country:'Madagascar', countryCode:'MG' });
   manparis.location.city = 'Modifié';
   assert.equal(clubs.getClub('manparis-sporting').location.city, 'Manchester');
