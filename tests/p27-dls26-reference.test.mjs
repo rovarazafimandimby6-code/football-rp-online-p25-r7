@@ -43,6 +43,9 @@ test('P27 DLS 26 : les joueurs fictifs reçoivent une référence sans identité
     assert.ok(player.dls26Stats && player.dls26Reference);
     assert.ok(player.heightCm >= 150 && player.heightCm <= 210);
     assert.ok(player.attributes && Object.hasOwn(player.attributes, 'pace'), 'les attributs historiques restent disponibles');
+    assert.equal(player.attributes.shooting, player.dls26Stats.SHO ?? 25, 'le gameplay utilise le tir de la carte DLS');
+    assert.equal(player.attributes.passing, player.dls26Stats.PAS ?? 25, 'le gameplay utilise la passe de la carte DLS');
+    assert.ok(player.dls26Reference.baseOverall >= 82 && player.dls26Reference.baseOverall <= 86);
     assert.ok(!/mbapp[eé]|hakimi|bruno fernandes|donnarumma|gabriel magalh[aã]es/i.test(player.name));
     assert.equal(player.dls26Reference.cardType, 'normal');
   }
