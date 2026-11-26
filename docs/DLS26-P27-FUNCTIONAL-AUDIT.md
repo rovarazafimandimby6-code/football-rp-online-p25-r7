@@ -303,7 +303,7 @@ Chaque défi expose sa valeur réelle, sa cible, son pourcentage et son état at
 
 ### Défis et planification inter-Club RP — première étape
 
-Les responsables (fondateur, président, vice-président ou recruteur) peuvent lancer un défi à un autre Club RP. Les membres responsables du club ciblé peuvent accepter en choisissant une date et une heure, ou refuser. Les demandes sont persistées côté serveur, consultables par les membres concernés et protégées par vérification d'appartenance et de rôle.
+Les responsables (fondateur, président, vice-président ou recruteur) peuvent lancer un défi à un autre Club RP. Les membres responsables du club ciblé peuvent accepter en choisissant une date et une heure, ou refuser. Les demandes sont persistées côté serveur et visibles par tous les membres des deux clubs concernés ; seules les personnes disposant d'un rôle responsable peuvent répondre. Chaque action est protégée par vérification d'appartenance et de rôle.
 
 La date doit être située entre 30 minutes et 30 jours après l'acceptation. Un seul défi actif est autorisé entre une même paire de clubs afin d'éviter les doublons.
 
