@@ -254,3 +254,18 @@ test('P27 fiches joueur : identité, attributs, parcours et palmarès sont harmo
     assert.ok(css.includes(selector), `missing player career style: ${selector}`);
   }
 });
+
+
+test('P27 paramètres et compte : panneaux de configuration et sauvegarde ont une présentation dédiée', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.settings-card label','.settings-card input[type="range"]','.p27-cloud-only','.local-tag']) {
+    assert.ok(css.includes(selector), `missing settings/account style: ${selector}`);
+  }
+});
+
+test('P27 mercato : contrat, négociations et historique sont lisibles sur mobile', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.career-summary','.contract-details','.contract-actions','.sign-contract-row','.offer-terms','.market-history']) {
+    assert.ok(css.includes(selector), `missing mercato style: ${selector}`);
+  }
+});
