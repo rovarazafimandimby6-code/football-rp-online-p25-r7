@@ -316,6 +316,7 @@ function mountAvatarPreview(profile) {
 let selectedMatchup = { home: 'antananarivo-fc', away: 'toamasina-united' };
 let selectedClubId = null;
 let playerLibraryLimit = 24;
+let playerLibraryPage = 0;
 let playerLibraryProfiles = [];
 let selectedPlayerProfile = null;
 let playerCareerRequestSequence = 0;
@@ -613,13 +614,10 @@ ${renderGoogleProtectionCard({ compact: true })}
       </div>
       <div class="player-library-resultline"><span id="library-count">${rosterPlayers.length} joueurs</span><span>DONNÉES ISSUES DES EFFECTIFS LOCAUX</span></div>
       <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>`<article class="player-library-card" role="button" tabindex="0" aria-label="Ouvrir le profil de ${escapeHTML(player.name)}" data-player-profile="${index}" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
-        <div class="player-card-top"><span class="player-card-number">#${player.number}</span><span class="player-card-role">${roleNames[player.role]||player.role}</span><b class="player-card-rating">${player.rating}</b></div>
-        <div class="player-card-identity"><span class="player-card-monogram">${escapeHTML(player.name.split(/\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase())}</span><div><h3>${escapeHTML(player.name)}</h3><p>${escapeHTML(player.clubName)}</p></div></div>
-        <div class="player-card-meta"><span class="player-nationality" title="${escapeHTML(player.nationality)}"><b aria-hidden="true">${countryFlag(player.nationality)}</b><span>${escapeHTML(countryName(player.nationality))}</span></span><span>${player.age} ans</span><span>Pot. ${player.potential}</span></div>
-        <div class="player-card-attributes">${[['pace','VIT'],['shooting','TIR'],['passing','PAS'],['defense','DEF'],['stamina','END'],['control','CTR']].map(([key,label])=>`<span><small>${label}</small><b>${player.attributes?.[key]??player.rating}</b></span>`).join('')}</div>
-        <details class="player-card-details"><summary>Profil & archétype</summary><div><b>${escapeHTML(player.archetype)}</b><span>Pied préféré : ${player.preferredFoot==='left'?'Gauche':'Droit'}</span><span>Potentiel : ${player.potential}/99</span><span>Division : ${escapeHTML(player.clubDivision)}</span></div></details>
+        <span class="player-card-portrait" aria-hidden="true">${['👨🏽‍🦱','👱🏽‍♂️','👨🏽‍🦰','👨🏽‍🦲','👨🏽‍🦳','👨🏽‍🦲','👨🏽‍🦳','👨🏽‍🦲','👨🏽‍🦰','👨🏽‍🦰','👱🏽‍♂️','🧝🏽‍♂️'][index%12]}</span>
+        <span class="player-card-compact-copy"><b class="player-card-rating">${player.rating}</b><strong>${escapeHTML(player.name)}</strong><small>${roleNames[player.role]||player.role} · #${player.number}</small><small>${countryFlag(player.nationality)} · ${escapeHTML(player.clubName)}</small></span>
       </article>`).join('')}</div>
-      <div class="player-library-footer"><span id="library-visible-count">0 affiché</span><button class="small-action" data-action="players-load-more" id="library-load-more">CHARGER PLUS DE JOUEURS</button></div>
+      <div class="player-library-footer compact-library-pagination"><span id="library-visible-count">0 affiché</span><div><button class="small-action" data-action="players-page" data-page="-1" id="library-page-prev" aria-label="Page précédente">‹</button><span id="library-page-label">1 / 1</span><button class="small-action" data-action="players-page" data-page="1" id="library-page-next" aria-label="Page suivante">›</button></div></div>
       <p class="notice">Cette bibliothèque recense les joueurs actuellement présents dans les effectifs locaux connus. Les joueurs libres, les transferts et les prêts ne sont pas inventés : ils seront intégrés quand leurs statuts seront reliés à une source de données fiable.</p>
     </div>`;
     filterPlayerLibrary();
@@ -1210,7 +1208,7 @@ menu.addEventListener('click', event => {
   if (playerCard && event.target.closest('.player-card-details')) return;
   if (playerCard) { const index = Number(playerCard.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = playerCard.dataset.profileOrigin || 'players'; renderPage('player-detail'); return; }
   const action = event.target.closest('[data-action]')?.dataset.action;
-  if (action === 'players-load-more') { playerLibraryLimit += 24; filterPlayerLibrary(); }
+  if (action === 'players-page') { playerLibraryPage=Math.max(0,playerLibraryPage+Number(event.target.closest('[data-page]')?.dataset.page||0)); filterPlayerLibrary(); }
   else if (action === 'open-player-profile') { const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); }
   else if (action === 'back-player-library') { selectedPlayerProfile = null; renderPage(playerProfileReturnPage); }
   else if (action === 'view-roster') { selectedClubId = event.target.closest('[data-club]')?.dataset.club || null; renderPage('clubs'); }
@@ -1476,25 +1474,28 @@ const filterPlayerLibrary = () => {
     const key=sort==='potential'?'potential':sort==='age'?'age':'rating';
     return sort==='age'?Number(a.dataset.age)-Number(b.dataset.age):Number(b.dataset[key])-Number(a.dataset[key]);
   });
-  let matched=0,visible=0;
-  for(const card of cards){
-    const match=(card.dataset.name.includes(query)||card.dataset.archetype.includes(query))
-      &&(club==='all'||card.dataset.club===club)&&(role==='all'||card.dataset.role===role)
-      &&Number(card.dataset.rating)>=minRating;
-    card.classList.toggle('hidden',!match);
-    if(match){matched++; if(visible<playerLibraryLimit){card.classList.remove('hidden');visible++;} else card.classList.add('hidden');}
-    root.appendChild(card);
-  }
+  const matchedCards=cards.filter(card=>(card.dataset.name.includes(query)||card.dataset.archetype.includes(query))
+    &&(club==='all'||card.dataset.club===club)&&(role==='all'||card.dataset.role===role)
+    &&Number(card.dataset.rating)>=minRating);
+  const pageCount=Math.max(1,Math.ceil(matchedCards.length/playerLibraryLimit));
+  playerLibraryPage=Math.min(playerLibraryPage,pageCount-1);
+  const start=playerLibraryPage*playerLibraryLimit;
+  const visibleCards=new Set(matchedCards.slice(start,start+playerLibraryLimit));
+  for(const card of cards){card.classList.toggle('hidden',!visibleCards.has(card));root.appendChild(card);}
   const count=document.getElementById('library-count');
   const shown=document.getElementById('library-visible-count');
-  const more=document.getElementById('library-load-more');
-  if(count) count.textContent=matched+' joueur'+(matched>1?'s':'')+' trouvé'+(matched>1?'s':'');
-  if(shown) shown.textContent=visible+' / '+matched+' affichés';
-  if(more) more.hidden=visible>=matched;
+  const label=document.getElementById('library-page-label');
+  const previous=document.getElementById('library-page-prev');
+  const next=document.getElementById('library-page-next');
+  if(count) count.textContent=matchedCards.length+' joueur'+(matchedCards.length>1?'s':'')+' trouvé'+(matchedCards.length>1?'s':'');
+  if(shown) shown.textContent=matchedCards.length+' joueurs · '+(matchedCards.length?start+1:0)+'–'+Math.min(start+playerLibraryLimit,matchedCards.length);
+  if(label) label.textContent=(playerLibraryPage+1)+' / '+pageCount;
+  if(previous) previous.disabled=playerLibraryPage===0;
+  if(next) next.disabled=playerLibraryPage>=pageCount-1;
 };
 const onPlayerLibraryFilter = event => {
   if(['library-search','library-club','library-role','library-sort','library-min-rating'].includes(event.target.id)){
-    playerLibraryLimit=24; filterPlayerLibrary();
+    playerLibraryPage=0; filterPlayerLibrary();
   }
 };
 menu.addEventListener('input',onPlayerLibraryFilter);
