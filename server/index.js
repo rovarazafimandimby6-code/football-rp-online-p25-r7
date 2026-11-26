@@ -538,6 +538,32 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       return json(res, 200, { membership:rpClubStore.getForAccount(account.id), invitations:rpClubStore.getInvitationsForAccount(account.id) });
     }
+    const rpClubActivityMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/activity$/i);
+    if (req.method === 'GET' && rpClubActivityMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const members = rpClubStore.getMemberAccounts(rpClubActivityMatch[1], account.id);
+      if (!members) return json(res, 403, { error:'RP_CLUB_MEMBERSHIP_REQUIRED' });
+      const now = Date.now();
+      const date = new Date(now);
+      const daysSinceMonday = (date.getUTCDay() + 6) % 7;
+      const periodStart = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - daysSinceMonday);
+      const contributions = members.map(member => {
+        const career = careerStore.get(member.accountId);
+        const matches = career.matches.filter(match => Number(match.finalizedAt) >= periodStart && Number(match.finalizedAt) <= now);
+        return {
+          playerId:member.playerId, displayName:member.displayName, role:member.role,
+          matches:matches.length, wins:matches.filter(match => match.result === 'win').length,
+          goals:matches.reduce((sum, match) => sum + Number(match.stats?.goals || 0), 0),
+          assists:matches.reduce((sum, match) => sum + Number(match.stats?.assists || 0), 0)
+        };
+      }).sort((a,b) => b.matches-a.matches || b.goals-a.goals || a.displayName.localeCompare(b.displayName));
+      const totals = contributions.reduce((sum, member) => ({
+        matches:sum.matches+member.matches, wins:sum.wins+member.wins,
+        goals:sum.goals+member.goals, assists:sum.assists+member.assists
+      }), { matches:0, wins:0, goals:0, assists:0 });
+      return json(res, 200, { periodStart, totals, members:contributions });
+    }
     const rpClubPublicMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})$/i);
     if (req.method === 'GET' && rpClubPublicMatch) {
       const club = rpClubStore.get(rpClubPublicMatch[1]);
