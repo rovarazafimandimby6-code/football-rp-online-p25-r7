@@ -433,3 +433,14 @@ test('P27 bibliothèque clubs: toucher développe une seule carte sans bloquer l
   assert.match(source, /data-action="view-roster"/);
   assert.match(source, /data-action="take-club"/);
 });
+
+
+test('P27 bibliothèque clubs: les données absentes restent neutres et les compteurs suivent le catalogue reçu', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(source, /const numericValue=value=>value!==null&&value!==undefined&&value!==''&&Number\.isFinite\(Number\(value\)\)\?Number\(value\):null/);
+  assert.match(source, /NOTE GLOBALE '\+\(rating\?\?'—'\)/);
+  assert.match(source, /rosterCount===null\?'—'/);
+  assert.match(source, /RÉPUTATION<\/b>'\+\(reputation\?\?'—'\)/);
+  assert.match(source, /<b>'\+items\.length\+'<\/b><span>CLUBS AU CATALOGUE/);
+  assert.doesNotMatch(source, /<b>156<\/b><span>CLUBS ACTIFS/);
+});
