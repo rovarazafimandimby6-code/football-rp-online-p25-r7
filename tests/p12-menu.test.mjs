@@ -371,7 +371,7 @@ test('P27 UI: bibliothèque des clubs compacte par division avec accès rapide D
   assert.match(main, /data-action="club-division-tab"/);
   assert.match(main, /filterClubDiscovery\(\{target:\{id:'club-division-filter'\}\}\)/);
   assert.match(main, /compact-club-card/);
-  assert.match(main, /Number\(b\.rating\|\|0\)-Number\(a\.rating\|\|0\)/);
+  assert.match(main, /numericValue\(b\.rating\)\?\?-1\)-\(numericValue\(a\.rating\)\?\?-1\)/);
   assert.match(main, /const clubLibraryLimit = 20/);
   assert.match(main, /data-action=\"club-page\"/);
   assert.match(main, /clubLibraryPage\*clubLibraryLimit/);
