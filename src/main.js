@@ -510,10 +510,12 @@ async function loadRpClubPage() {
     const club = membership.club;
     const roleNames = { founder:'FONDATEUR', president:'PRÉSIDENT', vice_president:'VICE-PRÉSIDENT', recruiter:'RECRUTEUR', member:'MEMBRE' };
     const pending = membership.pendingRequests || [];
+    const canInvite = ['founder','president','recruiter'].includes(membership.membership.role);
+    const inviteControls = canInvite ? '<div class="rp-club-invite-controls"><label>IDENTIFIANT JOUEUR À INVITER<input id="rp-club-invite-player" maxlength="10" placeholder="FRP-123456"></label><button type="button" data-action="rp-club-send-invite" data-club="' + escapeHTML(club.id) + '">ENVOYER UNE INVITATION</button></div>' : '';
     const members = club.members.map(member => '<div class="rp-club-member"><span class="rp-club-member-avatar">' + escapeHTML(member.displayName.slice(0,1).toUpperCase()) + '</span><div><b>' + escapeHTML(member.displayName) + '</b><small>' + escapeHTML(member.playerId) + ' · ' + (roleNames[member.role] || 'MEMBRE') + '</small></div></div>').join('');
     const requests = pending.map(request => '<div class="rp-club-request"><div><b>' + escapeHTML(request.displayName) + '</b><small>' + escapeHTML(request.playerId) + '</small></div><button type="button" class="rp-club-accept" data-action="rp-club-decision" data-club="' + escapeHTML(club.id) + '" data-request="' + escapeHTML(request.id) + '" data-decision="accept">ACCEPTER</button><button type="button" class="rp-club-reject" data-action="rp-club-decision" data-club="' + escapeHTML(club.id) + '" data-request="' + escapeHTML(request.id) + '" data-decision="reject">REFUSER</button></div>').join('');
     host.innerHTML = '<section class="rp-club-hero"><div class="rp-club-identity"><span class="rp-club-tag">' + escapeHTML(club.tag) + '</span><div><span class="eyebrow">VOTRE GROUPEMENT RP · NIVEAU ' + club.level + '</span><h2>' + escapeHTML(club.name) + '</h2><p>' + escapeHTML(club.description || 'Aucune description') + '</p></div></div><div class="rp-club-stats"><span><b>' + club.memberCount + '</b><small>MEMBRES</small></span><span><b>' + club.capacity + '</b><small>CAPACITÉ</small></span><span><b>' + club.experience + '</b><small>XP COLLECTIVE</small></span></div></section>' +
-      '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMMUNAUTÉ</span><h3>Effectif du Club RP</h3></div><span class="rp-club-role">' + (roleNames[membership.membership.role] || 'MEMBRE') + '</span></div><div class="rp-club-member-list">' + members + '</div></section>' +
+      '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMMUNAUTÉ</span><h3>Effectif du Club RP</h3></div><span class="rp-club-role">' + (roleNames[membership.membership.role] || 'MEMBRE') + '</span></div><div class="rp-club-member-list">' + members + '</div>' + inviteControls + '</section>' +
       (pending.length ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">RECRUTEMENT</span><h3>Demandes en attente</h3></div><b>' + pending.length + '</b></div><div class="rp-club-request-list">' + requests + '</div></section>' : '') +
       '<div class="rp-club-actions"><button type="button" class="rp-club-refresh" data-action="rp-club-reload">ACTUALISER</button><button type="button" class="rp-club-leave" data-action="rp-club-leave" data-club="' + escapeHTML(club.id) + '">QUITTER LE CLUB</button></div><p id="rp-club-status" class="rp-club-status" role="status" aria-live="polite"></p>';
     return;
@@ -535,6 +537,8 @@ async function performRpClubAction(action, button) {
       await rpClubApi('/' + button.dataset.club + '/join-requests', { method:'POST' });
     } else if (action === 'rp-club-decision') {
       await rpClubApi('/' + button.dataset.club + '/join-requests/' + button.dataset.request + '/decision', { method:'POST', body:JSON.stringify({ decision:button.dataset.decision }) });
+    } else if (action === 'rp-club-send-invite') {
+      await rpClubApi('/' + button.dataset.club + '/invitations', { method:'POST', body:JSON.stringify({ playerId:document.getElementById('rp-club-invite-player')?.value || '' }) });
     } else if (action === 'rp-club-invitation') {
       await rpClubApi('/' + button.dataset.club + '/invitations/' + button.dataset.invitation + '/decision', { method:'POST', body:JSON.stringify({ decision:button.dataset.decision }) });
     } else if (action === 'rp-club-leave') {
