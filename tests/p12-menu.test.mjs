@@ -315,3 +315,18 @@ test('P27 classements : totaux et noms de clubs sont dérivés du snapshot serve
   assert.doesNotMatch(rankings, /<b>156<\/b><span>CLUBS<\/span>/);
   assert.doesNotMatch(rankings, /<b>9<\/b><span>GROUPES<\/span>/);
 });
+
+
+test('P27 joueurs : nationalités affichées en drapeaux et création initiale volontairement minimale', () => {
+  assert.match(main, /function countryFlag\(value\)/);
+  assert.match(main, /127397 \+ letter\.charCodeAt\(0\)/);
+  assert.match(main, /countryFlag\(player\.nationality\)/);
+  assert.match(main, /player-nationality/);
+  assert.match(main, /Quel nom sur le maillot \?/);
+  assert.match(main, /Un nom suffit pour commencer/);
+  const onboardingStart = main.indexOf("if (page === 'onboarding')");
+  const onboardingEnd = main.indexOf("} else if (page === 'home'", onboardingStart);
+  const onboarding = main.slice(onboardingStart, onboardingEnd);
+  assert.match(onboarding, /<input name="displayName"/);
+  assert.doesNotMatch(onboarding, /<select|<textarea|type="email"|type="password"/);
+});
