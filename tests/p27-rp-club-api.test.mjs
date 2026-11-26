@@ -121,6 +121,18 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     });
     assert.equal(targetCreate.status, 201);
     const targetClub = (await targetCreate.json()).club;
+    const nonMemberChallenge = await fetch(`${base}/api/rp-clubs/${targetClub.id}/challenges`, {
+      method:'POST', headers:{ authorization:`Bearer ${outsider.token}` }
+    });
+    assert.equal(nonMemberChallenge.status, 409);
+    const memberChallenge = await fetch(`${base}/api/rp-clubs/${targetClub.id}/challenges`, {
+      method:'POST', headers:{ authorization:`Bearer ${member.token}` }
+    });
+    assert.equal(memberChallenge.status, 403);
+    const selfChallenge = await fetch(`${base}/api/rp-clubs/${created.club.id}/challenges`, {
+      method:'POST', headers:{ authorization:`Bearer ${founder.token}` }
+    });
+    assert.equal(selfChallenge.status, 409);
     const challengeCreate = await fetch(`${base}/api/rp-clubs/${targetClub.id}/challenges`, {
       method:'POST', headers:{ authorization:`Bearer ${founder.token}` }
     });
