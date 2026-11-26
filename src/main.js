@@ -445,7 +445,7 @@ function renderPage(page = 'home') {
   if (content) content.scrollTop = 0;
   const title = document.getElementById('menu-page-title');
   const subtitle = document.getElementById('menu-page-subtitle');
-  document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page));
+  document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page || (page === 'home' && button.dataset.page === 'career-hub')));
   if (page === 'onboarding') {
     title.textContent = 'Créer votre footballeur';
     subtitle.textContent = 'Votre aventure commence par votre identité Football RP.';
