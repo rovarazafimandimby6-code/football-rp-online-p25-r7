@@ -132,7 +132,7 @@ test('P27 UI: le centre avant-match compare les clubs et leurs meilleurs joueurs
 });
 
 
-test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, filtres, tri et chargement progressif', () => {
+test('P27 UI: bibliothèque joueurs compacte en cartes avec portraits, tri par note et pagination', () => {
   const css = cssText();
   assert.match(main, /page === 'players'/);
   assert.match(main, /data-library-card/);
@@ -141,9 +141,14 @@ test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, fil
   assert.match(main, /id="library-role"/);
   assert.match(main, /id="library-sort"/);
   assert.match(main, /id="library-min-rating"/);
-  assert.match(main, /players-load-more/);
-  assert.match(css, /\.player-library-grid \{/);
-  assert.match(css, /\.player-card-attributes \{/);
+  assert.match(main, /data-action=\"players-page\"/);
+  assert.match(main, /playerLibraryLimit = 12/);
+  assert.match(main, /playerLibraryPage\*playerLibraryLimit/);
+  assert.match(main, /player\.rating/);
+  assert.match(main, /player-card-portrait/);
+  assert.match(css, /\.player-library-grid\s*\{/);
+  assert.match(css, /\.player-card-portrait\s*\{/);
+  assert.match(css, /\.compact-library-pagination/);
 });
 
 
@@ -358,5 +363,17 @@ test('P27 personnalisation joueur : apparence et pied se règlent par choix visu
   const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
   for (const selector of ['.player-visual-customizer','.player-choice-group','.player-choice','.choice-swatch']) {
     assert.ok(css.includes(selector), `missing visual customization style: ${selector}`);
+  }
+});
+
+test('P27 UI: bibliothèque des clubs compacte par division avec accès rapide D1-D5', () => {
+  assert.match(main, /club-division-tabs/);
+  assert.match(main, /data-action="club-division-tab"/);
+  assert.match(main, /filterClubDiscovery\(\{target:\{id:'club-division-filter'\}\}\)/);
+  assert.match(main, /compact-club-card/);
+  assert.match(main, /Number\(b\.rating\|\|0\)-Number\(a\.rating\|\|0\)/);
+  const css = cssText();
+  for (const selector of ['.club-division-tabs','.club-division-tab','.compact-club-card','.club-grid']) {
+    assert.ok(css.includes(selector), `missing compact club library style: ${selector}`);
   }
 });
