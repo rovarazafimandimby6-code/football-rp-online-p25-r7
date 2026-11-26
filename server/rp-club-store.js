@@ -2,8 +2,8 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from '
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
-const clean = (value, max = 80) => String(value ?? '').replace(/[<>\\u0000-\\u001f]/g, '').trim().slice(0, max);
-const slugText = value => clean(value, 48).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();
+const clean = (value, max = 80) => String(value ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max);
+const slugText = value => clean(value, 48).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const clone = value => structuredClone(value);
 const MEMBER_ROLES = new Set(['founder', 'president', 'vice_president', 'recruiter', 'member']);
 const MANAGER_ROLES = new Set(['founder', 'president', 'recruiter']);
@@ -16,7 +16,7 @@ function normalizeClub(row) {
     || !Array.isArray(row.members) || !Array.isArray(row.joinRequests)) return null;
   const members = row.members.filter(member => member
     && typeof member.accountId === 'string' && member.accountId
-    && typeof member.playerId === 'string' && /^FRP-\\d{6}$/.test(member.playerId)
+    && typeof member.playerId === 'string' && /^FRP-\d{6}$/.test(member.playerId)
     && MEMBER_ROLES.has(member.role)
     && typeof member.displayName === 'string');
   if (members.length !== row.members.length || members.length > MAX_MEMBERS
@@ -26,7 +26,7 @@ function normalizeClub(row) {
   if (!founder) return null;
   const requests = row.joinRequests.filter(request => request
     && typeof request.id === 'string' && typeof request.accountId === 'string'
-    && typeof request.playerId === 'string' && /^FRP-\\d{6}$/.test(request.playerId)
+    && typeof request.playerId === 'string' && /^FRP-\d{6}$/.test(request.playerId)
     && typeof request.displayName === 'string' && typeof request.createdAt === 'string');
   if (requests.length !== row.joinRequests.length || requests.length > MAX_PENDING_REQUESTS
     || new Set(requests.map(request => request.accountId)).size !== requests.length) return null;
@@ -147,7 +147,7 @@ export class JsonRpClubStore {
     const safeName = clean(name, 24);
     const safeTag = clean(tag, 5).toUpperCase();
     const safeDescription = clean(description, 120);
-    if (!accountId || !/^FRP-\\d{6}$/.test(String(playerId || '')) || !clean(displayName, 20)) return { ok: false, reason: 'PLAYER_IDENTITY_REQUIRED' };
+    if (!accountId || !/^FRP-\d{6}$/.test(String(playerId || '')) || !clean(displayName, 20)) return { ok: false, reason: 'PLAYER_IDENTITY_REQUIRED' };
     if (safeName.length < 3 || !/^[a-zA-Z0-9À-ÿ][a-zA-Z0-9À-ÿ .'-]{1,22}[a-zA-Z0-9À-ÿ]$/.test(safeName)) return { ok: false, reason: 'INVALID_CLUB_NAME' };
     if (!/^[A-Z0-9]{2,5}$/.test(safeTag)) return { ok: false, reason: 'INVALID_CLUB_TAG' };
     if (this.findMembership(accountId)) return { ok: false, reason: 'ALREADY_IN_RP_CLUB' };
@@ -166,7 +166,7 @@ export class JsonRpClubStore {
   }
 
   requestJoin(clubId, { accountId, playerId, displayName } = {}) {
-    if (!accountId || !/^FRP-\\d{6}$/.test(String(playerId || '')) || !clean(displayName, 20)) return { ok: false, reason: 'PLAYER_IDENTITY_REQUIRED' };
+    if (!accountId || !/^FRP-\d{6}$/.test(String(playerId || '')) || !clean(displayName, 20)) return { ok: false, reason: 'PLAYER_IDENTITY_REQUIRED' };
     return this.transact(() => {
       const club = this.state.clubs.find(item => item.id === clubId);
       if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
@@ -214,5 +214,4 @@ export class JsonRpClubStore {
       return { ok: true, memberCount: club.members.length };
     });
   }
-}
 }
