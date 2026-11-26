@@ -347,4 +347,4 @@ Routes disponibles :
 - `POST /api/admin/rp-club-seasons/:seasonId/activate`
 - `POST /api/admin/rp-club-seasons/:seasonId/close`
 
-La création admin attend `id`, `name`, `startsAt` et `endsAt` (dates ISO 8601). L'activation doit intervenir pendant la période définie. Les résultats finalisés hors de cette période ne sont pas ajoutés à la saison. Le classement général inter-clubs reste indépendant et conserve l'ensemble des résultats validés.
+La création admin attend `id`, `name`, `startsAt` et `endsAt` (dates ISO 8601). L'activation doit intervenir pendant la période définie. Les résultats finalisés hors de cette période ne sont pas ajoutés à la saison. Le classement général inter-clubs reste indépendant et conserve l'ensemble des résultats validés. L'interface Club RP affiche l'état de la saison active, l'historique sélectionnable et le classement propre à chaque saison. Une réconciliation peut être retentée même après clôture du défi si l'archivage du match existe mais qu'une écriture saisonnière a échoué temporairement.
