@@ -290,3 +290,16 @@ test('P27 résultats : archives paginées et feuille de match détaillée resten
   assert.match(main, /data-action="show-result"/);
   assert.match(main, /data-action="retry-results"/);
 });
+
+
+test('P27 tuile Classements : ouvre un écran dédié alimenté par les classements serveur', () => {
+  assert.match(main, /renderPage\(pageButton\.dataset\.view \|\| pageButton\.dataset\.page\)/);
+  assert.match(main, /page === 'rankings'/);
+  assert.match(main, /async function renderRankingsPage\(\)/);
+  assert.match(main, /retry-rankings/);
+  assert.match(main, /scheduleAudit\.fixtureCount !== 1892/);
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.ranking-screen','.ranking-division-list','.ranking-division']) {
+    assert.ok(css.includes(selector), `missing rankings screen style: ${selector}`);
+  }
+});
