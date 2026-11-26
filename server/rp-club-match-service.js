@@ -77,7 +77,7 @@ export class RpClubMatchService {
 
   reconcileChallenge(challengeId) {
     const challenge = this.challengeStore.state.challenges.find(item => item.id === challengeId);
-    if (!challenge || challenge.status !== 'accepted' || !challenge.roomId) return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_READY' };
+    if (!challenge || !['accepted','completed'].includes(challenge.status) || !challenge.roomId) return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_READY' };
     const result = this.roomManager.resultStore?.get(challenge.roomId);
     if (!result || result.phase !== 'fulltime' || result.rpClubChallenge?.challengeId !== challengeId)
       return { ok:false, reason:'RP_CLUB_CHALLENGE_RESULT_NOT_ARCHIVED' };
@@ -86,7 +86,7 @@ export class RpClubMatchService {
 
   reconcileForAccount(accountId) {
     const rows = this.challengeStore.listForAccount(accountId);
-    for (const challenge of rows) if (challenge.status === 'accepted' && challenge.roomId)
+    for (const challenge of rows) if (['accepted','completed'].includes(challenge.status) && challenge.roomId)
       this.reconcileChallenge(challenge.id);
     return this.challengeStore.listForAccount(accountId);
   }
