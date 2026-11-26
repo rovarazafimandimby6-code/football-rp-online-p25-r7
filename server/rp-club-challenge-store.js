@@ -25,7 +25,8 @@ export class JsonRpClubChallengeStore {
         && item.challengerClubId !== item.targetClubId
         && typeof item.challengerName === 'string' && typeof item.challengerTag === 'string'
         && typeof item.targetName === 'string' && typeof item.targetTag === 'string'
-        && typeof item.createdByAccountId === 'string' && Array.isArray(item.targetMemberAccountIds)
+        && typeof item.createdByAccountId === 'string' && Array.isArray(item.challengerMemberAccountIds)
+        && item.challengerMemberAccountIds.every(id => typeof id === 'string') && Array.isArray(item.targetMemberAccountIds)
         && item.targetMemberAccountIds.every(id => typeof id === 'string')
         && ['pending','accepted','declined','cancelled','completed'].includes(item.status)
         && typeof item.createdAt === 'string'
@@ -62,9 +63,7 @@ export class JsonRpClubChallengeStore {
 
   listForAccount(accountId) {
     return this.state.challenges
-      .filter(item => item.status === 'pending'
-        ? item.createdByAccountId === accountId || item.targetMemberAccountIds.includes(accountId)
-        : item.createdByAccountId === accountId || item.decidedByAccountId === accountId)
+      .filter(item => item.challengerMemberAccountIds.includes(accountId) || item.targetMemberAccountIds.includes(accountId))
       .sort((a,b) => b.createdAt.localeCompare(a.createdAt))
       .map(item => ({
         id:item.id, challengerClubId:item.challengerClubId, challengerName:item.challengerName,
@@ -83,8 +82,9 @@ export class JsonRpClubChallengeStore {
     if (!target) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
     if (challenger.id === target.id) return { ok:false, reason:'RP_CLUB_CHALLENGE_SELF' };
     if (target.memberCount < 1) return { ok:false, reason:'RP_CLUB_EMPTY' };
+    const challengerMemberAccountIds = clubStore.listMemberAccountIds(challenger.id);
     const targetMemberAccountIds = clubStore.listMemberAccountIds(target.id);
-    if (!targetMemberAccountIds?.length) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
+    if (!challengerMemberAccountIds?.length || !targetMemberAccountIds?.length) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
     const active = this.state.challenges.find(item =>
       ['pending','accepted'].includes(item.status)
       && ((item.challengerClubId === challenger.id && item.targetClubId === target.id)
@@ -95,7 +95,7 @@ export class JsonRpClubChallengeStore {
     const item = {
       id:this.idFactory(), challengerClubId:challenger.id, challengerName:challenger.name, challengerTag:challenger.tag,
       targetClubId:target.id, targetName:target.name, targetTag:target.tag,
-      createdByAccountId:actorAccountId, targetMemberAccountIds,
+      createdByAccountId:actorAccountId, challengerMemberAccountIds, targetMemberAccountIds,
       status:'pending', createdAt, scheduledAt:null, decidedAt:null, decidedByAccountId:null
     };
     return this.transact(() => { this.state.challenges.push(item); return { ok:true, challenge:this.listForAccount(actorAccountId).find(row=>row.id===item.id) }; });
