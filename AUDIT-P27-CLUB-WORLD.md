@@ -114,3 +114,12 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Cela évite qu'un membre déjà intégré reste affiché dans les files de recrutement avec une demande ou une invitation devenue obsolète.
 - Les tests unitaires couvrent les deux chemins d'entrée concurrents (demande puis invitation, invitation puis demande).
 - Les modifications et tests ont été enregistrés sur `p27-dls26-global-adaptation`. L'exécution de la suite reste à confirmer par CI ; aucune réussite de test n'est revendiquée ici.
+
+
+## Cohérence globale du recrutement Club RP — 26/11/2026
+
+- Lorsqu'un joueur accepte une demande d'adhésion, toutes ses autres demandes et invitations en attente sont supprimées dans les autres Club RP.
+- Lorsqu'un joueur accepte une invitation, le même nettoyage global est appliqué.
+- Cette règle découle de l'unicité d'appartenance : un compte ne peut être membre que d'un seul Club RP à la fois.
+- Un test couvre les deux chemins d'entrée, avec plusieurs clubs, puis recharge le stockage pour vérifier que l'appartenance et le nettoyage persistent.
+- Le code et le test sont enregistrés sur `p27-dls26-global-adaptation`. L'exécution CI reste à confirmer ; aucune réussite de test n'est revendiquée.
