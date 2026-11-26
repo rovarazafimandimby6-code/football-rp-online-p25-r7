@@ -62,6 +62,7 @@ test('Club RP challenge rooms: cannot start before the scheduled window', () => 
   const challengeStore = {
     state:{ challenges:[{
       id:'challenge-2', status:'accepted', scheduledAt:new Date(now + 60*60_000).toISOString(),
+      challengerClubId:'club-a', targetClubId:'club-b',
       challengerMemberAccountIds:['account-a1'], targetMemberAccountIds:['account-b1'],
       challengerTag:'ALP', targetTag:'BRV', roomId:null
     }] },
