@@ -584,7 +584,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       });
       return json(res, 200, { periodStart, periodEnd:periodStart + 7 * 24 * 60 * 60 * 1000, totals, members:contributions, objectives });
     }
-    const rpClubChallengeMatchCreate = url.pathname.match(/^\\/api\\/rp-clubs\\/challenges\\/([a-f0-9-]{36})\\/match$/i);
+    const rpClubChallengeMatchCreate = url.pathname.match(/^\/api\/rp-clubs\/challenges\/([a-f0-9-]{36})\/match$/i);
     if (req.method === 'POST' && rpClubChallengeMatchCreate) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
@@ -757,6 +757,8 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         const admission = rpClubMatchService.resolveJoin(joinMatch[1], account.id);
         if (!admission.ok) return json(res, admission.reason === 'ROOM_NOT_FOUND' ? 404 : 403, admission);
         if (!playerIdentity || playerIdentity.playerId !== account.playerId) return json(res, 403, { error:'PLAYER_IDENTITY_REQUIRED' });
+        const occupied = [...room.players.values()].filter(player => !player.isBot && player.connected && player.team === admission.team).length;
+        if (occupied >= 5) return json(res, 409, { error:'RP_CLUB_CHALLENGE_TEAM_FULL' });
         body.preferredTeam = admission.team;
       }
       return json(res, 200, manager.join(joinMatch[1], {
