@@ -165,9 +165,16 @@ function nationalityPlan(club, count, random, nationalityCounts = new Map(), mal
     return [...Array(Math.min(count, available)).fill(code), ...Array(Math.max(0, count - available)).fill('FR')];
   }
   if (recruitment?.mode === 'continent' && Array.isArray(recruitment.nationalityCodes)) {
-    const eligible = recruitment.nationalityCodes.filter(code => NATIONAL_POOLS[code] &&
-      (!RARE_NATIONALITIES.has(code) || (nationalityCounts.get(code) || 0) < 2));
-    if (eligible.length) return shuffled(Array.from({ length: count }, (_, index) => eligible[index % eligible.length]), random);
+    // Re-check rarity after every selection: a static eligible list could
+    // otherwise repeat a rare nationality several times in the same roster.
+    const workingCounts = new Map(nationalityCounts);
+    const plan = [];
+    for (let index = 0; index < count; index++) {
+      const code = pickWeightedNationality(recruitment.nationalityCodes, random, workingCounts);
+      plan.push(code);
+      workingCounts.set(code, (workingCounts.get(code) || 0) + 1);
+    }
+    return shuffled(plan, random);
   }
 
   // For mixed recruitment, maintain the world-level Malagasy target when
