@@ -353,7 +353,7 @@ test('P27 catalogue: l’audit identifie les divisions, conférences et réserva
   const audit = auditClubCatalog(new ClubManager().listClubs());
   assert.equal(audit.totalClubs, 156);
   assert.equal(audit.expectedTotal, 156);
-  assert.equal(audit.complete, true);
+  assert.equal(audit.complete, true, JSON.stringify(audit.issues.slice(0, 30)));
   assert.deepEqual(audit.divisionCounts, { D1:16, D2:20, D3:24, D4:32, D5:64 });
   assert.deepEqual(audit.conferenceCounts.D4, { A:16, B:16 });
   assert.deepEqual(audit.conferenceCounts.D5, { A:16, B:16, C:16, D:16 });
