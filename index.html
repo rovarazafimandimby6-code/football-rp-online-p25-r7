@@ -14,24 +14,13 @@
 <body>
   <section id="main-menu" aria-label="Menu principal Football RP Online">
     <div class="menu-backdrop"><div class="stadium-lights"></div><div class="stadium-pitch"></div></div>
-    <header class="menu-topbar"><div class="brand-mark"><img class="brand-shield" src="assets/branding/p27-crest.svg" alt="Écusson Football RP Online P27" width="38" height="42"><div><strong>FOOTBALL RP</strong><small>ONLINE · P27</small></div></div><div class="menu-topbar-actions"><button class="menu-settings-icon" data-page="settings" type="button" aria-label="Paramètres" title="Paramètres">⚙</button></div></header>
-    <div class="menu-layout">
-      <aside class="menu-sidebar" aria-label="Navigation principale">
-        <div class="menu-section-label">VOTRE CARRIÈRE</div>
-        <button data-page="career-hub" class="active"><span>★</span> Carrière</button>
-        <button data-action="choose-match"><span>⚽</span> Match amical</button>
-        <div class="menu-section-label secondary-label">GESTION & UNIVERS</div>
-        <button data-page="mercato"><span>⇄</span> Mercato</button>
-        <button data-page="players"><span>♟</span> Joueurs</button>
-        <button data-page="clubs"><span>⬟</span> Clubs</button>
-        <button data-page="competitions"><span>♜</span> Compétitions</button>
-        <button data-page="results"><span>▣</span> Résultats</button>
-        <button data-page="account"><span>▣</span> Compte</button>
-        <div class="sidebar-spacer"></div>
-        <button data-page="player"><span>♙</span> Mon joueur</button>
-        <button data-page="settings"><span>⚙</span> Paramètres</button>
-      </aside>
-      <section class="menu-main"><div class="menu-heading"><div><span class="eyebrow">FOOTBALL RP ONLINE · P27</span><h1 id="menu-page-title">Votre carrière commence ici</h1><p id="menu-page-subtitle">Un joueur. Un club. Une histoire à écrire.</p></div></div><div id="menu-content"></div></section>
+    <header class="menu-topbar p27-game-topbar">
+      <button class="p27-back-home" data-page="home" type="button" aria-label="Retour à l'accueil">‹</button>
+      <button class="menu-settings-icon" data-page="settings" type="button" aria-label="Paramètres" title="Paramètres">⚙</button>
+      <div class="p27-top-player"><strong id="p27-top-player-name">Mon footballeur</strong><span id="p27-top-player-club">Sans club</span></div>
+    </header>
+    <div class="menu-layout p27-screen-layout">
+      <section class="menu-main"><div class="menu-heading"><div><span class="eyebrow">FOOTBALL RP ONLINE · P27</span><h1 id="menu-page-title">Accueil</h1><p id="menu-page-subtitle">Choisissez votre prochaine étape.</p></div></div><div id="menu-content"></div></section>
     </div>
     <footer class="menu-footer"><span>FOOTBALL RP ONLINE</span><span>P27 · NOUVELLE GÉNÉRATION</span></footer>
   </section>
