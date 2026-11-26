@@ -105,3 +105,12 @@ Une vérification visuelle et fonctionnelle sur appareil Android réel reste à 
 Le **catalogue de 156 clubs, la structure des cinq divisions, les neuf groupes, les affectations explicites A/B/C/D, les calendriers, les contrôles d'intégrité, l'API publique et les écrans Clubs/Compétitions** sont intégrés et validés automatiquement sur `p27-dev`.
 
 Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne certifie pas l'ensemble du jeu P27, l'expérience graphique mobile, les performances Android ni les décisions sportives qui restent à approuver.
+
+
+## Correctif de cohérence des adhésions Club RP — 26/11/2026
+
+- L'acceptation d'une demande d'adhésion supprime désormais toute invitation encore en attente pour le même compte dans ce Club RP.
+- L'acceptation d'une invitation supprime désormais toute demande d'adhésion encore en attente pour le même compte dans ce Club RP.
+- Cela évite qu'un membre déjà intégré reste affiché dans les files de recrutement avec une demande ou une invitation devenue obsolète.
+- Les tests unitaires couvrent les deux chemins d'entrée concurrents (demande puis invitation, invitation puis demande).
+- Les modifications et tests ont été enregistrés sur `p27-dls26-global-adaptation`. L'exécution de la suite reste à confirmer par CI ; aucune réussite de test n'est revendiquée ici.
