@@ -29,7 +29,8 @@ function normalizeClub(row) {
     || new Set(members.map(member => member.playerId)).size !== members.length) return null;
   const founder = members.find(member => member.role === 'founder');
   if (!founder) return null;
-  const president = members.find(member => member.accountId === row.presidentAccountId && ['founder','president'].includes(member.role)) || founder;
+  const president = members.find(member => member.accountId === row.presidentAccountId && ['founder','president'].includes(member.role))
+    || members.find(member => member.role === 'president') || founder;
   const governanceLog = (Array.isArray(row.governanceLog) ? row.governanceLog : []).filter(event => event
     && typeof event.id === 'string' && typeof event.action === 'string'
     && typeof event.actorDisplayName === 'string' && typeof event.details === 'string'
