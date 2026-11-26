@@ -32,11 +32,20 @@ test('P27 DLS26: les panneaux sont reliés aux vraies fonctions existantes', () 
   }
   assert.match(main, /pendingOffers/);
   assert.match(main, /latestMatch/);
-  assert.match(main, /careerClub\?\.name/);
+  assert.match(main, /careerClub/);\n  assert.ok(main.includes('data-page=\"rp-club\"'));\n  assert.match(main, /ÉQUIPE DE CHAMPIONNAT/);
 });
 
 test('P27 DLS26: l’audit distingue les fonctions présentes et celles à construire', () => {
   for (const term of ['Dream League Live','Dream Draft','Clans','Fanzone','Agents/recruteurs','Aucun faux compteur']) {
     assert.ok(audit.includes(term), `audit incomplet : ${term}`);
   }
+});
+
+test('P27 Club RP : le hub ouvre une communauté séparée des équipes de championnat', () => {
+  assert.match(main, /async function loadRpClubPage\(\)/);
+  assert.match(main, /function rpClubApi\(/);
+  assert.match(main, /rp-club-decision/);
+  assert.match(main, /rp-club-join/);
+  assert.match(css, /rp-club-hero/);
+  assert.match(audit, /Première brique fonctionnelle du Club RP/);
 });
