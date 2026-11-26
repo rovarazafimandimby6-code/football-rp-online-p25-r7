@@ -500,14 +500,26 @@ function setRpClubStatus(message, isError = false) {
   const status = document.getElementById('rp-club-status');
   if (status) { status.textContent = message; status.classList.toggle('is-error', isError); }
 }
-async function loadRpClubPage() {
+async function loadRpClubPage(selectedSeasonId = null) {
   const host = document.getElementById('rp-club-root');
   if (!host) return;
   host.innerHTML = '<div class="rp-club-loading">SYNCHRONISATION DU CLUB RP…</div>';
-  let membership = null, invitations = [], activity = null, challenges = [], standings = [], authError = null, directory = { clubs:[], total:0 };
+  let membership = null, invitations = [], activity = null, challenges = [], standings = [], seasons = [], currentSeason = null, seasonStandings = [], selectedSeason = null, authError = null, directory = { clubs:[], total:0 };
   try { const mine = await rpClubApi('/me'); membership = mine.membership; invitations = mine.invitations || []; } catch (error) { authError = error; }
   try { directory = await rpClubApi('?limit=30'); } catch (error) { if (!authError) authError = error; }
   if (membership?.club?.id) { try { activity = await rpClubApi('/' + membership.club.id + '/activity'); } catch (error) { if (!authError) authError = error; } try { challenges = (await rpClubApi('/challenges/me')).challenges || []; } catch (error) { if (!authError) authError = error; } try { standings = (await rpClubApi('/challenges/leaderboard')).standings || []; } catch (error) { if (!authError) authError = error; } }
+  if (membership?.club?.id) {
+    try { seasons = (await rpClubApi('/seasons')).seasons || []; } catch (error) { if (!authError) authError = error; }
+    try { currentSeason = (await rpClubApi('/seasons/current')).season || null; } catch (error) { if (!authError) authError = error; }
+    selectedSeason = seasons.find(item => item.id === selectedSeasonId)
+      || (currentSeason && seasons.find(item => item.id === currentSeason.id))
+      || seasons.find(item => item.status === 'completed')
+      || seasons[0] || null;
+    if (selectedSeason) {
+      try { seasonStandings = (await rpClubApi('/seasons/' + encodeURIComponent(selectedSeason.id) + '/leaderboard')).standings || []; }
+      catch (error) { if (!authError) authError = error; }
+    }
+  }
   if (!document.getElementById('rp-club-root')) return;
   if (membership) {
     const club = membership.club;
@@ -533,11 +545,19 @@ async function loadRpClubPage() {
     const challengesPanel = '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">RENCONTRES ENTRE COMMUNAUTÉS</span><h3>Défis inter-Club RP</h3></div><b>' + challenges.filter(item=>item.status==='pending').length + ' EN ATTENTE</b></div>' + (challengeRows || '<p class="notice">Aucun défi en cours. Défiez un autre Club RP pour planifier une rencontre.</p>') + '<div class="rp-club-challenge-directory">' + (challengeDirectory || '<small>Aucun autre Club RP disponible pour le moment.</small>') + '</div><small class="rp-club-activity-note">Les responsables peuvent ouvrir le salon à l’heure prévue. Seuls les membres actuels des deux Clubs RP peuvent rejoindre ; les résultats validés alimentent l’historique et le classement inter-Club.</small></section>';
     const standingsRows = standings.map((row,index) => '<div class="rp-club-standing-row"><b>' + (index+1) + '</b><strong>' + escapeHTML(row.name) + '<small>' + escapeHTML(row.tag) + '</small></strong><span>' + row.played + ' MJ</span><span>' + row.goalsFor + ':' + row.goalsAgainst + '</span><b>' + row.points + ' PTS</b></div>').join('');
     const standingsPanel = '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMPÉTITION COMMUNAUTAIRE</span><h3>Classement inter-Club RP</h3></div><b>' + standings.length + ' CLUBS</b></div>' + (standingsRows || '<p class="notice">Le classement apparaîtra après les premiers matchs inter-Club RP terminés.</p>') + '<small class="rp-club-activity-note">3 points pour une victoire, 1 pour un nul. Classement calculé à partir des scores officiels archivés.</small></section>';
+    const seasonStatus = season => season.status === 'active' ? 'EN COURS' : season.status === 'completed' ? 'TERMINÉE' : 'À VENIR';
+    const seasonOptions = seasons.map(season => '<button type="button" class="rp-club-season-tab' + (selectedSeason?.id === season.id ? ' is-active' : '') + '" data-action="rp-club-season-select" data-season="' + escapeHTML(season.id) + '"><b>' + escapeHTML(season.name) + '</b><small>' + seasonStatus(season) + '</small></button>').join('');
+    const seasonRows = seasonStandings.map((row,index) => '<div class="rp-club-standing-row"><b>' + (index+1) + '</b><strong>' + escapeHTML(row.name) + '<small>' + escapeHTML(row.tag) + '</small></strong><span>' + row.played + ' MJ</span><span>' + row.goalsFor + ':' + row.goalsAgainst + '</span><b>' + row.points + ' PTS</b></div>').join('');
+    const seasonPanel = '<section class="rp-club-panel rp-club-season-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">CHAMPIONNAT COMMUNAUTAIRE</span><h3>Saisons & palmarès</h3></div><b>' + seasons.length + ' SAISONS</b></div>' +
+      (currentSeason ? '<div class="rp-club-current-season"><span class="rp-club-season-live"></span><div><small>SAISON ACTIVE</small><b>' + escapeHTML(currentSeason.name) + '</b></div><span>' + currentSeason.matchesPlayed + ' MATCHS</span></div>' : '<p class="notice">Aucune saison active actuellement.</p>') +
+      (seasonOptions ? '<div class="rp-club-season-tabs">' + seasonOptions + '</div>' : '<p class="notice">L’historique des saisons apparaîtra ici après la création de la première saison.</p>') +
+      (selectedSeason ? '<div class="rp-club-season-table-heading"><b>' + escapeHTML(selectedSeason.name) + '</b><small>' + seasonStatus(selectedSeason) + ' · ' + selectedSeason.matchesPlayed + ' MATCHS VALIDÉS</small></div>' + (seasonRows || '<p class="notice">Aucun résultat validé pour cette saison.</p>') : '') +
+      '<small class="rp-club-activity-note">Classement établi exclusivement à partir des résultats officiels des défis inter-Club RP.</small></section>';
     const activityMembers = activity?.members || [];
     const objectiveCards = (activity?.objectives || []).map(objective => '<div class="rp-club-objective' + (objective.completed ? ' is-complete' : '') + '"><div><b>' + escapeHTML(objective.label) + '</b><strong>' + objective.value + ' / ' + objective.target + '</strong></div><div class="rp-club-objective-track"><span style="width:' + Math.max(0, Math.min(100, Number(objective.progressPercent) || 0)) + '%"></span></div><small>' + (objective.completed ? 'OBJECTIF ATTEINT' : 'PROGRESSION COLLECTIVE') + '</small></div>').join('');
     const activityPanel = activity ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">ACTIVITÉ RÉELLE · SEMAINE EN COURS</span><h3>Contribution du collectif</h3></div><b>' + activity.totals.matches + ' MATCHS</b></div><div class="rp-club-activity-stats"><span><b>' + activity.totals.wins + '</b><small>VICTOIRES</small></span><span><b>' + activity.totals.goals + '</b><small>BUTS</small></span><span><b>' + activity.totals.assists + '</b><small>PASSES D.</small></span></div><div class="rp-club-objectives"><div class="rp-club-objectives-heading"><span class="eyebrow">DÉFIS HEBDOMADAIRES</span><small>PROGRESSION DU CLUB</small></div>' + objectiveCards + '</div><div class="rp-club-contributors">' + activityMembers.map((member,index) => '<div class="rp-club-contributor"><b>' + (index+1) + '</b><span>' + escapeHTML(member.displayName) + '<small>' + member.matches + ' matchs · ' + member.wins + ' V · ' + member.goals + ' buts</small></span><strong>' + member.assists + ' PD</strong></div>').join('') + '</div><small class="rp-club-activity-note">Calculé à partir des matchs de carrière enregistrés des membres. Les défis ne distribuent pas encore de récompenses.</small></section>' : '';
     host.innerHTML = '<section class="rp-club-hero"><div class="rp-club-identity"><span class="rp-club-tag">' + escapeHTML(club.tag) + '</span><div><span class="eyebrow">VOTRE GROUPEMENT RP</span><h2>' + escapeHTML(club.name) + '</h2><p>' + escapeHTML(club.description || 'Aucune description') + '</p></div></div><div class="rp-club-stats"><span><b>' + club.memberCount + '</b><small>MEMBRES</small></span><span><b>' + club.capacity + '</b><small>CAPACITÉ</small></span><span><b>' + (activity?.totals.matches ?? 0) + '</b><small>MATCHS SEMAINE</small></span></div></section>' +
-      '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMMUNAUTÉ</span><h3>Effectif du Club RP</h3></div><span class="rp-club-role">' + (roleNames[membership.membership.role] || 'MEMBRE') + '</span></div><div class="rp-club-member-list">' + members + '</div>' + inviteControls + '</section>' + challengesPanel + standingsPanel + activityPanel +
+      '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMMUNAUTÉ</span><h3>Effectif du Club RP</h3></div><span class="rp-club-role">' + (roleNames[membership.membership.role] || 'MEMBRE') + '</span></div><div class="rp-club-member-list">' + members + '</div>' + inviteControls + '</section>' + challengesPanel + standingsPanel + seasonPanel + activityPanel +
       (pending.length ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">RECRUTEMENT</span><h3>Demandes en attente</h3></div><b>' + pending.length + '</b></div><div class="rp-club-request-list">' + requests + '</div></section>' : '') +
       '<div class="rp-club-actions"><button type="button" class="rp-club-refresh" data-action="rp-club-reload">ACTUALISER</button><button type="button" class="rp-club-leave" data-action="rp-club-leave" data-club="' + escapeHTML(club.id) + '">QUITTER LE CLUB</button></div><p id="rp-club-status" class="rp-club-status" role="status" aria-live="polite"></p>';
     return;
@@ -578,7 +598,7 @@ async function performRpClubAction(action, button) {
       const scheduledAt = decision === 'accept' && input?.value ? new Date(input.value).toISOString() : null;
       if (decision === 'accept' && (!scheduledAt || !Number.isFinite(Date.parse(scheduledAt)))) throw new Error('INVALID_RP_CLUB_CHALLENGE_DATE');
       await rpClubApi('/challenges/' + button.dataset.challenge + '/decision', { method:'POST', body:JSON.stringify({ decision, scheduledAt }) });
-    } else if (action === 'rp-club-leave') {
+    } else if (action === 'rp-club-season-select') {\n      await loadRpClubPage(button.dataset.season);\n      return;\n    } else if (action === 'rp-club-leave') {
       await rpClubApi('/' + button.dataset.club + '/leave', { method:'POST' });
     }
     await loadRpClubPage();
