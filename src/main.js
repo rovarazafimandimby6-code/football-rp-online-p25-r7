@@ -176,6 +176,7 @@ function disposeAvatarPreview() {
 function mountAvatarPreview(profile) {
   const host = document.getElementById('avatar-preview');
   if (!host) return;
+  disposeAvatarPreview();
   try {
     const width = Math.max(180, host.clientWidth || 280);
     const height = Math.max(220, host.clientHeight || 300);
