@@ -338,7 +338,7 @@ test('P27 créateur joueur : sélection visuelle des postes détaillés et drape
   assert.match(main, /function renderCountryPicker\(\)/);
   assert.match(main, /data-country-code=/);
   assert.match(main, /function renderPositionPicker\(\)/);
-  for (const position of ['DC','DG','DD','MDC','MC','MOC','AG','AD','AC','BU']) {
+  for (const position of ['DC','LG','LD','MDC','MC','MO','AG','AD','AC','BU']) {
     assert.ok(main.includes(`code:'${position}'`), `missing position ${position}`);
   }
   assert.match(main, /data-action="save-player-editor"/);
