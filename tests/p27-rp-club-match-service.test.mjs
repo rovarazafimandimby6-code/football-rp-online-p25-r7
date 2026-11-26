@@ -105,3 +105,38 @@ test('Club RP standings use only finalized scores and count a result once', () =
     rmSync(directory, { recursive:true, force:true });
   }
 });
+
+test('finalized Club RP challenge results also enter the active season exactly once', () => {
+  const challenge = {
+    id:'challenge-season-1', status:'accepted', roomId:'room-season-1',
+    challengerClubId:'club-a', challengerName:'Alpha', challengerTag:'ALP',
+    targetClubId:'club-b', targetName:'Bravo', targetTag:'BRV'
+  };
+  const challengeStore = {
+    state:{ challenges:[challenge] },
+    completeFromMatch({ challengeId, roomId, score, finalizedAt }) {
+      challenge.status = 'completed';
+      challenge.result = { roomId, ...score, finalizedAt };
+      return { ok:true, challenge, duplicate:false };
+    },
+    leaderboard() { return []; }
+  };
+  const calls = [];
+  const seasonStore = {
+    current() { return { id:'season-2026' }; },
+    recordResult(input) { calls.push(input); return { ok:true, duplicate:calls.length > 1 }; },
+    leaderboard() { return []; }
+  };
+  const service = new RpClubMatchService({
+    clubStore:{}, challengeStore, seasonStore, roomManager:{}
+  });
+  const result = {
+    phase:'fulltime', roomId:'room-season-1', finalizedAt:Date.parse('2026-11-26T12:00:00Z'),
+    score:{ blue:2, red:0 }, rpClubChallenge:{ challengeId:'challenge-season-1' }
+  };
+  assert.equal(service.recordFinalizedResult(result, null).seasonResult.ok, true);
+  assert.equal(service.recordFinalizedResult(result, null).seasonResult.duplicate, true);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].seasonId, 'season-2026');
+  assert.deepEqual(calls[0].challenger, { id:'club-a', name:'Alpha', tag:'ALP' });
+});
