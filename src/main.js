@@ -477,28 +477,28 @@ function renderPage(page = 'home') {
     subtitle.textContent = page === 'career-hub' ? 'Votre parcours et votre progression.' : 'Choisissez votre prochaine étape.';
     const level = Number(profile.progression.level) || 1;
     const stars = Math.max(1, Math.min(5, Math.ceil(level / 20)));
-    content.innerHTML = page === 'career-hub' ? \`
+    content.innerHTML = page === 'career-hub' ? `
       <section class="p27-dls-career">
         <div class="p27-dls-career-banner">
           <div class="p27-dls-career-copy">
             <span class="p27-game-kicker">CARRIÈRE · SAISON EN COURS</span>
             <h2>VOTRE PROCHAINE SAISON COMMENCE ICI</h2>
-            <p>\${escapeHTML(profile.identity.displayName)} · NIVEAU \${level} · \${escapeHTML(clubLabel)}</p>
+            <p>${escapeHTML(profile.identity.displayName)} · NIVEAU ${level} · ${escapeHTML(clubLabel)}</p>
           </div>
-          <div class="p27-career-rating"><small>NIVEAU</small><strong>\${level}</strong><span>JOUEUR</span></div>
+          <div class="p27-career-rating"><small>NIVEAU</small><strong>${level}</strong><span>JOUEUR</span></div>
         </div>
         <div class="p27-dls-career-grid" aria-label="Gestion de carrière">
           <button class="p27-dls-mode p27-dls-next" data-action="choose-match"><span class="p27-dls-mode-kicker">PROCHAIN MATCH</span><span class="p27-dls-mode-art"><b>VS</b><i>⚽</i></span><strong>JOUER</strong><small>Préparer une rencontre amicale</small><em>›</em></button>
           <button class="p27-dls-mode p27-dls-team" data-page="players"><span class="p27-dls-mode-kicker">GESTION DE L'ÉQUIPE</span><span class="p27-dls-mode-art"><b>XI</b><i>♟</i></span><strong>EFFECTIF</strong><small>Joueurs, postes et profils</small><em>›</em></button>
           <button class="p27-dls-mode p27-dls-transfers" data-page="mercato"><span class="p27-dls-mode-kicker">MARCHÉ DES TRANSFERTS</span><span class="p27-dls-mode-art"><b>⇄</b><i>✦</i></span><strong>TRANSFERTS</strong><small>Contrats et opportunités</small><em>›</em></button>
-          <button class="p27-dls-mode p27-dls-club" data-page="clubs"><span class="p27-dls-mode-kicker">VOTRE INSTITUTION</span><span class="p27-dls-mode-art"><b>♜</b><i>★</i></span><strong>MON CLUB</strong><small>\${escapeHTML(clubLabel)}</small><em>›</em></button>
+          <button class="p27-dls-mode p27-dls-club" data-page="clubs"><span class="p27-dls-mode-kicker">VOTRE INSTITUTION</span><span class="p27-dls-mode-art"><b>♜</b><i>★</i></span><strong>MON CLUB</strong><small>${escapeHTML(clubLabel)}</small><em>›</em></button>
         </div>
         <div class="p27-dls-career-footer">
-          <div><small>CRÉDITS DISPONIBLES</small><strong>\${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</strong></div>
-          <div><small>POINTS D'ENTRAÎNEMENT</small><strong>\${Number(profile.progression.trainingPoints||0).toLocaleString('fr-FR')}</strong></div>
+          <div><small>CRÉDITS DISPONIBLES</small><strong>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</strong></div>
+          <div><small>POINTS D'ENTRAÎNEMENT</small><strong>${Number(profile.progression.trainingPoints||0).toLocaleString('fr-FR')}</strong></div>
           <button data-page="player">FICHE JOUEUR <b>›</b></button>
         </div>
-      </section>\` : 
+      </section>` : 
       <section class="p27-home-tiles" aria-label="Modes et rubriques">
         <button class="p27-tile p27-tile-career" data-page="career-hub"><span class="p27-tile-title">CARRIÈRE <i>›</i></span><span class="p27-tile-art"><b>★</b><small>${'★'.repeat(stars)}${'☆'.repeat(5-stars)} · NIVEAU ${level}</small></span><span class="p27-tile-info">Votre parcours et votre progression</span></button>
         <button class="p27-tile p27-tile-friendly" data-action="choose-match"><span class="p27-tile-title">MATCH AMICAL <i>›</i></span><span class="p27-tile-art"><b>⚽</b></span><span class="p27-tile-info">Jouer un match 5 contre 5</span></button>
