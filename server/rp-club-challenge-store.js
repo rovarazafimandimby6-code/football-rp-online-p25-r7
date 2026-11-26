@@ -76,7 +76,7 @@ export class JsonRpClubChallengeStore {
   create({ clubStore, actorAccountId, targetClubId } = {}) {
     const ownMembership = clubStore.getForAccount(actorAccountId);
     if (!ownMembership) return { ok:false, reason:'RP_CLUB_MEMBERSHIP_REQUIRED' };
-    if (!MANAGER_ROLES.has(ownMembership.membership.role)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
+    if (!clubStore.canLead(ownMembership.club.id, actorAccountId)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
     const challenger = ownMembership.club;
     const target = clubStore.get(targetClubId);
     if (!target) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
@@ -157,7 +157,7 @@ export class JsonRpClubChallengeStore {
     if (item.status !== 'pending') return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_PENDING' };
     const targetMembership = clubStore.getForAccount(actorAccountId);
     if (!targetMembership || targetMembership.club.id !== item.targetClubId) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
-    if (!MANAGER_ROLES.has(targetMembership.membership.role)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
+    if (!clubStore.canLead(targetMembership.club.id, actorAccountId)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
     let parsedSchedule = null;
     if (decision === 'accept') {
       const timestamp = Date.parse(scheduledAt);
