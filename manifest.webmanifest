@@ -1,0 +1,14 @@
+{
+  "id": "./",
+  "name": "Football RP Online P27",
+  "short_name": "Football RP P27",
+  "description": "Football RP Online — jeu de football en plein écran paysage.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#080b12",
+  "theme_color": "#080b12",
+  "categories": ["games", "sports"]
+}

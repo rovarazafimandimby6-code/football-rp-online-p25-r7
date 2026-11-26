@@ -36,5 +36,5 @@ test('first launch creates a password-free player profile before opening the das
   assert.match(source, /id="player-onboarding-form"/);
   assert.match(source, /renderPage\(hasSavedPlayerProfile \? 'home' : 'onboarding'\)/);
   assert.match(source, /localPlayerProfileStore\?\.create\(\{ displayName \}\)/);
-  assert.match(source, /FRP-000000/);
+  assert.match(source, /FRP-\[0-9\]\{6\}/);
 });

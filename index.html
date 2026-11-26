@@ -4,33 +4,45 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#080b12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="assets/branding/p27-crest.svg">
   <meta name="description" content="Football RP Online P27 — jeu de football RP mobile, multijoueur et carrière.">
   <title>Football RP Online — P27</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="p27-rebirth.css">
+  <link rel="stylesheet" href="p27-game-ui.css">
     <!-- three@0.170.0 is bundled locally through npm for offline Android builds. -->
-</head>
+  <style>
+    #p27-startup-splash{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:#050912;opacity:1;visibility:visible;transition:opacity .65s ease,visibility .65s ease}
+    #p27-startup-splash img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#050912}
+    #p27-startup-splash.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+    @media(prefers-reduced-motion:reduce){#p27-startup-splash{transition:none}}
+  </style>
+  <div id="p27-startup-splash" role="img" aria-label="Présentation de Football RP Online P27">
+    <img src="https://i.postimg.cc/7h0kQsK4/20261126-133355-2.jpg" alt="Football RP Online P27 — écran de présentation" fetchpriority="high">
+  </div>
+  <script>
+    (()=>{const splash=document.getElementById('p27-startup-splash');const art=splash?.querySelector('img');if(!splash||!art)return;
+      const dismiss=()=>{splash.classList.add('is-hidden');window.setTimeout(()=>splash.remove(),700)};
+      art.addEventListener('error',dismiss,{once:true});window.setTimeout(dismiss,2600);
+    })();
+  </script>
+  </head>
 <body>
   <section id="main-menu" aria-label="Menu principal Football RP Online">
     <div class="menu-backdrop"><div class="stadium-lights"></div><div class="stadium-pitch"></div></div>
-    <header class="menu-topbar"><div class="brand-mark"><img class="brand-shield" src="assets/branding/p27-crest.svg" alt="Écusson Football RP Online P27" width="38" height="42"><div><strong>FOOTBALL RP</strong><small>ONLINE</small></div></div><div class="menu-topbar-actions"><div class="menu-status"><i></i> ESPACE CARRIÈRE · LOCAL & EN LIGNE</div><button id="menu-fullscreen" class="fullscreen-toggle" type="button" aria-label="Passer en plein écran" aria-pressed="false">⛶ <span>PLEIN ÉCRAN</span></button></div></header>
-    <div class="menu-layout">
-      <aside class="menu-sidebar"><div class="menu-section-label">ESPACE JOUEUR</div>
-        <button data-page="home" class="active"><span>⌂</span> Accueil</button>
-        <button data-page="player"><span>◉</span> Mon joueur</button>
-        <button data-page="clubs"><span>⬟</span> Clubs</button>
-        <button data-page="players"><span>◉</span> Joueurs</button>
-        <div class="menu-section-label secondary-label">UNIVERS FOOTBALL</div>
-        <button data-page="competitions"><span>♜</span> Compétitions</button>
-        <button data-page="results"><span>▣</span> Résultats</button>
-        <button data-page="mercato"><span>⇄</span> Mercato</button>
-        <button data-page="rankings"><span>▤</span> Classements</button>
-        <button data-page="community"><span>◎</span> Communauté</button>
-        <button data-page="account"><span>◉</span> Compte joueur</button>
-        <div class="sidebar-spacer"></div><button data-page="settings"><span>⚙</span> Paramètres</button>
-      </aside>
-      <section class="menu-main"><div class="menu-heading"><div><span class="eyebrow">VOTRE ESPACE FOOTBALL</span><h1 id="menu-page-title">Votre carrière commence ici</h1><p id="menu-page-subtitle">Un joueur. Un club. Une histoire à écrire.</p></div><div class="menu-user"><span class="user-avatar">10</span><span><b>Joueur invité</b><small>Profil local</small></span></div></div><div id="menu-content"></div></section>
+    <header class="menu-topbar p27-game-topbar">
+      <button class="p27-back-home" data-page="home" type="button" aria-label="Retour au menu principal" title="Retour">‹</button>
+      <button class="menu-settings-icon" data-page="settings" type="button" aria-label="Paramètres" title="Paramètres">⚙</button>
+      <div class="p27-top-section"><strong id="menu-page-title">ACCUEIL</strong><span id="menu-page-subtitle">FOOTBALL RP ONLINE · P27</span></div>
+      <div class="p27-top-player"><strong id="p27-top-player-name">Mon joueur</strong><span id="p27-top-player-club">Sans club</span></div>
+      <div class="p27-top-currency"><small>CRÉDITS</small><strong id="p27-top-player-coins">2 500</strong></div>
+    </header>
+    <div class="menu-layout p27-screen-layout">
+      <section class="menu-main"><div id="menu-content"></div></section>
     </div>
     <footer class="menu-footer"><span>FOOTBALL RP ONLINE</span><span>P27 · NOUVELLE GÉNÉRATION</span></footer>
   </section>
@@ -45,7 +57,7 @@
       <div class="time"><small id="period">1RE MI-TEMPS</small><strong id="clock">00:00</strong></div>
     </header>
 
-    <div id="match-top-actions"><button id="match-fullscreen" class="fullscreen-toggle" type="button" aria-label="Passer le match en plein écran" aria-pressed="false">⛶</button><button id="pause" type="button" aria-label="Mettre le match en pause">Ⅱ</button></div>
+    <div id="match-top-actions"><button id="pause" type="button" aria-label="Mettre le match en pause">Ⅱ</button></div>
 
 
     <div id="minimap" aria-label="Mini-carte de match">

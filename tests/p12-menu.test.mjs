@@ -11,10 +11,15 @@ test('P12: le menu principal est affiché avant le conteneur de match', () => {
   assert.match(html, /<main id="game-shell" class="hidden"/);
 });
 
-test('P12: la navigation expose les espaces joueur, clubs et paramètres', () => {
-  for (const page of ['home', 'player', 'clubs', 'competitions', 'mercato', 'rankings', 'community', 'settings']) {
-    assert.match(html, new RegExp(`data-page="${page}"`));
+test('P12: le shell ne contient plus de navigation permanente ni de routes fantômes', () => {
+  assert.match(html, /p27-game-topbar/);
+  assert.match(html, /p27-back-home/);
+  assert.doesNotMatch(html, /menu-sidebar|menu-secondary-nav/);
+  for (const page of ['rankings', 'community']) assert.doesNotMatch(html, new RegExp(`data-page="${page}"`));
+  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato','account']) {
+    assert.match(main, new RegExp(`data-page="${page}"`));
   }
+  assert.match(html, /data-page="settings"/);
 });
 
 test('P12: le moteur de match est chargé seulement après la demande de lancement', () => {
@@ -53,12 +58,14 @@ test('P12.1: la liste des clubs et la pause utilisent le composant d’écusson 
 });
 
 
-test('P27 UI: accueil carrière présente les statistiques réelles et les accès rapides', () => {
-  assert.match(main, /home-dashboard/);
-  assert.match(main, /seasonStats\.snapshot\(\)\.totals/);
+test('P27 UI: accueil en hub de huit tuiles et accès aux pages existantes', () => {
+  assert.match(main, /p27-home-tiles/);
+  for (const label of ['CARRIÈRE','MATCH AMICAL','MON JOUEUR','COMPÉTITIONS','MERCATO','CLASSEMENTS','CLUBS','RÉSULTATS']) assert.ok(main.includes(label), `tuile manquante: ${label}`);
   assert.match(main, /data-action="choose-match"/);
-  assert.match(main, /data-action="online-menu"/);
-  assert.match(main, /data-page="mercato"/);
+  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato']) assert.match(main,new RegExp(`data-page="${page}"`));
+  assert.match(main, /const topName = document\.getElementById\('p27-top-player-name'\)/);
+  assert.match(main, /const topClub = document\.getElementById\('p27-top-player-club'\)/);
+  assert.match(main, /const seasonSnapshot = seasonStats\.snapshot\(\)/);
 });
 
 test('P27 UI: shell principal verrouillé en paysage sans défilement vertical', () => {
@@ -125,9 +132,8 @@ test('P27 UI: le centre avant-match compare les clubs et leurs meilleurs joueurs
 });
 
 
-test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, filtres, tri et chargement progressif', () => {
-  const css = cssText();
-  assert.match(html, /data-page="players"/);
+test('P27 UI: bibliothèque joueurs compacte en cartes avec portraits, tri par note et pagination', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
   assert.match(main, /page === 'players'/);
   assert.match(main, /data-library-card/);
   assert.match(main, /id="library-search"/);
@@ -135,24 +141,30 @@ test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, fil
   assert.match(main, /id="library-role"/);
   assert.match(main, /id="library-sort"/);
   assert.match(main, /id="library-min-rating"/);
-  assert.match(main, /players-load-more/);
-  assert.match(css, /\.player-library-grid \{/);
-  assert.match(css, /\.player-card-attributes \{/);
+  assert.match(main, /data-action=\"players-page\"/);
+  assert.match(main, /playerLibraryLimit = 12/);
+  assert.match(main, /playerLibraryPage\*playerLibraryLimit/);
+  assert.match(main, /player\.rating/);
+  assert.match(main, /player-card-portrait/);
+  assert.match(css, /\.player-library-grid\s*\{/);
+  assert.match(css, /\.player-card-portrait\s*\{/);
+  assert.match(css, /\.compact-library-pagination/);
 });
 
 
-test('P27 mobile fullscreen: menu and match expose a touch fullscreen control', () => {
-  assert.ok(html.includes('id="menu-fullscreen"'));
-  assert.ok(html.includes('id="match-fullscreen"'));
-  assert.ok(main.includes("requestFullscreen({ navigationUI: 'hide' })"));
-  assert.ok(main.includes("screen.orientation.lock('landscape')"));
-  assert.ok(main.includes("addEventListener('fullscreenchange'"));
+test('P27 mobile fullscreen: aucun bouton de plein écran manuel ne subsiste', () => {
+  assert.ok(!html.includes('id="menu-fullscreen"'));
+  assert.ok(!html.includes('id="match-fullscreen"'));
+  assert.ok(!html.includes('fullscreen-toggle'));
+  assert.ok(!main.includes('requestFullscreen'));
+  assert.ok(!main.includes('toggleMobileFullscreen'));
+  assert.ok(html.includes('id="pause"'));
 });
 
-test('P27 mobile fullscreen: game and menu fill the dynamic viewport', () => {
+test('P27 mobile fullscreen: le menu et le match remplissent le viewport dynamique', () => {
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
   assert.ok(css.includes('height: 100dvh'));
-  assert.ok(css.includes('#main-menu:fullscreen, #game-shell:fullscreen'));
+  assert.ok(css.includes('#game-shell {'));
   assert.ok(css.includes('overscroll-behavior: none'));
 });
 
@@ -176,4 +188,260 @@ test('P27 viewport: HUD et commandes restent compacts sur les petits écrans pay
   assert.match(css, /#action-buttons \{[\s\S]*?height: min\(188px, calc\(100dvh/);
   assert.match(css, /#stick-base \{[\s\S]*?top: 62%/);
   assert.match(css, /#player-guidance \{[\s\S]*?max-width: 30vw/);
+});
+
+test('P27 game UI: aucune ancienne navigation latérale ou secondaire ne subsiste', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const legacyCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8') + readFileSync(new URL('../p27-rebirth.css', import.meta.url), 'utf8');
+  const gameCss = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(html, /menu-sidebar|menu-secondary-nav|menu-heading/);
+  assert.doesNotMatch(legacyCss, /menu-sidebar|menu-secondary-nav/);
+  assert.match(html, /p27-top-section/);
+  assert.match(html, /p27-top-player-coins/);
+  assert.match(gameCss, /p27-dls-career-grid/);
+  assert.match(main, /p27-dls-mode p27-dls-next/);
+});
+
+test('P27 game header: affiche les crédits réels du profil sans valeur fictive', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="p27-top-player-coins"/);
+  assert.match(main, /Number\(profileStore\.profile\.progression\.coins \|\| 0\)\.toLocaleString\('fr-FR'\)/);
+  assert.doesNotMatch(main, /\\\\n  const topCoins/);
+});
+
+
+test('P27 quality: tous les écrans secondaires ont des états clavier et indisponibles lisibles', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.match(css, /#menu-content :focus-visible/);
+  assert.match(css, /button:disabled/);
+  assert.match(css, /outline:2px solid/);
+});
+
+test('P27 quality: tableaux et formulaires restent utilisables sur petit écran', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.match(css, /\.roster-table-wrap[\s\S]*?overflow:auto/);
+  assert.match(css, /\.table-scroll table,[\s\S]*?min-width:560px/);
+  assert.match(css, /input,[\s\S]*?width:100%/);
+  assert.match(css, /max-width:420px/);
+});
+
+test('P27 quality: feuille de style sans séquence \u005c\u005cn littérale hors commentaire', () => {
+  const css = readFileSync(new URL('../p27-rebirth.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(css, /\\\\n\\\\n/);
+});
+
+
+test('P27 catalogue joueur : cartes, filtres et pagination ont une présentation dédiée', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.player-library-toolbar','.player-library-card','.player-card-rating','.player-card-attributes','.player-library-footer']) {
+    assert.ok(css.includes(selector), `missing P27 style: ${selector}`);
+  }
+});
+
+test('P27 clubs, résultats et mercato : composants réels couverts par le thème de jeu', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.club-division-heading','.club-detail-hero','.results-panel','.result-card','.market-panel','.offer-card','.results-pagination']) {
+    assert.ok(css.includes(selector), `missing P27 style: ${selector}`);
+  }
+});
+
+
+test('P27 profil joueur : personnalisation, progression et statistiques disposent de composants dédiés', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.avatar-preview-stage','.profile-meta','.attribute-list','.editor-grid','.training-controls','.player-stats-panel .quick-grid','.form-chip','.history-list']) {
+    assert.ok(css.includes(selector), `missing player profile style: ${selector}`);
+  }
+});
+
+test('P27 fiches joueur : identité, attributs, parcours et palmarès sont harmonisés', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.player-career-hero','.player-career-avatar','.player-career-tags','.player-career-attributes','.player-career-timeline','.player-career-empty']) {
+    assert.ok(css.includes(selector), `missing player career style: ${selector}`);
+  }
+});
+
+
+test('P27 paramètres et compte : panneaux de configuration et sauvegarde ont une présentation dédiée', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.settings-card label','.settings-card input[type="range"]','.p27-cloud-only','.local-tag']) {
+    assert.ok(css.includes(selector), `missing settings/account style: ${selector}`);
+  }
+});
+
+test('P27 mercato : contrat, négociations et historique sont lisibles sur mobile', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.career-summary','.contract-details','.contract-actions','.sign-contract-row','.offer-terms','.market-history']) {
+    assert.ok(css.includes(selector), `missing mercato style: ${selector}`);
+  }
+});
+
+
+test('P27 compétitions : classements serveur, calendrier et barrages ont une hiérarchie visuelle dédiée', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.competition-layout','.server-season-overview','.division-table-block','.division-table-title','.standings-table','.server-fixture-preview','.promotion-playoff-block','.movement-preview']) {
+    assert.ok(css.includes(selector), `missing competition UI style: ${selector}`);
+  }
+  assert.match(main, /loadServerCompetitionOverview\(\)/);
+  assert.match(main, /COMPETITION_SNAPSHOT_INCOMPLETE/);
+  assert.match(main, /scheduleAudit\.fixtureCount!==1892/);
+});
+
+test('P27 résultats : archives paginées et feuille de match détaillée restent lisibles', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.results-list','.result-card-top','.result-scoreline','.result-card-bottom','.results-pagination','.result-detail-card','.result-team-grid','.result-team-stats','.result-player-table']) {
+    assert.ok(css.includes(selector), `missing results UI style: ${selector}`);
+  }
+  assert.match(main, /data-action="results-page"/);
+  assert.match(main, /data-action="show-result"/);
+  assert.match(main, /data-action="retry-results"/);
+});
+
+
+test('P27 tuile Classements : ouvre un écran dédié alimenté par les classements serveur', () => {
+  assert.match(main, /renderPage\(pageButton\.dataset\.view \|\| pageButton\.dataset\.page\)/);
+  assert.match(main, /page === 'rankings'/);
+  assert.match(main, /async function renderRankingsPage\(\)/);
+  assert.match(main, /retry-rankings/);
+  assert.match(main, /scheduleAudit\.fixtureCount !== 1892/);
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.ranking-screen','.ranking-division-list','.ranking-division']) {
+    assert.ok(css.includes(selector), `missing rankings screen style: ${selector}`);
+  }
+});
+
+test('P27 classements : totaux et noms de clubs sont dérivés du snapshot serveur', () => {
+  assert.match(main, /const clubCount = new Set\(leagues\.flatMap/);
+  assert.match(main, /<b>\$\{clubCount\}<\/b><span>CLUBS<\/span>/);
+  assert.match(main, /<b>\$\{leagues\.length\}<\/b><span>GROUPES<\/span>/);
+  assert.match(main, /clubNames\.get\(row\.id\)/);
+  const start = main.indexOf('async function renderRankingsPage()');
+  const end = main.indexOf('\\nasync function ', start + 20);
+  const rankings = main.slice(start, end > start ? end : undefined);
+  assert.doesNotMatch(rankings, /<b>156<\/b><span>CLUBS<\/span>/);
+  assert.doesNotMatch(rankings, /<b>9<\/b><span>GROUPES<\/span>/);
+});
+
+
+test('P27 joueurs : nationalités affichées en drapeaux et création initiale volontairement minimale', () => {
+  assert.match(main, /function countryFlag\(value\)/);
+  assert.match(main, /127397 \+ letter\.charCodeAt\(0\)/);
+  assert.match(main, /countryFlag\(player\.nationality\)/);
+  assert.match(main, /player-nationality/);
+  assert.match(main, /Quel nom sur le maillot \?/);
+  assert.match(main, /Un nom suffit pour commencer/);
+  const onboardingStart = main.indexOf("if (page === 'onboarding')");
+  const onboardingEnd = main.indexOf("} else if (page === 'home'", onboardingStart);
+  const onboarding = main.slice(onboardingStart, onboardingEnd);
+  assert.match(onboarding, /<input name="displayName"/);
+  assert.doesNotMatch(onboarding, /<select|<textarea|type="email"|type="password"/);
+});
+
+
+test('P27 créateur joueur : sélection visuelle des postes détaillés et drapeaux des pays', () => {
+  assert.match(main, /WORLD_COUNTRY_CODES = '[A-Z ]+'/);
+  assert.match(main, /new Intl\.DisplayNames\(\['fr'\], \{ type: 'region' \}\)/);
+  assert.match(main, /function renderCountryPicker\(\)/);
+  assert.match(main, /data-country-code=/);
+  assert.match(main, /function renderPositionPicker\(\)/);
+  for (const position of ['DC','LG','LD','MDC','MC','MO','AG','AD','AC','BU']) {
+    assert.ok(main.includes(`code:'${position}'`), `missing position ${position}`);
+  }
+  assert.match(main, /data-action="save-player-editor"/);
+  assert.match(main, /fpro-player-creation-options\.v1/);
+  const styles = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.position-picker-groups','.position-option','.country-picker','.country-flag-grid','.country-flag-option']) {
+    assert.ok(styles.includes(selector), `missing creator selector: ${selector}`);
+  }
+});
+
+test('P27 personnalisation joueur : apparence et pied se règlent par choix visuels, sans listes déroulantes', () => {
+  assert.match(main, /function renderVisualChoices\(title, key, options, current\)/);
+  assert.match(main, /renderVisualChoices\('PIED PRÉFÉRÉ'/);
+  assert.match(main, /renderVisualChoices\('TENUE'/);
+  assert.match(main, /data-player-choice=/);
+  assert.match(main, /data-action="save-player-editor"/);
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.player-visual-customizer','.player-choice-group','.player-choice','.choice-swatch']) {
+    assert.ok(css.includes(selector), `missing visual customization style: ${selector}`);
+  }
+});
+
+test('P27 UI: bibliothèque des clubs compacte par division avec accès rapide D1-D5', () => {
+  assert.match(main, /club-division-tabs/);
+  assert.match(main, /data-action="club-division-tab"/);
+  assert.match(main, /filterClubDiscovery\(\{target:\{id:'club-division-filter'\}\}\)/);
+  assert.match(main, /compact-club-card/);
+  assert.match(main, /numericValue\(b\.rating\)\?\?-1\)-\(numericValue\(a\.rating\)\?\?-1\)/);
+  assert.match(main, /const clubLibraryLimit = 20/);
+  assert.match(main, /data-action=\"club-page\"/);
+  assert.match(main, /clubLibraryPage\*clubLibraryLimit/);
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.club-division-tabs','.club-division-tab','.compact-club-card','.club-grid','.club-library-pagination']) {
+    assert.ok(css.includes(selector), `missing compact club library style: ${selector}`);
+  }
+});
+
+
+test('P27 bibliothèque joueurs: cartes horizontales, note globale et grille compacte à quatre colonnes', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.match(source, /player-card-name-line/);
+  assert.match(source, /player-origin-dot/);
+  assert.match(source, /aria-label="Note globale/);
+  assert.match(source, /player\.clubDivision/);
+  assert.match(source, /player-card-expanded-details/);
+  assert.match(source, /class="player-card-more"/);
+  assert.match(styles, /player-library-grid\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(styles, /player-library-card\.is-expanded\{[\s\S]*?grid-column:span 2/);
+  assert.match(styles, /@media\(max-width:760px\) and \(orientation:landscape\)[\s\S]*?player-library-grid\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+});
+
+test('P27 bibliothèque joueurs: toucher agrandit la carte, Voir plus ouvre la fiche de carrière', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(source, /playerCard\.classList\.toggle\('is-expanded'\)/);
+  assert.match(source, /card\.classList\.toggle\('is-expanded'\)/);
+  assert.match(source, /const careerButton = event\.target\.closest\('\.player-card-more'\)/);
+  assert.match(source, /renderPage\('player-detail'\)/);
+  assert.match(source, /aria-expanded="false"/);
+});
+
+
+test('P27 bibliothèque joueurs: une seule carte peut être agrandie à la fois', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(source, /player-library-card\.is-expanded'\)\.forEach\(card=>\{if\(card!==playerCard\)/);
+  assert.match(source, /player-library-card\.is-expanded'\)\.forEach\(item=>\{if\(item!==card\)/);
+  assert.match(source, /setAttribute\('aria-expanded','false'\)/);
+});
+
+
+test('P27 bibliothèque clubs: cartes horizontales compactes, note globale et métadonnées du championnat', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.match(source, /club-card-expanded-details/);
+  assert.match(source, /NOTE GLOBALE/);
+  assert.match(source, /VOIR EFFECTIF/);
+  assert.match(source, /CHAMPIONNAT/);
+  assert.match(source, /aria-expanded="false"/);
+  assert.match(styles, /club-grid\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(styles, /club-card\.compact-club-card\.is-expanded\{grid-column:span 2/);
+});
+
+test('P27 bibliothèque clubs: toucher développe une seule carte sans bloquer les actions', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(source, /clubCard\.classList\.toggle\('is-expanded',opening\)/);
+  assert.match(source, /club-card\.compact-club-card\.is-expanded/);
+  assert.match(source, /data-action="view-roster"/);
+  assert.match(source, /data-action="take-club"/);
+});
+
+
+test('P27 bibliothèque clubs: les données absentes restent neutres et les compteurs suivent le catalogue reçu', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(source, /const numericValue=value=>value!==null&&value!==undefined&&value!==''&&Number\.isFinite\(Number\(value\)\)\?Number\(value\):null/);
+  assert.match(source, /NOTE GLOBALE '\+\(rating\?\?'—'\)/);
+  assert.match(source, /rosterCount===null\?'—'/);
+  assert.match(source, /RÉPUTATION<\/b>'\+\(reputation\?\?'—'\)/);
+  assert.match(source, /<b>'\+items\.length\+'<\/b><span>CLUBS AU CATALOGUE/);
+  assert.doesNotMatch(source, /<b>156<\/b><span>CLUBS ACTIFS/);
 });

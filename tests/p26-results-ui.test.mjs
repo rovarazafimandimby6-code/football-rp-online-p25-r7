@@ -9,7 +9,7 @@ const [html, main, css] = await Promise.all([
 ]);
 
 test('P26 : le menu expose un espace dédié aux résultats serveur', () => {
-  assert.match(html, /data-page="results"/);
+  assert.match(main, /data-page="results"/);
   assert.match(main, /page === 'results'/);
   assert.match(main, /fetch\(`\/api\/results\?limit=10&offset=/);
 });
