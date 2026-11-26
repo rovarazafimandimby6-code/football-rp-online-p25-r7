@@ -187,3 +187,11 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Le test a été ajouté mais n'a pas encore été exécuté par une CI disponible. Aucun APK généré.
 - Cas cloud « écriture D1 réussie, accusé de réception perdu » : test ajouté. Il simule le commit distant, une coupure réseau avant l'accusé, le redémarrage du serveur P27 et la nouvelle livraison après délai. Le Worker répond ensuite `accepted: true` avec `duplicate: true`; la file locale est acquittée et la ligne distante, la carrière locale et les totaux restent uniques.
 - Cette vérification couvre le comportement de livraison au moins une fois (at-least-once) avec déduplication distante par identifiant de match. Elle ne remplace pas une exécution réelle contre un déploiement Cloudflare/D1.
+
+## Progression cloud et protection contre les anciennes sauvegardes — 26/11/2026
+
+- La progression D1 n'accepte pas de remplacement global envoyé par un client : l'API expose la lecture authentifiée et des commandes métier (entraînement/pratique), tandis que les récompenses de match restent réservées à l'autorité de match signée.
+- Les mutations utilisent un compare-and-swap SQL sur `revision`; une commande concurrente qui lit une ancienne révision ne peut pas écraser la valeur récente et recommence sur l'état courant.
+- Ajout d'un test concurrent exécutant trois pratiques simultanées : les trois commandes sont conservées, les pièces et attributs sont cohérents, et la révision progresse de façon attendue.
+- Ajout d'un test HTTP qui tente de restaurer une ancienne progression complète avec une valeur artificiellement élevée : le Worker répond 400 (`INVALID_PROGRESSION_ACTION`) et n'écrit aucune ligne.
+- Vérification statique des fichiers et présence des tests sur GitHub effectuées. Pas d'exécution locale ni de CI disponible dans ce contrôle; aucun test de déploiement Cloudflare/D1 et aucun APK généré.
