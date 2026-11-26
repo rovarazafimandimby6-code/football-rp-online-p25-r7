@@ -85,22 +85,29 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
       matchId:randomUUID(), result:'win', finalizedAt:Date.now(),
       stats:{ goals:2, assists:1, shots:3 }
     });
+    careerStore.recordMatch(founder.identity.accountId, {
+      matchId:randomUUID(), result:'draw', finalizedAt:Date.now(),
+      stats:{ goals:1, assists:0, shots:2 }
+    });
     const activityResponse = await fetch(`${base}/api/rp-clubs/${created.club.id}/activity`, {
       headers:{ authorization:`Bearer ${founder.token}` }
     });
     assert.equal(activityResponse.status, 200);
     const activity = await activityResponse.json();
-    assert.equal(activity.totals.matches, 1);
+    assert.equal(activity.totals.matches, 2);
     assert.equal(activity.totals.wins, 1);
-    assert.equal(activity.totals.goals, 2);
+    assert.equal(activity.totals.goals, 3);
     assert.equal(activity.totals.assists, 1);
     assert.equal(activity.members.find(row=>row.playerId===member.identity.playerId).goals, 2);
+    assert.equal(activity.members[0].playerId, member.identity.playerId);
+    assert.equal(activity.members[0].assists, 1);
+    assert.equal(activity.members[1].playerId, founder.identity.playerId);
     assert.deepEqual(activity.objectives.map(item => item.id), ['matches','wins','goals','assists']);
-    assert.equal(activity.objectives.find(item=>item.id==='matches').value, 1);
+    assert.equal(activity.objectives.find(item=>item.id==='matches').value, 2);
     assert.equal(activity.objectives.find(item=>item.id==='matches').target, 10);
-    assert.equal(activity.objectives.find(item=>item.id==='matches').progressPercent, 10);
+    assert.equal(activity.objectives.find(item=>item.id==='matches').progressPercent, 20);
     assert.equal(activity.objectives.find(item=>item.id==='wins').value, 1);
-    assert.equal(activity.objectives.find(item=>item.id==='goals').value, 2);
+    assert.equal(activity.objectives.find(item=>item.id==='goals').value, 3);
     assert.equal(activity.objectives.find(item=>item.id==='assists').value, 1);
     assert.equal(activity.objectives.every(item => item.completed === false), true);
     assert.equal(Object.hasOwn(activity.objectives[0], 'reward'), false);
