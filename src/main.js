@@ -460,7 +460,7 @@ function renderPage(page = 'home') {
       </form>
       <p class="notice">Aucun e-mail, mot de passe ou compte Google n'est nécessaire. Google restera facultatif et pourra être associé plus tard pour protéger votre carrière.</p>
     </section>`;
-  } else if (page === 'home') {
+  } else if (page === 'home' || page === 'career-hub') {
     const profile = profileStore.profile;
     const season = seasonStats.snapshot().totals;
     const latestMatch = seasonStats.snapshot().matches.slice(-1)[0];
@@ -468,49 +468,34 @@ function renderPage(page = 'home') {
     const contractStatus = career.getContractStatus?.();
     const contractLabel = contractStatus?.active ? `Contrat actif · ${contractStatus.daysRemaining} j` : 'Agent libre';
     const clubLabel = careerClub?.name || 'Sans club';
-    title.textContent = 'ACCUEIL';
-    subtitle.textContent = `VOTRE CARRIÈRE · ${profile.identity.displayName}`;
+    title.textContent = page === 'career-hub' ? 'Carrière' : 'Accueil';
+    subtitle.textContent = `VOTRE PARCOURS · ${profile.identity.displayName}`;
+    const levelStars = Math.max(1, Math.min(5, Number(profile.progression.level) || 1));
+    const stars = '★'.repeat(levelStars) + '☆'.repeat(5-levelStars);
     content.innerHTML = `
-      <div class="home-dashboard">
-        <section class="home-feature">
-          <div class="feature-copy">
-            <span class="eyebrow">MODE CARRIÈRE · SAISON PERSONNELLE</span>
-            <h2>VOTRE<br>HISTOIRE.</h2>
-            <p>Un joueur. Une carrière. Chaque match compte. Gagnez votre place et écrivez votre légende.</p>
-            <div class="home-primary-actions">
-              <button class="primary-cta" data-action="choose-match">JOUER UN MATCH <span>→</span></button>
-              <button class="secondary-cta" data-action="online-menu">MODE EN LIGNE</button>
-            </div>
-          </div>
-          <div class="feature-ball" aria-hidden="true"></div>
-          <div class="feature-matchday"><span>FRP</span><b>PLAYER CAREER</b><i></i><small>5V5 · MATCHDAY EXPERIENCE</small></div>
-          <div class="feature-foot"><span>SAISON PERSONNELLE</span><span>·</span><span>5 CONTRE 5</span><span>·</span><span>CONTRÔLE INDIVIDUEL</span></div>
+      <div class="p27-career-home">
+        <section class="p27-career-topline">
+          <div class="p27-progression"><span class="p27-stars" aria-label="Progression ${levelStars} sur 5">${stars}</span><b>NIVEAU ${profile.progression.level}</b></div>
+          <div class="p27-currency"><span>CRÉDITS JOUEUR</span><b>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</b></div>
         </section>
-        <aside class="home-side-panel">
-          <div class="home-player-heading">
-            <span class="user-avatar"><b>${escapeHTML(profile.identity.number)}</b><small>PRO</small></span>
-            <div><small>VOTRE FOOTBALLEUR</small><b>${escapeHTML(profile.identity.displayName)}</b><span>NIVEAU ${profile.progression.level} · ${escapeHTML(profile.identity.role)}</span></div>
-          </div>
-          <div class="home-career-row"><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div>
-          <div class="home-career-row"><span>CONTRAT</span><b>${escapeHTML(contractLabel)}</b></div>
-          <div class="home-stat-grid">
-            <div><b>${season.matches}</b><span>MATCHS</span></div>
-            <div><b>${season.goals}</b><span>BUTS</span></div>
-            <div><b>${season.shots}</b><span>TIRS</span></div>
-            <div><b>${season.tackles + season.interceptions}</b><span>RÉCUPÉRATIONS</span></div>
-          </div>
-          <div class="home-last-match">
-            <span class="eyebrow">DERNIÈRE PERFORMANCE</span>
-            ${latestMatch ? `<b>${latestMatch.rating.toFixed(1)} <small>/ 10</small></b><span>${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · ${latestMatch.goals} but(s)</span>` : '<b class="home-no-match">Aucun match joué</b><span>Votre première performance apparaîtra ici.</span>'}
-          </div>
-        </aside>
-        <nav class="quick-grid home-shortcuts" aria-label="Accès rapides">
-          <button class="quick-card" data-page="player"><span>01</span><b>MON JOUEUR</b><small>Profil · progression</small></button>
-          <button class="quick-card" data-page="clubs"><span>02</span><b>CLUBS</b><small>Équipes · effectifs</small></button>
-          <button class="quick-card" data-page="players"><span>03</span><b>JOUEURS</b><small>Profils · scouting</small></button>
-          <button class="quick-card" data-page="competitions"><span>04</span><b>COMPÉTITIONS</b><small>Ligues · classements</small></button>
-          <button class="quick-card" data-page="mercato"><span>05</span><b>MERCATO</b><small>Contrats · transferts</small></button>
+        <section class="p27-career-hero">
+          <div class="p27-career-hero-copy"><span class="eyebrow">ESPACE CARRIÈRE · PROFIL LOCAL</span><h2>Ta carrière.<br>Ton histoire.</h2><p>Construis ton parcours, fais évoluer ton joueur et trouve ta place dans le football P27.</p>
+          <div class="p27-career-hero-actions"><button class="primary-cta" data-page="player">CONTINUER MA CARRIÈRE <span>→</span></button><button class="secondary-cta" data-action="choose-match">MATCH AMICAL</button></div></div>
+          <div class="p27-career-hero-identity"><span class="p27-player-number">#${escapeHTML(profile.identity.number)}</span><b>${escapeHTML(profile.identity.displayName)}</b><small>${escapeHTML(profile.identity.role)} · ${escapeHTML(clubLabel)}</small></div>
+        </section>
+        <div class="p27-home-section-title"><span>ACCÈS RAPIDES</span><small>TES MODES DE JEU</small></div>
+        <nav class="p27-home-primary" aria-label="Modes principaux">
+          <button class="p27-home-card p27-home-card-career" data-page="player"><span class="p27-card-kicker">01 · PROGRESSION</span><b>CARRIÈRE</b><small>Profil · évolution · statistiques</small><i>→</i></button>
+          <button class="p27-home-card p27-home-card-friendly" data-action="choose-match"><span class="p27-card-kicker">02 · SUR LE TERRAIN</span><b>MATCH AMICAL</b><small>Préparer une rencontre 5 contre 5</small><i>→</i></button>
+          <button class="p27-home-card" data-page="mercato"><span class="p27-card-kicker">03 · GESTION</span><b>MERCATO</b><small>Transferts, joueurs et clubs</small><i>→</i></button>
+          <button class="p27-home-card" data-page="competitions"><span class="p27-card-kicker">04 · SAISON</span><b>COMPÉTITIONS</b><small>Championnats, classements et résultats</small><i>→</i></button>
+          <button class="p27-home-card" data-page="player"><span class="p27-card-kicker">05 · IDENTITÉ</span><b>MON JOUEUR</b><small>Personnalisation et entraînement</small><i>→</i></button>
         </nav>
+        <section class="p27-career-summary">
+          <div class="p27-home-section-title"><span>MON PARCOURS</span><small>DONNÉES LOCALES RÉELLES</small></div>
+          <div class="p27-career-facts"><div><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div><div><span>CONTRAT</span><b>${escapeHTML(contractLabel)}</b></div><div><span>MATCHS</span><b>${season.matches}</b></div><div><span>BUTS</span><b>${season.goals}</b></div></div>
+          <div class="p27-last-performance"><span>DERNIÈRE PERFORMANCE</span>${latestMatch ? `<b>${latestMatch.rating.toFixed(1)} / 10</b><small>${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · ${latestMatch.goals} but(s)</small>` : '<b>Pas encore de match enregistré</b><small>Les statistiques apparaîtront après une rencontre.</small>'}</div>
+        </section>
       </div>`;
   } else if (page === 'player') {
     const p = profileStore.profile;
