@@ -132,3 +132,12 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Le test vérifie également que la révocation reste effective après rechargement du stockage.
 - Cette vérification concerne les accès Club RP côté serveur. Elle ne force pas l'interruption d'un match de défi déjà engagé : une admission validée au démarrage du match reste distincte de l'appartenance communautaire pendant le match.
 - Test ajouté sur p27-dls26-global-adaptation. Résultat d'exécution à confirmer par CI ; aucune réussite n'est revendiquée.
+
+
+## Contrôle d'appartenance en temps réel dans les salles de défi — 26/11/2026
+
+- Ajout d'un test sur la liste de participants enregistrée au moment de l'acceptation du défi.
+- Une ancienne invitation à jouer ne suffit pas : l'admission doit également correspondre à l'appartenance Club RP actuelle.
+- Le test couvre le départ du club, le changement vers un autre club, le maintien d'un membre valide et le retour dans le bon club.
+- Le contrôle est effectué au moment de la demande d'entrée dans la salle. Les joueurs déjà admis peuvent terminer le match en cours ; cette règle évite de perturber une rencontre engagée.
+- Test ajouté sur p27-dls26-global-adaptation. Son exécution reste à confirmer par CI.
