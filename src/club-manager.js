@@ -133,6 +133,7 @@ export class ClubManager {
     this.clubs = new Map();
     const seedDefaultRosters = clubs === DEFAULT_CLUBS;
     const globallyUsedNames = new Set();
+    const globallyUsedNationalities = new Map();
     for (const input of Array.isArray(clubs) ? clubs : []) {
       const id = safeId(input?.id);
       if (!id || this.clubs.has(id)) continue;
@@ -168,7 +169,7 @@ export class ClubManager {
       normalized.clubLore = input.clubLore && typeof input.clubLore === 'object' ? { ...generateClubLore({ ...normalized, ...input }), ...input.clubLore, rivalries: Array.isArray(input.clubLore.rivalries) ? input.clubLore.rivalries.filter(item => item && typeof item.clubId === 'string').map(item => ({ clubId:item.clubId, type:String(item.type || 'sporting'), status:item.status === 'active' ? 'active' : 'proposed' })) : [] } : generateClubLore({ ...normalized, ...input });
       if (normalized.humanAdmission === 'system-only') normalized.control = 'ai';
       normalized.roster = seedDefaultRosters ? assignSystemContracts(balanceClubRosterQuality(
-        generateClubRoster({ ...normalized, recruitmentProfile: normalized.recruitmentProfile }, { size: Math.min(normalized.initialRosterSize, normalized.capacity), usedNames: globallyUsedNames }),
+        generateClubRoster({ ...normalized, recruitmentProfile: normalized.recruitmentProfile }, { size: Math.min(normalized.initialRosterSize, normalized.capacity), usedNames: globallyUsedNames, nationalityCounts: globallyUsedNationalities }),
         normalized
       ), normalized) : [];
       this.clubs.set(id, normalized);
