@@ -203,6 +203,48 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     });
     assert.equal(duplicateChallenge.status, 409);
 
+    const transfer = await fetch(`${base}/api/rp-clubs/${created.club.id}/presidency/transfer`, {
+      method:'POST', headers:{ authorization:`Bearer ${founder.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ playerId:invitee.identity.playerId })
+    });
+    assert.equal(transfer.status, 200);
+    assert.equal((await transfer.json()).presidentPlayerId, invitee.identity.playerId);
+    const formerFounderView = await fetch(base + '/api/rp-clubs/me', { headers:{ authorization:'Bearer ' + founder.token } });
+    const formerFounderMembership = (await formerFounderView.json()).membership;
+    assert.equal(formerFounderMembership.membership.isPresident, false);
+    assert.equal(formerFounderMembership.club.presidentPlayerId, invitee.identity.playerId);
+
+    const unauthorizedFounderRoleChange = await fetch(`${base}/api/rp-clubs/${created.club.id}/members/${member.identity.playerId}/role`, {
+      method:'POST', headers:{ authorization:`Bearer ${founder.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ role:'recruiter' })
+    });
+    assert.equal(unauthorizedFounderRoleChange.status, 403);
+
+    const newMember = await createPlayerSession();
+    const newJoin = await fetch(`${base}/api/rp-clubs/${created.club.id}/join-requests`, {
+      method:'POST', headers:{ authorization:`Bearer ${newMember.token}` }
+    });
+    assert.equal(newJoin.status, 201);
+    const newJoinRequest = (await newJoin.json()).request;
+    const presidentAccept = await fetch(`${base}/api/rp-clubs/${created.club.id}/join-requests/${newJoinRequest.id}/decision`, {
+      method:'POST', headers:{ authorization:`Bearer ${invitee.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ decision:'accept' })
+    });
+    assert.equal(presidentAccept.status, 200);
+    const removal = await fetch(`${base}/api/rp-clubs/${created.club.id}/members/${newMember.identity.playerId}/remove`, {
+      method:'POST', headers:{ authorization:`Bearer ${invitee.token}` }
+    });
+    assert.equal(removal.status, 200);
+    const removedMemberView = await fetch(base + '/api/rp-clubs/me', { headers:{ authorization:'Bearer ' + newMember.token } });
+    assert.equal((await removedMemberView.json()).membership, null);
+
+    const governanceView = await fetch(base + '/api/rp-clubs/me', { headers:{ authorization:'Bearer ' + invitee.token } });
+    const governanceLog = (await governanceView.json()).membership.governanceLog;
+    assert.ok(governanceLog.some(event => event.action === 'presidency_transferred'));
+    assert.ok(governanceLog.some(event => event.action === 'join_accepted'));
+    assert.ok(governanceLog.some(event => event.action === 'member_removed'));
+    assert.equal(governanceLog.some(event => Object.hasOwn(event, 'accountId')), false);
+
     const founderLeave = await fetch(`${base}/api/rp-clubs/${created.club.id}/leave`, {
       method: 'POST', headers: { authorization: `Bearer ${founder.token}` }
     });
