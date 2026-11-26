@@ -12,6 +12,10 @@ test('P27 DLS 26 : catalogue de références normal cards couvrant les quatre r�
   assert.equal(new Set(DLS26_REFERENCE_PROFILES.map(profile => profile.id)).size, DLS26_REFERENCE_PROFILES.length);
   assert.ok(DLS26_REFERENCE_PROFILES.every(profile => profile.heightCm >= 160 && profile.heightCm <= 205));
   assert.ok(DLS26_REFERENCE_PROFILES.every(profile => profile.source.startsWith('https://')));
+  for (const profile of DLS26_REFERENCE_PROFILES) {
+    const expectedKeys = profile.position === 'GK' ? DLS26_GOALKEEPER_ATTRIBUTE_KEYS : DLS26_ATTRIBUTE_KEYS;
+    assert.deepEqual(Object.keys(profile.stats), [...expectedKeys], `statistiques incomplètes pour ${profile.id}`);
+  }
 });
 
 test('P27 DLS 26 : adaptation conserve la forme statistique, la taille et les limites', () => {
@@ -66,4 +70,8 @@ test('P27 DLS 26 : les profils ajoutés correspondent aux cartes normales vérif
   assert.equal(byId.get('defender-centre-84b').stats.TAC, 93);
   assert.equal(byId.get('goalkeeper-balanced-84').stats.GKR, 82);
   assert.equal(byId.get('goalkeeper-tall-84').heightCm, 200);
+  assert.equal(byId.get('forward-finisher-84').heightCm, 174);
+  assert.equal(byId.get('forward-finisher-84').stats.SPE, 77);
+  assert.equal(byId.get('midfielder-controller-85').stats.SPE, 74);
+  assert.equal(byId.get('midfielder-playmaker-83').stats.PAS, 92);
 });
