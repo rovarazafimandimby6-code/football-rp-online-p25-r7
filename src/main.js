@@ -611,7 +611,7 @@ function renderPage(page = 'home') {
           <button class="p27-dls-mode p27-dls-next" data-action="choose-match"><span class="p27-dls-mode-kicker">PROCHAIN MATCH</span><span class="p27-dls-mode-art"><b>VS</b><i>⚽</i></span><strong>JOUER</strong><small>Préparer une rencontre amicale</small><em>›</em></button>
           <button class="p27-dls-mode p27-dls-team" data-page="players"><span class="p27-dls-mode-kicker">GESTION DE L'ÉQUIPE</span><span class="p27-dls-mode-art"><b>XI</b><i>♟</i></span><strong>EFFECTIF</strong><small>Joueurs, postes et profils</small><em>›</em></button>
           <button class="p27-dls-mode p27-dls-transfers" data-page="mercato"><span class="p27-dls-mode-kicker">MARCHÉ DES TRANSFERTS</span><span class="p27-dls-mode-art"><b>⇄</b><i>✦</i></span><strong>TRANSFERTS</strong><small>Contrats et opportunités</small><em>›</em></button>
-          <button class="p27-dls-mode p27-dls-club" data-page="clubs"><span class="p27-dls-mode-kicker">VOTRE INSTITUTION</span><span class="p27-dls-mode-art"><b>♜</b><i>★</i></span><strong>MON CLUB</strong><small>${escapeHTML(clubLabel)}</small><em>›</em></button>
+          <button class="p27-dls-mode p27-dls-club" data-page="clubs"><span class="p27-dls-mode-kicker">ÉQUIPE DE CHAMPIONNAT</span><span class="p27-dls-mode-art"><b>XI</b><i>♜</i></span><strong>MON ÉQUIPE</strong><small>${escapeHTML(clubLabel)}</small><em>›</em></button>
         </div>
         <div class="p27-dls-career-footer">
           <div><small>CRÉDITS DISPONIBLES</small><strong>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</strong></div>
@@ -642,9 +642,7 @@ function renderPage(page = 'home') {
         <button class="p27-hub-panel p27-hub-market" data-page="mercato">
           <span class="p27-hub-kicker">MARCHÉ</span><strong>MERCATO</strong><small>${pendingOffers} offre(s) en attente</small><i>›</i>
         </button>
-        <button class="p27-hub-panel p27-hub-club" data-action="view-roster" data-club="${careerClub?.id || ''}">
-          <span class="p27-hub-kicker">INSTITUTION</span><strong>${escapeHTML(careerClub?.name || 'MON CLUB')}</strong><small>${careerClub ? `NOTE ${careerClub.rating} · ${escapeHTML(careerClub.stadium || 'Stade')}` : 'Choisir un club'}</small><i>›</i>
-        </button>
+        <button class="p27-hub-panel p27-hub-club" data-page="rp-club"><span class="p27-hub-kicker">COMMUNAUTÉ · GROUPEMENT DE JOUEURS</span><strong>CLUB RP</strong><small>Créer ou rejoindre un club</small><i>›</i></button>
         <button class="p27-hub-panel p27-hub-results" data-page="results">
           <span class="p27-hub-kicker">HISTORIQUE</span><strong>RÉSULTATS</strong><small>${latestMatch ? `${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · ${latestMatch.rating.toFixed(1)}/10` : 'Aucun match enregistré'}</small><i>›</i>
         </button>
@@ -717,6 +715,11 @@ ${renderGoogleProtectionCard({ compact: true })}
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PALMARÈS</span><h2>Coupes & trophées</h2></div></div><div class="player-career-empty"><b>Palmarès à construire</b><p>Aucun titre n'est attribué automatiquement. Les coupes et distinctions apparaîtront après les compétitions réellement disputées et leurs résultats validés.</p></div></section>
       </div>`;
     loadPlayerCareer(player);
+  } else if (page === 'rp-club') {
+    title.textContent = 'CLUB RP';
+    subtitle.textContent = 'COMMUNAUTÉ · RECRUTEMENT · VIE COLLECTIVE';
+    content.innerHTML = '<div id="rp-club-root"><div class="rp-club-loading">CHARGEMENT…</div></div>';
+    void loadRpClubPage();
   } else if (page === 'clubs') {
     const divisionLabels = { D1: 'D1 · PREMIER LEAGUE', D2: 'D2 · LIGUE 2', D3: 'D3 · NATIONAL LEAGUE', D4: 'D4 · CHALLENGER LEAGUE', D5: 'D5 · REGIONAL LEAGUE', AMATEUR: 'AMATEUR' };
     const nationalityNames = { MG:'Madagascar', FR:'France', SN:'Sénégal', BR:'Brésil', ES:'Espagne', AR:'Argentine', PT:'Portugal', JP:'Japon', NG:'Nigeria', IT:'Italie', GB:'Angleterre', KE:'Kenya' };
@@ -1319,6 +1322,7 @@ menu.addEventListener('click', event => {
   else if (action === 'open-player-profile') { const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); }
   else if (action === 'back-player-library') { selectedPlayerProfile = null; renderPage(playerProfileReturnPage); }
   else if (action === 'view-roster') { selectedClubId = event.target.closest('[data-club]')?.dataset.club || null; renderPage('clubs'); }
+  else if (action.startsWith('rp-club-')) { void performRpClubAction(action, event.target.closest('[data-action]')); }
   else if (action === 'back-clubs') { selectedClubId = null; renderPage('clubs'); }
   else if (action === 'results-page') { renderResultsPage(Number(event.target.closest('[data-offset]')?.dataset.offset || 0)); }
   else if (action === 'show-result') { const roomId = event.target.closest('[data-room]')?.dataset.room; if (roomId) renderResultDetail(roomId); }
