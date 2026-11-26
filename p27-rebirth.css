@@ -21,13 +21,7 @@
 .menu-status{color:#9eacc0;font-size:8px;letter-spacing:1px}.menu-status i{background:#63d5e8;box-shadow:0 0 9px #63d5e8}
 .fullscreen-toggle{min-height:32px;border-color:var(--p27-line);border-radius:7px;background:#151d2a;color:#dce8f8;font-size:9px}
 .menu-layout{z-index:2;display:flex;flex:1;min-height:0;min-width:0;flex-direction:column;gap:0;width:100%;max-width:1500px;margin:0 auto;padding:0 clamp(12px,2.4vw,34px)}
-.menu-sidebar{order:0;display:flex;flex:0 0 auto;flex-direction:row;align-items:center;gap:5px;overflow-x:auto;overflow-y:hidden;padding:9px 0;border:0;border-bottom:1px solid var(--p27-line);scrollbar-width:none}
-.menu-sidebar::-webkit-scrollbar{display:none}
 .menu-section-label,.sidebar-spacer{display:none}
-.menu-sidebar button{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:7px;width:auto;min-height:34px;padding:0 12px;border:1px solid transparent;border-radius:7px;background:transparent;color:#aab6c8;font-size:10px;font-weight:750;white-space:nowrap}
-.menu-sidebar button span{width:auto;color:#8199b7;font-size:14px}
-.menu-sidebar button.active{border-color:rgba(91,171,255,.32);background:linear-gradient(180deg,rgba(58,126,196,.26),rgba(34,79,128,.16));color:#fff;box-shadow:inset 0 -2px 0 var(--p27-blue)}
-.menu-sidebar button.active span{color:#8fc7ff}
 .menu-main{display:flex;flex:1;min-height:0;min-width:0;flex-direction:column;overflow:hidden;padding:12px 0 8px}
 .menu-heading{flex:0 0 auto;min-height:58px;align-items:center;margin:0 0 12px;padding:0 2px}
 .eyebrow{color:#70baff;font-size:8px;letter-spacing:1.7px}
@@ -109,14 +103,13 @@
 .menu-footer{flex:0 0 25px;min-height:25px;padding:6px clamp(14px,3vw,38px);border-top:1px solid var(--p27-line);background:rgba(5,8,14,.82);color:#71839d;font-size:7px}
 #main-menu:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.08),transparent 25%,rgba(0,0,0,.18));z-index:0}
 @media(max-width:900px){
- .menu-layout{padding-inline:12px}.menu-sidebar button{padding-inline:9px;font-size:9px}
+ .menu-layout{padding-inline:12px}
  .home-dashboard{grid-template-columns:minmax(0,1.4fr) minmax(190px,.8fr)}
  .home-shortcuts{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media(max-width:760px){
  .menu-topbar{height:52px;flex-basis:52px;padding-inline:10px}.menu-status{display:none}
- .menu-layout{padding-inline:9px}.menu-sidebar{padding:6px 0;gap:3px}
- .menu-sidebar button{min-height:32px;padding:0 8px;font-size:8px}.menu-sidebar button span{font-size:12px}
+ .menu-layout{padding-inline:9px}
  .menu-main{padding-top:8px}.menu-heading{min-height:48px;margin-bottom:8px}.menu-heading h1{font-size:19px}
  .menu-heading p{font-size:8px}.menu-user{padding:4px}.menu-user span:last-child{display:none}
  .home-dashboard{grid-template-columns:minmax(0,1.35fr) minmax(170px,.8fr);gap:8px}
@@ -130,7 +123,6 @@
 }
 @media(max-height:460px) and (orientation:landscape){
  .menu-topbar{height:48px;flex-basis:48px}.brand-shield{width:29px;height:32px}
- .menu-sidebar{padding:5px 0}.menu-sidebar button{min-height:29px}
  .menu-main{padding-top:6px}.menu-heading{min-height:42px;margin-bottom:6px}
  .menu-heading h1{font-size:18px}.menu-heading p{font-size:8px}
  .home-feature{min-height:174px}.feature-copy h2{font-size:34px}
@@ -147,12 +139,6 @@
  .competition-layout{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){#main-menu *,#main-menu *:before,#main-menu *:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
-
-/* P27 Rebirth — second pass: game-like mobile shell and football-first hierarchy */
-.menu-sidebar button{position:relative;letter-spacing:.15px}
-.menu-sidebar button:before{content:"";position:absolute;inset:0;border-radius:7px;background:linear-gradient(135deg,rgba(104,176,245,.08),transparent);opacity:0;transition:opacity .18s}
-.menu-sidebar button:hover:before,.menu-sidebar button.active:before{opacity:1}
-.menu-sidebar button.active{color:#fff}
 .menu-main{position:relative}
 .menu-heading{border-bottom:1px solid rgba(215,231,250,.09)}
 .menu-heading h1{text-shadow:0 3px 18px rgba(0,0,0,.5)}
@@ -174,9 +160,6 @@
 .small-action,.secondary-cta{font-weight:800;letter-spacing:.55px}
 @media(max-width:760px){
  .menu-layout{padding:0 8px}
- .menu-sidebar{order:2;flex:0 0 auto;position:relative;z-index:5;margin-top:5px;padding:7px 2px calc(7px + env(safe-area-inset-bottom));border:1px solid rgba(210,228,250,.12);border-radius:10px 10px 0 0;background:rgba(8,12,20,.97);backdrop-filter:blur(18px);box-shadow:0 -8px 26px rgba(0,0,0,.28)}
- .menu-sidebar button{flex:1 0 auto;min-width:54px;min-height:43px;flex-direction:column;gap:3px;padding:4px 6px;font-size:8px}
- .menu-sidebar button span{font-size:15px;line-height:16px}
  .menu-main{order:1;padding:8px 0 4px}
  .menu-heading{min-height:45px;margin-bottom:8px}
  .menu-heading h1{font-size:18px}
@@ -184,8 +167,6 @@
  .menu-footer{display:none}
 }
 @media(max-width:560px){
- .menu-sidebar{justify-content:flex-start;overflow-x:auto}
- .menu-sidebar button{flex:0 0 65px}
  .home-feature{min-height:190px}
  .home-feature:after{right:-14%;width:64%}
  .feature-copy h2{font-size:35px}
@@ -198,9 +179,6 @@
  .player-card-attributes span{padding:4px 2px}
 }
 @media(max-height:460px) and (orientation:landscape) and (max-width:900px){
- .menu-sidebar{padding-block:4px}
- .menu-sidebar button{min-height:34px;flex-direction:row;gap:5px}
- .menu-sidebar button span{font-size:13px}
  .menu-heading{min-height:38px}
 }
 
@@ -269,9 +247,6 @@
 #main-menu button,#main-menu input,#main-menu select{font:inherit}
 #main-menu button{touch-action:manipulation}
 #main-menu :focus-visible{outline:2px solid #83c7ff;outline-offset:3px}
-.menu-topbar,.menu-sidebar,.menu-main,.menu-footer{box-sizing:border-box}
-.menu-sidebar button{min-height:42px;font-size:11px}
-.menu-sidebar button span{font-size:17px}
 .menu-heading h1{font-size:clamp(22px,3vw,32px)}
 .menu-heading p{font-size:12px}
 .eyebrow{font-size:10px;letter-spacing:1.5px}
@@ -348,8 +323,6 @@
 .lineup-team b{font-size:16px}
 .lineup-dots i{width:30px;height:30px;font-size:11px}
 @media(max-width:760px){
- .menu-sidebar button{min-height:46px;font-size:10px}
- .menu-sidebar button span{font-size:17px}
  .menu-heading h1{font-size:21px}
  .menu-heading p{font-size:11px}
  .home-stat-grid b{font-size:21px}
@@ -376,7 +349,6 @@
  .menu-user b{max-width:90px;overflow:hidden;text-overflow:ellipsis}
 }
 @media(hover:hover){
- .quick-card,.player-library-card,.club-card,.menu-sidebar button{transition:transform .16s ease,border-color .16s ease,background .16s ease}
  .quick-card:hover,.player-library-card:hover,.club-card:hover{transform:translateY(-2px);border-color:rgba(111,184,250,.38)!important}
 }
 
@@ -405,14 +377,6 @@
 #main-menu .menu-status{font-size:10px}
 #main-menu .fullscreen-toggle{min-height:38px;padding-inline:12px;font-size:10px}
 #main-menu .menu-layout{width:100%;max-width:1600px}
-#main-menu .menu-sidebar{gap:6px}
-#main-menu .menu-sidebar button{
-  min-height:42px;
-  padding-inline:13px;
-  font-size:11px;
-  letter-spacing:.25px;
-}
-#main-menu .menu-sidebar button span{font-size:17px}
 #main-menu .menu-main{padding-top:12px}
 #main-menu .menu-heading{min-height:62px;margin-bottom:13px}
 #main-menu .menu-heading h1{font-size:clamp(23px,3vw,34px);letter-spacing:-.8px}
@@ -485,7 +449,6 @@
 #main-menu .menu-footer{font-size:9px}
 #main-menu #menu-content{scroll-padding-block:12px 24px}
 @media(max-width:900px){
-  #main-menu .menu-sidebar button{font-size:10px;padding-inline:10px}
   #main-menu .home-dashboard{gap:10px}
 }
 @media(max-width:760px){
@@ -494,9 +457,6 @@
   #main-menu .menu-heading{min-height:48px}
   #main-menu .menu-heading h1{font-size:21px}
   #main-menu .menu-heading p{font-size:11px}
-  #main-menu .menu-sidebar{gap:4px}
-  #main-menu .menu-sidebar button{min-height:46px;min-width:58px;font-size:10px}
-  #main-menu .menu-sidebar button span{font-size:17px}
   #main-menu .home-feature{min-height:205px}
   #main-menu .feature-copy h2{font-size:clamp(32px,5vw,44px)}
   #main-menu .feature-copy p{font-size:12px}
@@ -505,8 +465,6 @@
 @media(max-height:480px) and (orientation:landscape){
   #main-menu .menu-topbar{min-height:44px;flex-basis:44px}
   #main-menu .menu-layout{padding-inline:12px}
-  #main-menu .menu-sidebar{padding-block:4px}
-  #main-menu .menu-sidebar button{min-height:38px;flex-direction:row;gap:6px;padding-inline:10px}
   #main-menu .menu-main{padding-top:6px}
   #main-menu .menu-heading{min-height:40px;margin-bottom:6px}
   #main-menu .menu-heading h1{font-size:19px}
@@ -562,7 +520,6 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
   min-height:0;
   overflow:hidden;
 }
-#main-menu .menu-sidebar{min-height:0;overflow-y:auto;overscroll-behavior:contain}
 #main-menu .menu-main{min-height:0;overflow-y:auto;overscroll-behavior:contain}
 #main-menu .menu-footer{flex:0 0 auto}
 #menu-orientation{z-index:10000}
@@ -670,8 +627,6 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
 #main-menu .primary-cta:hover{filter:brightness(1.08)}
 #main-menu .secondary-cta,
 #main-menu .small-action{border:1px solid var(--p27-border-strong)}
-#main-menu .menu-sidebar button:focus-visible,
-#main-menu button:focus-visible{outline-offset:2px}
 #main-menu .notice{border:1px solid var(--p27-border);border-radius:8px;line-height:1.45}
 #main-menu :where(.home-dashboard,.home-shortcuts,.profile-layout,.club-grid,.competition-layout,.player-library-grid)>*{min-width:0}
 #main-menu :where(h1,h2,h3,p,small,span,b,strong){overflow-wrap:anywhere}
@@ -1039,17 +994,9 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
 #main-menu .p27-last-performance>span{font-size:9px;font-weight:850;letter-spacing:.65px;color:#8ea6c3}
 #main-menu .p27-last-performance>b{font-size:16px;color:#f4f8ff}
 #main-menu .p27-last-performance>small{font-size:10px;color:#a8bad0}
-#main-menu .menu-sidebar [data-action="choose-match"]{border-color:rgba(123,189,255,.18)}
 @media(max-width:760px){#main-menu .p27-home-primary{grid-template-columns:repeat(2,minmax(0,1fr))}#main-menu .p27-home-card,#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{grid-column:span 1;min-height:125px}#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{min-height:145px}#main-menu .p27-career-hero{grid-template-columns:minmax(0,1fr) 100px;gap:10px}#main-menu .p27-career-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){#main-menu .p27-career-hero{grid-template-columns:1fr}#main-menu .p27-career-hero-identity{display:none}#main-menu .p27-career-hero h2{font-size:34px}#main-menu .p27-career-hero-actions{display:grid;grid-template-columns:1fr}#main-menu .p27-home-primary{gap:7px}#main-menu .p27-home-card{padding:11px;min-height:115px}#main-menu .p27-home-card>b{font-size:15px}#main-menu .p27-home-card>small{font-size:9px}#main-menu .p27-career-topline{padding:9px}#main-menu .p27-stars{letter-spacing:0;font-size:15px}}
-
-/* Hybrid secondary navigation: horizontally browsable tabs, compact on mobile landscape. */
-#main-menu .menu-secondary-nav{display:flex;align-items:center;gap:6px;max-width:100%;margin:0 0 14px;padding:8px 10px;border:1px solid var(--p27-border);border-radius:9px;background:rgba(7,15,25,.78);overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:thin}
-#main-menu .menu-secondary-nav>span{flex:0 0 auto;padding:0 7px;color:#7f98b6;font-size:9px;font-weight:900;letter-spacing:.7px}
-#main-menu .menu-secondary-nav button{flex:0 0 auto;min-height:34px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:#b8c9dd;font-size:10px;font-weight:850;white-space:nowrap}
-#main-menu .menu-secondary-nav button.active{border-color:rgba(113,181,242,.32);background:rgba(42,91,142,.32);color:#f0f7ff}
-#main-menu .menu-secondary-nav button:hover{background:rgba(85,151,216,.15);color:#fff}
-@media(max-height:520px) and (orientation:landscape){#main-menu .menu-secondary-nav{margin-bottom:8px;padding:5px 8px}#main-menu .menu-secondary-nav button{min-height:30px;padding:0 9px}}
+@media(max-height:520px) and (orientation:landscape){}
 
 
 /* P27 GRAND MENU REDESIGN — full non-match application shell.
@@ -1075,31 +1022,12 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
   display:grid;grid-template-columns:226px minmax(0,1fr);grid-template-rows:minmax(0,1fr);
   gap:0;max-width:1660px;padding:0 clamp(16px,2.4vw,36px);overflow:hidden;
 }
-#main-menu .menu-sidebar{
-  order:0;display:flex;flex-direction:column;align-items:stretch;gap:5px;
-  min-width:0;padding:25px 15px 18px 0;overflow-y:auto;overflow-x:hidden;
-  border:0;border-right:1px solid rgba(154,190,231,.14);
-}
 #main-menu .menu-section-label{
   display:block;padding:8px 11px 5px;color:#66819f;font-size:9px;
   font-weight:900;letter-spacing:1.5px;
 }
 #main-menu .menu-section-label.secondary-label{margin-top:18px}
 #main-menu .sidebar-spacer{display:block;flex:1;min-height:20px}
-#main-menu .menu-sidebar button{
-  justify-content:flex-start;gap:12px;width:100%;min-height:46px;padding:0 13px;
-  border:1px solid transparent;border-radius:8px;color:#a9bad0;
-  font-size:11px;font-weight:800;text-align:left;
-}
-#main-menu .menu-sidebar button span{
-  display:grid;place-items:center;width:22px;height:22px;color:#85a8cc;font-size:16px;
-}
-#main-menu .menu-sidebar button.active{
-  border-color:rgba(105,183,255,.25);
-  background:linear-gradient(100deg,rgba(48,119,184,.27),rgba(22,47,73,.16));
-  box-shadow:inset 3px 0 #69b7ff;color:#fff;
-}
-#main-menu .menu-sidebar button.active span{color:#a6d6ff}
 #main-menu .menu-main{order:0;padding:26px 0 12px 28px;overflow:hidden}
 #main-menu .menu-heading{
   min-height:78px;margin:0 0 17px;padding:0 2px 15px;
@@ -1108,18 +1036,6 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
 #main-menu .eyebrow{font-size:9px;letter-spacing:1.8px;font-weight:900}
 #main-menu .menu-heading h1{margin:7px 0 5px;font-size:clamp(23px,2.6vw,35px);letter-spacing:-.9px}
 #main-menu .menu-heading p{font-size:12px;color:#9aadc5}
-#main-menu .menu-secondary-nav{
-  gap:7px;margin:0 0 18px;padding:0 0 11px;border:0;border-bottom:1px solid rgba(215,231,250,.1);
-  border-radius:0;background:transparent;
-}
-#main-menu .menu-secondary-nav>span{padding-left:2px;padding-right:10px;font-size:8px;letter-spacing:1.2px}
-#main-menu .menu-secondary-nav button{
-  min-height:35px;padding:0 13px;border:1px solid rgba(151,184,222,.12);
-  border-radius:6px;background:rgba(255,255,255,.025);font-size:10px;
-}
-#main-menu .menu-secondary-nav button.active{
-  border-color:rgba(105,183,255,.36);background:rgba(52,119,181,.2);color:#eaf6ff;
-}
 #main-menu #menu-content{padding:0 5px 28px 1px}
 #main-menu #menu-content>section,
 #main-menu #menu-content>.competition-panel,
@@ -1169,53 +1085,31 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
 @media(max-width:900px) and (min-width:761px){
   #main-menu .menu-layout{grid-template-columns:190px minmax(0,1fr);padding-inline:12px}
   #main-menu .menu-main{padding-left:18px}
-  #main-menu .menu-sidebar{padding-right:10px}
-  #main-menu .menu-sidebar button{font-size:10px}
 }
 @media(max-width:760px){
   #main-menu .menu-topbar{height:54px;flex-basis:54px;padding-inline:12px}
   #main-menu .brand-shield{width:31px;height:35px}
   #main-menu .brand-mark strong{font-size:11px}
   #main-menu .menu-layout{display:flex;flex-direction:column;padding:0 9px}
-  #main-menu .menu-sidebar{
-    order:2;flex:0 0 auto;display:flex;flex-direction:row;align-items:stretch;gap:3px;
-    margin:7px 0 0;padding:6px 3px max(7px,env(safe-area-inset-bottom));
-    overflow-x:auto;overflow-y:hidden;border:1px solid rgba(151,184,222,.17);
-    border-radius:11px 11px 0 0;background:rgba(6,11,19,.98);
-  }
   #main-menu .menu-section-label,#main-menu .sidebar-spacer{display:none}
-  #main-menu .menu-sidebar button{
-    flex:1 0 66px;width:auto;min-width:0;min-height:49px;flex-direction:column;
-    justify-content:center;gap:3px;padding:4px 5px;font-size:8px;text-align:center;
-  }
-  #main-menu .menu-sidebar button span{width:auto;height:18px;font-size:15px}
-  #main-menu .menu-sidebar button.active{box-shadow:inset 0 -2px #69b7ff}
   #main-menu .menu-main{order:1;flex:1;min-height:0;padding:12px 0 5px;overflow:hidden}
   #main-menu .menu-heading{min-height:58px;margin-bottom:10px;padding-bottom:10px}
   #main-menu .menu-heading h1{font-size:21px}
   #main-menu .menu-heading p{font-size:10px}
-  #main-menu .menu-secondary-nav{margin-bottom:12px;padding-bottom:8px}
-  #main-menu .menu-secondary-nav button{min-height:32px;padding-inline:10px;font-size:9px}
   #main-menu #menu-content{padding-bottom:15px}
   #main-menu .competition-panel,#main-menu .profile-editor,#main-menu .player-card,#main-menu .attribute-list{padding:13px}
 }
 @media(max-height:520px) and (orientation:landscape){
   #main-menu .menu-topbar{height:46px;flex-basis:46px}
   #main-menu .menu-layout{grid-template-columns:174px minmax(0,1fr)}
-  #main-menu .menu-sidebar{padding-top:10px;gap:2px}
-  #main-menu .menu-sidebar button{min-height:36px}
-  #main-menu .menu-sidebar button span{font-size:14px}
   #main-menu .menu-main{padding-top:12px;padding-left:17px}
   #main-menu .menu-heading{min-height:54px;margin-bottom:8px;padding-bottom:8px}
   #main-menu .menu-heading h1{font-size:20px}
-  #main-menu .menu-secondary-nav{margin-bottom:9px}
   #main-menu .menu-footer{min-height:20px;flex-basis:20px}
 }
 @media(max-width:760px) and (max-height:520px) and (orientation:landscape){
   #main-menu .menu-layout{display:flex;flex-direction:column}
-  #main-menu .menu-sidebar{order:2;flex-direction:row}
   #main-menu .menu-main{order:1;padding:7px 0 3px}
-  #main-menu .menu-sidebar button{min-height:39px}
 }
 @media(prefers-reduced-motion:reduce){
   #main-menu button{transition:none}
