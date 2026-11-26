@@ -86,7 +86,23 @@ const CLUB_NAME_STYLES = Object.freeze({
   GH:['prefix:AS','prefix:United','prefix:Athletic','prefix:Sporting'],
   CM:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Étoile'],
   EG:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Sporting'],
-  ZA:['prefix:United','prefix:City','prefix:Athletic','prefix:FC']
+  ZA:['prefix:United','prefix:City','prefix:Athletic','prefix:FC'],
+  IE:['suffix:Athletic','suffix:United','suffix:Rovers','suffix:Town','suffix:FC'],
+  NL:['prefix:Sportvereniging','prefix:FC','prefix:SC','suffix:United','suffix:Athletic'],
+  BE:['prefix:Royal','prefix:K','prefix:Sporting','prefix:Union','suffix:FC'],
+  HR:['prefix:NK','prefix:FK','prefix:Sporting','suffix:United'],
+  RS:['prefix:FK','prefix:SC','prefix:Sporting','suffix:United'],
+  TR:['suffix:SK','suffix:FK','prefix:Anadolu','prefix:Sporting'],
+  GR:['prefix:AO','prefix:PAE','prefix:Athletic','suffix:FC'],
+  US:['suffix:United','suffix:City','suffix:SC','suffix:Athletic','suffix:FC'],
+  CA:['suffix:United','suffix:City','suffix:SC','suffix:Athletic','suffix:FC'],
+  MX:['prefix:Deportivo','prefix:Atlético','prefix:Club','prefix:Unión'],
+  CO:['prefix:Deportivo','prefix:Atlético','prefix:Club','prefix:Unión'],
+  PE:['prefix:Deportivo','prefix:Atlético','prefix:Club','prefix:Unión'],
+  UY:['prefix:Deportivo','prefix:Atlético','prefix:Club','prefix:Unión'],
+  CL:['prefix:Deportivo','prefix:Atlético','prefix:Club','prefix:Unión'],
+  KR:['suffix:FC','suffix:United','suffix:SC','suffix:Athletic'],
+  AU:['suffix:United','suffix:City','suffix:Athletic','suffix:FC','suffix:SC']
 });
 const DEFAULT_CLUB_NAME_STYLES = ['suffix:AC','suffix:FC','suffix:United','suffix:Sporting','suffix:Athletic','suffix:City','suffix:Rovers','suffix:SC'];
 const makeClubName = (brand, countryCode, index) => {
