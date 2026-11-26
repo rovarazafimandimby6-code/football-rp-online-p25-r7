@@ -1747,3 +1747,70 @@
  #main-menu #menu-content .compact-club-card svg{width:27px!important;height:27px!important}
  #main-menu #menu-content .club-card-expanded-details{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* P27 DLS26-inspired modular hub and ultra-compact game header. */
+#main-menu .p27-game-topbar{height:26px!important;min-height:26px!important;max-height:8vh!important;flex:0 0 26px!important;gap:7px;padding:2px 8px!important;background:linear-gradient(180deg,rgba(4,13,24,.97),rgba(7,19,33,.92));border-bottom:1px solid rgba(153,194,229,.22)}
+#main-menu .p27-back-home,#main-menu .p27-game-topbar .menu-settings-icon{width:22px;height:22px;flex:0 0 22px;border-radius:4px;font-size:13px;padding:0}
+#main-menu .p27-top-section{display:none!important}
+#main-menu .p27-career-progress{display:flex;align-items:center;gap:6px;min-width:70px;max-width:190px;flex:1;margin-left:3px}
+#main-menu .p27-career-progress>span{flex:0 0 auto;color:#d9e8f7;font-size:8px;font-weight:950;letter-spacing:.05em;white-space:nowrap}
+#main-menu .p27-career-progress>span b{color:#fff}
+#main-menu .p27-career-progress>div{height:3px;min-width:16px;flex:1;overflow:hidden;border-radius:4px;background:rgba(180,204,226,.2)}
+#main-menu .p27-career-progress i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#4da7e8,#b9dcf7)}
+#main-menu .p27-top-currency{display:flex;align-items:center;flex-direction:row;padding:0 4px 0 8px;border:0;line-height:1}
+#main-menu .p27-top-currency:before{content:"";width:8px;height:8px;margin-right:5px;border-radius:50%;background:linear-gradient(145deg,#ffe99a,#c58a28);box-shadow:0 0 5px rgba(255,207,95,.4)}
+#main-menu .p27-top-currency strong{font-size:10px;color:#f5d987}
+#main-menu .p27-profile-shortcut{display:flex;align-items:center;gap:4px;flex:0 0 auto;padding:0;border:0;background:transparent;color:#f4f8fc}
+#main-menu .p27-profile-shortcut>span{display:grid;place-items:center;width:20px;height:20px;border:1px solid rgba(175,211,242,.5);border-radius:50%;background:linear-gradient(145deg,#315b7d,#10283e);font-size:7px;font-weight:950}
+#main-menu .p27-profile-shortcut>small{font-size:8px;font-weight:900;color:#b7d1e9}
+#main-menu .p27-screen-layout{padding:0 9px}
+#main-menu .menu-main{padding:6px 0 4px}
+#main-menu #menu-content{padding:0 1px 2px;overflow:hidden}
+#main-menu .p27-home-tiles{display:none!important}
+#main-menu .p27-dls-home{height:100%;min-height:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:7px}
+#main-menu .p27-hub-career,#main-menu .p27-hub-panel{position:relative;min-width:0;min-height:0;overflow:hidden;border:1px solid rgba(167,203,235,.28);border-radius:5px;color:#f4f8fc;text-align:left;box-shadow:inset 0 1px rgba(255,255,255,.1),0 5px 13px rgba(0,0,0,.26)}
+#main-menu .p27-hub-career{grid-column:span 5;grid-row:span 2;display:flex;align-items:center;justify-content:space-between;padding:clamp(10px,2.2vh,20px);background:radial-gradient(ellipse at 82% 20%,rgba(52,127,190,.34),transparent 45%),linear-gradient(135deg,rgba(9,35,59,.96),rgba(4,13,25,.98)),repeating-linear-gradient(135deg,transparent 0 18px,rgba(155,194,224,.025) 19px 20px)}
+#main-menu .p27-hub-career:after{content:"";position:absolute;right:-55px;bottom:-100px;width:230px;height:230px;border:1px solid rgba(165,204,236,.12);border-radius:50%;box-shadow:0 0 0 22px rgba(165,204,236,.025),0 0 0 48px rgba(165,204,236,.02);pointer-events:none}
+#main-menu .p27-hub-career-copy{position:relative;z-index:1;min-width:0;max-width:78%}
+#main-menu .p27-hub-kicker{display:block;color:#8fc3ed;font-size:clamp(7px,1.15vh,9px);font-weight:950;letter-spacing:.13em}
+#main-menu .p27-hub-career h2{margin:8px 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(16px,3.2vh,28px);font-weight:950;font-style:italic;letter-spacing:.015em}
+#main-menu .p27-hub-career p{margin:0;color:#a8c0d8;font-size:clamp(8px,1.25vh,10px);font-weight:800}
+#main-menu .p27-hub-xp{display:flex;align-items:center;gap:7px;max-width:270px;margin-top:14px}
+#main-menu .p27-hub-xp span,#main-menu .p27-hub-xp b{color:#91abc5;font-size:7px;font-weight:900;white-space:nowrap}
+#main-menu .p27-hub-xp>div{height:4px;flex:1;overflow:hidden;border-radius:5px;background:rgba(183,208,231,.18)}
+#main-menu .p27-hub-xp i{display:block;height:100%;background:linear-gradient(90deg,#438fc9,#b9dff8)}
+#main-menu .p27-hub-career-copy>button{margin-top:14px;padding:7px 10px;border:1px solid rgba(166,209,244,.42);border-radius:3px;background:linear-gradient(180deg,#245b87,#143b5c);color:#f4f9ff;font-size:8px;font-weight:950;letter-spacing:.06em}
+#main-menu .p27-hub-career-copy>button span{margin-left:8px;font-size:13px}
+#main-menu .p27-hub-rating{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;flex-direction:column;flex:0 0 clamp(48px,10vh,78px);width:clamp(48px,10vh,78px);height:clamp(48px,10vh,78px);border:1px solid rgba(181,215,243,.38);border-radius:4px;background:linear-gradient(145deg,rgba(29,74,111,.92),rgba(4,19,33,.95))}
+#main-menu .p27-hub-rating small,#main-menu .p27-hub-rating span{color:#9db9d2;font-size:6px;font-weight:900;letter-spacing:.08em;text-align:center}
+#main-menu .p27-hub-rating strong{font-size:clamp(20px,4vh,34px);line-height:1;font-weight:950}
+#main-menu .p27-hub-watermark{position:absolute;right:12px;bottom:-16px;color:rgba(176,213,242,.035);font-size:clamp(50px,12vh,100px);font-weight:1000;font-style:italic;pointer-events:none}
+#main-menu .p27-hub-panel{display:flex;align-items:flex-start;justify-content:center;flex-direction:column;padding:8px 10px;background:linear-gradient(145deg,rgba(255,255,255,.075),transparent 42%),linear-gradient(145deg,#183d5d,#081a2b 78%)}
+#main-menu .p27-hub-panel:before{content:"";position:absolute;right:-20px;bottom:-36px;width:105px;height:105px;border:1px solid rgba(190,219,241,.1);border-radius:50%;box-shadow:0 0 0 15px rgba(190,219,241,.025)}
+#main-menu .p27-hub-panel strong{position:relative;z-index:1;margin-top:4px;font-size:clamp(9px,1.8vh,15px);font-weight:950;font-style:italic;letter-spacing:.025em}
+#main-menu .p27-hub-panel small{position:relative;z-index:1;margin-top:3px;color:#a8bfd5;font-size:clamp(7px,1.15vh,9px);font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#main-menu .p27-hub-panel i{position:absolute;right:9px;bottom:5px;color:#9dc9ec;font-size:18px;font-style:normal;font-weight:300}
+#main-menu .p27-hub-match{grid-column:span 3;grid-row:1;background:radial-gradient(ellipse at 80% 10%,rgba(226,65,75,.24),transparent 55%),linear-gradient(145deg,#71303b,#1d1823 90%)}
+#main-menu .p27-hub-team{grid-column:span 2;grid-row:1;background:radial-gradient(ellipse at 80% 10%,rgba(62,156,203,.24),transparent 55%),linear-gradient(145deg,#1d5575,#10263a 90%)}
+#main-menu .p27-hub-competitions{grid-column:span 2;grid-row:1;background:linear-gradient(145deg,#275a87,#10243a 90%)}
+#main-menu .p27-hub-market{grid-column:span 4;grid-row:2;background:linear-gradient(145deg,#6a552c,#282319 90%)}
+#main-menu .p27-hub-club{grid-column:span 4;grid-row:2;background:linear-gradient(145deg,#36516b,#142537 90%)}
+#main-menu .p27-hub-results{grid-column:span 4;grid-row:2;background:linear-gradient(145deg,#31534e,#142622 90%)}
+#main-menu .p27-hub-panel:active{filter:brightness(1.2);transform:scale(.99)}
+@media(max-width:760px) and (orientation:landscape){
+ #main-menu .p27-game-topbar{padding-inline:6px!important}
+ #main-menu .p27-screen-layout{padding-inline:6px}
+ #main-menu .menu-main{padding-top:4px}
+ #main-menu .p27-dls-home{gap:5px}
+ #main-menu .p27-hub-career{padding:8px}
+ #main-menu .p27-hub-career-copy>button{margin-top:8px;padding:5px 7px;font-size:7px}
+ #main-menu .p27-hub-xp{margin-top:8px}
+ #main-menu .p27-hub-panel{padding:6px 7px}
+}
+@media(orientation:portrait){
+ #main-menu .p27-dls-home{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(4,minmax(75px,1fr));overflow:auto}
+ #main-menu .p27-hub-career{grid-column:span 2;grid-row:span 1}
+ #main-menu .p27-hub-match,#main-menu .p27-hub-team,#main-menu .p27-hub-competitions,#main-menu .p27-hub-market,#main-menu .p27-hub-club,#main-menu .p27-hub-results{grid-column:span 1;grid-row:auto}
+ #main-menu #menu-content{overflow:auto}
+}
