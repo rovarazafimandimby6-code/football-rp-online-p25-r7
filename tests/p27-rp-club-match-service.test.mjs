@@ -170,3 +170,39 @@ test('completed Club RP results can retry seasonal reconciliation after a transi
   assert.equal(service.reconcileChallenge(challenge.id).seasonResult.ok, true);
   assert.equal(writes, 2);
 });
+
+
+test('Club RP challenge room: archived participant list cannot bypass current membership', () => {
+  const currentMembership = new Map([
+    ['account-a1', { club:{ id:'club-a' }, membership:{ role:'founder' } }],
+    ['account-a2', null],
+    ['account-a3', { club:{ id:'club-c' }, membership:{ role:'member' } }],
+    ['account-b1', { club:{ id:'club-b' }, membership:{ role:'member' } }]
+  ]);
+  const room = {
+    id:'room-membership-check', phase:'playing',
+    rpClubChallenge:{
+      challengeId:'challenge-membership-check',
+      challengerClubId:'club-a', targetClubId:'club-b',
+      blueAccountIds:['account-a1','account-a2','account-a3'],
+      redAccountIds:['account-b1']
+    }
+  };
+  const service = new RpClubMatchService({
+    clubStore:{ getForAccount:accountId => currentMembership.get(accountId) || null },
+    challengeStore:{ state:{ challenges:[] } },
+    roomManager:{ rooms:new Map([[room.id, room]]) }
+  });
+
+  assert.equal(service.resolveJoin(room.id, 'account-a1').team, 'blue');
+  assert.deepEqual(service.resolveJoin(room.id, 'account-a2'), {
+    ok:false, reason:'RP_CLUB_CHALLENGE_MEMBERSHIP_REQUIRED'
+  });
+  assert.deepEqual(service.resolveJoin(room.id, 'account-a3'), {
+    ok:false, reason:'RP_CLUB_CHALLENGE_MEMBERSHIP_REQUIRED'
+  });
+  assert.equal(service.resolveJoin(room.id, 'account-b1').team, 'red');
+
+  currentMembership.set('account-a2', { club:{ id:'club-a' }, membership:{ role:'member' } });
+  assert.equal(service.resolveJoin(room.id, 'account-a2').team, 'blue');
+});
