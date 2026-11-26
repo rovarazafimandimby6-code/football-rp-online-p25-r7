@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_CLUBS, ClubManager } from '../src/club-manager.js';
-import { P27_EXPANSION_CLUBS, P27_EXPANSION_COUNTS } from '../src/p27-club-expansion.js';
+import { P27_CLUB_NAMING_COUNTRY_CODES, P27_EXPANSION_CLUBS, P27_EXPANSION_COUNTS } from '../src/p27-club-expansion.js';
 import { auditClubCatalog, auditClubRuntimeProfiles } from '../src/club-catalog-validation.js';
 import { conferenceForClub } from '../src/league-structure.js';
 
@@ -13,6 +13,16 @@ test('P27 expansion : les 140 clubs complètent exactement les cinq divisions', 
   assert.equal(P27_EXPANSION_CLUBS.filter(club=>club.countryCode==='MG').length,39);
   assert.equal(P27_EXPANSION_CLUBS.filter(club=>club.countryCode!=='MG').length,101);
   assert.deepEqual(Object.fromEntries(['D1','D2','D3','D4','D5'].map(division=>[division,P27_EXPANSION_CLUBS.filter(club=>club.division===division).length])), { D1:12, D2:16, D3:20, D4:32, D5:60 });
+});
+
+
+test('P27 clubs internationaux : chaque pays représenté utilise ses conventions de nommage', () => {
+  const styledCountries = new Set(P27_CLUB_NAMING_COUNTRY_CODES);
+  const representedCountries = new Set(P27_EXPANSION_CLUBS
+    .filter(club => club.countryCode !== 'MG')
+    .map(club => club.countryCode));
+  assert.deepEqual([...representedCountries].filter(code => !styledCountries.has(code)), []);
+  assert.ok(P27_CLUB_NAMING_COUNTRY_CODES.length >= representedCountries.size);
 });
 
 test('P27 audit catalogue : contrôle les 156 identités, localisations et équipements', () => {
