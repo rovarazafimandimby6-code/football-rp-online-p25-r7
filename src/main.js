@@ -317,6 +317,8 @@ let selectedMatchup = { home: 'antananarivo-fc', away: 'toamasina-united' };
 let selectedClubId = null;
 let playerLibraryLimit = 12;
 let playerLibraryPage = 0;
+let clubLibraryPage = 0;
+const clubLibraryLimit = 20;
 let playerLibraryProfiles = [];
 let selectedPlayerProfile = null;
 let playerCareerRequestSequence = 0;
@@ -667,7 +669,9 @@ ${renderGoogleProtectionCard({ compact: true })}
         <label><span>IDENTITÉ</span><select id="club-country-filter"><option value="all">Tous les pays</option>${[...new Set(allClubs.map(c=>c.country))].sort().map(country=>`<option value="${escapeHTML(country)}">${escapeHTML(country)}</option>`).join('')}</select></label>
         <label><span>TRI</span><select id="club-sort"><option value="rating">Niveau du club</option><option value="name">Nom A–Z</option><option value="roster">Taille de l’effectif</option><option value="reputation">Réputation</option></select></label>
         <span id="club-filter-count" class="club-filter-count">${allClubs.length} clubs</span>
-      </div><div class="club-division-tabs" role="group" aria-label="Choisir une division">${clubs.listDivisions().filter(division=>division.id!=='AMATEUR').map(division=>`<button type="button" class="club-division-tab ${division.id==='D1'?'active':''}" data-action="club-division-tab" data-division="${escapeHTML(division.id)}">${escapeHTML(division.id)}</button>`).join('')}</div>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.slice().sort((a,b)=>b.rating-a.rating).map(club=>`<article class="club-card compact-club-card" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-conference="${escapeHTML(club.conference || '')}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}"><div class="club-card-copy"><div class="club-card-kickers"><span>${escapeHTML(club.division)}</span></div><h3>${escapeHTML(club.name)}</h3><div class="club-meta-line"><span>NOTE ${club.rating}</span></div><button class="small-action" data-action="view-roster" data-club="${escapeHTML(club.id)}">EFFECTIF →</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE</button>` : ''}</div>${crest(club)}</article>`).join('')}</div></section>`).join('')}<p class="notice">Catalogue local chargé · vérification de la saison active en cours.</p><p class="notice" id="club-directory-status" aria-live="polite">Synchronisation du catalogue…</p><p class="notice">Les identités des clubs et joueurs sont fictives. Les fiches publiques n’exposent pas les contrats privés.</p>`;
+        <div class="club-division-tabs" role="group" aria-label="Choisir une division">${clubs.listDivisions().filter(division=>division.id!=='AMATEUR').map(division=>`<button type="button" class="club-division-tab ${division.id==='D1'?'active':''}" data-action="club-division-tab" data-division="${escapeHTML(division.id)}">${escapeHTML(division.id)}</button>`).join('')}</div>
+        <div class="club-library-pagination"><button type="button" class="small-action" data-action="club-page" data-page="-1" id="club-page-prev" aria-label="Page précédente">‹</button><span id="club-page-label">1 / 1</span><button type="button" class="small-action" data-action="club-page" data-page="1" id="club-page-next" aria-label="Page suivante">›</button></div>
+      </div>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.slice().sort((a,b)=>b.rating-a.rating).map(club=>`<article class="club-card compact-club-card" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-conference="${escapeHTML(club.conference || '')}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}"><div class="club-card-copy"><div class="club-card-kickers"><span>${escapeHTML(club.division)}</span></div><h3>${escapeHTML(club.name)}</h3><div class="club-meta-line"><span>NOTE ${club.rating}</span></div><button class="small-action" data-action="view-roster" data-club="${escapeHTML(club.id)}">EFFECTIF →</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE</button>` : ''}</div>${crest(club)}</article>`).join('')}</div></section>`).join('')}<p class="notice">Catalogue local chargé · vérification de la saison active en cours.</p><p class="notice" id="club-directory-status" aria-live="polite">Synchronisation du catalogue…</p><p class="notice">Les identités des clubs et joueurs sont fictives. Les fiches publiques n’exposent pas les contrats privés.</p>`;
       const divisionFilter=document.getElementById('club-division-filter');
       if(divisionFilter) divisionFilter.value='D1';
       filterClubDiscovery({target:{id:'club-division-filter'}});
@@ -1215,7 +1219,12 @@ menu.addEventListener('click', event => {
   if (action === 'club-division-tab') {
     const tab=event.target.closest('[data-division]');
     const select=document.getElementById('club-division-filter');
-    if(tab&&select){select.value=tab.dataset.division;filterClubDiscovery({target:{id:'club-division-filter'}});menu.querySelectorAll('.club-division-tab').forEach(button=>button.classList.toggle('active',button===tab));}
+    if(tab&&select){select.value=tab.dataset.division;clubLibraryPage=0;filterClubDiscovery({target:{id:'club-division-filter'}});menu.querySelectorAll('.club-division-tab').forEach(button=>button.classList.toggle('active',button===tab));}
+    return;
+  }
+  if (action === 'club-page') {
+    clubLibraryPage=Math.max(0,clubLibraryPage+Number(event.target.closest('[data-page]')?.dataset.page||0));
+    filterClubDiscovery({target:{id:'club-page'}});
     return;
   }
   if (action === 'players-page') { playerLibraryPage=Math.max(0,playerLibraryPage+Number(event.target.closest('[data-page]')?.dataset.page||0)); filterPlayerLibrary(); }
@@ -1512,14 +1521,15 @@ menu.addEventListener('input',onPlayerLibraryFilter);
 menu.addEventListener('change',onPlayerLibraryFilter);
 
 const filterClubDiscovery = event => {
-  if (!['club-search','club-division-filter','club-conference-filter','club-country-filter','club-sort'].includes(event.target.id)) return;
+  if (event && !['club-search','club-division-filter','club-conference-filter','club-country-filter','club-sort','club-page'].includes(event.target.id)) return;
+  if (event && event.target.id !== 'club-page') clubLibraryPage=0;
   const query=(document.getElementById('club-search')?.value||'').trim().toLocaleLowerCase('fr');
   const division=document.getElementById('club-division-filter')?.value||'all';
   const conference=document.getElementById('club-conference-filter')?.value||'all';
   const country=document.getElementById('club-country-filter')?.value||'all';
   const sort=document.getElementById('club-sort')?.value||'rating';
   const groups=[...document.querySelectorAll('.club-division')];
-  let visible=0;
+  let visible=0,matchedTotal=0,pageCount=1;
   for(const group of groups){
     const cards=[...group.querySelectorAll('[data-club-card]')];
     cards.sort((a,b)=>{
@@ -1527,19 +1537,27 @@ const filterClubDiscovery = event => {
       const key=sort==='roster'?'roster':sort==='reputation'?'reputation':'rating';
       return Number(b.dataset[key])-Number(a.dataset[key]);
     });
-    for(const card of cards){
-      const match=(card.dataset.name.includes(query)||card.dataset.location.includes(query))
-        && (division==='all'||card.dataset.division===division)
-        && (conference==='all'||card.dataset.conference===conference)
-        && (country==='all'||card.dataset.country===country);
-      card.classList.toggle('hidden',!match);
-      if(match) visible++;
-      group.querySelector('.club-grid')?.appendChild(card);
-    }
-    group.classList.toggle('hidden',!cards.some(card=>!card.classList.contains('hidden')));
+    const matches=cards.filter(card=>(card.dataset.name.includes(query)||card.dataset.location.includes(query))
+      && (division==='all'||card.dataset.division===division)
+      && (conference==='all'||card.dataset.conference===conference)
+      && (country==='all'||card.dataset.country===country));
+    const selectedGroup=division==='all'||group.dataset.division===division;
+    if(selectedGroup){matchedTotal+=matches.length;pageCount=Math.max(pageCount,Math.ceil(matches.length/clubLibraryLimit));}
+    const start=clubLibraryPage*clubLibraryLimit;
+    const shown=new Set(selectedGroup?matches.slice(start,start+clubLibraryLimit):matches);
+    for(const card of cards){card.classList.toggle('hidden',!shown.has(card));if(shown.has(card))visible++;group.querySelector('.club-grid')?.appendChild(card);}
+    group.classList.toggle('hidden',!selectedGroup||matches.length===0);
   }
+  clubLibraryPage=Math.min(clubLibraryPage,pageCount-1);
+  if(clubLibraryPage<0) clubLibraryPage=0;
   const counter=document.getElementById('club-filter-count');
-  if(counter) counter.textContent=visible+' club'+(visible>1?'s':'')+' affiché'+(visible>1?'s':'');
+  const label=document.getElementById('club-page-label');
+  const previous=document.getElementById('club-page-prev');
+  const next=document.getElementById('club-page-next');
+  if(counter) counter.textContent=matchedTotal+' clubs · '+visible+' affichés';
+  if(label) label.textContent=(clubLibraryPage+1)+' / '+pageCount;
+  if(previous) previous.disabled=clubLibraryPage===0;
+  if(next) next.disabled=clubLibraryPage>=pageCount-1;
 };
 menu.addEventListener('input', filterClubDiscovery);
 menu.addEventListener('change', filterClubDiscovery);
