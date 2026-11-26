@@ -241,3 +241,49 @@ test('Club RP : invitations privées, acceptation par le destinataire et rôles 
     assert.equal(restored.getForAccount('invitee').club.members.find(member=>member.playerId==='FRP-200002').role, 'recruiter');
   } finally { rmSync(directory, { recursive:true, force:true }); }
 });
+
+
+test('Club RP : exclusion et départ révoquent immédiatement les accès réservés aux membres', () => {
+  const { directory, store } = fixture();
+  try {
+    const club = store.create({
+      accountId:'president', playerId:'FRP-410001', displayName:'Président',
+      name:'Accès contrôlé', tag:'ACL'
+    }).club;
+    for (const [accountId, playerId, displayName] of [
+      ['removed-member','FRP-410002','Exclu'],
+      ['leaving-member','FRP-410003','Partant']
+    ]) {
+      const request = store.requestJoin(club.id, { accountId, playerId, displayName });
+      assert.equal(request.ok, true);
+      assert.equal(store.decideJoinRequest(club.id, request.request.id, {
+        actorAccountId:'president', decision:'accept'
+      }).ok, true);
+    }
+
+    assert.equal(store.getMemberAccounts(club.id, 'removed-member').length, 3);
+    assert.equal(store.sendMessage(club.id, {
+      accountId:'removed-member', playerId:'FRP-410002',
+      displayName:'Exclu', text:'Message avant exclusion'
+    }).ok, true);
+    assert.equal(store.removeMember(club.id, 'FRP-410002', 'president').ok, true);
+    assert.equal(store.getForAccount('removed-member'), null);
+    assert.equal(store.getMemberAccounts(club.id, 'removed-member'), null);
+    assert.equal(store.sendMessage(club.id, {
+      accountId:'removed-member', playerId:'FRP-410002',
+      displayName:'Exclu', text:'Tentative après exclusion'
+    }).reason, 'RP_CLUB_MEMBERSHIP_REQUIRED');
+
+    assert.equal(store.leave(club.id, 'leaving-member').ok, true);
+    assert.equal(store.getForAccount('leaving-member'), null);
+    assert.equal(store.getMemberAccounts(club.id, 'leaving-member'), null);
+    assert.equal(store.sendMessage(club.id, {
+      accountId:'leaving-member', playerId:'FRP-410003',
+      displayName:'Partant', text:'Tentative après départ'
+    }).reason, 'RP_CLUB_MEMBERSHIP_REQUIRED');
+    const restored = new JsonRpClubStore(directory);
+    assert.equal(restored.getForAccount('removed-member'), null);
+    assert.equal(restored.getForAccount('leaving-member'), null);
+    assert.equal(restored.getMemberAccounts(club.id, 'removed-member'), null);
+  } finally { rmSync(directory, { recursive:true, force:true }); }
+});
