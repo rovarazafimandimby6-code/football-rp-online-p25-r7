@@ -4,7 +4,7 @@ import { generateClubRoster } from '../src/club-roster.js';
 import { applyDls26Reference, DLS26_ATTRIBUTE_KEYS, DLS26_GOALKEEPER_ATTRIBUTE_KEYS, DLS26_REFERENCE_PROFILES, findDls26Reference } from '../src/p27-dls26-reference.js';
 
 test('P27 DLS 26 : catalogue de références normal cards couvrant les quatre rôles', () => {
-  assert.equal(DLS26_REFERENCE_PROFILES.length, 14);
+  assert.equal(DLS26_REFERENCE_PROFILES.length, 21);
   for (const role of ['GK','DEF','MID','FWD']) {
     assert.ok(findDls26Reference(role, 'profil-test', () => 0), `aucun profil DLS 26 pour ${role}`);
   }
@@ -54,4 +54,16 @@ test('P27 DLS 26 : les joueurs fictifs reçoivent une référence sans identité
     assert.ok(!/mbapp[eé]|hakimi|bruno fernandes|donnarumma|gabriel magalh[aã]es/i.test(player.name));
     assert.equal(player.dls26Reference.cardType, 'normal');
   }
+});
+
+
+test('P27 DLS 26 : les profils ajoutés correspondent aux cartes normales vérifiées', () => {
+  const byId = new Map(DLS26_REFERENCE_PROFILES.map(profile => [profile.id, profile]));
+  assert.equal(byId.get('forward-complete-86').stats.SHO, 96);
+  assert.equal(byId.get('forward-wing-84').stats.PAS, 88);
+  assert.equal(byId.get('midfielder-box-to-box-84').stats.STA, 89);
+  assert.equal(byId.get('midfielder-playmaker-83').stats.PAS, 93);
+  assert.equal(byId.get('defender-centre-84b').stats.TAC, 93);
+  assert.equal(byId.get('goalkeeper-balanced-84').stats.GKR, 82);
+  assert.equal(byId.get('goalkeeper-tall-84').heightCm, 200);
 });
