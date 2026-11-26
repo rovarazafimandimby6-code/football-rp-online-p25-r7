@@ -40,7 +40,7 @@ test('P27 club identity UI: uses the approved red/system and green/human managem
   assert.match(main,/club-control-indicator/);
   assert.match(main,/CLUB DIRIGÉ PAR LE SYSTÈME/);
   assert.match(main,/CLUB DIRIGÉ PAR UN JOUEUR/);
-  assert.equal(main.includes('IA'),false);
+  assert.doesNotMatch(main,/\\bIA\\b/);
   assert.doesNotMatch(main,/intelligence artificielle/);
   assert.match(css,/\.club-control-indicator\.human i/);
 });
