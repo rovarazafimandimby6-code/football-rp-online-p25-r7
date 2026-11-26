@@ -45,13 +45,28 @@ export const DLS26_REFERENCE_PROFILES = Object.freeze([
     'https://sakibpro.com/players/normal/sergino-dest/17190/changelog/','right'),
   PROFILE('goalkeeper-reflex-85','GK',85,196,{SPE:58,ACC:55,STA:60,STR:68,CON:61,PAS:66,GKR:84,GKH:80},
     'https://sakibpro.com/players/normal/gianluigi-donnarumma/14078/','right')
+,
+  PROFILE('forward-wing-84','RW',84,175,{SPE:85,ACC:86,STA:82,STR:72,CON:86,PAS:88,SHO:88,TAC:39},
+    'https://sakibpro.com/players/normal/mohamed-salah/12027/statistics/','left'),
+  PROFILE('forward-complete-86','CF',86,188,{SPE:75,ACC:70,STA:86,STR:91,CON:88,PAS:90,SHO:96,TAC:50},
+    'https://sakibpro.com/players/normal/harry-kane/10159/statistics/','right'),
+  PROFILE('midfielder-box-to-box-84','AM',84,186,{SPE:76,ACC:77,STA:89,STR:78,CON:87,PAS:85,SHO:80,TAC:76},
+    'https://sakibpro.com/players/normal/jude-bellingham/17799/','right'),
+  PROFILE('midfielder-playmaker-83','AM',83,181,{SPE:76,ACC:73,STA:70,STR:72,CON:89,PAS:93,SHO:81,TAC:69},
+    'https://sakibpro.com/players/normal/kevin-de-bruyne/7957/changelog/','right'),
+  PROFILE('defender-centre-84b','CB',84,192,{SPE:83,ACC:75,STA:81,STR:86,CON:80,PAS:82,SHO:49,TAC:93},
+    'https://sakibpro.com/players/normal/william-saliba/17387/statistics/','right'),
+  PROFILE('goalkeeper-balanced-84','GK',84,193,{SPE:58,ACC:57,STA:57,STR:67,CON:67,PAS:68,GKR:82,GKH:80},
+    'https://sakibpro.com/players/normal/alisson/14939/changelog/','right'),
+  PROFILE('goalkeeper-tall-84','GK',84,200,{SPE:56,ACC:54,STA:68,STR:71,CON:64,PAS:64,GKR:82,GKH:82},
+    'https://sakibpro.com/players/normal/thibaut-courtois/7458/statistics/','left')
 ]);
 
 const ROLE_PROFILE_IDS = Object.freeze({
-  GK: ['goalkeeper-reflex-85'],
-  DEF: ['defender-wingback-85','defender-leftwingback-84','defender-centre-84','defender-centre-76','defender-fullback-75'],
-  MID: ['midfielder-controller-85','midfielder-creator-80','midfielder-anchor-84'],
-  FWD: ['forward-pace-86','forward-power-86','forward-wing-85','forward-finisher-84','forward-target-77']
+  GK: ['goalkeeper-reflex-85','goalkeeper-balanced-84','goalkeeper-tall-84'],
+  DEF: ['defender-wingback-85','defender-leftwingback-84','defender-centre-84','defender-centre-76','defender-fullback-75','defender-centre-84b'],
+  MID: ['midfielder-controller-85','midfielder-creator-80','midfielder-anchor-84','midfielder-box-to-box-84','midfielder-playmaker-83'],
+  FWD: ['forward-pace-86','forward-power-86','forward-wing-85','forward-finisher-84','forward-target-77','forward-wing-84','forward-complete-86']
 });
 const PROFILE_BY_ID = new Map(DLS26_REFERENCE_PROFILES.map(profile => [profile.id, profile]));
 
