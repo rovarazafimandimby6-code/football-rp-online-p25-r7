@@ -48,7 +48,7 @@ export class RoomManager {
   }
 
   persistRooms(rooms) {
-    const active = rooms.filter(room => ['lobby', 'playing', 'halftime'].includes(room.phase));
+    const active = rooms.filter(room => ['lobby', 'playing', 'halftime'].includes(room.phase) || (room.phase === 'fulltime' && !room.result));
     if (!active.length) return { saved: 0, failed: [] };
     if (!this.roomStore) return { saved: active.length, failed: [] };
     try {
@@ -508,6 +508,8 @@ export class RoomManager {
       return true;
     } catch (error) {
       room.finalizationError = String(error?.message || 'RESULT_FINALIZATION_FAILED').slice(0, 160);
+      // Keep a durable fulltime checkpoint until every finalization step succeeds.
+      if (room.phase === 'fulltime' && !room.result) this.persistRoom(room);
       return false;
     }
   }
