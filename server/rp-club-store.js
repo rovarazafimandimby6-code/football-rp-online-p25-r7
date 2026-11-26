@@ -324,8 +324,8 @@ export class JsonRpClubStore {
         target = { accountId:invitation.accountId, playerId:invitation.playerId, displayName:invitation.displayName, role:'member', joinedAt:new Date(this.now()).toISOString() };
         club.members.push(target);
       }
-      const actor = club.members.find(member => member.accountId === invitation.invitedByAccountId) || { displayName:'Responsable' };
-      this.recordGovernance(club, { action:decision === 'accept' ? 'invitation_accepted' : 'invitation_rejected', actor, target, details:decision === 'accept' ? 'Invitation acceptée' : 'Invitation refusée' });
+      const decisionActor = decision === 'accept' ? target : { displayName:invitation.displayName };
+      this.recordGovernance(club, { action:decision === 'accept' ? 'invitation_accepted' : 'invitation_rejected', actor:decisionActor, target:null, details:decision === 'accept' ? 'Invitation acceptée par le joueur invité' : 'Invitation refusée par le joueur invité' });
       club.updatedAt = new Date(this.now()).toISOString();
       return { ok:true, decision, memberCount:club.members.length };
     });
