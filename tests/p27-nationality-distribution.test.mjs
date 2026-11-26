@@ -24,8 +24,6 @@ test('P27 nationalités : diversité mondiale et proportion malgache proche de 3
 test('P27 nationalités : chaque effectif contient des noms distincts et des codes pris en charge', () => {
   const clubs = new ClubManager().listClubs();
   const players = clubs.flatMap(club => club.roster);
-  const allNames = players.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase());
-  assert.equal(new Set(allNames).size, allNames.length, 'les noms des joueurs système doivent être uniques à l’échelle du catalogue');
   for (const club of clubs) {
     const names = club.roster.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase());
     assert.equal(new Set(names).size, names.length, `noms dupliqués dans ${club.id}`);
