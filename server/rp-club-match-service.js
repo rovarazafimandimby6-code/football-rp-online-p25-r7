@@ -10,7 +10,10 @@ export class RpClubMatchService {
     const challenge = this.challengeStore.state.challenges.find(item => item.id === challengeId);
     if (!challenge) return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_FOUND' };
     if (challenge.status !== 'accepted') return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_ACCEPTED' };
-    if (!challenge.challengerMemberAccountIds.includes(accountId)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
+    const actorMembership = this.clubStore.getForAccount(accountId);
+    if (!actorMembership || actorMembership.club.id !== challenge.challengerClubId
+      || !['founder','president','vice_president','recruiter'].includes(actorMembership.membership.role))
+      return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
     if (challenge.roomId) {
       const existing = this.roomManager.rooms.get(challenge.roomId);
       if (existing && existing.phase !== 'fulltime') return { ok:true, room:this.roomManager.publicState(existing), reused:true };
@@ -57,8 +60,12 @@ export class RpClubMatchService {
     const challenge = room.rpClubChallenge;
     if (!challenge) return { ok:false, reason:'NOT_RP_CLUB_CHALLENGE' };
     if (typeof accountId !== 'string' || !accountId) return { ok:false, reason:'SESSION_REQUIRED' };
-    if (challenge.blueAccountIds.includes(accountId)) return { ok:true, team:'blue', challengeId:challenge.challengeId };
-    if (challenge.redAccountIds.includes(accountId)) return { ok:true, team:'red', challengeId:challenge.challengeId };
+    const membership = this.clubStore.getForAccount(accountId);
+    if (!membership) return { ok:false, reason:'RP_CLUB_CHALLENGE_MEMBERSHIP_REQUIRED' };
+    if (challenge.blueAccountIds.includes(accountId) && membership.club.id === challenge.challengerClubId)
+      return { ok:true, team:'blue', challengeId:challenge.challengeId };
+    if (challenge.redAccountIds.includes(accountId) && membership.club.id === challenge.targetClubId)
+      return { ok:true, team:'red', challengeId:challenge.challengeId };
     return { ok:false, reason:'RP_CLUB_CHALLENGE_MEMBERSHIP_REQUIRED' };
   }
 }
