@@ -485,7 +485,7 @@ function renderPage(page = 'home') {
         </section>
         <div class="p27-home-section-title"><span>ACCÈS RAPIDES</span><small>TES MODES DE JEU</small></div>
         <nav class="p27-home-primary" aria-label="Modes principaux">
-          <button class="p27-home-card p27-home-card-career" data-page="player"><span class="p27-card-kicker">01 · PROGRESSION</span><b>CARRIÈRE</b><small>Profil · évolution · statistiques</small><i>→</i></button>
+          <button class="p27-home-card p27-home-card-career" data-page="career-hub"><span class="p27-card-kicker">01 · PROGRESSION</span><b>CARRIÈRE</b><small>Profil · évolution · statistiques</small><i>→</i></button>
           <button class="p27-home-card p27-home-card-friendly" data-action="choose-match"><span class="p27-card-kicker">02 · SUR LE TERRAIN</span><b>MATCH AMICAL</b><small>Préparer une rencontre 5 contre 5</small><i>→</i></button>
           <button class="p27-home-card" data-page="mercato"><span class="p27-card-kicker">03 · GESTION</span><b>MERCATO</b><small>Transferts, joueurs et clubs</small><i>→</i></button>
           <button class="p27-home-card" data-page="competitions"><span class="p27-card-kicker">04 · SAISON</span><b>COMPÉTITIONS</b><small>Championnats, classements et résultats</small><i>→</i></button>
