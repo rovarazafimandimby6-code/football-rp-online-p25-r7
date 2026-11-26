@@ -303,3 +303,12 @@ test('P27 tuile Classements : ouvre un écran dédié alimenté par les classeme
     assert.ok(css.includes(selector), `missing rankings screen style: ${selector}`);
   }
 });
+
+test('P27 classements : totaux et noms de clubs sont dérivés du snapshot serveur', () => {
+  assert.match(main, /const clubCount = new Set\(leagues\.flatMap/);
+  assert.match(main, /<b>\$\{clubCount\}<\/b><span>CLUBS<\/span>/);
+  assert.match(main, /<b>\$\{leagues\.length\}<\/b><span>GROUPES<\/span>/);
+  assert.match(main, /clubNames\.get\(row\.id\)/);
+  assert.doesNotMatch(main, /<b>156<\/b><span>CLUBS<\/span>/);
+  assert.doesNotMatch(main, /<b>9<\/b><span>GROUPES<\/span>/);
+});
