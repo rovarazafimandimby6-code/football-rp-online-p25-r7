@@ -195,3 +195,11 @@ test('P27 game UI: aucune ancienne navigation latérale ou secondaire ne subsist
   assert.match(gameCss, /p27-dls-career-grid/);
   assert.match(main, /p27-dls-mode p27-dls-next/);
 });
+
+test('P27 game header: affiche les crédits réels du profil sans valeur fictive', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="p27-top-player-coins"/);
+  assert.match(main, /Number\(profileStore\.profile\.progression\.coins \|\| 0\)\.toLocaleString\('fr-FR'\)/);
+  assert.doesNotMatch(main, /\\\\n  const topCoins/);
+});
