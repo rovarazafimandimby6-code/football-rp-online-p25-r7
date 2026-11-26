@@ -709,7 +709,21 @@ export class RoomManager {
     return { alive: true, reconnected: true, nextSequence: Math.max(1, player.lastInputSequence + 1), state: this.publicState(room) };
   }
 
-  heartbeat(roomId, token) { const result = this.reconnect(roomId, token); return { alive: result.alive, nextSequence: result.nextSequence }; }
+  heartbeat(roomId, token) {
+    const { room, player } = this.authenticate(roomId, token);
+    if (player.isBot || room.phase === 'fulltime') throw new Error('UNAUTHORIZED');
+
+    // A live heartbeat must never clear movement input. Only a genuinely
+    // disconnected player needs the reconnect path to reclaim AI control.
+    if (!player.connected || player.aiControlled || player.controlMode !== 'human')
+      return this.reconnect(roomId, token);
+
+    const now = this.now();
+    player.lastSeen = now;
+    room.updatedAt = now;
+    this.persistRoom(room);
+    return { alive: true, nextSequence: Math.max(1, player.lastInputSequence + 1) };
+  }
 
   leave(roomId, token) {
     const { room, player } = this.authenticate(roomId, token);
