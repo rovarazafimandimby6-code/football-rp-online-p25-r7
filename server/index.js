@@ -538,7 +538,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       return json(res, 200, { membership:rpClubStore.getForAccount(account.id) });
     }
-    const rpClubPublicMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})$/i);
+    const rpClubPublicMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})$/i);
     if (req.method === 'GET' && rpClubPublicMatch) {
       const club = rpClubStore.get(rpClubPublicMatch[1]);
       return club ? json(res, 200, { club }) : json(res, 404, { error: 'RP_CLUB_NOT_FOUND' });
@@ -553,7 +553,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const result = rpClubStore.create({ accountId:account.id, playerId:identity.playerId, displayName, name:body.name, tag:body.tag, description:body.description });
       return json(res, result.ok ? 201 : (result.reason === 'PLAYER_IDENTITY_REQUIRED' || result.reason.startsWith('INVALID_') ? 400 : 409), result);
     }
-    const rpClubJoinMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/join-requests$/i);
+    const rpClubJoinMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/join-requests$/i);
     if (req.method === 'POST' && rpClubJoinMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
@@ -567,7 +567,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         : result.reason === 'PLAYER_IDENTITY_REQUIRED' ? 400 : 409;
       return json(res, status, result);
     }
-    const rpClubDecisionMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/join-requests\\/([a-f0-9-]{36})\\/decision$/i);
+    const rpClubDecisionMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/join-requests\/([a-f0-9-]{36})\/decision$/i);
     if (req.method === 'POST' && rpClubDecisionMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
@@ -577,7 +577,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
       return json(res, status, result);
     }
-    const rpClubLeaveMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/leave$/i);
+    const rpClubLeaveMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/leave$/i);
     if (req.method === 'POST' && rpClubLeaveMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
@@ -691,7 +691,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       let pathname;
       try { pathname = decodeURIComponent(url.pathname); } catch { return json(res, 400, { error: 'INVALID_PATH' }); }
       const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
-      const segments = relative.split(/[\\/]+/).filter(Boolean);
+      const segments = relative.split(/[\/]+/).filter(Boolean);
       const privateSegments = new Set(['data','server','tests','node_modules']);
       if (segments.some(segment => segment.startsWith('.') || privateSegments.has(segment.toLowerCase())))
         return json(res, 403, { error:'FORBIDDEN' });
