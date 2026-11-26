@@ -104,25 +104,25 @@ const normalizeClubLocation = (location, legacyCity = '') => {
 };
 
 export const DEFAULT_CLUBS = Object.freeze([
-  club('antananarivo-fc','Antananarivo Crown FC','Antananarivo / Madrid','Madagascar · Espagne','MG','D1',76,'ai',['#1769aa','#092e55','#f3d36a'],'Stade des Hautes-Terres',82,4200000),
-  club('manparis-sporting','Manparis Sporting','Manchester / Paris','International','FR','D1',78,'ai',['#493b91','#211b4e','#e7d8ff'],'Arena des Deux Capitales',86,5100000),
-  club('dakar-milan-union','Dakar-Milan Union','Dakar / Milan','Sénégal · Italie','SN','D1',74,'ai',['#c33c45','#641d2a','#f4e7d0'],'Stade de la Renaissance',80,3900000),
-  club('toamasina-united','Toamasina Coast FC','Toamasina','Madagascar','MG','D1',72,'ai',['#168b83','#064c4b','#e6d78b'],'Stade du Port',77,3400000),
+  club('antananarivo-fc','Antananarivo Crown FC','Antananarivo','Madagascar','MG','D1',76,'ai',['#1769aa','#092e55','#f3d36a'],'Stade des Hautes-Terres',82,4200000),
+  club('manparis-sporting','Manchester Sporting','Manchester','Royaume-Uni','GB','D1',78,'ai',['#493b91','#211b4e','#e7d8ff'],'Arena des Deux Capitales',86,5100000),
+  club('dakar-milan-union','Dakar Athletic','Dakar','Sénégal','SN','D1',74,'ai',['#c33c45','#641d2a','#f4e7d0'],'Stade de la Renaissance',80,3900000),
+  club('toamasina-united','Toamasina Coast','Toamasina','Madagascar','MG','D1',72,'ai',['#168b83','#064c4b','#e6d78b'],'Stade du Port',77,3400000),
 
-  club('londaka-city','Londaka City','Londres / Dakar','International','SN','D2',68,'ai',['#d8aa45','#76501a','#fff0b8'],'Londaka Park',70,2300000),
+  club('londaka-city','London UK','Londres','Royaume-Uni','GB','D2',68,'ai',['#d8aa45','#76501a','#fff0b8'],'Londaka Park',70,2300000),
   club('lisboa-nova-athletic','Lisboa Nova Athletic','Lisbonne','Portugal','PT','D2',67,'ai',['#32945b','#145332','#d6f4df'],'Nova Arena',69,2200000),
   club('fianarantsoa-athletic','Fianarantsoa Highland','Fianarantsoa','Madagascar','MG','D2',66,'open',['#7856b8','#34215e','#e6d8ff'],'Stade des Hauts Plateaux',68,2100000),
-  club('osaka-antsirabe-fc','Osaka-Antsira FC','Osaka / Antsirabe','Japon · Madagascar','MG','D2',65,'ai',['#d94a4a','#7c202b','#f5e7d6'],'Stade du Soleil Levant',67,2000000),
+  club('osaka-antsirabe-fc','Osaka Red Phoenix','Osaka','Japon','JP','D2',65,'ai',['#d94a4a','#7c202b','#f5e7d6'],'Stade du Soleil Levant',67,2000000),
 
   club('mahajanga-city','Mahajanga Gulf United','Mahajanga','Madagascar','MG','D3',61,'open',['#d8aa45','#76501a','#fff0b8'],'Stade du Canal',61,1250000),
-  club('rio-tana-creative','Rio-Tana Creative','Rio / Antananarivo','Brésil · Madagascar','MG','D3',60,'ai',['#26945b','#105a36','#f2d34f'],'Arena Créative',60,1200000),
+  club('rio-tana-creative','Rio de Janeiro Sporting','Rio de Janeiro','Brésil','BR','D3',60,'ai',['#26945b','#105a36','#f2d34f'],'Arena Créative',60,1200000),
   club('antsirabe-sport','Antsirabe Sporting','Antsirabe','Madagascar','MG','D3',59,'ai',['#32945b','#145332','#d6f4df'],'Stade Thermal',59,1150000),
-  club('valencia-northbridge','Valencia Northbridge','Valence / Northbridge','Espagne · International','ES','D3',60,'ai',['#e06b32','#7e2d20','#f5d9a1'],'Northbridge Ground',60,1180000),
+  club('valencia-northbridge','Valencia Northbridge','Valence','Espagne','ES','D3',60,'ai',['#e06b32','#7e2d20','#f5d9a1'],'Northbridge Ground',60,1180000),
 
-  club('tulear-sunrise','Tuléar Sunrise FC','Toliara','Madagascar','MG','AMATEUR',53,'open',['#e09b35','#7b431b','#ffe5a5'],'Terrain du Sud',48,420000),
+  club('tulear-sunrise','Toliara Sunrise','Toliara','Madagascar','MG','AMATEUR',53,'open',['#e09b35','#7b431b','#ffe5a5'],'Terrain du Sud',48,420000),
   club('morondava-lagoon','Morondava Lagoon','Morondava','Madagascar','MG','AMATEUR',51,'open',['#278c9b','#14515d','#d8f0e8'],'Stade du Baobab',45,360000),
-  club('nairobi-tana-academy','Nairobi-Tana Academy','Nairobi / Antananarivo','Kenya · Madagascar','MG','AMATEUR',52,'open',['#526f3e','#273c24','#e3d7a4'],'Academy Field',47,390000),
-  club('antsiranana-north-fc','Antsiranana North FC','Antsiranana','Madagascar','MG','AMATEUR',50,'open',['#3976a8','#1e3f68','#f0d477'],'Stade du Nord',44,340000)
+  club('nairobi-tana-academy','Nairobi Academy','Nairobi','Kenya','KE','AMATEUR',52,'open',['#526f3e','#273c24','#e3d7a4'],'Academy Field',47,390000),
+  club('antsiranana-north-fc','Antsiranana North','Antsiranana','Madagascar','MG','AMATEUR',50,'open',['#3976a8','#1e3f68','#f0d477'],'Stade du Nord',44,340000)
 ].map(item => ({ ...item, location: STARTER_CLUB_LOCATIONS[item.id], ...(item.division === 'AMATEUR' ? { division: 'D5', conference: ({ 'tulear-sunrise': 'C', 'morondava-lagoon': 'D', 'nairobi-tana-academy': 'B', 'antsiranana-north-fc': 'A' })[item.id] } : {}) })).concat(P27_EXPANSION_CLUBS));
 
 export class ClubManager {
