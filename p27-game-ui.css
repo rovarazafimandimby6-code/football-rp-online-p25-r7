@@ -1814,3 +1814,71 @@
  #main-menu .p27-hub-match,#main-menu .p27-hub-team,#main-menu .p27-hub-competitions,#main-menu .p27-hub-market,#main-menu .p27-hub-club,#main-menu .p27-hub-results{grid-column:span 1;grid-row:auto}
  #main-menu #menu-content{overflow:auto}
 }
+
+/* P27 Club RP — game-native community screen */
+#main-menu .rp-club-loading{padding:24px;color:#9fc7e8;font-size:10px;font-weight:950;letter-spacing:.16em}
+#main-menu .rp-club-intro{position:relative;overflow:hidden;padding:clamp(12px,2.2vh,20px);border:1px solid rgba(148,194,229,.28);border-radius:5px;background:radial-gradient(ellipse at 88% 12%,rgba(52,125,185,.24),transparent 44%),linear-gradient(135deg,#123754,#071725 78%)}
+#main-menu .rp-club-intro h2{margin:6px 0 4px;color:#f3f8ff;font-size:clamp(17px,3vh,25px);font-weight:950;font-style:italic}
+#main-menu .rp-club-intro p{max-width:760px;margin:0;color:#a9c0d5;font-size:clamp(9px,1.35vh,11px);line-height:1.5}
+#main-menu .rp-club-panel{margin-top:9px;padding:clamp(10px,1.8vh,16px);border:1px solid rgba(139,181,216,.22);border-radius:5px;background:linear-gradient(145deg,rgba(18,43,64,.96),rgba(5,16,28,.98))}
+#main-menu .rp-club-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+#main-menu .rp-club-panel-heading h3{margin:3px 0 0;color:#edf5fd;font-size:clamp(12px,1.8vh,16px);font-weight:950}
+#main-menu .rp-club-panel-heading> b{color:#f1d47e;font-size:13px}
+#main-menu .rp-club-create-grid{display:grid;grid-template-columns:minmax(150px,2fr) minmax(65px,.6fr) minmax(180px,2fr);gap:8px}
+#main-menu .rp-club-create-grid label{display:flex;flex-direction:column;gap:4px;color:#8faac2;font-size:8px;font-weight:900;letter-spacing:.07em}
+#main-menu .rp-club-create-grid input{min-width:0;height:32px;padding:0 9px;border:1px solid rgba(143,184,220,.25);border-radius:3px;background:#071624;color:#f4f8fc;font-size:11px}
+#main-menu .rp-club-create,#main-menu .rp-club-directory-item>button,#main-menu .rp-club-accept,#main-menu .rp-club-reject,#main-menu .rp-club-refresh,#main-menu .rp-club-leave{min-height:30px;padding:0 11px;border:1px solid rgba(149,195,234,.3);border-radius:3px;color:#eef7ff;background:linear-gradient(180deg,#235b83,#12334e);font-size:8px;font-weight:950;letter-spacing:.05em}
+#main-menu .rp-club-create{margin-top:9px;background:linear-gradient(180deg,#2678a8,#17435f)}
+#main-menu .rp-club-directory-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#main-menu .rp-club-directory-item{display:flex;align-items:center;gap:9px;min-width:0;padding:8px;border:1px solid rgba(141,181,214,.17);border-radius:4px;background:rgba(5,17,29,.72)}
+#main-menu .rp-club-directory-mark,#main-menu .rp-club-tag{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid rgba(205,225,243,.28);border-radius:4px;background:linear-gradient(145deg,#315b7c,#10283c);color:#f3d47d;font-size:11px;font-weight:1000}
+#main-menu .rp-club-directory-copy{flex:1;min-width:0}
+#main-menu .rp-club-directory-copy>b{display:block;overflow:hidden;color:#f2f7fd;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+#main-menu .rp-club-directory-copy>small{display:block;margin-top:3px;color:#8daac3;font-size:7px;font-weight:900}
+#main-menu .rp-club-directory-copy>p{margin:3px 0 0;overflow:hidden;color:#aabed0;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+#main-menu .rp-club-directory-item>button{flex:0 0 auto;padding:0 8px;font-size:7px}
+#main-menu .rp-club-directory-item>button:disabled{opacity:.4}
+#main-menu .rp-club-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:clamp(12px,2vh,18px);border:1px solid rgba(150,196,230,.3);border-radius:5px;background:radial-gradient(ellipse at 84% 20%,rgba(49,120,179,.25),transparent 44%),linear-gradient(135deg,#143d5b,#071827)}
+#main-menu .rp-club-identity{display:flex;align-items:center;gap:12px;min-width:0}
+#main-menu .rp-club-tag{flex-basis:54px;width:54px;height:54px;font-size:15px}
+#main-menu .rp-club-identity h2{margin:4px 0;color:#f5f8fc;font-size:clamp(18px,3.3vh,27px);font-weight:1000;font-style:italic}
+#main-menu .rp-club-identity p{margin:0;color:#a9c0d5;font-size:9px}
+#main-menu .rp-club-stats{display:flex;gap:14px}
+#main-menu .rp-club-stats span{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:48px}
+#main-menu .rp-club-stats b{color:#f4d77f;font-size:clamp(15px,2.5vh,22px);font-variant-numeric:tabular-nums}
+#main-menu .rp-club-stats small{color:#8eaac2;font-size:7px;font-weight:950;letter-spacing:.08em}
+#main-menu .rp-club-role{padding:5px 8px;border:1px solid rgba(238,207,119,.3);border-radius:3px;color:#f0d58b;font-size:7px;font-weight:950}
+#main-menu .rp-club-member-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#main-menu .rp-club-member{display:flex;align-items:center;gap:8px;min-width:0;padding:7px;border:1px solid rgba(143,183,214,.16);border-radius:3px;background:rgba(4,15,26,.68)}
+#main-menu .rp-club-member-avatar{display:grid;place-items:center;flex:0 0 27px;width:27px;height:27px;border-radius:3px;background:#244e6e;color:#dcecf9;font-size:11px;font-weight:950}
+#main-menu .rp-club-member>div{min-width:0}
+#main-menu .rp-club-member b,#main-menu .rp-club-member small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#main-menu .rp-club-member b{color:#eff6fc;font-size:9px}
+#main-menu .rp-club-member small{margin-top:2px;color:#8eaac2;font-size:7px}
+#main-menu .rp-club-request-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#main-menu .rp-club-request{display:flex;align-items:center;gap:6px;padding:7px;border:1px solid rgba(143,183,214,.16);border-radius:3px;background:rgba(4,15,26,.68)}
+#main-menu .rp-club-request>div{flex:1;min-width:0}
+#main-menu .rp-club-request b,#main-menu .rp-club-request small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#main-menu .rp-club-request b{color:#f2f7fd;font-size:9px}
+#main-menu .rp-club-request small{color:#8eaac2;font-size:7px}
+#main-menu .rp-club-accept{background:linear-gradient(180deg,#276d55,#153c30)}
+#main-menu .rp-club-reject{background:linear-gradient(180deg,#78424a,#40232a)}
+#main-menu .rp-club-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:9px}
+#main-menu .rp-club-leave{background:linear-gradient(180deg,#6c3c43,#3a2229)}
+#main-menu .rp-club-status{min-height:15px;margin:7px 0 0;color:#9bc5e5;font-size:9px}
+#main-menu .rp-club-status.is-error{color:#f0a3a3}
+#main-menu .rp-club-account-required{border-color:rgba(213,177,105,.3)}
+#main-menu .rp-club-account-required>b{color:#f1d27d;font-size:10px}
+#main-menu .rp-club-account-required p{color:#a9bfd2;font-size:9px}
+#main-menu .rp-club-account-required button{padding:6px 10px;border:1px solid rgba(145,189,227,.3);border-radius:3px;background:#183d5c;color:#eff7ff;font-size:8px;font-weight:950}
+@media(max-width:760px) and (orientation:landscape){
+ #main-menu .rp-club-directory-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #main-menu .rp-club-member-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #main-menu .rp-club-create-grid{grid-template-columns:minmax(100px,1fr) 65px minmax(130px,1.5fr)}
+}
+@media(orientation:portrait){
+ #main-menu .rp-club-directory-list,#main-menu .rp-club-member-list,#main-menu .rp-club-request-list{grid-template-columns:1fr}
+ #main-menu .rp-club-hero{align-items:flex-start;flex-direction:column}
+ #main-menu .rp-club-create-grid{grid-template-columns:1fr 75px}
+ #main-menu .rp-club-description-field{grid-column:1/-1}
+}
