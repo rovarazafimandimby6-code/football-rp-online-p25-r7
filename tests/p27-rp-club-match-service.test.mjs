@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { JsonRpClubChallengeStore } from '../server/rp-club-challenge-store.js';
 import { RpClubMatchService } from '../server/rp-club-match-service.js';
 
 test('Club RP challenge rooms: only scheduled participants enter their assigned side', () => {
@@ -69,4 +73,35 @@ test('Club RP challenge rooms: cannot start before the scheduled window', () => 
   assert.deepEqual(service.createRoom('challenge-2','account-a1'), {
     ok:false, reason:'RP_CLUB_CHALLENGE_NOT_IN_TIME_WINDOW'
   });
+});
+
+test('Club RP standings use only finalized scores and count a result once', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'p27-rp-club-results-'));
+  try {
+    const store = new JsonRpClubChallengeStore(directory);
+    store.state.challenges.push({
+      id:'challenge-result-1', challengerClubId:'club-a', challengerName:'Alpha', challengerTag:'ALP',
+      targetClubId:'club-b', targetName:'Bravo', targetTag:'BRV', createdByAccountId:'a',
+      challengerMemberAccountIds:['a'], targetMemberAccountIds:['b'], status:'accepted',
+      createdAt:new Date().toISOString(), scheduledAt:new Date().toISOString(), roomId:'room-real-1'
+    });
+    const result = { challengeId:'challenge-result-1', roomId:'room-real-1', score:{ blue:3, red:1 }, finalizedAt:Date.now() };
+    const completed = store.completeFromMatch(result);
+    assert.equal(completed.ok, true);
+    assert.equal(completed.challenge.status, 'completed');
+    assert.equal(store.completeFromMatch(result).duplicate, true);
+    const standings = store.leaderboard();
+    assert.equal(standings.length, 2);
+    assert.equal(standings[0].clubId, 'club-a');
+    assert.equal(standings[0].played, 1);
+    assert.equal(standings[0].wins, 1);
+    assert.equal(standings[0].points, 3);
+    assert.equal(standings[0].goalsFor, 3);
+    assert.equal(standings[1].losses, 1);
+    assert.deepEqual(store.completeFromMatch({ ...result, roomId:'another-room' }), {
+      ok:false, reason:'RP_CLUB_CHALLENGE_RESULT_CONFLICT'
+    });
+  } finally {
+    rmSync(directory, { recursive:true, force:true });
+  }
 });
