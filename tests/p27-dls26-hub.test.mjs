@@ -14,7 +14,7 @@ test('P27 DLS26: l’en-tête est compact et ne réintroduit pas les anciens lib
   assert.match(html, /p27-top-player-avatar/);
   assert.match(html, /p27-profile-level/);
   assert.doesNotMatch(html, /p27-top-player-name|p27-top-player-club/);
-  assert.match(css, /flex:0 0 26px/);
+  assert.match(css, /flex:0 0 25px/);
   assert.match(css, /p27-career-progress/);
 });
 
