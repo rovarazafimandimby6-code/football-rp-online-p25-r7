@@ -1606,6 +1606,8 @@ const filterPlayerLibrary = () => {
   const query=(document.getElementById('library-search')?.value||'').trim().toLocaleLowerCase('fr');
   const club=document.getElementById('library-club')?.value||'all';
   const role=document.getElementById('library-role')?.value||'all';
+  const status=document.getElementById('library-status')?.value||'all';
+  const type=document.getElementById('library-type')?.value||'all';
   const minRating=Number(document.getElementById('library-min-rating')?.value||0);
   const sort=document.getElementById('library-sort')?.value||'rating';
   const cards=[...root.querySelectorAll('[data-library-card]')];
@@ -1614,8 +1616,9 @@ const filterPlayerLibrary = () => {
     const key=sort==='potential'?'potential':sort==='age'?'age':'rating';
     return sort==='age'?Number(a.dataset.age)-Number(b.dataset.age):Number(b.dataset[key])-Number(a.dataset[key]);
   });
-  const matchedCards=cards.filter(card=>(card.dataset.name.includes(query)||card.dataset.archetype.includes(query))
+  const matchedCards=cards.filter(card=>(card.dataset.name.includes(query)||card.dataset.archetype.includes(query)||card.dataset.clubName.includes(query)||card.dataset.lastClub.includes(query))
     &&(club==='all'||card.dataset.club===club)&&(role==='all'||card.dataset.role===role)
+    &&(status==='all'||card.dataset.status===status)&&(type==='all'||card.dataset.type===type)
     &&Number(card.dataset.rating)>=minRating);
   const pageCount=Math.max(1,Math.ceil(matchedCards.length/playerLibraryLimit));
   playerLibraryPage=Math.min(playerLibraryPage,pageCount-1);
@@ -1634,7 +1637,7 @@ const filterPlayerLibrary = () => {
   if(next) next.disabled=playerLibraryPage>=pageCount-1;
 };
 const onPlayerLibraryFilter = event => {
-  if(['library-search','library-club','library-role','library-sort','library-min-rating'].includes(event.target.id)){
+  if(['library-search','library-club','library-role','library-status','library-type','library-sort','library-min-rating'].includes(event.target.id)){
     playerLibraryPage=0; filterPlayerLibrary();
   }
 };
