@@ -8,19 +8,21 @@
   <meta name="description" content="Football RP Online P27 — jeu de football RP mobile, multijoueur et carrière.">
   <title>Football RP Online — P27</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="p27-rebirth.css">
+  <link rel="stylesheet" href="p27-rebirth.css">\n  <link rel="stylesheet" href="p27-game-ui.css">
     <!-- three@0.170.0 is bundled locally through npm for offline Android builds. -->
 </head>
 <body>
   <section id="main-menu" aria-label="Menu principal Football RP Online">
     <div class="menu-backdrop"><div class="stadium-lights"></div><div class="stadium-pitch"></div></div>
     <header class="menu-topbar p27-game-topbar">
-      <button class="p27-back-home" data-page="home" type="button" aria-label="Retour à l'accueil">‹</button>
-      <button class="menu-settings-icon" data-page="settings" data-page="settings" type="button" aria-label="Paramètres" title="Paramètres">⚙</button>
-      <div class="p27-top-player"><strong id="p27-top-player-name">Mon footballeur</strong><span id="p27-top-player-club">Sans club</span></div>
+      <button class="p27-back-home" data-page="home" type="button" aria-label="Retour au menu principal" title="Retour">‹</button>
+      <button class="menu-settings-icon" data-page="settings" type="button" aria-label="Paramètres" title="Paramètres">⚙</button>
+      <div class="p27-top-section"><strong id="menu-page-title">ACCUEIL</strong><span id="menu-page-subtitle">FOOTBALL RP ONLINE · P27</span></div>
+      <div class="p27-top-player"><strong id="p27-top-player-name">Mon joueur</strong><span id="p27-top-player-club">Sans club</span></div>
+      <div class="p27-top-currency"><small>CRÉDITS</small><strong id="p27-top-player-coins">2 500</strong></div>
     </header>
     <div class="menu-layout p27-screen-layout">
-      <section class="menu-main"><div class="menu-heading"><div><span class="eyebrow">FOOTBALL RP ONLINE · P27</span><h1 id="menu-page-title">Accueil</h1><p id="menu-page-subtitle">Choisissez votre prochaine étape.</p></div></div><div id="menu-content"></div></section>
+      <section class="menu-main"><div id="menu-content"></div></section>
     </div>
     <footer class="menu-footer"><span>FOOTBALL RP ONLINE</span><span>P27 · NOUVELLE GÉNÉRATION</span></footer>
   </section>
