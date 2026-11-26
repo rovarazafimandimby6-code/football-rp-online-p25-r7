@@ -290,6 +290,8 @@ export class JsonRpClubStore {
       if (decision === 'accept') {
         target = { accountId:pending.accountId, playerId:pending.playerId, displayName:pending.displayName, role:'member', joinedAt:new Date(this.now()).toISOString() };
         club.members.push(target);
+        // Joining through a request invalidates any outstanding invitation to this same club.
+        club.invitations = club.invitations.filter(item => item.accountId !== pending.accountId);
       }
       this.recordGovernance(club, { action:decision === 'accept' ? 'join_accepted' : 'join_rejected', actor, target, details:decision === 'accept' ? 'Demande d’adhésion acceptée' : 'Demande d’adhésion refusée' });
       return { ok: true, decision, memberCount: club.members.length };
@@ -328,6 +330,8 @@ export class JsonRpClubStore {
       if (decision === 'accept') {
         target = { accountId:invitation.accountId, playerId:invitation.playerId, displayName:invitation.displayName, role:'member', joinedAt:new Date(this.now()).toISOString() };
         club.members.push(target);
+        // Accepting an invitation also clears a pending join request for this same club.
+        club.joinRequests = club.joinRequests.filter(item => item.accountId !== invitation.accountId);
       }
       const decisionActor = decision === 'accept' ? target : { displayName:invitation.displayName };
       this.recordGovernance(club, { action:decision === 'accept' ? 'invitation_accepted' : 'invitation_rejected', actor:decisionActor, target:null, details:decision === 'accept' ? 'Invitation acceptée par le joueur invité' : 'Invitation refusée par le joueur invité' });
