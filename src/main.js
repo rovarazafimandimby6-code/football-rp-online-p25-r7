@@ -502,8 +502,8 @@ async function loadRpClubPage() {
   const host = document.getElementById('rp-club-root');
   if (!host) return;
   host.innerHTML = '<div class="rp-club-loading">SYNCHRONISATION DU CLUB RP…</div>';
-  let membership = null, authError = null, directory = { clubs:[], total:0 };
-  try { membership = (await rpClubApi('/me')).membership; } catch (error) { authError = error; }
+  let membership = null, invitations = [], authError = null, directory = { clubs:[], total:0 };
+  try { const mine = await rpClubApi('/me'); membership = mine.membership; invitations = mine.invitations || []; } catch (error) { authError = error; }
   try { directory = await rpClubApi('?limit=30'); } catch (error) { if (!authError) authError = error; }
   if (!document.getElementById('rp-club-root')) return;
   if (membership) {
