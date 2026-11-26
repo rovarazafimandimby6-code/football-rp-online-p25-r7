@@ -99,6 +99,8 @@ export function applyDls26Reference(profile, { targetOverall, random = Math.rand
       profileId: profile.id,
       cardType: profile.cardType,
       version: profile.version,
+      baseOverall: profile.overall,
+      baseHeightCm: profile.heightCm,
       source: profile.source
     }
   };
