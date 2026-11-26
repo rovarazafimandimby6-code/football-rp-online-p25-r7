@@ -45,11 +45,11 @@ export const CLUB_DIVISION_PROFILE_BASES = DIVISION_PROFILE_BASES;
 
 
 const NATIONALITY_CONTINENTS = Object.freeze({
-  MG:'Africa', SN:'Africa', NG:'Africa', KE:'Africa', MA:'Africa', DZ:'Africa', TN:'Africa', CI:'Africa', GH:'Africa', CM:'Africa', EG:'Africa', ZA:'Africa',
-  FR:'Europe', GB:'Europe', IE:'Europe', IT:'Europe', ES:'Europe', PT:'Europe', DE:'Europe', NL:'Europe', BE:'Europe', HR:'Europe', RS:'Europe', TR:'Europe', GR:'Europe', PL:'Europe', IS:'Europe', LU:'Europe',
-  BR:'South America', AR:'South America', CO:'South America', PE:'South America', UY:'South America', CL:'South America',
-  US:'North America', CA:'North America', MX:'North America', HT:'North America',
-  JP:'Asia', KR:'Asia', AU:'Oceania', NZ:'Oceania'
+  MG:'Africa', SN:'Africa', NG:'Africa', KE:'Africa', MA:'Africa', DZ:'Africa', TN:'Africa', CI:'Africa', GH:'Africa', CM:'Africa', EG:'Africa', ZA:'Africa', CD:'Africa', CG:'Africa',
+  FR:'Europe', GB:'Europe', IE:'Europe', IT:'Europe', ES:'Europe', PT:'Europe', DE:'Europe', NL:'Europe', BE:'Europe', HR:'Europe', RS:'Europe', TR:'Europe', GR:'Europe', PL:'Europe', IS:'Europe', LU:'Europe', DK:'Europe', SE:'Europe', NO:'Europe', CH:'Europe', AT:'Europe', UA:'Europe', CZ:'Europe', RO:'Europe',
+  BR:'South America', AR:'South America', CO:'South America', PE:'South America', UY:'South America', CL:'South America', EC:'South America', PY:'South America', VE:'South America',
+  US:'North America', CA:'North America', MX:'North America', HT:'North America', CR:'North America', JM:'North America', PA:'North America',
+  JP:'Asia', KR:'Asia', SA:'Asia', IR:'Asia', AU:'Oceania', NZ:'Oceania'
 });
 const CONTINENT_NATIONALITIES = Object.freeze(Object.fromEntries(
   [...new Set(Object.values(NATIONALITY_CONTINENTS))].map(continent => [
