@@ -622,6 +622,11 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
       return json(res, 200, { standings:rpClubMatchService.leaderboard() });
     }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs/seasons') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      return json(res, 200, { seasons:rpClubSeasonStore.list() });
+    }
     if (req.method === 'GET' && url.pathname === '/api/rp-clubs/seasons/current') {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
