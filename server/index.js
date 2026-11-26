@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
+import { JsonRpClubStore } from './rp-club-store.js';
 import { readGoogleOidcConfig } from './google-oidc-config.js';
 import { GoogleOidcTransactionStore } from './google-oidc-transactions.js';
 import { JsonPlayerIdentityStore } from './player-identity-store.js';
@@ -93,6 +94,8 @@ const roomStore = new JsonRoomStore(roomDirectory);
 const manager = new RoomManager({ resultStore, roomStore, careerStore, careerSyncQueue, progressionStore, competitionStore });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
+const rpClubDirectory = process.env.RP_CLUBS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rp-clubs');
+const rpClubStore = new JsonRpClubStore(rpClubDirectory);
 const googleOidcConfig = readGoogleOidcConfig(process.env);
 const googleOidcTransactionDirectory = process.env.GOOGLE_OIDC_TRANSACTIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'google-oidc-transactions');
 const googleOidcTransactionStore = new GoogleOidcTransactionStore({ directory: googleOidcTransactionDirectory });
@@ -523,6 +526,64 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       return json(res, 200, { career: careerStore.get(account.id) });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs') {
+      const rawLimit = url.searchParams.get('limit'), rawOffset = url.searchParams.get('offset');
+      const limit = rawLimit === null ? 24 : Number(rawLimit), offset = rawOffset === null ? 0 : Number(rawOffset);
+      if (!Number.isSafeInteger(limit) || !Number.isSafeInteger(offset) || limit < 1 || offset < 0) return json(res, 400, { error: 'INVALID_PAGINATION' });
+      return json(res, 200, rpClubStore.list({ search:url.searchParams.get('q') || '', limit, offset }));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs/me') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      return json(res, 200, { membership:rpClubStore.getForAccount(account.id) });
+    }
+    const rpClubPublicMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})$/i);
+    if (req.method === 'GET' && rpClubPublicMatch) {
+      const club = rpClubStore.get(rpClubPublicMatch[1]);
+      return club ? json(res, 200, { club }) : json(res, 404, { error: 'RP_CLUB_NOT_FOUND' });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/rp-clubs') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const identity = playerIdentityStore.getByAccountId(account.id);
+      if (!identity || identity.playerId !== account.playerId) return json(res, 403, { error: 'PLAYER_IDENTITY_REQUIRED' });
+      const body = await readBody(req);
+      const displayName = playerProfileStore.get(account.id)?.identity?.displayName || identity.playerId;
+      const result = rpClubStore.create({ accountId:account.id, playerId:identity.playerId, displayName, name:body.name, tag:body.tag, description:body.description });
+      return json(res, result.ok ? 201 : (result.reason === 'PLAYER_IDENTITY_REQUIRED' || result.reason.startsWith('INVALID_') ? 400 : 409), result);
+    }
+    const rpClubJoinMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/join-requests$/i);
+    if (req.method === 'POST' && rpClubJoinMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const identity = playerIdentityStore.getByAccountId(account.id);
+      if (!identity || identity.playerId !== account.playerId) return json(res, 403, { error: 'PLAYER_IDENTITY_REQUIRED' });
+      const result = rpClubStore.requestJoin(rpClubJoinMatch[1], {
+        accountId:account.id, playerId:identity.playerId,
+        displayName:playerProfileStore.get(account.id)?.identity?.displayName || identity.playerId
+      });
+      const status = result.ok ? 201 : result.reason === 'RP_CLUB_NOT_FOUND' ? 404
+        : result.reason === 'PLAYER_IDENTITY_REQUIRED' ? 400 : 409;
+      return json(res, status, result);
+    }
+    const rpClubDecisionMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/join-requests\\/([a-f0-9-]{36})\\/decision$/i);
+    if (req.method === 'POST' && rpClubDecisionMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const result = rpClubStore.decideJoinRequest(rpClubDecisionMatch[1], rpClubDecisionMatch[2], { actorAccountId:account.id, decision:body.decision });
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'JOIN_REQUEST_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    const rpClubLeaveMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/leave$/i);
+    if (req.method === 'POST' && rpClubLeaveMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const result = rpClubStore.leave(rpClubLeaveMatch[1], account.id);
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_MEMBERSHIP_NOT_FOUND' ? 404 : 409;
+      return json(res, status, result);
     }
     if (req.method === 'GET' && url.pathname === '/api/accounts/me') {
       const account = accountStore.resolve(accountSessionToken(req));
