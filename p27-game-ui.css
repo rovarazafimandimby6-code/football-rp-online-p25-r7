@@ -1892,3 +1892,17 @@
 #main-menu .rp-club-member-controls{display:flex;align-items:center;gap:4px;margin-left:auto}
 #main-menu .rp-club-member-controls select{max-width:100px;height:25px;padding:0 4px;border:1px solid rgba(143,184,220,.25);border-radius:3px;background:#071624;color:#dceaf7;font-size:7px}
 #main-menu .rp-club-member-controls button{height:25px;padding:0 7px;border:1px solid rgba(149,195,234,.3);border-radius:3px;background:#1b4b6d;color:#eff7ff;font-size:7px;font-weight:950}
+
+/* Club RP — verified weekly contributions from career match records */
+#main-menu .rp-club-activity-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:7px 0}
+#main-menu .rp-club-activity-stats>span{display:flex;align-items:center;justify-content:center;gap:7px;min-height:37px;border:1px solid rgba(143,183,214,.16);border-radius:3px;background:rgba(4,15,26,.68)}
+#main-menu .rp-club-activity-stats b{color:#f1d27d;font-size:17px;font-weight:1000}
+#main-menu .rp-club-activity-stats small{color:#8eaac2;font-size:7px;font-weight:950;letter-spacing:.06em}
+#main-menu .rp-club-contributors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+#main-menu .rp-club-contributor{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 8px;border:1px solid rgba(143,183,214,.13);border-radius:3px;background:rgba(4,15,26,.5)}
+#main-menu .rp-club-contributor>b{display:grid;place-items:center;flex:0 0 21px;width:21px;height:21px;border-radius:3px;background:#173c58;color:#eacb77;font-size:9px}
+#main-menu .rp-club-contributor>span{flex:1;min-width:0;overflow:hidden;color:#edf5fc;font-size:9px;font-weight:900;text-overflow:ellipsis;white-space:nowrap}
+#main-menu .rp-club-contributor>span small{display:block;margin-top:2px;color:#8eaac2;font-size:7px;font-weight:600}
+#main-menu .rp-club-contributor>strong{color:#b5d6ee;font-size:8px}
+#main-menu .rp-club-activity-note{display:block;margin-top:7px;color:#7895ae;font-size:7px}
+@media(orientation:portrait){#main-menu .rp-club-contributors{grid-template-columns:1fr}}
