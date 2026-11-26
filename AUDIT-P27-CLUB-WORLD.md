@@ -195,3 +195,14 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Ajout d'un test concurrent exécutant trois pratiques simultanées : les trois commandes sont conservées, les pièces et attributs sont cohérents, et la révision progresse de façon attendue.
 - Ajout d'un test HTTP qui tente de restaurer une ancienne progression complète avec une valeur artificiellement élevée : le Worker répond 400 (`INVALID_PROGRESSION_ACTION`) et n'écrit aucune ligne.
 - Vérification statique des fichiers et présence des tests sur GitHub effectuées. Pas d'exécution locale ni de CI disponible dans ce contrôle; aucun test de déploiement Cloudflare/D1 et aucun APK généré.
+
+
+## Profil cloud complet et audit de récupération inter-appareils — 26/11/2026
+
+- Correction du schéma D1 du profil : le pied préféré accepte désormais `left`, `right` et `both`, conformément au profil local P27.
+- Les formes de visage (`faceShape`) et des yeux (`eyeShape`) sont désormais normalisées et conservées dans le profil cloud. Les valeurs inconnues retombent sur les valeurs par défaut sûres.
+- Le client de synchronisation et la validation du snapshot de récupération transmettent et contrôlent ces trois paramètres au lieu de les supprimer ou de refuser un profil ambidextre.
+- Tests ajoutés/renforcés dans `tests/cloudflare-player-profile-repository.test.mjs` et `tests/p27-online-account-profile.test.mjs` pour la normalisation D1, l'upload et la prévisualisation de récupération.
+- **Blocage de récupération identifié :** `OnlineAccountClient.getAccountSnapshot()` appelle `GET /api/account/snapshot`, mais aucune route correspondante n'existe actuellement dans `src/cloudflare/worker.js`. Les tests client simulent cette réponse ; ils ne prouvent donc pas que le Worker la fournit. La restauration complète inter-appareils n'est pas encore opérationnelle de bout en bout.
+- Le Worker possède actuellement des sources cloud distinctes pour le profil, la progression et la carrière. Les sections `seasonStats` et `contract` requises par le plan de récupération ne disposent pas encore d'une source serveur agrégée vérifiée. Il ne faut pas fabriquer un snapshot complet à partir de valeurs locales ou par défaut.
+- Les commits ajoutent la correction et les tests, mais aucun workflow CI n'a été observé pour le dernier commit lors du contrôle. Les tests n'ont pas été exécutés ici ; aucun déploiement Cloudflare ni APK n'est revendiqué.
