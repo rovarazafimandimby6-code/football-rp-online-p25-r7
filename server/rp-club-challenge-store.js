@@ -82,8 +82,8 @@ export class JsonRpClubChallengeStore {
     if (!target) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
     if (challenger.id === target.id) return { ok:false, reason:'RP_CLUB_CHALLENGE_SELF' };
     if (target.memberCount < 1) return { ok:false, reason:'RP_CLUB_EMPTY' };
-    const targetMembers = clubStore.getMemberAccounts(target.id, target.members[0]?.accountId);
-    if (!targetMembers?.length) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
+    const targetMemberAccountIds = clubStore.listMemberAccountIds(target.id);
+    if (!targetMemberAccountIds?.length) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
     const active = this.state.challenges.find(item =>
       ['pending','accepted'].includes(item.status)
       && ((item.challengerClubId === challenger.id && item.targetClubId === target.id)
@@ -94,7 +94,7 @@ export class JsonRpClubChallengeStore {
     const item = {
       id:this.idFactory(), challengerClubId:challenger.id, challengerName:challenger.name, challengerTag:challenger.tag,
       targetClubId:target.id, targetName:target.name, targetTag:target.tag,
-      createdByAccountId:actorAccountId, targetMemberAccountIds:targetMembers.map(member=>member.accountId),
+      createdByAccountId:actorAccountId, targetMemberAccountIds,
       status:'pending', createdAt, scheduledAt:null, decidedAt:null, decidedByAccountId:null
     };
     return this.transact(() => { this.state.challenges.push(item); return { ok:true, challenge:this.listForAccount(actorAccountId).find(row=>row.id===item.id) }; });
