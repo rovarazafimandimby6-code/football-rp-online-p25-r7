@@ -616,10 +616,16 @@ ${renderGoogleProtectionCard({ compact: true })}
         <label><span>NOTE MIN.</span><select id="library-min-rating"><option value="0">Toutes</option><option value="60">60+</option><option value="70">70+</option><option value="80">80+</option></select></label>
       </div>
       <div class="player-library-resultline"><span id="library-count">${rosterPlayers.length} joueurs</span><span>DONNÉES ISSUES DES EFFECTIFS LOCAUX</span></div>
-      <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>`<article class="player-library-card" role="button" tabindex="0" aria-label="Ouvrir le profil de ${escapeHTML(player.name)}" data-player-profile="${index}" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
+      <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>{const origin=(player.isHuman===true||player.ownerType==='human'||player.source==='human'||player.createdBy==='user')?'human':'system';const attrs=player.attributes||{};const cardAttributes=[['RAP',attrs.pace],['ACC',attrs.acceleration],['END',attrs.stamina],['PUI',attrs.strength],['CON',attrs.control],['PAS',attrs.passing],['TIR',attrs.shooting],['TAC',attrs.defense]];return `<article class="player-library-card" role="button" tabindex="0" aria-label="Afficher la carte de ${escapeHTML(player.name)}" aria-expanded="false" data-player-profile="${index}" data-profile-origin="players" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
         <span class="player-card-portrait" aria-hidden="true">${['👨🏽‍🦱','👱🏽‍♂️','👨🏽‍🦰','👨🏽‍🦲','👨🏽‍🦳','👨🏽‍🦲','👨🏽‍🦳','👨🏽‍🦲','👨🏽‍🦰','👨🏽‍🦰','👱🏽‍♂️','🧝🏽‍♂️'][index%12]}</span>
-        <span class="player-card-compact-copy"><b class="player-card-rating">${player.rating}</b><strong>${escapeHTML(player.name)}</strong><small>${roleNames[player.role]||player.role} · #${player.number}</small><small>${countryFlag(player.nationality)} · ${escapeHTML(player.clubName)}</small></span>
-      </article>`).join('')}</div>
+        <span class="player-card-compact-copy">
+          <span class="player-card-name-line"><i class="player-origin-dot ${origin}" aria-hidden="true"></i><strong>${escapeHTML(player.name)}</strong><b class="player-card-rating" aria-label="Note globale ${player.rating}">${player.rating}</b></span>
+          <small>${countryFlag(player.nationality)} · ${escapeHTML(player.clubName)}</small>
+          <small>${escapeHTML(player.clubDivision||'')} · ${roleNames[player.role]||player.role} · #${player.number}</small>
+          <span class="player-card-more" data-action="open-player-profile" data-player-index="${index}">Voir plus ›</span>
+        </span>
+        <span class="player-card-expanded-details" aria-hidden="true">${cardAttributes.map(([label,value])=>`<span><small>${label}</small><b>${Number.isFinite(Number(value))&&value!==undefined?Number(value):'—'}</b></span>`).join('')}<small class="player-card-physical">Profil physique : informations disponibles dans la fiche complète</small></span>
+      </article>`}).join('')}</div>
       <div class="player-library-footer compact-library-pagination"><span id="library-visible-count">0 affiché</span><div><button class="small-action" data-action="players-page" data-page="-1" id="library-page-prev" aria-label="Page précédente">‹</button><span id="library-page-label">1 / 1</span><button class="small-action" data-action="players-page" data-page="1" id="library-page-next" aria-label="Page suivante">›</button></div></div>
       <p class="notice">Cette bibliothèque recense les joueurs actuellement présents dans les effectifs locaux connus. Les joueurs libres, les transferts et les prêts ne sont pas inventés : ils seront intégrés quand leurs statuts seront reliés à une source de données fiable.</p>
     </div>`;
@@ -1212,9 +1218,11 @@ menu.addEventListener('click', event => {
 menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
   if (pageButton) { renderPage(pageButton.dataset.view || pageButton.dataset.page); return; }
+  const careerButton = event.target.closest('.player-card-more');
+  if (careerButton) { const index = Number(careerButton.dataset.playerIndex); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = 'players'; if(selectedPlayerProfile) renderPage('player-detail'); return; }
   const playerCard = event.target.closest('[data-player-profile]');
   if (playerCard && event.target.closest('.player-card-details')) return;
-  if (playerCard) { const index = Number(playerCard.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = playerCard.dataset.profileOrigin || 'players'; renderPage('player-detail'); return; }
+  if (playerCard) { const expanded=playerCard.classList.toggle('is-expanded'); playerCard.setAttribute('aria-expanded',String(expanded)); playerCard.querySelector('.player-card-expanded-details')?.setAttribute('aria-hidden',String(!expanded)); return; }
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'club-division-tab') {
     const tab=event.target.closest('[data-division]');
@@ -1444,10 +1452,9 @@ menu.addEventListener('keydown', event => {
   const card = event.target.closest('[data-player-profile]');
   if (!card || event.target.closest('summary,button,a,input,select,textarea')) return;
   event.preventDefault();
-  const index = Number(card.dataset.playerProfile);
-  selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null;
-  playerProfileReturnPage = card.dataset.profileOrigin || 'players';
-  renderPage('player-detail');
+  const expanded=card.classList.toggle('is-expanded');
+  card.setAttribute('aria-expanded',String(expanded));
+  card.querySelector('.player-card-expanded-details')?.setAttribute('aria-hidden',String(!expanded));
 });
 
 menu.addEventListener('submit', event => {
