@@ -214,6 +214,22 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     assert.equal(formerFounderMembership.membership.isPresident, false);
     assert.equal(formerFounderMembership.club.presidentPlayerId, invitee.identity.playerId);
 
+    const thirdFounder = outsider;
+    const thirdCreate = await fetch(`${base}/api/rp-clubs`, {
+      method:'POST', headers:{ authorization:`Bearer ${thirdFounder.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ name:`New Rivals ${thirdFounder.identity.playerId.slice(-2)}`, tag:`N${thirdFounder.identity.playerId.slice(-2)}` })
+    });
+    assert.equal(thirdCreate.status, 201);
+    const thirdClub = (await thirdCreate.json()).club;
+    const formerPresidentChallenge = await fetch(`${base}/api/rp-clubs/${thirdClub.id}/challenges`, {
+      method:'POST', headers:{ authorization:`Bearer ${founder.token}` }
+    });
+    assert.equal(formerPresidentChallenge.status, 403);
+    const currentPresidentChallenge = await fetch(`${base}/api/rp-clubs/${thirdClub.id}/challenges`, {
+      method:'POST', headers:{ authorization:`Bearer ${invitee.token}` }
+    });
+    assert.equal(currentPresidentChallenge.status, 201);
+
     const unauthorizedFounderRoleChange = await fetch(`${base}/api/rp-clubs/${created.club.id}/members/${member.identity.playerId}/role`, {
       method:'POST', headers:{ authorization:`Bearer ${founder.token}`, 'content-type':'application/json' },
       body:JSON.stringify({ role:'recruiter' })
