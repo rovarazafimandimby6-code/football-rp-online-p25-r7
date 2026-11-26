@@ -242,6 +242,8 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     const governanceLog = (await governanceView.json()).membership.governanceLog;
     assert.ok(governanceLog.some(event => event.action === 'presidency_transferred'));
     assert.ok(governanceLog.some(event => event.action === 'join_accepted'));
+    const inviteeMember = governanceViewData.membership.club.members.find(member => member.playerId === invitee.identity.playerId);
+    assert.ok(governanceLog.some(event => event.action === 'invitation_accepted' && event.actorDisplayName === inviteeMember.displayName));
     assert.ok(governanceLog.some(event => event.action === 'member_removed'));
     assert.equal(governanceLog.some(event => Object.hasOwn(event, 'accountId')), false);
 
