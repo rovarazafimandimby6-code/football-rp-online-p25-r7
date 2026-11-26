@@ -130,3 +130,77 @@ Sources :
 - Ne pas modifier le moteur de match pour une refonte des menus.
 - Ne pas prétendre que P27 possède déjà les fonctions DLS absentes.
 - Reprendre les principes d'expérience, pas les marques, cartes licenciées, visuels protégés ou code de DLS.
+
+
+## 8. Clarification de direction : adaptation, pas redémarrage
+
+P27 conserve ses fondations, ses systèmes déjà développés et ses choix validés. La référence DLS sert à compléter, réorganiser et améliorer l'existant ; elle ne justifie ni une réécriture totale ni la suppression du travail RP27. Chaque intégration commence par repérer les données, écrans, services et comportements déjà présents, puis les réutilise ou les étend.
+
+L'objectif de conception est de reprendre environ 45 % des grands principes/systèmes fonctionnels de DLS, adaptés au rôle-play. Ce chiffre est une cible de couverture fonctionnelle, pas une promesse de réutilisation de code, de ressources ou d'actifs propriétaires.
+
+### A. Compte, identité et sauvegarde
+
+DLS est également une référence pour le cycle de compte et la continuité de progression. P27 doit donc traiter ces éléments comme un socle transversal :
+- Compte utilisateur : création/connexion, identité persistante et récupération d'accès selon les mécanismes déjà présents dans P27.
+- Profil RP : identité du joueur humain, distincte du footballeur fictif qu'il incarne.
+- Sauvegarde persistante : carrière, personnalisation, contrats, club RP, progression, inventaire/équipement, historique et statistiques.
+- Synchronisation : serveur comme source de vérité pour les données en ligne ; cache local contrôlé pour la continuité et les écrans hors ligne.
+- Résolution des conflits : horodatage/version des données, validation des écritures et prévention des doubles récompenses ou pertes de progression.
+- Reprise : après reconnexion ou réinstallation, retrouver la progression liée au compte plutôt que créer un nouvel état.
+- Migration : faire évoluer les formats de sauvegarde sans effacer les données des versions P27 précédentes.
+
+Ne pas remplacer le système de compte/sauvegarde déjà fonctionnel avant d'avoir audité son architecture et ses données. L'adaptation doit renforcer la persistance existante et préserver la compatibilité.
+
+### B. Personnalisation du footballeur — référence DLS 19
+
+La personnalisation DLS 19 sert de référence fonctionnelle pour donner au joueur RP une apparence qui lui appartient. P27 doit réutiliser son éditeur existant et l'étendre par étapes :
+- Apparence générale et morphologie dans les limites du moteur 3D existant.
+- Visage, coiffure et pilosité si les modèles/ressources le permettent.
+- Taille, corpulence et proportions si le rig et les animations peuvent les supporter sans casser le gameplay.
+- Équipement : maillot, short, chaussettes, chaussures, accessoires autorisés.
+- Identité sportive : nom affiché, numéro, poste, pied préféré et nationalité fictive/choisie selon les règles RP.
+- Aperçu 3D immédiat, rotation/inspection et validation avant sauvegarde.
+- Séparation entre attributs sportifs (qui influencent le jeu) et apparence (cosmétique), pour éviter les avantages cachés.
+
+L'éditeur doit rester compatible avec le modèle 3D, le rig, les animations, les performances Android et les commandes actuelles. Aucun écran de personnalisation ne doit promettre une option que les assets ou le moteur ne savent pas afficher.
+
+### C. Deux identités à ne jamais confondre
+
+1. **Compte / utilisateur** : la personne qui se connecte et sauvegarde sa progression.
+2. **Footballeur RP** : personnage fictif créé ou contrôlé par cet utilisateur, avec carrière, poste, attributs, contrat et apparence.
+3. **Club RP** : groupement social de plusieurs utilisateurs/footballeurs, inspiré du Clan DLS. Il possède fondateur/président, rôles, adhésions, invitations, recrutement, activité, objectifs collectifs, matchs et classement lorsque les services correspondants existent.
+4. **Club de football / équipe de compétition** : entité sportive fictive déjà présente dans les divisions, groupes, calendriers et compétitions P27. Elle possède un effectif sportif, un staff et des résultats.
+5. **Relation entre les deux** : un Club RP peut rassembler des utilisateurs dont les footballeurs évoluent dans différentes équipes de compétition. Une adhésion à un Club RP ne doit donc pas automatiquement transférer le footballeur dans une équipe sportive.
+
+Dans l'interface, employer « Club RP » pour le groupe de joueurs et « Équipe » ou « club de championnat » pour l'entité sportive. Dans les données, séparer clairement les identifiants et relations (par exemple `rpClubId` et `footballClubId`) afin d'éviter les collisions.
+
+### D. Bibliothèque et cartes des joueurs fictifs
+
+- Les joueurs professionnels licenciés de DLS deviennent des footballeurs entièrement fictifs, avec noms, portraits, nationalités, attributs, potentiel et historique propres à P27.
+- La bibliothèque est un catalogue navigable, filtrable et consultable ; le mercato est un parcours d'offre, de négociation, de contrat et de transfert. Ces deux fonctions restent liées mais distinctes.
+- La carte horizontale compacte affiche portrait, nom, note globale, poste, club/équipe et championnat ; les attributs détaillés et l'historique apparaissent dans la fiche.
+- Les effectifs, cartes, contrats, statistiques et classements doivent référencer la même fiche joueur afin d'éviter les doublons.
+- Le système de note globale doit être calculé à partir des attributs et du poste selon une règle stable et testée, jamais saisie arbitrairement dans plusieurs écrans.
+
+### E. Club RP inspiré des Clans DLS
+
+Le Club RP est une communauté structurée, pas un simple nom d'équipe :
+- création, nom, emblème, couleurs, description et règles ;
+- fondateur, président, responsables, membres et permissions ;
+- demandes d'adhésion, invitations, départ, exclusion et transfert de responsabilité ;
+- liste des membres reliée aux comptes et à leurs footballeurs RP ;
+- objectifs collectifs, activité, défis, rencontres inter-clubs et classement ;
+- récompenses communes uniquement si elles sont persistées et calculées côté serveur ;
+- journal d'activité et garde-fous contre les abus, doublons et modifications non autorisées.
+
+### F. Ordre d'adaptation
+
+1. Auditer et protéger compte, sauvegarde, profil et personnalisation déjà présents.
+2. Relier le hub aux données réelles de carrière, joueur, équipe, compétitions et compte.
+3. Stabiliser bibliothèque, cartes, fiches et modèle de footballeur fictif.
+4. Distinguer définitivement Club RP et équipe/club de championnat.
+5. Construire les fonctions de Club RP au-dessus des comptes et profils existants.
+6. Étendre la personnalisation 3D sans modifier le moteur de match.
+7. Ajouter progressivement événements, infrastructures et fonctions en ligne, uniquement quand le backend les prend réellement en charge.
+
+Chaque lot doit être livré avec tests de non-régression, compatibilité des sauvegardes et vérification de la build Android. Le travail existant P27 reste la base de départ.
