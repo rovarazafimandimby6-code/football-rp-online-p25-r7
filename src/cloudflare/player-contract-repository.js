@@ -2,7 +2,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 const PLAYER_ID_RE = /^FRP-[0-9]{6}$/;
 const EVENT_TYPES = new Set(["signing", "transfer", "renewal", "termination", "expiry", "loan", "loan-return"]);
 const STATUSES = new Set(["active", "terminated", "expired", "free-agent"]);
-const clean = (value, max = 96) => String(value ?? "").replace(/[<>\\u0000-\\u001f]/g, "").trim().slice(0, max);
+const clean = (value, max = 96) => String(value ?? "").replace(/[<>\u0000-\u001f]/g, "").trim().slice(0, max);
 
 function validateIdentity(accountId, playerId) {
   if (typeof accountId !== "string" || !UUID_RE.test(accountId)) throw new Error("INVALID_ACCOUNT_ID");
@@ -55,6 +55,20 @@ export class D1PlayerContractRepository {
     if (!id || !EVENT_TYPES.has(eventType) || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
         !Number.isSafeInteger(occurredAt) || occurredAt < 0) throw new Error("INVALID_CONTRACT_EVENT");
     const normalized = normalizeContract(contract);
+    const existingEvent = await this.db.prepare(
+      "SELECT * FROM p27_player_contract_events WHERE account_id = ? AND event_id = ?"
+    ).bind(accountId, id).first();
+    if (existingEvent) {
+      const sameCommand = existingEvent.player_id === playerId &&
+        existingEvent.event_type === eventType &&
+        Number(existingEvent.expected_revision) === expectedRevision &&
+        Number(existingEvent.occurred_at) === occurredAt &&
+        existingEvent.contract_status === normalized.status &&
+        (existingEvent.club_id || null) === normalized.clubId &&
+        (existingEvent.contract_json || null) === normalized.json;
+      if (!sameCommand) throw new Error("CONTRACT_EVENT_ID_CONFLICT");
+      return { ok: true, duplicate: true, current: await this.getCurrent(accountId) };
+    }
     try {
       const inserted = await this.db.prepare(`
         INSERT INTO p27_player_contract_events (
@@ -69,17 +83,22 @@ export class D1PlayerContractRepository {
       return { ok: true, duplicate: false, changes: Number(inserted?.meta?.changes || 0), current };
     } catch (error) {
       const message = String(error?.message || "");
-      if (message.includes("CONTRACT_REVISION_CONFLICT")) throw new Error("CONTRACT_REVISION_CONFLICT");
-      if (message.includes("PLAYER_IDENTITY_MISMATCH") || message.includes("FOREIGN KEY")) throw new Error("PLAYER_IDENTITY_MISMATCH");
-      if (message.includes("UNIQUE constraint failed") && message.includes("event_id")) {
+      if (message.includes("CONTRACT_REVISION_CONFLICT")) {
         const prior = await this.db.prepare(
           "SELECT * FROM p27_player_contract_events WHERE account_id = ? AND event_id = ?"
         ).bind(accountId, id).first();
-        if (prior && prior.player_id === playerId && prior.event_type === eventType) {
-          return { ok: true, duplicate: true, current: await this.getCurrent(accountId) };
-        }
-        throw new Error("CONTRACT_EVENT_ID_CONFLICT");
+        const sameCommand = prior && prior.player_id === playerId &&
+          prior.event_type === eventType &&
+          Number(prior.expected_revision) === expectedRevision &&
+          Number(prior.occurred_at) === occurredAt &&
+          prior.contract_status === normalized.status &&
+          (prior.club_id || null) === normalized.clubId &&
+          (prior.contract_json || null) === normalized.json;
+        if (sameCommand) return { ok: true, duplicate: true, current: await this.getCurrent(accountId) };
+        throw new Error("CONTRACT_REVISION_CONFLICT");
       }
+      if (message.includes("PLAYER_IDENTITY_MISMATCH") || message.includes("FOREIGN KEY")) throw new Error("PLAYER_IDENTITY_MISMATCH");
+      if (message.includes("UNIQUE constraint failed") && message.includes("event_id")) throw new Error("CONTRACT_EVENT_ID_CONFLICT");
       throw error;
     }
   }
