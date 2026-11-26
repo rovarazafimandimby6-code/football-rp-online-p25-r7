@@ -101,6 +101,7 @@ const rpClubStore = new JsonRpClubStore(rpClubDirectory);
 const rpClubChallengeDirectory = process.env.RP_CLUB_CHALLENGES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rp-club-challenges');
 const rpClubChallengeStore = new JsonRpClubChallengeStore(rpClubChallengeDirectory);
 const rpClubMatchService = new RpClubMatchService({ clubStore:rpClubStore, challengeStore:rpClubChallengeStore, roomManager:manager });
+manager.onResultFinalized = (result, room) => rpClubMatchService.recordFinalizedResult(result, room);
 const googleOidcConfig = readGoogleOidcConfig(process.env);
 const googleOidcTransactionDirectory = process.env.GOOGLE_OIDC_TRANSACTIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'google-oidc-transactions');
 const googleOidcTransactionStore = new GoogleOidcTransactionStore({ directory: googleOidcTransactionDirectory });
@@ -591,6 +592,11 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const result = rpClubMatchService.createRoom(rpClubChallengeMatchCreate[1], account.id);
       const status = result.ok ? 201 : result.reason === 'RP_CLUB_CHALLENGE_NOT_FOUND' ? 404 : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
       return json(res, status, result);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs/challenges/leaderboard') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      return json(res, 200, { standings:rpClubMatchService.leaderboard() });
     }
     if (req.method === 'GET' && url.pathname === '/api/rp-clubs/challenges/me') {
       const account = accountStore.resolve(accountSessionToken(req));
