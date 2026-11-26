@@ -372,8 +372,11 @@ test('P27 UI: bibliothèque des clubs compacte par division avec accès rapide D
   assert.match(main, /filterClubDiscovery\(\{target:\{id:'club-division-filter'\}\}\)/);
   assert.match(main, /compact-club-card/);
   assert.match(main, /Number\(b\.rating\|\|0\)-Number\(a\.rating\|\|0\)/);
+  assert.match(main, /const clubLibraryLimit = 20/);
+  assert.match(main, /data-action=\"club-page\"/);
+  assert.match(main, /clubLibraryPage\*clubLibraryLimit/);
   const css = cssText();
-  for (const selector of ['.club-division-tabs','.club-division-tab','.compact-club-card','.club-grid']) {
+  for (const selector of ['.club-division-tabs','.club-division-tab','.compact-club-card','.club-grid','.club-library-pagination']) {
     assert.ok(css.includes(selector), `missing compact club library style: ${selector}`);
   }
 });
