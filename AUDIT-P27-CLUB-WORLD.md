@@ -160,3 +160,11 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Désormais, une session humaine active actualise sa présence sans modifier son input. Une session réellement passée sous contrôle IA emprunte toujours le chemin de reconnexion et reprend le même avatar.
 - Tests ajoutés pour les deux comportements. Aucun changement au moteur de simulation, au HUD ou aux commandes tactiles.
 - La suite de tests doit encore être exécutée ; aucun résultat CI n'est disponible au moment de cet audit.
+
+## Nettoyage des salons après déconnexion — 26/11/2026
+
+- Correction d'un cas limite dans l'expiration des salons inactifs : l'horodatage zéro est une valeur valide et ne doit pas être interprété comme une absence de déconnexion.
+- Le délai de grâce compare désormais explicitement un horodatage fini avec l'heure courante.
+- Un test de régression couvre un salon inactif dont le joueur s'est déconnecté à l'instant zéro.
+- La restauration après redémarrage, la reprise du même avatar et la durée restante de mi-temps restent inchangées.
+- Aucun changement au moteur de simulation, au HUD ou aux commandes tactiles. L'exécution de la suite reste à confirmer par CI.
