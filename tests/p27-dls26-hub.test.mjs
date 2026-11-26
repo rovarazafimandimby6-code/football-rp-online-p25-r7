@@ -33,7 +33,8 @@ test('P27 DLS26: les panneaux sont reliés aux vraies fonctions existantes', () 
   assert.match(main, /pendingOffers/);
   assert.match(main, /latestMatch/);
   assert.match(main, /careerClub/);
-  assert.ok(main.includes('data-page=\"rp-club\"'));\n  assert.match(main, /ÉQUIPE DE CHAMPIONNAT/);
+  assert.ok(main.includes('data-page=\"rp-club\"'));
+  assert.match(main, /ÉQUIPE DE CHAMPIONNAT/);
 });
 
 test('P27 DLS26: l’audit distingue les fonctions présentes et celles à construire', () => {
