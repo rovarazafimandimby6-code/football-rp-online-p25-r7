@@ -754,6 +754,25 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
       return json(res, status, result);
     }
+    const rpClubPresidencyTransferMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/presidency\/transfer$/i);
+    if (req.method === 'POST' && rpClubPresidencyTransferMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const result = rpClubStore.transferPresidency(rpClubPresidencyTransferMatch[1], body.playerId, account.id);
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_MEMBER_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    const rpClubRemoveMemberMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/members\/(FRP-\\d{6})\/remove$/i);
+    if (req.method === 'POST' && rpClubRemoveMemberMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const result = rpClubStore.removeMember(rpClubRemoveMemberMatch[1], rpClubRemoveMemberMatch[2], account.id);
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_MEMBER_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
     const rpClubLeaveMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/leave$/i);
     if (req.method === 'POST' && rpClubLeaveMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
