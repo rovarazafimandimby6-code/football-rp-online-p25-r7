@@ -239,3 +239,18 @@ test('P27 clubs, résultats et mercato : composants réels couverts par le thèm
     assert.ok(css.includes(selector), `missing P27 style: ${selector}`);
   }
 });
+
+
+test('P27 profil joueur : personnalisation, progression et statistiques disposent de composants dédiés', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.avatar-preview-stage','.profile-meta','.attribute-list','.editor-grid','.training-controls','.player-stats-panel .quick-grid','.form-chip','.history-list']) {
+    assert.ok(css.includes(selector), `missing player profile style: ${selector}`);
+  }
+});
+
+test('P27 fiches joueur : identité, attributs, parcours et palmarès sont harmonisés', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.player-career-hero','.player-career-avatar','.player-career-tags','.player-career-attributes','.player-career-timeline','.player-career-empty']) {
+    assert.ok(css.includes(selector), `missing player career style: ${selector}`);
+  }
+});
