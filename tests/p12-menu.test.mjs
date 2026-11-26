@@ -269,3 +269,24 @@ test('P27 mercato : contrat, négociations et historique sont lisibles sur mobil
     assert.ok(css.includes(selector), `missing mercato style: ${selector}`);
   }
 });
+
+
+test('P27 compétitions : classements serveur, calendrier et barrages ont une hiérarchie visuelle dédiée', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.competition-layout','.server-season-overview','.division-table-block','.division-table-title','.standings-table','.server-fixture-preview','.promotion-playoff-block','.movement-preview']) {
+    assert.ok(css.includes(selector), `missing competition UI style: ${selector}`);
+  }
+  assert.match(main, /loadServerCompetitionOverview\(\)/);
+  assert.match(main, /COMPETITION_SNAPSHOT_INCOMPLETE/);
+  assert.match(main, /scheduleAudit\.fixtureCount!==1892/);
+});
+
+test('P27 résultats : archives paginées et feuille de match détaillée restent lisibles', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.results-list','.result-card-top','.result-scoreline','.result-card-bottom','.results-pagination','.result-detail-card','.result-team-grid','.result-team-stats','.result-player-table']) {
+    assert.ok(css.includes(selector), `missing results UI style: ${selector}`);
+  }
+  assert.match(main, /data-action="results-page"/);
+  assert.match(main, /data-action="show-result"/);
+  assert.match(main, /data-action="retry-results"/);
+});
