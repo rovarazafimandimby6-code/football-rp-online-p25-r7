@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { server, accountStore, playerIdentityStore } from '../server/index.js';
+import { server, accountStore, playerIdentityStore, careerStore } from '../server/index.js';
 
 async function createPlayerSession() {
   const identity = playerIdentityStore.reserve({
@@ -19,6 +19,7 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     const founder = await createPlayerSession();
     const member = await createPlayerSession();
     const invitee = await createPlayerSession();
+    const outsider = await createPlayerSession();
     const create = await fetch(`${base}/api/rp-clubs`, {
       method: 'POST',
       headers: { authorization: `Bearer ${founder.token}`, 'content-type': 'application/json' },
@@ -79,6 +80,25 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     });
     assert.equal(assignRole.status, 200);
     assert.equal((await assignRole.json()).role, 'recruiter');
+
+    careerStore.recordMatch(member.identity.accountId, {
+      matchId:randomUUID(), result:'win', finalizedAt:Date.now(),
+      stats:{ goals:2, assists:1, shots:3 }
+    });
+    const activityResponse = await fetch(`${base}/api/rp-clubs/${created.club.id}/activity`, {
+      headers:{ authorization:`Bearer ${founder.token}` }
+    });
+    assert.equal(activityResponse.status, 200);
+    const activity = await activityResponse.json();
+    assert.equal(activity.totals.matches, 1);
+    assert.equal(activity.totals.wins, 1);
+    assert.equal(activity.totals.goals, 2);
+    assert.equal(activity.totals.assists, 1);
+    assert.equal(activity.members.find(row=>row.playerId===member.identity.playerId).goals, 2);
+    const forbiddenActivity = await fetch(`${base}/api/rp-clubs/${created.club.id}/activity`, {
+      headers:{ authorization:`Bearer ${outsider.token}` }
+    });
+    assert.equal(forbiddenActivity.status, 403);
 
     const leave = await fetch(`${base}/api/rp-clubs/${created.club.id}/leave`, {
       method: 'POST', headers: { authorization: `Bearer ${member.token}` }
