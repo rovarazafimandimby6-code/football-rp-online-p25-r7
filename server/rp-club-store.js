@@ -9,6 +9,9 @@ const MEMBER_ROLES = new Set(['founder', 'president', 'vice_president', 'recruit
 const MANAGER_ROLES = new Set(['founder', 'president', 'recruiter']);
 const MAX_MEMBERS = 30;
 const MAX_PENDING_REQUESTS = 100;
+const MAX_MESSAGES = 200;
+const MAX_MESSAGE_LENGTH = 300;
+const MESSAGE_COOLDOWN_MS = 2000;
 
 function normalizeClub(row) {
   if (!row || typeof row !== 'object' || typeof row.id !== 'string' || !row.id
@@ -38,6 +41,14 @@ function normalizeClub(row) {
   if (invitations.length !== (Array.isArray(row.invitations) ? row.invitations.length : 0)
     || invitations.length > MAX_PENDING_REQUESTS
     || new Set(invitations.map(invite => invite.accountId)).size !== invitations.length) return null;
+  const messages = (Array.isArray(row.messages) ? row.messages : []).filter(message => message
+    && typeof message.id === 'string' && typeof message.accountId === 'string'
+    && typeof message.playerId === 'string' && /^FRP-\d{6}$/.test(message.playerId)
+    && typeof message.displayName === 'string' && typeof message.text === 'string'
+    && message.text.length > 0 && message.text.length <= MAX_MESSAGE_LENGTH
+    && typeof message.createdAt === 'string');
+  if (messages.length !== (Array.isArray(row.messages) ? row.messages.length : 0) || messages.length > MAX_MESSAGES
+    || new Set(messages.map(message => message.id)).size !== messages.length) return null;
   return {
     id: row.id,
     name: clean(row.name, 24),
@@ -61,7 +72,8 @@ function normalizeClub(row) {
       id: invite.id, accountId: invite.accountId, playerId: invite.playerId,
       displayName: clean(invite.displayName, 20), invitedByAccountId: invite.invitedByAccountId,
       createdAt: invite.createdAt
-    }))
+    })),
+    messages: messages.map(message => ({ id:message.id, accountId:message.accountId, playerId:message.playerId, displayName:clean(message.displayName,20), text:clean(message.text,MAX_MESSAGE_LENGTH), createdAt:message.createdAt }))
   };
 }
 
@@ -170,7 +182,26 @@ export class JsonRpClubStore {
     const membership = this.findMembership(accountId);
     if (!membership) return null;
     const club = this.publicClub(membership.club);
-    return { club, membership: { playerId: membership.member.playerId, role: membership.member.role, joinedAt: membership.member.joinedAt }, pendingRequests: MANAGER_ROLES.has(membership.member.role) ? membership.club.joinRequests.map(item => ({ id: item.id, playerId: item.playerId, displayName: item.displayName, createdAt: item.createdAt })) : [] };
+    return { club, membership: { playerId: membership.member.playerId, role: membership.member.role, joinedAt: membership.member.joinedAt }, pendingRequests: MANAGER_ROLES.has(membership.member.role) ? membership.club.joinRequests.map(item => ({ id: item.id, playerId: item.playerId, displayName: item.displayName, createdAt: item.createdAt })) : [], messages:membership.club.messages.slice(-60).map(({id,playerId,displayName,text,createdAt})=>({id,playerId,displayName,text,createdAt})) };
+  }
+
+  sendMessage(clubId, { accountId, playerId, displayName, text } = {}) {
+    const safeText = clean(text, MAX_MESSAGE_LENGTH);
+    if (!accountId || !/^FRP-\d{6}$/.test(String(playerId || '')) || !clean(displayName, 20)) return { ok:false, reason:'PLAYER_IDENTITY_REQUIRED' };
+    if (!safeText) return { ok:false, reason:'EMPTY_RP_CLUB_MESSAGE' };
+    return this.transact(() => {
+      const club = this.state.clubs.find(item => item.id === clubId);
+      if (!club) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
+      if (!club.members.some(member => member.accountId === accountId)) return { ok:false, reason:'RP_CLUB_MEMBERSHIP_REQUIRED' };
+      const nowMs = this.now();
+      const lastMessage = [...club.messages].reverse().find(message => message.accountId === accountId);
+      if (lastMessage && nowMs - Date.parse(lastMessage.createdAt) < MESSAGE_COOLDOWN_MS) return { ok:false, reason:'RP_CLUB_MESSAGE_COOLDOWN' };
+      const message = { id:this.idFactory(), accountId, playerId, displayName:clean(displayName,20), text:safeText, createdAt:new Date(nowMs).toISOString() };
+      club.messages.push(message);
+      if (club.messages.length > MAX_MESSAGES) club.messages.splice(0, club.messages.length - MAX_MESSAGES);
+      club.updatedAt = message.createdAt;
+      return { ok:true, message:{ id:message.id, playerId:message.playerId, displayName:message.displayName, text:message.text, createdAt:message.createdAt } };
+    });
   }
 
   create({ accountId, playerId, displayName, name, tag, description = '' } = {}) {
