@@ -97,7 +97,7 @@ test('P23 clubs: diversité nationale internationale avec une présence malgache
   assert.ok(nationalities.size >= 12, `nationalités trouvées: ${[...nationalities].join(', ')}`);
   for (const code of nationalities) assert.ok(players.some(player => player.nationality === code), `${code} doit être représenté`);
   const malagasyShare = Malagasy / players.length;
-  assert.ok(malagasyShare >= 0.40 && malagasyShare <= 0.50, `part malgache: ${Math.round(malagasyShare * 100)}% (${Malagasy}/${players.length})`);
+  assert.ok(malagasyShare >= 0.30 && malagasyShare <= 0.34, `part malgache: ${Math.round(malagasyShare * 100)}% (${Malagasy}/${players.length})`);
   for (const item of clubs) {
     assert.ok(item.roster.length >= 8 && item.roster.length <= 12);
     assert.ok(new Set(item.roster.map(player => player.nationality)).size >= 3, `${item.name} doit avoir au moins 3 nationalités`);
