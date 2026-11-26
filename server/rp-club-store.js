@@ -391,8 +391,8 @@ export class JsonRpClubStore {
       if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
       const member = club.members.find(item => item.accountId === accountId);
       if (!member) return { ok: false, reason: 'RP_CLUB_MEMBERSHIP_NOT_FOUND' };
-      if (club.presidentAccountId === accountId) return { ok:false, reason:'PRESIDENT_MUST_TRANSFER_PRESIDENCY' };
       if (member.role === 'founder') return { ok:false, reason:'FOUNDER_CANNOT_LEAVE' };
+      if (club.presidentAccountId === accountId) return { ok:false, reason:'PRESIDENT_MUST_TRANSFER_PRESIDENCY' };
       club.members = club.members.filter(item => item.accountId !== accountId);
       this.recordGovernance(club, { action:'member_left', actor:member, target:member, details:`${member.displayName} a quitté le Club RP` });
       return { ok: true, memberCount: club.members.length };
