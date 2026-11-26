@@ -14,7 +14,33 @@ const NATIONAL_POOLS = Object.freeze({
   KE: { names: ['Brian','Kevin','Victor','Daniel','Collins','Dennis','Ian','Mark','Eliud','Moses'], surnames: ['Otieno','Wanjala','Kamau','Mwangi','Omondi','Kiptoo','Barasa','Mutua','Njoroge','Kibet','Ochieng','Kariuki'] },
   MA: { names: ['Yassine','Amine','Hamza','Anas','Ilyas','Mehdi','Rayan','Sofiane'], surnames: ['El Amrani','Bennani','Alaoui','Idrissi','Boukhris','Mansouri','Ziani','Chakir'] },
   DZ: { names: ['Yacine','Amir','Karim','Nassim','Walid','Samir','Riad','Adel'], surnames: ['Bensaid','Bouzid','Mansouri','Haddad','Belkacem','Ait Ali','Mebarki','Khelifi'] },
-  TN: { names: ['Aymen','Fares','Malek','Wassim','Tarek','Nizar','Sami','Zied'], surnames: ['Trabelsi','Ben Youssef','Gharbi','Jaziri','Khemiri','Saidi','Mabrouk','Ayari'] }
+  TN: { names: ['Aymen','Fares','Malek','Wassim','Tarek','Nizar','Sami','Zied'], surnames: ['Trabelsi','Ben Youssef','Gharbi','Jaziri','Khemiri','Saidi','Mabrouk','Ayari'] },
+  DE: { names:['Lukas','Leon','Finn','Jonas','Niklas','Felix','Noah','Elias'], surnames:['Muller','Schneider','Fischer','Weber','Wagner','Becker','Hoffmann','Schulz'] },
+  NL: { names:['Daan','Sem','Milan','Luuk','Jesse','Thijs','Bram','Lars'], surnames:['de Jong','Jansen','de Vries','van den Berg','Bakker','Visser','Smit','Meijer'] },
+  BE: { names:['Noah','Arthur','Lucas','Louis','Liam','Victor','Adam','Milan'], surnames:['Peeters','Janssens','Maes','Jacobs','Mertens','Willems','Claes','Goossens'] },
+  HR: { names:['Luka','Ivan','Mateo','Ante','Josip','Marko','Filip','Petar'], surnames:['Kovac','Horvat','Babic','Maric','Novak','Juric','Knezevic','Vukovic'] },
+  RS: { names:['Luka','Nikola','Stefan','Milos','Vuk','Lazar','Nemanja','Filip'], surnames:['Jovanovic','Petrovic','Nikolic','Markovic','Djordjevic','Stankovic','Ilic','Pavlovic'] },
+  US: { names:['Jayden','Cameron','Logan','Mason','Jordan','Tyler','Aiden','Evan'], surnames:['Brooks','Reed','Bennett','Parker','Hayes','Foster','Coleman','Mitchell'] },
+  CA: { names:['Liam','Owen','Ethan','Logan','Noah','Mason','Jacob','Caleb'], surnames:['Wilson','Martin','Tremblay','Roy','Gagnon','Lee','Campbell','Bouchard'] },
+  CO: { names:['Santiago','Juan','Samuel','Nicolas','Mateo','Daniel','Andres','David'], surnames:['Rodriguez','Gomez','Martinez','Lopez','Hernandez','Castro','Rojas','Moreno'] },
+  PE: { names:['Alonso','Diego','Luis','Joaquin','Piero','Andre','Renato','Matias'], surnames:['Quispe','Flores','Garcia','Ramos','Vargas','Mendoza','Rojas','Salazar'] },
+  HT: { names:['Jean','Frantz','Wendell','Steeven','Mackenson','Dany','Ricardo','Peterson'], surnames:['Pierre','Jean-Baptiste','Joseph','Charles','Paul','Etienne','Louis','Cineas'] },
+  MX: { names:['Santiago','Diego','Emiliano','Sebastian','Gael','Luis','Javier','Angel'], surnames:['Hernandez','Garcia','Martinez','Lopez','Gonzalez','Perez','Sanchez','Ramirez'] },
+  UY: { names:['Facundo','Agustin','Matias','Nicolas','Bruno','Thiago','Federico','Martin'], surnames:['Rodriguez','Gonzalez','Pereira','Silva','Fernandez','Suarez','Olivera','Acosta'] },
+  CL: { names:['Benjamin','Vicente','Maximiliano','Matias','Joaquin','Tomas','Lucas','Agustin'], surnames:['Rojas','Munoz','Diaz','Perez','Soto','Contreras','Silva','Morales'] },
+  CI: { names:['Yaya','Kader','Serge','Franck','Jean','Ibrahim','Moussa','Oumar'], surnames:['Kone','Traore','Diallo','Kouassi','Bamba','Coulibaly','Yao','Toure'] },
+  GH: { names:['Kwame','Kofi','Yaw','Kojo','Abdul','Mohammed','Daniel','Joseph'], surnames:['Mensah','Owusu','Boateng','Asare','Appiah','Osei','Agyemang','Addo'] },
+  CM: { names:['Bryan','Jean','Franck','Samuel','Junior','Karl','Christian','Patrick'], surnames:['Mbeumo','Onana','Tchouameni','Ngah','Aboubakar','Ekambi','Fai','Nsame'] },
+  EG: { names:['Omar','Ahmed','Mostafa','Youssef','Mahmoud','Amr','Karim','Tarek'], surnames:['Hassan','Ibrahim','Mahmoud','Ali','Mohamed','Fathy','Gaber','Said'] },
+  ZA: { names:['Sipho','Thabo','Lebo','Kagiso','Lwazi','Bongani','Sibusiso','Themba'], surnames:['Nkosi','Dlamini','Mokoena','Ndlovu','Khumalo','Mthembu','Zulu','Mahlangu'] },
+  KR: { names:['Min-jun','Seo-jun','Ji-ho','Do-yun','Ha-jun','Si-woo','Jun-ho','Hyun-woo'], surnames:['Kim','Lee','Park','Choi','Jung','Kang','Cho','Yoon'] },
+  AU: { names:['Jack','Lachlan','Cooper','Oscar','Riley','Archie','Harrison','Flynn'], surnames:['Smith','Jones','Williams','Brown','Wilson','Taylor','Anderson','Thompson'] },
+  TR: { names:['Emir','Arda','Kerem','Yusuf','Efe','Can','Mert','Deniz'], surnames:['Yilmaz','Kaya','Demir','Sahin','Celik','Yildiz','Aydin','Ozdemir'] },
+  GR: { names:['Giorgos','Nikos','Dimitris','Kostas','Yannis','Alexandros','Petros','Christos'], surnames:['Papadopoulos','Pappas','Nikolaidis','Georgiou','Dimitriou','Vasilis','Ioannou','Kostas'] },
+  PL: { names:['Jakub','Kacper','Mateusz','Szymon','Filip','Antoni','Wiktor','Bartosz'], surnames:['Nowak','Kowalski','Wisniewski','Wojcik','Kowalczyk','Kaminski','Lewandowski','Zielinski'] },
+  IS: { names:['Aron','Einar','Hakon','Viktor','Jon','Kari','Birkir','Oskar'], surnames:['Jonsson','Sigurdsson','Gunnarsson','Bjornsson','Magnusson','Olafsson','Eiriksson','Stefansson'] },
+  NZ: { names:['Liam','Oliver','Jack','Finn','Ethan','Noah','Riley','Theo'], surnames:['Wilson','Thompson','Walker','Robinson','King','Wright','Scott','Taylor'] },
+  LU: { names:['Luca','Noah','Leo','Ben','Tom','Maxime','Elias','Milan'], surnames:['Schmit','Muller','Weber','Hoffmann','Wagner','Meyer','Schneider','Klein'] }
 });
 
 // Quotas are intentional club identities, not random nationality roulette.
@@ -92,7 +118,23 @@ function hashSeed(value) { let hash = 2166136261; for (const char of String(valu
 function randomFor(seed) { let state = seed >>> 0; return () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; }; }
 function pick(list, random) { return list[Math.floor(random() * list.length)]; }
 function shuffled(values, random) { const result = [...values]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; }
-function nationalityPlan(club, count, random) {
+const RARE_NATIONALITIES = new Set(['HT','IS','NZ','LU']);
+const NATIONALITY_WEIGHTS = Object.freeze({
+  FR:9, BR:9, AR:8, ES:8, GB:8, DE:8, IT:7, PT:7, NL:6,
+  SN:5, NG:5, MA:5, JP:5, US:4, CA:4, CO:4, MX:4, CI:4, GH:4,
+  BE:4, HR:3, RS:3, PE:3, UY:3, CL:3, KE:3, DZ:3, TN:3, EG:3,
+  AU:3, ZA:3, KR:3, TR:3, GR:2, PL:2, HT:0.15, IS:0.1, NZ:0.1, LU:0.08
+});
+function pickWeightedNationality(codes, random, nationalityCounts = new Map()) {
+  const eligible = codes.filter(code => NATIONAL_POOLS[code] &&
+    (!RARE_NATIONALITIES.has(code) || (nationalityCounts.get(code) || 0) < 2));
+  const weighted = eligible.map(code => [code, NATIONALITY_WEIGHTS[code] || 1]);
+  const total = weighted.reduce((sum, item) => sum + item[1], 0);
+  let roll = random() * total;
+  for (const [code, weight] of weighted) { roll -= weight; if (roll <= 0) return code; }
+  return weighted.at(-1)?.[0] || 'FR';
+}
+function nationalityPlan(club, count, random, nationalityCounts = new Map()) {
   const homeCode = /^[A-Z]{2}$/.test(club.countryCode || '') ? club.countryCode : 'MG';
   const recruitment = club.recruitmentProfile;
   if (recruitment?.mode === 'country' && NATIONAL_POOLS[recruitment.countryCode]) return Array(count).fill(recruitment.countryCode);
@@ -100,15 +142,23 @@ function nationalityPlan(club, count, random) {
     const eligible = recruitment.nationalityCodes.filter(code => NATIONAL_POOLS[code]);
     if (eligible.length) return shuffled(Array.from({ length: count }, (_, index) => eligible[index % eligible.length]), random);
   }
-  const internationalCodes = Object.keys(NATIONAL_POOLS).filter(code => code !== homeCode);
-  const localShare = homeCode === 'MG' ? 0.67 : 0.35;
-  const localCount = Math.max(1, Math.min(count - 2, Math.round(count * localShare)));
-  const internationalCount = count - localCount;
-  const internationalPlan = Array.from({ length: internationalCount }, (_, index) => internationalCodes[index % internationalCodes.length]);
-  const plan = [...Array(localCount).fill(homeCode), ...internationalPlan];
-  const fallback = Object.keys(NATIONAL_POOLS).filter(code => !plan.includes(code));
-  while (plan.length < count) plan.push(pick(fallback.length ? fallback : Object.keys(NATIONAL_POOLS), random));
-  return shuffled(plan.slice(0, count), random);
+  // Fixed world-level quotas: with the 47 Malagasy / 109 international club
+  // split, five locals in Malagasy clubs and three Malagasy players in foreign
+  // clubs produce a 30% Malagasy player population across the full catalogue.
+  const malagasyCount = homeCode === 'MG'
+    ? Math.min(count, Math.round(count * 5 / 12))
+    : Math.min(count, Math.round(count * 3 / 12));
+  const localCount = homeCode === 'MG' ? malagasyCount : Math.min(count - malagasyCount, Math.round(count * 3 / 12));
+  const plan = [];
+  if (homeCode === 'MG') plan.push(...Array(malagasyCount).fill('MG'));
+  else {
+    plan.push(...Array(malagasyCount).fill('MG'));
+    plan.push(...Array(localCount).fill(homeCode));
+  }
+  const excluded = new Set(['MG', homeCode]);
+  const internationalCodes = Object.keys(NATIONAL_POOLS).filter(code => !excluded.has(code));
+  while (plan.length < count) plan.push(pickWeightedNationality(internationalCodes, random, nationalityCounts));
+  return shuffled(plan, random);
 }
 function createUniqueName(code, random, usedNames, index, clubId) {
   const pool = NATIONAL_POOLS[code] || NATIONAL_POOLS.MG;
@@ -122,10 +172,11 @@ function createUniqueName(code, random, usedNames, index, clubId) {
   return fallback;
 }
 
-export function generateClubRoster(club, { size = 12, usedNames = new Set() } = {}) {
+export function generateClubRoster(club, { size = 12, usedNames = new Set(), nationalityCounts = new Map() } = {}) {
   const count = Math.max(1, Math.min(30, Math.floor(Number(size) || 12)));
   const random = randomFor(hashSeed(`fpro-p23:${club.id}:roster-v2`));
-  const nationalities = nationalityPlan(club, count, random);
+  const nationalities = nationalityPlan(club, count, random, nationalityCounts);
+  for (const code of nationalities) nationalityCounts.set(code, (nationalityCounts.get(code) || 0) + 1);
   const shuffledAges = shuffled(AGE_PROFILE, random);
   const ages = [18,30,19,28,21,32,...shuffledAges.filter(age => ![18,19,21,28,30,32].includes(age))];
   while (ages.length < count) ages.push(18 + Math.floor(random() * 16));
