@@ -1,5 +1,5 @@
 import { createSystemPlayerContract } from './p27-player-contracts.js';
-import { applyDls26Reference, findDls26Reference } from './p27-dls26-reference.js';
+import { applyPlayerReference, findPlayerReference } from './p27-dls26-reference.js';
 const NATIONAL_POOLS = Object.freeze({
   MG: { names: ['Toky','Hery','Mika','Tiana','Njaka','Kanto','Mamy','Faneva','Rado','Ando','Lova','Tahina','Faly','Niry','Hasina','Miora','Soa','Voary','Nantenaina','Fitia','Tsanta','Haja'], surnames: ['Rakoto','Randria','Andrian','Raveloson','Razafindrakoto','Rasolo','Ramanantsoa','Rakotomalala','Randrianarisoa','Andriamihaja','Razanakoto','Rajaonarison','Rafalimanana','Rakotondrabe','Ratsimbazafy','Rasoanaivo','Andriatsiferana','Rakotovao'] },
   FR: { names: ['Noah','Elias','Mathis','Yanis','Enzo','Sami','Lucas','Nolan','Theo','Mael','Bastien','Adrien','Ilyes','Remy'], surnames: ['Morel','Diallo','Laurent','Bernard','Camara','Leroy','Petit','Garnier','Fontaine','Chevalier','Roux','Marchand','Giraud','Perrin','Colin','Andre'] },
@@ -240,12 +240,12 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
     const talent = playerPotential(overall, random);
     const bodyBuild = pick(['lean','athletic','strong'], random);
     const archetype = pick(ARCHETYPES[role], random);
-    const dls26Reference = findDls26Reference(role, archetype, random, usedDlsProfileIds);
-    if (dls26Reference) usedDlsProfileIds.add(dls26Reference.id);
-    const dls26Profile = dls26Reference
-      ? applyDls26Reference(dls26Reference, { targetOverall: overall, random })
+    const referenceProfile = findPlayerReference(role, archetype, random, usedDlsProfileIds);
+    if (referenceProfile) usedDlsProfileIds.add(referenceProfile.id);
+    const referenceData = referenceProfile
+      ? applyPlayerReference(referenceProfile, { targetOverall: overall, random })
       : null;
-    const dlsStats = dls26Profile?.stats;
+    const dlsStats = referenceData?.stats;
     // Keep the existing six-field gameplay contract, but derive it from the DLS card.
     const attributes = dlsStats ? {
       pace: Math.round(((dlsStats.SPE || 0) + (dlsStats.ACC || 0)) / 2),
@@ -277,21 +277,20 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
       contract: createSystemPlayerContract({ clubId: club.id, playerId: `${club.id}-ai-${String(index + 1).padStart(2,'0')}`, division: club.division, rating: overall }),
       name, nationality: code, age, role, number: index + 1,
       rating: overall, potential: talent.potential, potentialBand: talent.potentialBand, attributes,
-      ...(dls26Profile ? {
-        // Generic provenance is primary; legacy dls26* aliases remain for
-        // compatibility with existing save readers and UI code.
-        playerReferenceStats: dls26Profile.stats,
+      ...(referenceData ? {
+        // Generic provenance is primary; legacy dls26* aliases remain for compatibility.
+        playerReferenceStats: referenceData.stats,
         playerReference: {
-          ...dls26Profile.reference,
+          ...referenceData.reference,
           inspirationStyle: archetype,
           identityPersonalized: true
         },
-        dls26Stats: dls26Profile.stats,
-        dls26Reference: dls26Profile.reference,
-        heightCm: dls26Profile.heightCm,
+        dls26Stats: referenceData.stats,
+        dls26Reference: referenceData.reference,
+        heightCm: referenceData.heightCm,
       } : {}),
       loyalty: { clubLoyalty, transferWillingness, departurePolicy },
-      preferredFoot: dls26Profile?.preferredFoot || (random() < 0.28 ? 'left' : 'right'),
+      preferredFoot: referenceData?.preferredFoot || (random() < 0.28 ? 'left' : 'right'),
       archetype,
       appearance: {
         skinTone, bodyBuild,
