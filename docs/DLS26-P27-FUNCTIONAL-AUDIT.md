@@ -308,3 +308,12 @@ Les responsables (fondateur, président, vice-président ou recruteur) peuvent l
 La date doit être située entre 30 minutes et 30 jours après l'acceptation. Un seul défi actif est autorisé entre une même paire de clubs afin d'éviter les doublons.
 
 **Limite volontaire :** l'acceptation crée une rencontre planifiée, pas un résultat sportif. Aucun score, victoire, classement ou statistique n'est généré par ce module. La validation du résultat et le classement inter-Club attendent le raccordement à une vraie session de match P27 ; le moteur 3D et les matchs de championnat restent inchangés.
+
+
+### Salons de match dédiés aux défis Club RP — raccordement serveur initial
+
+Un défi accepté peut maintenant être converti en salon P27 via `POST /api/rp-clubs/challenges/:challengeId/match`. Seul un membre du Club RP challenger peut ouvrir ce salon, et uniquement dans la fenêtre prévue : 15 minutes avant l'horaire convenu jusqu'à 2 heures après. Le salon est lié au défi et son identifiant est conservé dans l'enregistrement du défi.
+
+Les salons liés à un défi exigent une session authentifiée et une identité de footballeur P27 valide. Le serveur vérifie que le compte appartient à l'un des deux Clubs RP mémorisés au moment du défi, puis impose le camp : Club challenger en bleu, Club ciblé en rouge. Un compte extérieur ne peut pas rejoindre par l'API standard des salons ; le choix de camp envoyé par le client ne remplace pas l'affectation serveur. Les cinq places humaines par camp sont contrôlées avant l'entrée.
+
+**Limites actuelles :** cette livraison raccorde la création et l'accès sécurisé au salon, pas encore le cycle complet du défi. Le résultat final n'est pas encore associé automatiquement au défi, et aucun classement, récompense ou objectif inter-Club n'est calculé. L'interface doit encore exposer l'action « Ouvrir le match » et l'accès au salon. Les tests ajoutés couvrent l'autorisation des participants, l'affectation des camps et la fenêtre horaire ; CI et APK restent à confirmer.
