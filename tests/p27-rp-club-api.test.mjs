@@ -267,7 +267,9 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     const founderLeave = await fetch(`${base}/api/rp-clubs/${created.club.id}/leave`, {
       method: 'POST', headers: { authorization: `Bearer ${founder.token}` }
     });
-    assert.equal(founderLeave.status, 409);
+    assert.equal(founderLeave.status, 200);
+    const formerFounderMembershipAfterLeave = await fetch(base + '/api/rp-clubs/me', { headers:{ authorization:'Bearer ' + founder.token } });
+    assert.equal((await formerFounderMembershipAfterLeave.json()).membership, null);
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
