@@ -137,3 +137,157 @@
  #main-menu .p27-top-currency strong{font-size:9px}
  #main-menu .settings-card{padding:10px}
 }
+
+
+/* P27 quality pass — interaction states, dense screens and mobile overflow. */
+#main-menu #menu-content :focus-visible,
+#main-menu .p27-game-topbar button:focus-visible {
+  outline:2px solid #9bd2ff;
+  outline-offset:2px;
+  box-shadow:0 0 0 3px rgba(82,165,232,.2);
+}
+#main-menu #menu-content button:disabled,
+#main-menu #menu-content button[aria-disabled="true"] {
+  opacity:.42;
+  filter:saturate(.45);
+  cursor:not-allowed;
+  box-shadow:none;
+}
+#main-menu #menu-content button:not(:disabled):not([aria-disabled="true"]):hover {
+  filter:brightness(1.12);
+}
+#main-menu #menu-content .competition-panel,
+#main-menu #menu-content .settings-card,
+#main-menu #menu-content .training-panel,
+#main-menu #menu-content .player-stats-panel {
+  min-width:0;
+  padding:clamp(10px,1.5vw,16px);
+}
+#main-menu #menu-content .competition-layout,
+#main-menu #menu-content .profile-layout,
+#main-menu #menu-content .player-career-columns {
+  min-width:0;
+  align-items:start;
+}
+#main-menu #menu-content .table-scroll,
+#main-menu #menu-content .roster-table-wrap {
+  max-width:100%;
+  overflow:auto;
+  overscroll-behavior-inline:contain;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(113,158,203,.42) transparent;
+}
+#main-menu #menu-content .table-scroll table,
+#main-menu #menu-content .roster-table {
+  min-width:560px;
+}
+#main-menu #menu-content .roster-table th,
+#main-menu #menu-content .standings-table th {
+  position:sticky;
+  top:0;
+  z-index:1;
+}
+#main-menu #menu-content input,
+#main-menu #menu-content select,
+#main-menu #menu-content textarea {
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+}
+#main-menu #menu-content button {
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+#main-menu #menu-content .notice,
+#main-menu #menu-content .empty-fixtures,
+#main-menu #menu-content .player-library-empty,
+#main-menu #menu-content .player-career-empty {
+  overflow-wrap:anywhere;
+}
+#main-menu #menu-content .panel-heading > * {
+  min-width:0;
+}
+#main-menu #menu-content .panel-heading h2 {
+  overflow-wrap:anywhere;
+}
+#main-menu #menu-content .club-card,
+#main-menu #menu-content .player-library-card,
+#main-menu #menu-content .offer-card {
+  min-width:0;
+}
+#main-menu #menu-content .club-card button,
+#main-menu #menu-content .offer-actions button {
+  min-height:34px;
+}
+#main-menu #menu-content .p27-market-shortcut-actions button {
+  flex:1 1 180px;
+}
+#main-menu #menu-content .settings-card {
+  width:min(100%,900px);
+  box-sizing:border-box;
+}
+@media (max-width:760px) and (orientation:landscape) {
+  #main-menu #menu-content .competition-layout,
+  #main-menu #menu-content .profile-layout {
+    gap:8px;
+  }
+  #main-menu #menu-content .panel-heading {
+    gap:6px;
+    padding-bottom:6px;
+  }
+  #main-menu #menu-content .notice {
+    margin:7px 0;
+    padding:6px 8px;
+  }
+  #main-menu #menu-content .primary-cta,
+  #main-menu #menu-content .secondary-cta,
+  #main-menu #menu-content .small-action {
+    min-height:32px;
+    padding:6px 9px;
+    font-size:9px;
+  }
+}
+@media (max-width:420px) and (orientation:portrait) {
+  #main-menu .p27-game-topbar {
+    gap:5px;
+    padding-inline:6px;
+  }
+  #main-menu .p27-back-home,
+  #main-menu .p27-game-topbar .menu-settings-icon {
+    flex-basis:30px;
+    width:30px;
+    height:30px;
+  }
+  #main-menu .p27-top-section {
+    max-width:25vw;
+  }
+  #main-menu .p27-top-section strong {
+    font-size:9px;
+  }
+  #main-menu .p27-top-section span {
+    font-size:6px;
+    letter-spacing:.06em;
+  }
+  #main-menu .p27-top-player {
+    max-width:76px;
+  }
+  #main-menu .p27-top-player strong {
+    max-width:76px;
+    font-size:8px;
+  }
+  #main-menu .p27-top-currency {
+    padding-left:5px;
+  }
+  #main-menu .p27-top-currency strong {
+    font-size:8px;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  #main-menu #menu-content *,
+  #main-menu .p27-game-topbar * {
+    scroll-behavior:auto!important;
+    transition-duration:0.01ms!important;
+    animation-duration:0.01ms!important;
+    animation-iteration-count:1!important;
+  }
+}
