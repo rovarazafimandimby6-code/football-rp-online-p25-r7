@@ -1,0 +1,62 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { RpClubMatchService } from '../server/rp-club-match-service.js';
+
+test('Club RP challenge rooms: only scheduled participants enter their assigned side', () => {
+  const now = Date.now();
+  const challenge = {
+    id:'challenge-1', status:'accepted', scheduledAt:new Date(now).toISOString(),
+    challengerClubId:'club-a', challengerName:'Alpha', challengerTag:'ALP',
+    targetClubId:'club-b', targetName:'Bravo', targetTag:'BRV',
+    challengerMemberAccountIds:['account-a1','account-a2'],
+    targetMemberAccountIds:['account-b1','account-b2'],
+    roomId:null
+  };
+  const challengeStore = {
+    state:{ challenges:[challenge] },
+    transact(mutator) {
+      const result = mutator();
+      return result;
+    }
+  };
+  const roomManager = {
+    rooms:new Map(), roomStore:{ delete() {} },
+    create() {
+      const room = { id:'abcdef123456', phase:'lobby', players:new Map() };
+      this.rooms.set(room.id, room);
+      return { id:room.id };
+    },
+    publicState(room) { return { id:room.id, phase:room.phase }; },
+    persistRoom() {}
+  };
+  const service = new RpClubMatchService({ challengeStore, roomManager, now:() => now });
+  const denied = service.createRoom(challenge.id, 'outsider');
+  assert.deepEqual(denied, { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' });
+  const created = service.createRoom(challenge.id, 'account-a1');
+  assert.equal(created.ok, true);
+  assert.equal(challenge.roomId, 'abcdef123456');
+  assert.equal(roomManager.rooms.get('abcdef123456').rpClubChallenge.challengeId, challenge.id);
+  assert.equal(service.resolveJoin('abcdef123456', 'account-a2').team, 'blue');
+  assert.equal(service.resolveJoin('abcdef123456', 'account-b1').team, 'red');
+  assert.deepEqual(service.resolveJoin('abcdef123456', 'outsider'), {
+    ok:false, reason:'RP_CLUB_CHALLENGE_MEMBERSHIP_REQUIRED'
+  });
+  assert.equal(service.createRoom(challenge.id, 'account-a1').reused, true);
+});
+
+test('Club RP challenge rooms: cannot start before the scheduled window', () => {
+  const now = Date.now();
+  const challengeStore = {
+    state:{ challenges:[{
+      id:'challenge-2', status:'accepted', scheduledAt:new Date(now + 60*60_000).toISOString(),
+      challengerMemberAccountIds:['account-a1'], targetMemberAccountIds:['account-b1'],
+      challengerTag:'ALP', targetTag:'BRV', roomId:null
+    }] },
+    transact(mutator) { return mutator(); }
+  };
+  const roomManager = { rooms:new Map(), create() { throw new Error('must-not-create'); } };
+  const service = new RpClubMatchService({ challengeStore, roomManager, now:() => now });
+  assert.deepEqual(service.createRoom('challenge-2','account-a1'), {
+    ok:false, reason:'RP_CLUB_CHALLENGE_NOT_IN_TIME_WINDOW'
+  });
+});
