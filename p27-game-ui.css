@@ -951,3 +951,214 @@
   #main-menu #menu-content .history-list>div {grid-template-columns:1fr auto}
   #main-menu #menu-content .history-list span {grid-column:1/-1;grid-row:2}
 }
+
+
+/* P27 settings, player account and transfer office. */
+#main-menu #menu-content .settings-card {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:11px;
+  padding:clamp(12px,2vw,19px);
+  border:1px solid rgba(143,185,224,.26);
+  border-radius:6px;
+  background:linear-gradient(145deg,rgba(18,44,68,.94),rgba(4,14,25,.98));
+  box-shadow:inset 0 1px rgba(255,255,255,.06),0 8px 22px rgba(0,0,0,.2);
+}
+#main-menu #menu-content .settings-card label {
+  display:grid;
+  gap:6px;
+  min-width:0;
+  padding:10px;
+  border:1px solid rgba(138,180,220,.14);
+  border-radius:4px;
+  background:rgba(1,10,19,.38);
+  color:#a8bfd5;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+#main-menu #menu-content .settings-card select,
+#main-menu #menu-content .settings-card input:not([type="range"]) {
+  min-height:37px;
+  width:100%;
+  border:1px solid rgba(142,184,223,.26);
+  border-radius:4px;
+  background:#091a2b;
+  color:#eff6fc;
+  padding:8px 10px;
+  font-size:11px;
+  font-weight:650;
+  letter-spacing:normal;
+  text-transform:none;
+}
+#main-menu #menu-content .settings-card input[type="range"] {
+  width:100%;
+  accent-color:#65b4ed;
+}
+#main-menu #menu-content .settings-card>.primary-cta {
+  grid-column:1/-1;
+  min-height:40px;
+}
+#main-menu #menu-content .competition-panel.p27-cloud-only {
+  margin-top:11px;
+  padding:13px;
+  border:1px solid rgba(136,180,220,.22);
+  border-radius:5px;
+  background:linear-gradient(145deg,rgba(15,39,61,.86),rgba(4,14,25,.95));
+}
+#main-menu #menu-content .competition-panel.p27-cloud-only .panel-heading h2 {
+  color:#f0f6fc;
+  font-size:13px;
+  font-style:italic;
+  font-weight:950;
+  text-transform:uppercase;
+}
+#main-menu #menu-content .competition-panel.p27-cloud-only .notice {
+  color:#9eb5cc;
+  font-size:9px;
+  line-height:1.55;
+}
+#main-menu #menu-content .competition-panel.p27-cloud-only button {
+  margin-top:7px;
+}
+#main-menu #menu-content .competition-panel:has(.local-tag) {
+  border-color:rgba(141,185,225,.22);
+}
+#main-menu #menu-content .competition-panel .local-tag {
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:5px 7px;
+  border:1px solid rgba(108,184,145,.28);
+  border-radius:3px;
+  background:rgba(27,92,62,.18);
+  color:#a3d8ba;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.08em;
+}
+#main-menu #menu-content .career-summary {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+  margin:10px 0;
+}
+#main-menu #menu-content .career-summary>div {
+  display:grid;
+  gap:5px;
+  min-width:0;
+  padding:12px;
+  border:1px solid rgba(140,182,222,.23);
+  border-radius:5px;
+  background:linear-gradient(145deg,rgba(19,48,73,.9),rgba(4,14,25,.96));
+}
+#main-menu #menu-content .career-summary .eyebrow {
+  color:#8eacc8;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.09em;
+}
+#main-menu #menu-content .career-summary strong {
+  color:#f4f8fc;
+  font-size:clamp(15px,2vw,21px);
+  font-weight:950;
+  font-variant-numeric:tabular-nums;
+}
+#main-menu #menu-content .career-summary small {
+  color:#9bb2c9;
+  font-size:9px;
+  line-height:1.45;
+}
+#main-menu #menu-content .career-summary .window-open {color:#8fe0b2}
+#main-menu #menu-content .career-summary .window-closed {color:#e6bd77}
+#main-menu #menu-content .contract-details {
+  display:grid;
+  gap:8px;
+  padding:12px;
+  border:1px solid rgba(140,182,222,.18);
+  border-radius:5px;
+  background:rgba(2,12,22,.5);
+}
+#main-menu #menu-content .contract-details>b {
+  color:#f2f7fc;
+  font-size:15px;
+  font-weight:950;
+}
+#main-menu #menu-content .contract-details>span,
+#main-menu #menu-content .contract-details>small {
+  color:#a1b7ce;
+  font-size:9px;
+}
+#main-menu #menu-content .contract-actions,
+#main-menu #menu-content .sign-contract-row {
+  display:grid;
+  grid-template-columns:minmax(150px,1fr) auto auto;
+  align-items:end;
+  gap:8px;
+  padding-top:9px;
+  border-top:1px solid rgba(139,181,220,.14);
+}
+#main-menu #menu-content .contract-actions label,
+#main-menu #menu-content .sign-contract-row label,
+#main-menu #menu-content .offer-terms label {
+  display:grid;
+  gap:5px;
+  color:#9db5cd;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+#main-menu #menu-content .contract-actions input,
+#main-menu #menu-content .sign-contract-row input,
+#main-menu #menu-content .sign-contract-row select,
+#main-menu #menu-content .offer-terms input {
+  min-height:35px;
+  min-width:0;
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid rgba(139,181,220,.25);
+  border-radius:4px;
+  background:#091a2b;
+  color:#eff6fc;
+  padding:7px 9px;
+  font-size:10px;
+}
+#main-menu #menu-content .offer-terms {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:9px;
+}
+#main-menu #menu-content .p27-market-shortcuts {
+  padding:12px;
+  border:1px solid rgba(139,181,220,.22);
+  border-radius:5px;
+  background:linear-gradient(145deg,rgba(19,48,73,.86),rgba(4,14,25,.95));
+}
+#main-menu #menu-content .p27-market-shortcut-actions {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+#main-menu #menu-content .p27-market-shortcut-actions button {
+  flex:1 1 190px;
+  min-height:38px;
+}
+#main-menu #menu-content .market-history .history-list>div {
+  grid-template-columns:minmax(100px,.45fr) minmax(0,1.6fr) auto;
+}
+@media(max-width:600px) {
+  #main-menu #menu-content .settings-card {grid-template-columns:1fr}
+  #main-menu #menu-content .settings-card>.primary-cta {grid-column:auto}
+  #main-menu #menu-content .career-summary {grid-template-columns:1fr 1fr}
+  #main-menu #menu-content .contract-actions,
+  #main-menu #menu-content .sign-contract-row {grid-template-columns:1fr 1fr}
+  #main-menu #menu-content .contract-actions label,
+  #main-menu #menu-content .sign-contract-row label {grid-column:1/-1}
+}
+@media(max-width:380px) {
+  #main-menu #menu-content .career-summary {grid-template-columns:1fr}
+  #main-menu #menu-content .offer-terms {grid-template-columns:1fr}
+}
