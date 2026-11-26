@@ -764,7 +764,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
       return json(res, status, result);
     }
-    const rpClubRemoveMemberMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/members\/(FRP-\\d{6})\/remove$/i);
+    const rpClubRemoveMemberMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/members\/(FRP-\d{6})\/remove$/i);
     if (req.method === 'POST' && rpClubRemoveMemberMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
