@@ -32,7 +32,7 @@ function normalizeClub(row) {
     || new Set(requests.map(request => request.accountId)).size !== requests.length) return null;
   const invitations = (Array.isArray(row.invitations) ? row.invitations : []).filter(invite => invite
     && typeof invite.id === 'string' && typeof invite.accountId === 'string'
-    && typeof invite.playerId === 'string' && /^FRP-\\d{6}$/.test(invite.playerId)
+    && typeof invite.playerId === 'string' && /^FRP-\d{6}$/.test(invite.playerId)
     && typeof invite.displayName === 'string' && typeof invite.createdAt === 'string'
     && typeof invite.invitedByAccountId === 'string');
   if (invitations.length !== (Array.isArray(row.invitations) ? row.invitations.length : 0)
@@ -222,7 +222,7 @@ export class JsonRpClubStore {
   }
 
   invite(clubId, { actorAccountId, accountId, playerId, displayName } = {}) {
-    if (!accountId || !/^FRP-\\d{6}$/.test(String(playerId || '')) || !clean(displayName, 20)) return { ok:false, reason:'PLAYER_IDENTITY_REQUIRED' };
+    if (!accountId || !/^FRP-\d{6}$/.test(String(playerId || '')) || !clean(displayName, 20)) return { ok:false, reason:'PLAYER_IDENTITY_REQUIRED' };
     return this.transact(() => {
       const club = this.state.clubs.find(item => item.id === clubId);
       if (!club) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
