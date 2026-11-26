@@ -481,6 +481,66 @@ async function loadServerCompetitionOverview() {
   }
 }
 
+async function rpClubApi(path, options = {}) {
+  if (!accountClient.hasSession && path !== '') { try { await accountClient.resumeCookieSession(); } catch {} }
+  const headers = Object.assign({ Accept:'application/json' }, options.body ? { 'content-type':'application/json' } : {}, accountClient.token ? { authorization:'Bearer ' + accountClient.token } : {}, options.headers || {});
+  const response = await fetch('/api/rp-clubs' + path, Object.assign({}, options, { credentials:'same-origin', headers }));
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || payload.reason || ('RP_CLUB_HTTP_' + response.status));
+  return payload;
+}
+function rpClubErrorMessage(error) {
+  const labels = { SESSION_EXPIRED:'Connectez votre compte P27 pour utiliser les Clubs RP.', PLAYER_IDENTITY_REQUIRED:'Votre identité joueur doit d’abord être réservée et associée à votre compte.', ALREADY_IN_RP_CLUB:'Vous appartenez déjà à un Club RP.', RP_CLUB_NAME_OR_TAG_TAKEN:'Ce nom ou ce sigle est déjà utilisé.', INVALID_CLUB_NAME:'Le nom doit contenir entre 3 et 24 caractères.', INVALID_CLUB_TAG:'Le sigle doit contenir entre 2 et 5 lettres ou chiffres.', RP_CLUB_FULL:'Ce Club RP a atteint sa capacité.', JOIN_REQUEST_ALREADY_PENDING:'Votre demande est déjà en attente.', RP_CLUB_PERMISSION_DENIED:'Seuls les responsables du Club RP peuvent faire cela.', FOUNDER_MUST_TRANSFER_PRESIDENCY:'Le fondateur doit transférer la présidence avant de quitter le club.' };
+  const code = String(error && error.message || error);
+  return labels[code] || ('Action impossible : ' + code.slice(0, 90));
+}
+function setRpClubStatus(message, isError = false) {
+  const status = document.getElementById('rp-club-status');
+  if (status) { status.textContent = message; status.classList.toggle('is-error', isError); }
+}
+async function loadRpClubPage() {
+  const host = document.getElementById('rp-club-root');
+  if (!host) return;
+  host.innerHTML = '<div class="rp-club-loading">SYNCHRONISATION DU CLUB RP…</div>';
+  let membership = null, authError = null, directory = { clubs:[], total:0 };
+  try { membership = (await rpClubApi('/me')).membership; } catch (error) { authError = error; }
+  try { directory = await rpClubApi('?limit=30'); } catch (error) { if (!authError) authError = error; }
+  if (!document.getElementById('rp-club-root')) return;
+  if (membership) {
+    const club = membership.club;
+    const roleNames = { founder:'FONDATEUR', president:'PRÉSIDENT', vice_president:'VICE-PRÉSIDENT', recruiter:'RECRUTEUR', member:'MEMBRE' };
+    const pending = membership.pendingRequests || [];
+    const members = club.members.map(member => '<div class="rp-club-member"><span class="rp-club-member-avatar">' + escapeHTML(member.displayName.slice(0,1).toUpperCase()) + '</span><div><b>' + escapeHTML(member.displayName) + '</b><small>' + escapeHTML(member.playerId) + ' · ' + (roleNames[member.role] || 'MEMBRE') + '</small></div></div>').join('');
+    const requests = pending.map(request => '<div class="rp-club-request"><div><b>' + escapeHTML(request.displayName) + '</b><small>' + escapeHTML(request.playerId) + '</small></div><button type="button" class="rp-club-accept" data-action="rp-club-decision" data-club="' + escapeHTML(club.id) + '" data-request="' + escapeHTML(request.id) + '" data-decision="accept">ACCEPTER</button><button type="button" class="rp-club-reject" data-action="rp-club-decision" data-club="' + escapeHTML(club.id) + '" data-request="' + escapeHTML(request.id) + '" data-decision="reject">REFUSER</button></div>').join('');
+    host.innerHTML = '<section class="rp-club-hero"><div class="rp-club-identity"><span class="rp-club-tag">' + escapeHTML(club.tag) + '</span><div><span class="eyebrow">VOTRE GROUPEMENT RP · NIVEAU ' + club.level + '</span><h2>' + escapeHTML(club.name) + '</h2><p>' + escapeHTML(club.description || 'Aucune description') + '</p></div></div><div class="rp-club-stats"><span><b>' + club.memberCount + '</b><small>MEMBRES</small></span><span><b>' + club.capacity + '</b><small>CAPACITÉ</small></span><span><b>' + club.experience + '</b><small>XP COLLECTIVE</small></span></div></section>' +
+      '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMMUNAUTÉ</span><h3>Effectif du Club RP</h3></div><span class="rp-club-role">' + (roleNames[membership.membership.role] || 'MEMBRE') + '</span></div><div class="rp-club-member-list">' + members + '</div></section>' +
+      (pending.length ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">RECRUTEMENT</span><h3>Demandes en attente</h3></div><b>' + pending.length + '</b></div><div class="rp-club-request-list">' + requests + '</div></section>' : '') +
+      '<div class="rp-club-actions"><button type="button" class="rp-club-refresh" data-action="rp-club-reload">ACTUALISER</button><button type="button" class="rp-club-leave" data-action="rp-club-leave" data-club="' + escapeHTML(club.id) + '">QUITTER LE CLUB</button></div><p id="rp-club-status" class="rp-club-status" role="status" aria-live="polite"></p>';
+    return;
+  }
+  const canCreate = !authError || authError.message !== 'SESSION_EXPIRED';
+  const directoryHtml = (directory.clubs || []).map(club => '<article class="rp-club-directory-item"><div class="rp-club-directory-mark">' + escapeHTML(club.tag) + '</div><div class="rp-club-directory-copy"><b>' + escapeHTML(club.name) + '</b><small>NIVEAU ' + club.level + ' · ' + club.memberCount + '/' + club.capacity + ' MEMBRES</small><p>' + escapeHTML(club.description || 'Communauté Football RP') + '</p></div><button type="button" data-action="rp-club-join" data-club="' + escapeHTML(club.id) + '" ' + (canCreate ? '' : 'disabled') + '>DEMANDER À REJOINDRE</button></article>').join('');
+  host.innerHTML = '<section class="rp-club-intro"><span class="eyebrow">CLAN DLS · ADAPTATION FOOTBALL RP</span><h2>Formez votre Club RP</h2><p>Rassemblez des joueurs, recrutez des membres et construisez votre communauté. Votre Club RP est indépendant de votre équipe de championnat.</p></section>' +
+    (canCreate ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">NOUVEAU GROUPEMENT</span><h3>Créer un Club RP</h3></div></div><div class="rp-club-create-grid"><label>Nom du club<input id="rp-club-name" maxlength="24" placeholder="Ex. Kintana United"></label><label>Sigle<input id="rp-club-tag" maxlength="5" placeholder="KIN"></label><label class="rp-club-description-field">Description<input id="rp-club-description" maxlength="120" placeholder="Présentez votre communauté"></label></div><button type="button" class="rp-club-create" data-action="rp-club-create">CRÉER LE CLUB</button></section>' :
+      '<section class="rp-club-panel rp-club-account-required"><b>COMPTE P27 REQUIS</b><p>' + escapeHTML(rpClubErrorMessage(authError)) + ' La consultation de l’annuaire reste disponible.</p><button type="button" data-page="player">OUVRIR MON PROFIL</button></section>') +
+    '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMMUNAUTÉ P27</span><h3>Clubs RP disponibles</h3></div><b>' + (directory.total || 0) + '</b></div><div class="rp-club-directory-list">' + (directoryHtml || '<p class="notice">Aucun Club RP n’a encore été créé.</p>') + '</div></section><p id="rp-club-status" class="rp-club-status" role="status" aria-live="polite"></p>';
+}
+async function performRpClubAction(action, button) {
+  try {
+    if (action === 'rp-club-create') {
+      await rpClubApi('', { method:'POST', body:JSON.stringify({ name:document.getElementById('rp-club-name')?.value || '', tag:document.getElementById('rp-club-tag')?.value || '', description:document.getElementById('rp-club-description')?.value || '' }) });
+    } else if (action === 'rp-club-join') {
+      await rpClubApi('/' + button.dataset.club + '/join-requests', { method:'POST' });
+    } else if (action === 'rp-club-decision') {
+      await rpClubApi('/' + button.dataset.club + '/join-requests/' + button.dataset.request + '/decision', { method:'POST', body:JSON.stringify({ decision:button.dataset.decision }) });
+    } else if (action === 'rp-club-leave') {
+      await rpClubApi('/' + button.dataset.club + '/leave', { method:'POST' });
+    }
+    await loadRpClubPage();
+    setRpClubStatus('Modification enregistrée.');
+  } catch (error) { setRpClubStatus(rpClubErrorMessage(error), true); }
+}
+
 function renderPage(page = 'home') {
   syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
   if (page !== 'results') resultsRequestSequence++;
