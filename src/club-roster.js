@@ -147,7 +147,7 @@ function nationalityPlan(club, count, random, nationalityCounts = new Map()) {
   // clubs produce a 30% Malagasy player population across the full catalogue.
   const malagasyCount = homeCode === 'MG'
     ? Math.min(count, Math.round(count * 5 / 12))
-    : Math.min(count, Math.round(count * 3 / 12));
+    : Math.min(count, Math.ceil(count * 3 / 12));
   const localCount = homeCode === 'MG' ? malagasyCount : Math.min(count - malagasyCount, Math.round(count * 3 / 12));
   const plan = [];
   if (homeCode === 'MG') plan.push(...Array(malagasyCount).fill('MG'));
