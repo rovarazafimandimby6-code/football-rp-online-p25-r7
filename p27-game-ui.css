@@ -1993,3 +1993,15 @@
 .rp-club-season-leader.is-champion small{color:#e7c16c}
 .rp-club-season-leader b{font-size:13px;color:#f2f7fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rp-club-season-leader>div>span{font-size:9px;color:#9fb5c9;font-variant-numeric:tabular-nums}
+
+
+/* Club RP — private member chat */
+#main-menu .rp-club-chat-history{display:flex;flex-direction:column;gap:6px;max-height:190px;overflow:auto;padding:7px;border:1px solid rgba(143,183,214,.14);border-radius:4px;background:rgba(3,12,21,.72)}
+#main-menu .rp-club-chat-message{padding:6px 8px;border-left:2px solid rgba(87,157,204,.65);background:rgba(24,48,68,.42)}
+#main-menu .rp-club-chat-message>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#main-menu .rp-club-chat-message b{color:#e9f3fc;font-size:8px}
+#main-menu .rp-club-chat-message small{color:#7895ae;font-size:7px}
+#main-menu .rp-club-chat-message p{margin:4px 0 0;color:#c3d5e4;font-size:9px;white-space:pre-wrap;overflow-wrap:anywhere}
+#main-menu .rp-club-chat-compose{display:flex;gap:6px;margin-top:7px}
+#main-menu .rp-club-chat-compose input{flex:1;min-width:0;height:31px;padding:0 9px;border:1px solid rgba(143,184,220,.25);border-radius:3px;background:#071624;color:#f4f8fc;font-size:9px}
+#main-menu .rp-club-chat-compose button{height:31px;padding:0 12px;border:1px solid rgba(149,195,234,.3);border-radius:3px;background:linear-gradient(180deg,#2678a8,#17435f);color:#eff7ff;font-size:8px;font-weight:950}
