@@ -69,7 +69,7 @@ export class JsonRpClubChallengeStore {
         id:item.id, challengerClubId:item.challengerClubId, challengerName:item.challengerName,
         challengerTag:item.challengerTag, targetClubId:item.targetClubId, targetName:item.targetName,
         targetTag:item.targetTag, status:item.status, createdAt:item.createdAt,
-        scheduledAt:item.scheduledAt, decidedAt:item.decidedAt || null
+        scheduledAt:item.scheduledAt, decidedAt:item.decidedAt || null, roomId:item.roomId || null
       }));
   }
 
