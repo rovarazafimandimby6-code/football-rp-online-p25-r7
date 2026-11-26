@@ -369,7 +369,7 @@ Cette première version ne comprend pas encore les messages privés, pièces joi
 Le modèle de gouvernance distingue maintenant le **fondateur historique** du **président en exercice**. `presidentAccountId` identifie le détenteur actuel de la présidence ; les anciennes sauvegardes sans ce champ sont migrées en prenant le membre déjà marqué président, ou à défaut le fondateur. Le transfert ne modifie pas l'identité historique du fondateur, mais lui retire les permissions qui dépendent de la présidence.
 
 - Seul le président en exercice peut transférer la présidence à un autre membre, modifier les rôles ou exclure un membre.
-- Le fondateur historique et le président en exercice sont protégés contre l'exclusion ; le président doit transférer sa fonction avant de quitter le Club RP. Le fondateur historique reste membre du club.
+- Le fondateur historique et le président en exercice sont protégés contre l'exclusion. Le fondateur peut quitter volontairement le groupe après avoir transféré la présidence ; son identifiant historique reste conservé dans les données du Club RP sans lui imposer de rester membre. Le président en exercice doit transférer sa fonction avant de quitter le groupe.
 - Les responsables de recrutement (vice-président et recruteur) conservent les actions de recrutement et de défi, mais ne peuvent pas transférer la présidence ni modifier les rôles.
 - Les décisions d'adhésion, d'invitation, de changement de rôle, de transfert de présidence, d'exclusion et de départ sont consignées dans un journal persistant plafonné à 100 événements.
 - Le journal visible aux membres ne divulgue aucun identifiant de compte privé. Le serveur demeure l'autorité pour les permissions ; l'interface ne fait qu'exposer les actions autorisées.
