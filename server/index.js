@@ -587,7 +587,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
       return json(res, 200, { challenges:rpClubChallengeStore.listForAccount(account.id) });
     }
-    const rpClubChallengeCreateMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/challenges$/i);
+    const rpClubChallengeCreateMatch = url.pathname.match(new RegExp('^/api/rp-clubs/([a-f0-9-]{36})/challenges$','i'));
     if (req.method === 'POST' && rpClubChallengeCreateMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
@@ -595,7 +595,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const status = result.ok ? 201 : result.reason === 'RP_CLUB_NOT_FOUND' ? 404 : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
       return json(res, status, result);
     }
-    const rpClubChallengeDecisionMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/challenges\\/([a-f0-9-]{36})\\/decision$/i);
+    const rpClubChallengeDecisionMatch = url.pathname.match(new RegExp('^/api/rp-clubs/challenges/([a-f0-9-]{36})/decision$','i'));
     if (req.method === 'POST' && rpClubChallengeDecisionMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
