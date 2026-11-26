@@ -117,7 +117,7 @@ test('Club RP : transfert réel de présidence, permissions et journal persistan
     assert.equal(restored.getForAccount('member').membership.isPresident, true);
     assert.equal(restored.get(club.id).memberCount, 1);
     assert.equal(restored.getForAccount('member').governanceLog.some(event => event.action === 'founder_left'), true);
-    assert.equal(restored.getForAccount('founder').membership.isPresident, false);
+    assert.equal(restored.getForAccount('founder'), null);
     assert.ok(restored.getForAccount('member').governanceLog.some(event => event.action === 'presidency_transferred'));
     assert.equal(restored.getForAccount('member').governanceLog.some(event => Object.hasOwn(event, 'accountId')), false);
   } finally { rmSync(directory, { recursive:true, force:true }); }
