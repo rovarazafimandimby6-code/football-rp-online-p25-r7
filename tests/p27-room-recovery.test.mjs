@@ -252,3 +252,20 @@ test('P27 simulation : plusieurs dizaines de salons avancent ensemble sans perte
     }
   }
 });
+
+test('P27 salons persistés : un salon inactif nettoie aussi une déconnexion horodatée à zéro', () => {
+  let now = 0;
+  const manager = new RoomManager({ now: () => now, roomTtlMs: 60 * 60_000, disconnectGraceMs: 20_000 });
+  const created = manager.create({ name: 'Déconnexion à zéro' });
+  const room = manager.rooms.get(created.id);
+  room.phase = 'lobby';
+  room.players.clear();
+  room.players.set('human-at-zero', {
+    id: 'human-at-zero', team: 'blue', slot: 0, isBot: false,
+    connected: false, aiControlled: true, disconnectedAt: 0,
+  });
+
+  now = 20_001;
+  manager.tick(0);
+  assert.equal(manager.rooms.has(created.id), false);
+});
