@@ -207,7 +207,7 @@ test('P27 game header: affiche les crédits réels du profil sans valeur fictive
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /id="p27-top-player-coins"/);
-  assert.match(main, /Number\(profileStore\.profile\.progression\.coins \|\| 0\)\.toLocaleString\('fr-FR'\)/);
+  assert.match(main, /Number\(headerProfile\.progression\.coins \|\| 0\)\.toLocaleString\('fr-FR'\)/);
   assert.doesNotMatch(main, /\\\\n  const topCoins/);
 });
 
