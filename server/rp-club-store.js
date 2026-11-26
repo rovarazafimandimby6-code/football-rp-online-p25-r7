@@ -30,6 +30,14 @@ function normalizeClub(row) {
     && typeof request.displayName === 'string' && typeof request.createdAt === 'string');
   if (requests.length !== row.joinRequests.length || requests.length > MAX_PENDING_REQUESTS
     || new Set(requests.map(request => request.accountId)).size !== requests.length) return null;
+  const invitations = (Array.isArray(row.invitations) ? row.invitations : []).filter(invite => invite
+    && typeof invite.id === 'string' && typeof invite.accountId === 'string'
+    && typeof invite.playerId === 'string' && /^FRP-\\d{6}$/.test(invite.playerId)
+    && typeof invite.displayName === 'string' && typeof invite.createdAt === 'string'
+    && typeof invite.invitedByAccountId === 'string');
+  if (invitations.length !== (Array.isArray(row.invitations) ? row.invitations.length : 0)
+    || invitations.length > MAX_PENDING_REQUESTS
+    || new Set(invitations.map(invite => invite.accountId)).size !== invitations.length) return null;
   return {
     id: row.id,
     name: clean(row.name, 24),
@@ -48,6 +56,11 @@ function normalizeClub(row) {
     joinRequests: requests.map(request => ({
       id: request.id, accountId: request.accountId, playerId: request.playerId,
       displayName: clean(request.displayName, 20), createdAt: request.createdAt
+    })),
+    invitations: invitations.map(invite => ({
+      id: invite.id, accountId: invite.accountId, playerId: invite.playerId,
+      displayName: clean(invite.displayName, 20), invitedByAccountId: invite.invitedByAccountId,
+      createdAt: invite.createdAt
     }))
   };
 }
@@ -136,6 +149,12 @@ export class JsonRpClubStore {
     return club ? this.publicClub(club) : null;
   }
 
+  getInvitationsForAccount(accountId) {
+    return this.state.clubs.flatMap(club => club.invitations
+      .filter(invite => invite.accountId === accountId)
+      .map(invite => ({ id:invite.id, club:this.publicClub(club), invitedAt:invite.createdAt })));
+  }
+
   getForAccount(accountId) {
     const membership = this.findMembership(accountId);
     if (!membership) return null;
@@ -199,6 +218,59 @@ export class JsonRpClubStore {
       });
       club.updatedAt = new Date(this.now()).toISOString();
       return { ok: true, decision, memberCount: club.members.length };
+    });
+  }
+
+  invite(clubId, { actorAccountId, accountId, playerId, displayName } = {}) {
+    if (!accountId || !/^FRP-\\d{6}$/.test(String(playerId || '')) || !clean(displayName, 20)) return { ok:false, reason:'PLAYER_IDENTITY_REQUIRED' };
+    return this.transact(() => {
+      const club = this.state.clubs.find(item => item.id === clubId);
+      if (!club) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
+      const actor = club.members.find(item => item.accountId === actorAccountId);
+      if (!actor || !MANAGER_ROLES.has(actor.role)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
+      if (this.findMembership(accountId)) return { ok:false, reason:'INVITEE_ALREADY_IN_RP_CLUB' };
+      if (club.members.length >= MAX_MEMBERS) return { ok:false, reason:'RP_CLUB_FULL' };
+      if (club.invitations.some(item => item.accountId === accountId)) return { ok:false, reason:'RP_CLUB_INVITATION_ALREADY_PENDING' };
+      if (club.invitations.length >= MAX_PENDING_REQUESTS) return { ok:false, reason:'RP_CLUB_INVITATIONS_FULL' };
+      const invitation = { id:this.idFactory(), accountId, playerId, displayName:clean(displayName,20), invitedByAccountId:actorAccountId, createdAt:new Date(this.now()).toISOString() };
+      club.invitations.push(invitation);
+      club.updatedAt = invitation.createdAt;
+      return { ok:true, invitation:{ id:invitation.id, playerId:invitation.playerId, displayName:invitation.displayName, createdAt:invitation.createdAt } };
+    });
+  }
+
+  respondInvitation(clubId, invitationId, { accountId, decision } = {}) {
+    if (!['accept','reject'].includes(decision)) return { ok:false, reason:'INVALID_INVITATION_DECISION' };
+    return this.transact(() => {
+      const club = this.state.clubs.find(item => item.id === clubId);
+      if (!club) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
+      const invitation = club.invitations.find(item => item.id === invitationId && item.accountId === accountId);
+      if (!invitation) return { ok:false, reason:'RP_CLUB_INVITATION_NOT_FOUND' };
+      if (decision === 'accept' && this.findMembership(accountId)) return { ok:false, reason:'ALREADY_IN_RP_CLUB' };
+      if (decision === 'accept' && club.members.length >= MAX_MEMBERS) return { ok:false, reason:'RP_CLUB_FULL' };
+      club.invitations = club.invitations.filter(item => item.id !== invitationId);
+      if (decision === 'accept') club.members.push({
+        accountId:invitation.accountId, playerId:invitation.playerId, displayName:invitation.displayName,
+        role:'member', joinedAt:new Date(this.now()).toISOString()
+      });
+      club.updatedAt = new Date(this.now()).toISOString();
+      return { ok:true, decision, memberCount:club.members.length };
+    });
+  }
+
+  assignRole(clubId, targetPlayerId, { actorAccountId, role } = {}) {
+    if (!['vice_president','recruiter','member'].includes(role)) return { ok:false, reason:'INVALID_RP_CLUB_ROLE' };
+    return this.transact(() => {
+      const club = this.state.clubs.find(item => item.id === clubId);
+      if (!club) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
+      const actor = club.members.find(item => item.accountId === actorAccountId);
+      if (!actor || !['founder','president'].includes(actor.role)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
+      const target = club.members.find(item => item.playerId === targetPlayerId);
+      if (!target) return { ok:false, reason:'RP_CLUB_MEMBER_NOT_FOUND' };
+      if (target.role === 'founder' || target.role === 'president') return { ok:false, reason:'RP_CLUB_ROLE_PROTECTED' };
+      target.role = role;
+      club.updatedAt = new Date(this.now()).toISOString();
+      return { ok:true, playerId:target.playerId, role:target.role };
     });
   }
 
