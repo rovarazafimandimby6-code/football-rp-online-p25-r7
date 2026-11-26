@@ -315,7 +315,7 @@ function mountAvatarPreview(profile) {
 
 let selectedMatchup = { home: 'antananarivo-fc', away: 'toamasina-united' };
 let selectedClubId = null;
-let playerLibraryLimit = 24;
+let playerLibraryLimit = 12;
 let playerLibraryPage = 0;
 let playerLibraryProfiles = [];
 let selectedPlayerProfile = null;
@@ -450,6 +450,7 @@ async function loadPublicClubDirectory() {
     if(status) status.textContent='Catalogue serveur synchronisé · divisions et conférences de la saison active.';
     const counter=document.getElementById('club-filter-count');
     if(counter) counter.textContent='156 clubs';
+    filterClubDiscovery({target:{id:'club-division-filter'}});
   } catch(error) {
     if(requestId!==publicClubDirectoryRequest) return;
     const note=document.getElementById('club-directory-status');
@@ -666,7 +667,7 @@ ${renderGoogleProtectionCard({ compact: true })}
         <label><span>IDENTITÉ</span><select id="club-country-filter"><option value="all">Tous les pays</option>${[...new Set(allClubs.map(c=>c.country))].sort().map(country=>`<option value="${escapeHTML(country)}">${escapeHTML(country)}</option>`).join('')}</select></label>
         <label><span>TRI</span><select id="club-sort"><option value="rating">Niveau du club</option><option value="name">Nom A–Z</option><option value="roster">Taille de l’effectif</option><option value="reputation">Réputation</option></select></label>
         <span id="club-filter-count" class="club-filter-count">${allClubs.length} clubs</span>
-      </div>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.slice().sort((a,b)=>b.rating-a.rating).map(club=>`<article class="club-card compact-club-card" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-conference="${escapeHTML(club.conference || '')}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}"><div class="club-card-copy"><div class="club-card-kickers"><span>${escapeHTML(club.division)}</span></div><h3>${escapeHTML(club.name)}</h3><div class="club-meta-line"><span>NOTE ${club.rating}</span></div><button class="small-action" data-action="view-roster" data-club="${escapeHTML(club.id)}">EFFECTIF →</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE</button>` : ''}</div>${crest(club)}</article>`).join('')}</div></section>`).join('')}<p class="notice">Catalogue local chargé · vérification de la saison active en cours.</p><p class="notice" id="club-directory-status" aria-live="polite">Synchronisation du catalogue…</p><p class="notice">Les identités des clubs et joueurs sont fictives. Les fiches publiques n’exposent pas les contrats privés.</p>`;
+      </div><div class="club-division-tabs" role="group" aria-label="Choisir une division">${clubs.listDivisions().filter(division=>division.id!=='AMATEUR').map(division=>`<button type="button" class="club-division-tab ${division.id==='D1'?'active':''}" data-action="club-division-tab" data-division="${escapeHTML(division.id)}">${escapeHTML(division.id)}</button>`).join('')}</div>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.slice().sort((a,b)=>b.rating-a.rating).map(club=>`<article class="club-card compact-club-card" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-conference="${escapeHTML(club.conference || '')}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}"><div class="club-card-copy"><div class="club-card-kickers"><span>${escapeHTML(club.division)}</span></div><h3>${escapeHTML(club.name)}</h3><div class="club-meta-line"><span>NOTE ${club.rating}</span></div><button class="small-action" data-action="view-roster" data-club="${escapeHTML(club.id)}">EFFECTIF →</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE</button>` : ''}</div>${crest(club)}</article>`).join('')}</div></section>`).join('')}<p class="notice">Catalogue local chargé · vérification de la saison active en cours.</p><p class="notice" id="club-directory-status" aria-live="polite">Synchronisation du catalogue…</p><p class="notice">Les identités des clubs et joueurs sont fictives. Les fiches publiques n’exposent pas les contrats privés.</p>`;
       loadPublicClubDirectory();
     }
   } else if (page === 'competitions') {
@@ -1208,6 +1209,12 @@ menu.addEventListener('click', event => {
   if (playerCard && event.target.closest('.player-card-details')) return;
   if (playerCard) { const index = Number(playerCard.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = playerCard.dataset.profileOrigin || 'players'; renderPage('player-detail'); return; }
   const action = event.target.closest('[data-action]')?.dataset.action;
+  if (action === 'club-division-tab') {
+    const tab=event.target.closest('[data-division]');
+    const select=document.getElementById('club-division-filter');
+    if(tab&&select){select.value=tab.dataset.division;filterClubDiscovery({target:{id:'club-division-filter'}});menu.querySelectorAll('.club-division-tab').forEach(button=>button.classList.toggle('active',button===tab));}
+    return;
+  }
   if (action === 'players-page') { playerLibraryPage=Math.max(0,playerLibraryPage+Number(event.target.closest('[data-page]')?.dataset.page||0)); filterPlayerLibrary(); }
   else if (action === 'open-player-profile') { const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); }
   else if (action === 'back-player-library') { selectedPlayerProfile = null; renderPage(playerProfileReturnPage); }
