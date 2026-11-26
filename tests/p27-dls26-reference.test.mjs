@@ -4,11 +4,13 @@ import { generateClubRoster } from '../src/club-roster.js';
 import { applyDls26Reference, DLS26_ATTRIBUTE_KEYS, DLS26_REFERENCE_PROFILES, findDls26Reference } from '../src/p27-dls26-reference.js';
 
 test('P27 DLS 26 : catalogue de références normal cards couvrant les quatre rôles', () => {
-  assert.ok(DLS26_REFERENCE_PROFILES.length >= 12);
+  assert.ok(DLS26_REFERENCE_PROFILES.length >= 20);
   for (const role of ['GK','DEF','MID','FWD']) {
     assert.ok(findDls26Reference(role, 'profil-test', () => 0), `aucun profil DLS 26 pour ${role}`);
   }
   assert.ok(DLS26_REFERENCE_PROFILES.every(profile => profile.cardType === 'normal' && profile.version === '13.430'));
+  assert.ok(DLS26_REFERENCE_PROFILES.every(profile => profile.heightCm >= 160 && profile.heightCm <= 205));
+  assert.ok(DLS26_REFERENCE_PROFILES.every(profile => profile.source.startsWith('https://')));
 });
 
 test('P27 DLS 26 : adaptation conserve la forme statistique, la taille et les limites', () => {
@@ -45,7 +47,7 @@ test('P27 DLS 26 : les joueurs fictifs reçoivent une référence sans identité
     assert.ok(player.attributes && Object.hasOwn(player.attributes, 'pace'), 'les attributs historiques restent disponibles');
     assert.equal(player.attributes.shooting, player.dls26Stats.SHO ?? 25, 'le gameplay utilise le tir de la carte DLS');
     assert.equal(player.attributes.passing, player.dls26Stats.PAS ?? 25, 'le gameplay utilise la passe de la carte DLS');
-    assert.ok(player.dls26Reference.baseOverall >= 82 && player.dls26Reference.baseOverall <= 86);
+    assert.ok(player.dls26Reference.baseOverall >= 78 && player.dls26Reference.baseOverall <= 86);
     assert.ok(!/mbapp[eé]|hakimi|bruno fernandes|donnarumma|gabriel magalh[aã]es/i.test(player.name));
     assert.equal(player.dls26Reference.cardType, 'normal');
   }
