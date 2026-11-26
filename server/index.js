@@ -798,4 +798,4 @@ if (isMainModule) {
   process.once('SIGTERM', () => handleSignal('SIGTERM'));
   process.once('SIGINT', () => handleSignal('SIGINT'));
 }
-export { server, manager, clubFinance, serverClubManager, clubWorld, playerBackupScheduler, careerSyncQueue, careerSyncService, shutdownP27Server };
+export { server, manager, clubFinance, serverClubManager, clubWorld, rpClubStore, accountStore, playerIdentityStore, playerBackupScheduler, careerSyncQueue, careerSyncService, shutdownP27Server };
