@@ -156,66 +156,41 @@ function pickWeightedNationality(codes, random, nationalityCounts = new Map()) {
 function nationalityPlan(club, count, random, nationalityCounts = new Map(), malagasyQuota = null) {
   const homeCode = /^[A-Z]{2}$/.test(club.countryCode || '') ? club.countryCode : 'MG';
   const recruitment = club.recruitmentProfile;
-  const plan = [];
-  const workingCounts = new Map(nationalityCounts);
-  const add = code => {
-    if (!NATIONAL_POOLS[code]) return false;
-    if (RARE_NATIONALITIES.has(code) && (workingCounts.get(code) || 0) >= 2) return false;
-    plan.push(code);
-    workingCounts.set(code, (workingCounts.get(code) || 0) + 1);
-    return true;
-  };
-  const hasFixedMalagasyQuota = Number.isInteger(malagasyQuota);
-  const malagasyCount = hasFixedMalagasyQuota
+  // Explicit country/continent scouting profiles remain authoritative. A club
+  // cannot receive players outside its declared recruitment pool.
+  if (recruitment?.mode === 'country' && NATIONAL_POOLS[recruitment.countryCode]) {
+    const code = recruitment.countryCode;
+    if (!RARE_NATIONALITIES.has(code)) return Array(count).fill(code);
+    const available = Math.max(0, 2 - (nationalityCounts.get(code) || 0));
+    return [...Array(Math.min(count, available)).fill(code), ...Array(Math.max(0, count - available)).fill('FR')];
+  }
+  if (recruitment?.mode === 'continent' && Array.isArray(recruitment.nationalityCodes)) {
+    const eligible = recruitment.nationalityCodes.filter(code => NATIONAL_POOLS[code] &&
+      (!RARE_NATIONALITIES.has(code) || (nationalityCounts.get(code) || 0) < 2));
+    if (eligible.length) return shuffled(Array.from({ length: count }, (_, index) => eligible[index % eligible.length]), random);
+  }
+
+  // For mixed recruitment, maintain the world-level Malagasy target when
+  // replenishing rosters, while preserving a local core in foreign clubs.
+  const malagasyCount = Number.isInteger(malagasyQuota)
     ? Math.max(0, Math.min(count, malagasyQuota))
     : homeCode === 'MG' ? Math.min(count, Math.round(count * 5 / 12)) : Math.min(count, Math.round(count * 3 / 12));
-
-  for (let index = 0; index < malagasyCount; index++) add('MG');
-
-  // Explicit country recruitment is respected, except when it would violate
-  // the Malagasy world quota or the hard cap for very rare nationalities.
-  if (recruitment?.mode === 'country' && NATIONAL_POOLS[recruitment.countryCode]) {
-    const target = recruitment.countryCode;
-    if (target !== 'MG' || !hasFixedMalagasyQuota) {
-      while (plan.length < count && add(target)) {}
-    }
-  } else if (recruitment?.mode === 'continent' && Array.isArray(recruitment.nationalityCodes)) {
-    const eligible = recruitment.nationalityCodes.filter(code =>
-      NATIONAL_POOLS[code] &&
-      (!hasFixedMalagasyQuota || code !== 'MG') &&
-      (!RARE_NATIONALITIES.has(code) || (workingCounts.get(code) || 0) < 2)
-    );
-    let cursor = 0;
-    let stalled = 0;
-    while (plan.length < count && eligible.length && stalled < eligible.length) {
-      const code = eligible[cursor % eligible.length];
-      cursor++;
-      if (add(code)) stalled = 0;
-      else stalled++;
-    }
+  const localCount = homeCode === 'MG' ? malagasyCount : Math.min(count - malagasyCount, Math.round(count * 3 / 12));
+  const plan = [];
+  if (homeCode === 'MG') plan.push(...Array(malagasyCount).fill('MG'));
+  else {
+    plan.push(...Array(malagasyCount).fill('MG'));
+    plan.push(...Array(localCount).fill(homeCode));
   }
-
-  // Keep a credible local presence while reserving the agreed Malagasy share.
-  if (plan.length < count && homeCode !== 'MG') {
-    const localTarget = Math.min(count - plan.length, Math.round(count * 3 / 12));
-    for (let index = 0; index < localTarget; index++) {
-      if (!add(homeCode)) break;
-    }
-  }
-
   const excluded = new Set(['MG', homeCode]);
   const internationalCodes = Object.keys(NATIONAL_POOLS).filter(code => !excluded.has(code));
-  let safety = 0;
-  while (plan.length < count && safety++ < count * 4) {
+  const workingCounts = new Map(nationalityCounts);
+  for (const code of plan) workingCounts.set(code, (workingCounts.get(code) || 0) + 1);
+  while (plan.length < count) {
     const code = pickWeightedNationality(internationalCodes, random, workingCounts);
-    if (!add(code)) {
-      const fallback = internationalCodes.find(candidate =>
-        !RARE_NATIONALITIES.has(candidate) || (workingCounts.get(candidate) || 0) < 2
-      );
-      if (!fallback || !add(fallback)) break;
-    }
+    plan.push(code);
+    workingCounts.set(code, (workingCounts.get(code) || 0) + 1);
   }
-  while (plan.length < count) add('FR');
   return shuffled(plan, random);
 }
 function createUniqueName(code, random, usedNames, index, clubId) {
