@@ -44,7 +44,7 @@ test('P27 DLS26: l’audit distingue les fonctions présentes et celles à const
 });
 
 test('P27 Club RP : le hub ouvre une communauté séparée des équipes de championnat', () => {
-  assert.match(main, /async function loadRpClubPage\(\)/);
+  assert.match(main, /async function loadRpClubPage\(selectedSeasonId = null\)/);
   assert.match(main, /function rpClubApi\(/);
   assert.match(main, /rp-club-decision/);
   assert.match(main, /rp-club-join/);
