@@ -6,7 +6,6 @@ const clean = (value, max = 80) => String(value ?? '').replace(/[<>\u0000-\u001f
 const slugText = value => clean(value, 48).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const clone = value => structuredClone(value);
 const MEMBER_ROLES = new Set(['founder', 'president', 'vice_president', 'recruiter', 'member']);
-const MANAGER_ROLES = new Set(['founder', 'president', 'recruiter']);
 const MAX_MEMBERS = 30;
 const MAX_PENDING_REQUESTS = 100;
 const MAX_MESSAGES = 200;
