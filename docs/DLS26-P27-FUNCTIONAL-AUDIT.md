@@ -264,7 +264,7 @@ L'écran Club RP est relié aux routes serveur :
 
 L'interface utilise les composants visuels du jeu et conserve le format paysage. Les mutations nécessitent un compte P27 authentifié et une identité joueur réservée. L'annuaire reste consultable sans compte ; les actions de création et d'adhésion sont verrouillées tant que l'identité n'est pas disponible.
 
-Cette intégration ne prétend toujours pas livrer les invitations, le chat, les changements de rôles, la cession de présidence, les objectifs/XP collectifs ou les rencontres inter-clubs.
+Les invitations privées, leur acceptation/refus et l'attribution de rôles sont désormais reliées au serveur. Le tableau d'activité hebdomadaire utilise les matchs de carrière réels. Le chat, la cession de présidence, les objectifs/XP collectifs et les rencontres inter-clubs restent à construire.
 
 
 ### Activité collective calculée depuis les carrières P27
@@ -272,3 +272,10 @@ Cette intégration ne prétend toujours pas livrer les invitations, le chat, les
 Le Club RP dispose maintenant d'un tableau hebdomadaire de contribution. Il est calculé côté serveur à partir des matchs de carrière réellement enregistrés pour chaque compte membre : apparitions, victoires, buts et passes décisives. L'accès est réservé aux membres du Club RP concerné ; aucun identifiant de compte privé n'est exposé au client.
 
 Ce tableau constitue la première base de futurs objectifs collectifs. Il ne distribue pas encore de récompenses ni d'XP : ces mécaniques ne seront activées qu'après définition de règles de saison, de plafonds et de contrôles anti-abus. L'équipe de championnat et le Club RP restent deux entités distinctes.
+
+
+### Bibliothèque joueurs raccordée aux statuts contractuels
+
+L'écran Bibliothèque ne se limite plus à un aplatissement des effectifs actifs. Il consomme désormais le répertoire central `listP27Players` et récupère les joueurs par pages pour ne pas tronquer le catalogue à la première centaine. Les statuts actifs, libres et prêtés sont affichés et filtrables ; l'origine distingue les joueurs RP des joueurs du monde P27.
+
+Les cartes restent horizontales et compactes, en quatre colonnes en paysage. Un appui développe la carte pour afficher les attributs, et l'accès à la fiche complète conserve le détail du parcours. Les joueurs transférés ne sont pas reclassés comme libres à partir d'une ancienne archive. Les fiches de joueurs libres indiquent leur dernier club connu au lieu d'inventer un club actuel.
