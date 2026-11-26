@@ -447,7 +447,9 @@ function renderPage(page = 'home') {
   const subtitle = document.getElementById('menu-page-subtitle');
   const topName = document.getElementById('p27-top-player-name');
   const topClub = document.getElementById('p27-top-player-club');
-  if (topName) topName.textContent = profileStore.profile.identity.displayName || 'Nouveau joueur';\n  const topCoins = document.getElementById('p27-top-player-coins');\n  if (topCoins) topCoins.textContent = Number(profileStore.profile.progression.coins || 0).toLocaleString('fr-FR');
+  if (topName) topName.textContent = profileStore.profile.identity.displayName || 'Nouveau joueur';
+  const topCoins = document.getElementById('p27-top-player-coins');
+  if (topCoins) topCoins.textContent = Number(profileStore.profile.progression.coins || 0).toLocaleString('fr-FR');
   if (topClub) topClub.textContent = career.clubId ? (clubs.getClub(career.clubId)?.name || 'Sans club') : 'Sans club';
   const menuRoot = document.getElementById('main-menu');
   if (menuRoot) menuRoot.classList.toggle('p27-home-active', page === 'home');
