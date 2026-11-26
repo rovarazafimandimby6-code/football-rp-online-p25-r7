@@ -17,7 +17,8 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
     const founder = await createPlayerSession();
-    const member = await createPlayerSession();\n    const invitee = await createPlayerSession();
+    const member = await createPlayerSession();
+    const invitee = await createPlayerSession();
     const create = await fetch(`${base}/api/rp-clubs`, {
       method: 'POST',
       headers: { authorization: `Bearer ${founder.token}`, 'content-type': 'application/json' },
