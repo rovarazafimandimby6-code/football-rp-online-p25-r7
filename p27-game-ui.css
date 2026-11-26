@@ -1888,3 +1888,7 @@
 #main-menu .rp-club-invite-controls input{height:30px;padding:0 8px;border:1px solid rgba(143,184,220,.25);border-radius:3px;background:#071624;color:#f4f8fc;font-size:10px}
 #main-menu .rp-club-invite-controls button{height:30px;padding:0 10px;border:1px solid rgba(149,195,234,.3);border-radius:3px;background:linear-gradient(180deg,#2678a8,#17435f);color:#eef7ff;font-size:7px;font-weight:950}
 #main-menu .rp-club-invitation{border-color:rgba(228,194,113,.24)}
+
+#main-menu .rp-club-member-controls{display:flex;align-items:center;gap:4px;margin-left:auto}
+#main-menu .rp-club-member-controls select{max-width:100px;height:25px;padding:0 4px;border:1px solid rgba(143,184,220,.25);border-radius:3px;background:#071624;color:#dceaf7;font-size:7px}
+#main-menu .rp-club-member-controls button{height:25px;padding:0 7px;border:1px solid rgba(149,195,234,.3);border-radius:3px;background:#1b4b6d;color:#eff7ff;font-size:7px;font-weight:950}
