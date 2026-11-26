@@ -12,6 +12,8 @@ const MAX_PENDING_REQUESTS = 100;
 const MAX_MESSAGES = 200;
 const MAX_MESSAGE_LENGTH = 300;
 const MESSAGE_COOLDOWN_MS = 2000;
+const MAX_GOVERNANCE_EVENTS = 100;
+const canManageRecruitment = (club, member) => Boolean(member && (club.presidentAccountId === member.accountId || ['vice_president','recruiter'].includes(member.role)));
 
 function normalizeClub(row) {
   if (!row || typeof row !== 'object' || typeof row.id !== 'string' || !row.id
@@ -27,6 +29,12 @@ function normalizeClub(row) {
     || new Set(members.map(member => member.playerId)).size !== members.length) return null;
   const founder = members.find(member => member.role === 'founder');
   if (!founder) return null;
+  const president = members.find(member => member.accountId === row.presidentAccountId && ['founder','president'].includes(member.role)) || founder;
+  const governanceLog = (Array.isArray(row.governanceLog) ? row.governanceLog : []).filter(event => event
+    && typeof event.id === 'string' && typeof event.action === 'string'
+    && typeof event.actorDisplayName === 'string' && typeof event.details === 'string'
+    && typeof event.createdAt === 'string');
+  if (governanceLog.length !== (Array.isArray(row.governanceLog) ? row.governanceLog.length : 0)) return null;
   const requests = row.joinRequests.filter(request => request
     && typeof request.id === 'string' && typeof request.accountId === 'string'
     && typeof request.playerId === 'string' && /^FRP-\d{6}$/.test(request.playerId)
@@ -59,6 +67,8 @@ function normalizeClub(row) {
     experience: Number.isSafeInteger(row.experience) && row.experience >= 0 ? row.experience : 0,
     createdAt: typeof row.createdAt === 'string' ? row.createdAt : new Date(0).toISOString(),
     updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : new Date(0).toISOString(),
+    presidentAccountId: president.accountId,
+    governanceLog: governanceLog.slice(-MAX_GOVERNANCE_EVENTS).map(event => ({ id:event.id, action:clean(event.action,32), actorDisplayName:clean(event.actorDisplayName,20), targetDisplayName:clean(event.targetDisplayName,20), details:clean(event.details,120), createdAt:event.createdAt })),
     members: members.map(member => ({
       accountId: member.accountId, playerId: member.playerId,
       displayName: clean(member.displayName, 20), role: member.role,
@@ -142,6 +152,7 @@ export class JsonRpClubStore {
       id: club.id, name: club.name, tag: club.tag, description: club.description,
       level: club.level, experience: club.experience, memberCount: club.members.length,
       capacity: MAX_MEMBERS, createdAt: club.createdAt,
+      presidentPlayerId: club.members.find(member => member.accountId === club.presidentAccountId)?.playerId || null,
       members: club.members.map(({ playerId, displayName, role, joinedAt }) => ({ playerId, displayName, role, joinedAt }))
     };
   }
@@ -182,7 +193,22 @@ export class JsonRpClubStore {
     const membership = this.findMembership(accountId);
     if (!membership) return null;
     const club = this.publicClub(membership.club);
-    return { club, membership: { playerId: membership.member.playerId, role: membership.member.role, joinedAt: membership.member.joinedAt }, pendingRequests: MANAGER_ROLES.has(membership.member.role) ? membership.club.joinRequests.map(item => ({ id: item.id, playerId: item.playerId, displayName: item.displayName, createdAt: item.createdAt })) : [], messages:membership.club.messages.slice(-60).map(({id,playerId,displayName,text,createdAt})=>({id,playerId,displayName,text,createdAt})) };
+    const isPresident = membership.club.presidentAccountId === accountId;
+    return { club, membership: { playerId: membership.member.playerId, role: membership.member.role, joinedAt: membership.member.joinedAt, isPresident }, pendingRequests: canManageRecruitment(membership.club, membership.member) ? membership.club.joinRequests.map(item => ({ id: item.id, playerId: item.playerId, displayName: item.displayName, createdAt: item.createdAt })) : [], messages:membership.club.messages.slice(-60).map(({id,playerId,displayName,text,createdAt})=>({id,playerId,displayName,text,createdAt})), governanceLog:membership.club.governanceLog.slice(-40).reverse().map(({id,action,actorDisplayName,targetDisplayName,details,createdAt})=>({id,action,actorDisplayName,targetDisplayName,details,createdAt})) };
+  }
+
+  canLead(clubId, accountId) {
+    const club = this.state.clubs.find(item => item.id === clubId);
+    const member = club?.members.find(item => item.accountId === accountId);
+    return Boolean(member && (club.presidentAccountId === accountId || ['vice_president','recruiter'].includes(member.role)));
+  }
+
+  recordGovernance(club, { action, actor, target = null, details = '' } = {}) {
+    const event = { id:this.idFactory(), action:clean(action,32), actorDisplayName:clean(actor?.displayName || 'Responsable',20), targetDisplayName:clean(target?.displayName || '',20), details:clean(details,120), createdAt:new Date(this.now()).toISOString() };
+    club.governanceLog.push(event);
+    if (club.governanceLog.length > MAX_GOVERNANCE_EVENTS) club.governanceLog.splice(0, club.governanceLog.length - MAX_GOVERNANCE_EVENTS);
+    club.updatedAt = event.createdAt;
+    return event;
   }
 
   sendMessage(clubId, { accountId, playerId, displayName, text } = {}) {
@@ -218,6 +244,7 @@ export class JsonRpClubStore {
       const club = normalizeClub({
         id: this.idFactory(), name: safeName, tag: safeTag, description: safeDescription,
         level: 1, experience: 0, createdAt: now, updatedAt: now,
+        presidentAccountId: accountId, governanceLog:[],
         members: [{ accountId, playerId, displayName: clean(displayName, 20), role: 'founder', joinedAt: now }],
         joinRequests: []
       });
@@ -248,17 +275,18 @@ export class JsonRpClubStore {
       const club = this.state.clubs.find(item => item.id === clubId);
       if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
       const actor = club.members.find(item => item.accountId === actorAccountId);
-      if (!actor || !MANAGER_ROLES.has(actor.role)) return { ok: false, reason: 'RP_CLUB_PERMISSION_DENIED' };
+      if (!canManageRecruitment(club, actor)) return { ok: false, reason: 'RP_CLUB_PERMISSION_DENIED' };
       const pending = club.joinRequests.find(item => item.id === requestId);
       if (!pending) return { ok: false, reason: 'JOIN_REQUEST_NOT_FOUND' };
       if (decision === 'accept' && this.findMembership(pending.accountId)) return { ok: false, reason: 'APPLICANT_ALREADY_IN_RP_CLUB' };
       if (decision === 'accept' && club.members.length >= MAX_MEMBERS) return { ok: false, reason: 'RP_CLUB_FULL' };
       club.joinRequests = club.joinRequests.filter(item => item.id !== requestId);
-      if (decision === 'accept') club.members.push({
-        accountId: pending.accountId, playerId: pending.playerId, displayName: pending.displayName,
-        role: 'member', joinedAt: new Date(this.now()).toISOString()
-      });
-      club.updatedAt = new Date(this.now()).toISOString();
+      let target = pending;
+      if (decision === 'accept') {
+        target = { accountId:pending.accountId, playerId:pending.playerId, displayName:pending.displayName, role:'member', joinedAt:new Date(this.now()).toISOString() };
+        club.members.push(target);
+      }
+      this.recordGovernance(club, { action:decision === 'accept' ? 'join_accepted' : 'join_rejected', actor, target, details:decision === 'accept' ? 'Demande d’adhésion acceptée' : 'Demande d’adhésion refusée' });
       return { ok: true, decision, memberCount: club.members.length };
     });
   }
@@ -269,7 +297,7 @@ export class JsonRpClubStore {
       const club = this.state.clubs.find(item => item.id === clubId);
       if (!club) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
       const actor = club.members.find(item => item.accountId === actorAccountId);
-      if (!actor || !MANAGER_ROLES.has(actor.role)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
+      if (!canManageRecruitment(club, actor)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
       if (this.findMembership(accountId)) return { ok:false, reason:'INVITEE_ALREADY_IN_RP_CLUB' };
       if (club.members.length >= MAX_MEMBERS) return { ok:false, reason:'RP_CLUB_FULL' };
       if (club.invitations.some(item => item.accountId === accountId)) return { ok:false, reason:'RP_CLUB_INVITATION_ALREADY_PENDING' };
@@ -291,10 +319,13 @@ export class JsonRpClubStore {
       if (decision === 'accept' && this.findMembership(accountId)) return { ok:false, reason:'ALREADY_IN_RP_CLUB' };
       if (decision === 'accept' && club.members.length >= MAX_MEMBERS) return { ok:false, reason:'RP_CLUB_FULL' };
       club.invitations = club.invitations.filter(item => item.id !== invitationId);
-      if (decision === 'accept') club.members.push({
-        accountId:invitation.accountId, playerId:invitation.playerId, displayName:invitation.displayName,
-        role:'member', joinedAt:new Date(this.now()).toISOString()
-      });
+      let target = invitation;
+      if (decision === 'accept') {
+        target = { accountId:invitation.accountId, playerId:invitation.playerId, displayName:invitation.displayName, role:'member', joinedAt:new Date(this.now()).toISOString() };
+        club.members.push(target);
+      }
+      const actor = club.members.find(member => member.accountId === invitation.invitedByAccountId) || { displayName:'Responsable' };
+      this.recordGovernance(club, { action:decision === 'accept' ? 'invitation_accepted' : 'invitation_rejected', actor, target, details:decision === 'accept' ? 'Invitation acceptée' : 'Invitation refusée' });
       club.updatedAt = new Date(this.now()).toISOString();
       return { ok:true, decision, memberCount:club.members.length };
     });
@@ -306,13 +337,51 @@ export class JsonRpClubStore {
       const club = this.state.clubs.find(item => item.id === clubId);
       if (!club) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
       const actor = club.members.find(item => item.accountId === actorAccountId);
-      if (!actor || !['founder','president'].includes(actor.role)) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
+      if (!actor || club.presidentAccountId !== actorAccountId) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
       const target = club.members.find(item => item.playerId === targetPlayerId);
       if (!target) return { ok:false, reason:'RP_CLUB_MEMBER_NOT_FOUND' };
       if (target.role === 'founder' || target.role === 'president') return { ok:false, reason:'RP_CLUB_ROLE_PROTECTED' };
+      const previousRole = target.role;
       target.role = role;
-      club.updatedAt = new Date(this.now()).toISOString();
+      this.recordGovernance(club, { action:'role_changed', actor, target, details:`Rôle modifié : ${previousRole} → ${role}` });
       return { ok:true, playerId:target.playerId, role:target.role };
+    });
+  }
+
+  transferPresidency(clubId, targetPlayerId, actorAccountId) {
+    return this.transact(() => {
+      const club = this.state.clubs.find(item => item.id === clubId);
+      if (!club) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
+      if (club.presidentAccountId !== actorAccountId) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
+      const actor = club.members.find(item => item.accountId === actorAccountId);
+      const target = club.members.find(item => item.playerId === targetPlayerId);
+      if (!target) return { ok:false, reason:'RP_CLUB_MEMBER_NOT_FOUND' };
+      if (target.accountId === actorAccountId) return { ok:false, reason:'RP_CLUB_CANNOT_TRANSFER_TO_SELF' };
+      if (target.role === 'founder') return { ok:false, reason:'RP_CLUB_ROLE_PROTECTED' };
+      const previousPresident = actor.displayName;
+      if (actor.role === 'president') actor.role = 'member';
+      target.role = 'president';
+      club.presidentAccountId = target.accountId;
+      this.recordGovernance(club, { action:'presidency_transferred', actor, target, details:`Présidence transférée de ${previousPresident} à ${target.displayName}` });
+      return { ok:true, presidentPlayerId:target.playerId, presidentDisplayName:target.displayName };
+    });
+  }
+
+  removeMember(clubId, targetPlayerId, actorAccountId) {
+    return this.transact(() => {
+      const club = this.state.clubs.find(item => item.id === clubId);
+      if (!club) return { ok:false, reason:'RP_CLUB_NOT_FOUND' };
+      const actor = club.members.find(item => item.accountId === actorAccountId);
+      if (!actor || club.presidentAccountId !== actorAccountId) return { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' };
+      const target = club.members.find(item => item.playerId === targetPlayerId);
+      if (!target) return { ok:false, reason:'RP_CLUB_MEMBER_NOT_FOUND' };
+      if (target.accountId === actorAccountId || target.role === 'founder' || target.accountId === club.presidentAccountId)
+        return { ok:false, reason:'RP_CLUB_MEMBER_PROTECTED' };
+      club.members = club.members.filter(member => member.accountId !== target.accountId);
+      club.joinRequests = club.joinRequests.filter(item => item.accountId !== target.accountId);
+      club.invitations = club.invitations.filter(item => item.accountId !== target.accountId);
+      this.recordGovernance(club, { action:'member_removed', actor, target, details:`${target.displayName} exclu du Club RP` });
+      return { ok:true, memberCount:club.members.length, removedPlayerId:target.playerId };
     });
   }
 
@@ -322,9 +391,10 @@ export class JsonRpClubStore {
       if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
       const member = club.members.find(item => item.accountId === accountId);
       if (!member) return { ok: false, reason: 'RP_CLUB_MEMBERSHIP_NOT_FOUND' };
-      if (member.role === 'founder') return { ok: false, reason: 'FOUNDER_MUST_TRANSFER_PRESIDENCY' };
+      if (club.presidentAccountId === accountId) return { ok:false, reason:'PRESIDENT_MUST_TRANSFER_PRESIDENCY' };
+      if (member.role === 'founder') return { ok:false, reason:'FOUNDER_CANNOT_LEAVE' };
       club.members = club.members.filter(item => item.accountId !== accountId);
-      club.updatedAt = new Date(this.now()).toISOString();
+      this.recordGovernance(club, { action:'member_left', actor:member, target:member, details:`${member.displayName} a quitté le Club RP` });
       return { ok: true, memberCount: club.members.length };
     });
   }
