@@ -6,11 +6,11 @@ Les joueurs fictifs générés par P27 prennent comme base des cartes **normales
 
 ## Catalogue vérifié embarqué
 
-Le premier catalogue contrôlé contient **14 fiches individuelles** :
-- 5 profils d'attaquants : avant-centre rapide, puissant, ailier, finisseur et joueur de pivot
-- 3 profils de milieux : organisateur, créateur et récupérateur
-- 5 profils de défenseurs : latéral offensif, piston gauche, défenseur central physique, central plus mobile et latéral polyvalent
-- 1 profil de gardien
+Le premier catalogue contrôlé contient **21 fiches individuelles** :
+- 7 profils d'attaquants : avant-centre rapide, puissant, complet, ailier, finisseur et joueur de pivot
+- 5 profils de milieux : organisateur, créateur, récupérateur, relayeur box-to-box et meneur de jeu
+- 6 profils de défenseurs : latéral offensif, piston gauche, défenseur central physique, central plus mobile, latéral polyvalent et central technique
+- 3 profils de gardiens
 
 Chaque profil conserve une URL de fiche individuelle et une marque de vérification. Les statistiques de terrain sont les valeurs entières affichées sur la carte DLS 26. Pour les gardiens, GKR et GKH remplacent SHO et TAC dans le jeu de référence.
 
@@ -53,5 +53,13 @@ Les 14 fiches constituent un premier lot vérifié, pas encore l'import exhausti
 - https://sakibpro.com/players/normal/nikola-milenkovic/15551/changelog/
 - https://sakibpro.com/players/normal/sergino-dest/17190/changelog/
 - https://sakibpro.com/players/normal/gianluigi-donnarumma/14078/
+
+- https://sakibpro.com/players/normal/mohamed-salah/12027/statistics/
+- https://sakibpro.com/players/normal/harry-kane/10159/statistics/
+- https://sakibpro.com/players/normal/jude-bellingham/17799/
+- https://sakibpro.com/players/normal/kevin-de-bruyne/7957/changelog/
+- https://sakibpro.com/players/normal/william-saliba/17387/statistics/
+- https://sakibpro.com/players/normal/alisson/14939/changelog/
+- https://sakibpro.com/players/normal/thibaut-courtois/7458/statistics/
 
 SakibPro est une base indépendante et non une source officielle First Touch Games. Les pages de statistiques détaillées permettent de vérifier les données de carte utilisées.
