@@ -156,7 +156,8 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     const memberChallenge = await fetch(`${base}/api/rp-clubs/${targetClub.id}/challenges`, {
       method:'POST', headers:{ authorization:`Bearer ${member.token}` }
     });
-    assert.equal(memberChallenge.status, 403);
+    // The former member has left the club; the API reports membership-required as a conflict.
+    assert.equal(memberChallenge.status, 409);
     const selfChallenge = await fetch(`${base}/api/rp-clubs/${created.club.id}/challenges`, {
       method:'POST', headers:{ authorization:`Bearer ${founder.token}` }
     });
