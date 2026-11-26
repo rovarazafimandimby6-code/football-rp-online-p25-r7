@@ -147,7 +147,7 @@ function nationalityPlan(club, count, random, nationalityCounts = new Map()) {
   // clubs produce a 30% Malagasy player population across the full catalogue.
   const malagasyCount = homeCode === 'MG'
     ? Math.min(count, Math.round(count * 5 / 12))
-    : Math.min(count, Math.ceil(count * 3 / 12));
+    : Math.min(count, Math.round(count * 3 / 12));
   const localCount = homeCode === 'MG' ? malagasyCount : Math.min(count - malagasyCount, Math.round(count * 3 / 12));
   const plan = [];
   if (homeCode === 'MG') plan.push(...Array(malagasyCount).fill('MG'));
@@ -235,4 +235,6 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
 }
 
 export function stableClubSeed(clubId) { return hashSeed(`fpro-p23:${clubId}`); }
+export const RARE_NATIONALITY_CODES = Object.freeze([...RARE_NATIONALITIES]);
+export const NATIONALITY_GENERATION_WEIGHTS = NATIONALITY_WEIGHTS;
 export const SUPPORTED_NATIONALITIES = Object.freeze(Object.keys(NATIONAL_POOLS));
