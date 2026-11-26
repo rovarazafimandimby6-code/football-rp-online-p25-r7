@@ -37,7 +37,7 @@ export function validateProfile(input) {
     identity: {
       displayName: cleanText(identity.displayName, base.identity.displayName, 20),
       number: Math.round(clamp(identity.number, 1, 99)),
-      preferredFoot: ['left', 'right'].includes(identity.preferredFoot) ? identity.preferredFoot : 'right',
+      preferredFoot: ['left', 'right', 'both'].includes(identity.preferredFoot) ? identity.preferredFoot : 'right',
       role: ['GK', 'DEF', 'MID', 'FWD'].includes(identity.role) ? identity.role : 'MID'
     },
     appearance: {
