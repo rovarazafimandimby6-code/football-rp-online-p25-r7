@@ -558,7 +558,7 @@ function renderPage(page = 'home') {
           <div><small>POINTS D'ENTRAÎNEMENT</small><strong>${Number(profile.progression.trainingPoints||0).toLocaleString('fr-FR')}</strong></div>
           <button data-page="player">FICHE JOUEUR <b>›</b></button>
         </div>
-      </section>` : \`<section class="p27-dls-home" aria-label="Accueil du jeu">
+      </section>` : `<section class="p27-dls-home" aria-label="Accueil du jeu">
         <article class="p27-hub-career">
           <div class="p27-hub-career-copy">
             <span class="p27-hub-kicker">MODE CARRIÈRE · SAISON PERSONNELLE</span>
