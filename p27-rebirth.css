@@ -1331,3 +1331,86 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
   #main-menu .list-row{grid-template-columns:1fr auto;gap:7px}
   #main-menu .list-row .training-controls{grid-column:1/-1;justify-content:flex-start}
 }
+
+
+/* P27 mobile landscape correction — one navigation rail, content first. */
+@media (max-width: 760px) and (orientation: landscape) {
+  #main-menu .menu-layout {
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    padding-inline:10px;
+  }
+  #main-menu .menu-sidebar {
+    order:0 !important;
+    flex:0 0 40px;
+    min-height:40px;
+    max-height:40px;
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    gap:3px;
+    margin:0;
+    padding:2px 3px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    border:0;
+    border-bottom:1px solid rgba(151,184,222,.16);
+    border-radius:0;
+    background:rgba(6,11,19,.92);
+    box-shadow:none;
+    scrollbar-width:none;
+  }
+  #main-menu .menu-sidebar::-webkit-scrollbar {display:none}
+  #main-menu .menu-section-label,
+  #main-menu .sidebar-spacer {display:none !important}
+  #main-menu .menu-sidebar button {
+    flex:0 0 auto;
+    width:auto;
+    min-width:58px;
+    min-height:34px;
+    flex-direction:row;
+    justify-content:center;
+    gap:5px;
+    padding:3px 7px;
+    font-size:9px;
+    line-height:1;
+    white-space:nowrap;
+  }
+  #main-menu .menu-sidebar button span {
+    display:inline-grid;
+    width:16px;
+    height:18px;
+    font-size:14px;
+    line-height:1;
+  }
+  #main-menu .menu-main {
+    order:1 !important;
+    flex:1 1 auto;
+    min-height:0;
+    padding:7px 0 2px;
+    overflow:hidden;
+  }
+  #main-menu .menu-secondary-nav {display:none !important}
+  #main-menu .menu-heading {
+    min-height:43px;
+    margin:0 0 7px;
+    padding:0 2px 6px;
+  }
+  #main-menu .menu-heading h1 {margin:2px 0;font-size:18px}
+  #main-menu .menu-heading p {font-size:9px;line-height:1.2}
+  #main-menu .eyebrow {font-size:8px}
+  #main-menu #menu-content {padding:0 3px 10px 1px}
+  #main-menu .menu-footer {display:none}
+}
+@media (max-width: 760px) and (orientation: landscape) and (max-height: 420px) {
+  #main-menu .menu-topbar {height:42px;flex-basis:42px;padding-inline:10px}
+  #main-menu .brand-shield {width:28px;height:31px}
+  #main-menu .brand-mark strong {font-size:10px}
+  #main-menu .brand-mark small {font-size:7px}
+  #main-menu .menu-sidebar {flex-basis:36px;min-height:36px;max-height:36px}
+  #main-menu .menu-sidebar button {min-height:30px;font-size:8px}
+  #main-menu .menu-main {padding-top:5px}
+  #main-menu .menu-heading {min-height:37px;margin-bottom:5px}
+  #main-menu .menu-heading h1 {font-size:16px}
+}
