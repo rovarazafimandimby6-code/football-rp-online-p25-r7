@@ -54,6 +54,19 @@ export class RpClubMatchService {
     return { ok:true, room:this.roomManager.publicState(room), reused:false };
   }
 
+  recordFinalizedResult(result, room) {
+    const metadata = room?.rpClubChallenge;
+    if (!metadata || !result || result.phase !== 'fulltime') return { ok:false, reason:'NOT_RP_CLUB_CHALLENGE' };
+    return this.challengeStore.completeFromMatch({
+      challengeId:metadata.challengeId, roomId:room.id,
+      score:result.score, finalizedAt:result.finalizedAt
+    });
+  }
+
+  leaderboard() {
+    return this.challengeStore.leaderboard();
+  }
+
   resolveJoin(roomId, accountId) {
     const room = this.roomManager.rooms.get(roomId);
     if (!room) return { ok:false, reason:'ROOM_NOT_FOUND' };
