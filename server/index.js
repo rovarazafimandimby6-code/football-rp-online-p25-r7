@@ -577,7 +577,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
       return json(res, status, result);
     }
-    const rpClubInviteMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/invitations$/i);
+    const rpClubInviteMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/invitations$/i);
     if (req.method === 'POST' && rpClubInviteMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
@@ -593,7 +593,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         : result.reason === 'PLAYER_IDENTITY_REQUIRED' ? 400 : 409;
       return json(res, status, result);
     }
-    const rpClubInviteDecisionMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/invitations\\/([a-f0-9-]{36})\\/decision$/i);
+    const rpClubInviteDecisionMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/invitations\/([a-f0-9-]{36})\/decision$/i);
     if (req.method === 'POST' && rpClubInviteDecisionMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
@@ -602,7 +602,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_INVITATION_NOT_FOUND' ? 404 : 409;
       return json(res, status, result);
     }
-    const rpClubRoleMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/members\\/(FRP-\\d{6})\\/role$/i);
+    const rpClubRoleMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/members\/(FRP-\d{6})\/role$/i);
     if (req.method === 'POST' && rpClubRoleMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
