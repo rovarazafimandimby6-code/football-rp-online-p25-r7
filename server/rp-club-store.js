@@ -161,6 +161,11 @@ export class JsonRpClubStore {
     return club.members.map(({ accountId, playerId, displayName, role }) => ({ accountId, playerId, displayName, role }));
   }
 
+  listMemberAccountIds(clubId) {
+    const club = this.state.clubs.find(item => item.id === clubId);
+    return club ? club.members.map(member => member.accountId) : null;
+  }
+
   getForAccount(accountId) {
     const membership = this.findMembership(accountId);
     if (!membership) return null;
