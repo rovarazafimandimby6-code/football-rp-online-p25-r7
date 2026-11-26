@@ -2005,3 +2005,16 @@
 #main-menu .rp-club-chat-compose{display:flex;gap:6px;margin-top:7px}
 #main-menu .rp-club-chat-compose input{flex:1;min-width:0;height:31px;padding:0 9px;border:1px solid rgba(143,184,220,.25);border-radius:3px;background:#071624;color:#f4f8fc;font-size:9px}
 #main-menu .rp-club-chat-compose button{height:31px;padding:0 12px;border:1px solid rgba(149,195,234,.3);border-radius:3px;background:linear-gradient(180deg,#2678a8,#17435f);color:#eff7ff;font-size:8px;font-weight:950}
+
+
+/* Club RP — gouvernance, cession de présidence et historique des décisions */
+#main-menu .rp-club-member-controls{flex-wrap:wrap;justify-content:flex-end}
+#main-menu .rp-club-member-controls button[data-action="rp-club-transfer-presidency"]{background:linear-gradient(180deg,#9a793d,#5c4523);border-color:rgba(241,210,125,.35)}
+#main-menu .rp-club-member-controls .rp-club-remove-member{background:linear-gradient(180deg,#78424a,#40232a);border-color:rgba(231,145,153,.3)}
+#main-menu .rp-club-governance-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+#main-menu .rp-club-governance-event{min-width:0;padding:7px 8px;border:1px solid rgba(143,183,214,.14);border-radius:3px;background:rgba(4,15,26,.62)}
+#main-menu .rp-club-governance-event>div{display:flex;align-items:center;justify-content:space-between;gap:7px}
+#main-menu .rp-club-governance-event b{color:#e8f1fa;font-size:8px}
+#main-menu .rp-club-governance-event small{color:#819bb2;font-size:7px}
+#main-menu .rp-club-governance-event p{margin:4px 0 0;color:#a9bfd2;font-size:8px}
+@media(orientation:portrait){#main-menu .rp-club-governance-list{grid-template-columns:1fr}}
