@@ -168,3 +168,12 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Un test de régression couvre un salon inactif dont le joueur s'est déconnecté à l'instant zéro.
 - La restauration après redémarrage, la reprise du même avatar et la durée restante de mi-temps restent inchangées.
 - Aucun changement au moteur de simulation, au HUD ou aux commandes tactiles. L'exécution de la suite reste à confirmer par CI.
+
+## Reprise de la finalisation après coup de sifflet — 26/11/2026
+
+- Un résultat non encore archivé peut désormais conserver un checkpoint `fulltime` dans le stockage privé des salons.
+- Si l'enregistrement d'une carrière, de la progression ou de l'archive échoue pendant la finalisation, le serveur conserve le match terminé au lieu de ne garder que l'ancien checkpoint `playing`.
+- Au redémarrage, le salon `fulltime` est restauré et la finalisation est retentée. Les écritures carrière/progression sont protégées par leurs identifiants de match traités, et le résultat est archivé avant la suppression du checkpoint.
+- Un marqueur empêche de réécrire le même checkpoint à chaque tick pendant une panne de stockage.
+- Un test de récupération simule une panne pendant la récompense, redémarre les stores et vérifie l'archivage du score et la progression.
+- Aucun changement au moteur de simulation, au HUD ou aux commandes tactiles. Résultats CI et APK non vérifiés.
