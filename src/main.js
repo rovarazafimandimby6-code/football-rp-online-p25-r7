@@ -498,8 +498,7 @@ function renderPage(page = 'home') {
           <div><small>POINTS D'ENTRAÎNEMENT</small><strong>${Number(profile.progression.trainingPoints||0).toLocaleString('fr-FR')}</strong></div>
           <button data-page="player">FICHE JOUEUR <b>›</b></button>
         </div>
-      </section>` : 
-      <section class="p27-home-tiles" aria-label="Modes et rubriques">
+      </section>` : `\n      <section class="p27-home-tiles" aria-label="Modes et rubriques">
         <button class="p27-tile p27-tile-career" data-page="career-hub"><span class="p27-tile-title">CARRIÈRE <i>›</i></span><span class="p27-tile-art"><b>★</b><small>${'★'.repeat(stars)}${'☆'.repeat(5-stars)} · NIVEAU ${level}</small></span><span class="p27-tile-info">Votre parcours et votre progression</span></button>
         <button class="p27-tile p27-tile-friendly" data-action="choose-match"><span class="p27-tile-title">MATCH AMICAL <i>›</i></span><span class="p27-tile-art"><b>⚽</b></span><span class="p27-tile-info">Jouer un match 5 contre 5</span></button>
         <button class="p27-tile p27-tile-player" data-page="player"><span class="p27-tile-title">MON JOUEUR <i>›</i></span><span class="p27-tile-art p27-tile-avatar"><b>♟</b></span><span class="p27-tile-info">${escapeHTML(profile.identity.displayName)}</span></button>
