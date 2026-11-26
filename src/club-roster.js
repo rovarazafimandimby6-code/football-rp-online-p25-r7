@@ -137,7 +137,7 @@ function hashSeed(value) { let hash = 2166136261; for (const char of String(valu
 function randomFor(seed) { let state = seed >>> 0; return () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; }; }
 function pick(list, random) { return list[Math.floor(random() * list.length)]; }
 function shuffled(values, random) { const result = [...values]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; }
-const RARE_NATIONALITIES = new Set(['HT','IS','NZ','LU']);
+const RARE_NATIONALITIES = new Set(['HT','IS','NZ','LU','CG','CR','JM','PA','PY','VE']);
 const NATIONALITY_WEIGHTS = Object.freeze({
   FR:9, BR:9, AR:8, ES:8, GB:8, DE:8, IT:7, PT:7, NL:6,
   SN:5, NG:5, MA:5, JP:5, US:4, CA:4, CO:4, MX:4, CI:4, GH:4,
