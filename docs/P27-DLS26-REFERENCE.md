@@ -42,7 +42,7 @@ Les 14 fiches constituent un premier lot vérifié, pas encore l'import exhausti
 - https://sakibpro.com/players/normal/kylian-mbappe/14756/statistics/
 - https://sakibpro.com/players/normal/erling-haaland/17196/changelog/
 - https://sakibpro.com/players/normal/vinicius-junior/16320/statistics/
-- https://sakibpro.com/players/normal/lautaro-martinez/16329/changelog/
+- https://sakibpro.com/players/normal/lautaro-martinez/16329/statistics/
 - https://sakibpro.com/players/normal/dusan-vlahovic/17816/changelog/
 - https://sakibpro.com/players/normal/pedro-gonzalez-lopez/17763/changelog/
 - https://sakibpro.com/players/normal/henrikh-mkhitaryan/10806/changelog/
