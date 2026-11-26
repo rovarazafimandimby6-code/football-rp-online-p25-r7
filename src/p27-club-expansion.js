@@ -62,7 +62,7 @@ const REGIONAL_FOREIGN_LOCATIONS = [
   ['Sydney','Australie','AU'],['Melbourne','Australie','AU'],['Casablanca','Maroc','MA'],['Rabat','Maroc','MA'],
   ['Abidjan','Côte d’Ivoire','CI'],['Yamoussoukro','Côte d’Ivoire','CI'],['Accra','Ghana','GH'],['Kumasi','Ghana','GH'],
   ['Lagos','Nigeria','NG'],['Abuja','Nigeria','NG'],['Dakar','Sénégal','SN'],['Thiès','Sénégal','SN'],
-  ['Le Caire','Égypte','EG']
+  ['Le Caire','Égypte','EG'],['Oran','Algérie','DZ']
 ];
 const CLUB_SUFFIXES = ['', ' Sporting', ' United', ' Athletic', ' SC', ' AC', ' City', ' Rovers', ' Wanderers', ' Olympique', ' Racing', ' Deportivo', ' FC', ' Town', ' Albion', ' Phoenix'];
 const STADIUM_SUFFIXES = ['Park','Ground','Stadium','Arena','Field','Park'];
