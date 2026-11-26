@@ -538,7 +538,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       return json(res, 200, { membership:rpClubStore.getForAccount(account.id), invitations:rpClubStore.getInvitationsForAccount(account.id) });
     }
-    const rpClubActivityMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/activity$/i);
+    const rpClubActivityMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/activity$/i);
     if (req.method === 'GET' && rpClubActivityMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
