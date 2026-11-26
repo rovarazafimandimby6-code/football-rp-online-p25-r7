@@ -45,9 +45,11 @@ export const CLUB_DIVISION_PROFILE_BASES = DIVISION_PROFILE_BASES;
 
 
 const NATIONALITY_CONTINENTS = Object.freeze({
-  MG:'Africa', SN:'Africa', NG:'Africa', KE:'Africa', MA:'Africa', DZ:'Africa', TN:'Africa',
-  FR:'Europe', GB:'Europe', IT:'Europe', ES:'Europe', PT:'Europe',
-  BR:'South America', AR:'South America', JP:'Asia'
+  MG:'Africa', SN:'Africa', NG:'Africa', KE:'Africa', MA:'Africa', DZ:'Africa', TN:'Africa', CI:'Africa', GH:'Africa', CM:'Africa', EG:'Africa', ZA:'Africa',
+  FR:'Europe', GB:'Europe', IT:'Europe', ES:'Europe', PT:'Europe', DE:'Europe', NL:'Europe', BE:'Europe', HR:'Europe', RS:'Europe', TR:'Europe', GR:'Europe', PL:'Europe', IS:'Europe', LU:'Europe',
+  BR:'South America', AR:'South America', CO:'South America', PE:'South America', UY:'South America', CL:'South America',
+  US:'North America', CA:'North America', MX:'North America', HT:'North America',
+  JP:'Asia', KR:'Asia', AU:'Oceania', NZ:'Oceania'
 });
 const CONTINENT_NATIONALITIES = Object.freeze(Object.fromEntries(
   [...new Set(Object.values(NATIONALITY_CONTINENTS))].map(continent => [
