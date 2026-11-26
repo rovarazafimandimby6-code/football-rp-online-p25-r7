@@ -621,10 +621,10 @@ ${renderGoogleProtectionCard({ compact: true })}
         <span class="player-card-compact-copy">
           <span class="player-card-name-line"><i class="player-origin-dot ${origin}" aria-hidden="true"></i><strong>${escapeHTML(player.name)}</strong><b class="player-card-rating" aria-label="Note globale ${player.rating}">${player.rating}</b></span>
           <small>${countryFlag(player.nationality)} · ${escapeHTML(player.clubName)}</small>
-          <small>${escapeHTML(player.clubDivision||'')} · ${roleNames[player.role]||player.role} · #${player.number}</small>
-          <span class="player-card-more" data-action="open-player-profile" data-player-index="${index}">Voir plus ›</span>
+          <small>${escapeHTML(player.clubDivision||'')} · ${escapeHTML(player.position||roleNames[player.role]||player.role)} · #${player.number}</small>
+          <button type="button" class="player-card-more" data-action="open-player-profile" data-player-index="${index}">Voir plus ›</button>
         </span>
-        <span class="player-card-expanded-details" aria-hidden="true">${cardAttributes.map(([label,value])=>`<span><small>${label}</small><b>${Number.isFinite(Number(value))&&value!==undefined?Number(value):'—'}</b></span>`).join('')}<small class="player-card-physical">Profil physique : informations disponibles dans la fiche complète</small></span>
+        <span class="player-card-expanded-details" aria-hidden="true">${cardAttributes.map(([label,value])=>`<span><small>${label}</small><b>${value!==undefined&&value!==null&&value!==''&&Number.isFinite(Number(value))?Number(value):'—'}</b></span>`).join('')}<small class="player-card-physical">Profil physique : informations disponibles dans la fiche complète</small></span>
       </article>`}).join('')}</div>
       <div class="player-library-footer compact-library-pagination"><span id="library-visible-count">0 affiché</span><div><button class="small-action" data-action="players-page" data-page="-1" id="library-page-prev" aria-label="Page précédente">‹</button><span id="library-page-label">1 / 1</span><button class="small-action" data-action="players-page" data-page="1" id="library-page-next" aria-label="Page suivante">›</button></div></div>
       <p class="notice">Cette bibliothèque recense les joueurs actuellement présents dans les effectifs locaux connus. Les joueurs libres, les transferts et les prêts ne sont pas inventés : ils seront intégrés quand leurs statuts seront reliés à une source de données fiable.</p>
