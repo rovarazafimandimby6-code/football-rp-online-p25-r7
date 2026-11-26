@@ -183,3 +183,15 @@ test('P27 viewport: HUD et commandes restent compacts sur les petits écrans pay
   assert.match(css, /#stick-base \{[\s\S]*?top: 62%/);
   assert.match(css, /#player-guidance \{[\s\S]*?max-width: 30vw/);
 });
+
+test('P27 game UI: aucune ancienne navigation latérale ou secondaire ne subsiste', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const legacyCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8') + readFileSync(new URL('../p27-rebirth.css', import.meta.url), 'utf8');
+  const gameCss = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(html, /menu-sidebar|menu-secondary-nav|menu-heading/);
+  assert.doesNotMatch(legacyCss, /menu-sidebar|menu-secondary-nav/);
+  assert.match(html, /p27-top-section/);
+  assert.match(html, /p27-top-player-coins/);
+  assert.match(gameCss, /p27-dls-career-grid/);
+  assert.match(main, /p27-dls-mode p27-dls-next/);
+});
