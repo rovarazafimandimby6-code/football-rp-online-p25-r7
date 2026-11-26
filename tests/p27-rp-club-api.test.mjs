@@ -95,6 +95,16 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     assert.equal(activity.totals.goals, 2);
     assert.equal(activity.totals.assists, 1);
     assert.equal(activity.members.find(row=>row.playerId===member.identity.playerId).goals, 2);
+    assert.deepEqual(activity.objectives.map(item => item.id), ['matches','wins','goals','assists']);
+    assert.equal(activity.objectives.find(item=>item.id==='matches').value, 1);
+    assert.equal(activity.objectives.find(item=>item.id==='matches').target, 10);
+    assert.equal(activity.objectives.find(item=>item.id==='matches').progressPercent, 10);
+    assert.equal(activity.objectives.find(item=>item.id==='wins').value, 1);
+    assert.equal(activity.objectives.find(item=>item.id==='goals').value, 2);
+    assert.equal(activity.objectives.find(item=>item.id==='assists').value, 1);
+    assert.equal(activity.objectives.every(item => item.completed === false), true);
+    assert.equal(Object.hasOwn(activity.objectives[0], 'reward'), false);
+    assert.equal(activity.periodEnd - activity.periodStart, 7 * 24 * 60 * 60 * 1000);
     const forbiddenActivity = await fetch(`${base}/api/rp-clubs/${created.club.id}/activity`, {
       headers:{ authorization:`Bearer ${outsider.token}` }
     });
