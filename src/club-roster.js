@@ -153,20 +153,20 @@ function pickWeightedNationality(codes, random, nationalityCounts = new Map()) {
   for (const [code, weight] of weighted) { roll -= weight; if (roll <= 0) return code; }
   return weighted.at(-1)?.[0] || 'FR';
 }
-function nationalityPlan(club, count, random, nationalityCounts = new Map()) {
+function nationalityPlan(club, count, random, nationalityCounts = new Map(), malagasyQuota = null) {
   const homeCode = /^[A-Z]{2}$/.test(club.countryCode || '') ? club.countryCode : 'MG';
   const recruitment = club.recruitmentProfile;
   if (recruitment?.mode === 'country' && NATIONAL_POOLS[recruitment.countryCode]) return Array(count).fill(recruitment.countryCode);
   if (recruitment?.mode === 'continent' && Array.isArray(recruitment.nationalityCodes)) {
-    const eligible = recruitment.nationalityCodes.filter(code => NATIONAL_POOLS[code]);
+    const eligible = recruitment.nationalityCodes.filter(code => NATIONAL_POOLS[code] && (!RARE_NATIONALITIES.has(code) || (nationalityCounts.get(code) || 0) < 2));
     if (eligible.length) return shuffled(Array.from({ length: count }, (_, index) => eligible[index % eligible.length]), random);
   }
   // Fixed world-level quotas: with the 47 Malagasy / 109 international club
   // split, five locals in Malagasy clubs and three Malagasy players in foreign
   // clubs produce a 30% Malagasy player population across the full catalogue.
-  const malagasyCount = homeCode === 'MG'
-    ? Math.min(count, Math.round(count * 5 / 12))
-    : Math.min(count, Math.round(count * 3 / 12));
+  const malagasyCount = Number.isInteger(malagasyQuota)
+    ? Math.max(0, Math.min(count, malagasyQuota))
+    : homeCode === 'MG' ? Math.min(count, Math.round(count * 5 / 12)) : Math.min(count, Math.round(count * 3 / 12));
   const localCount = homeCode === 'MG' ? malagasyCount : Math.min(count - malagasyCount, Math.round(count * 3 / 12));
   const plan = [];
   if (homeCode === 'MG') plan.push(...Array(malagasyCount).fill('MG'));
@@ -195,10 +195,10 @@ function createUniqueName(code, random, usedNames, index, clubId) {
   return fallback;
 }
 
-export function generateClubRoster(club, { size = 12, usedNames = new Set(), nationalityCounts = new Map() } = {}) {
+export function generateClubRoster(club, { size = 12, usedNames = new Set(), nationalityCounts = new Map(), malagasyQuota = null } = {}) {
   const count = Math.max(1, Math.min(30, Math.floor(Number(size) || 12)));
   const random = randomFor(hashSeed(`fpro-p23:${club.id}:roster-v2`));
-  const nationalities = nationalityPlan(club, count, random, nationalityCounts);
+  const nationalities = nationalityPlan(club, count, random, nationalityCounts, malagasyQuota);
   for (const code of nationalities) nationalityCounts.set(code, (nationalityCounts.get(code) || 0) + 1);
   const shuffledAges = shuffled(AGE_PROFILE, random);
   const ages = [18,30,19,28,21,32,...shuffledAges.filter(age => ![18,19,21,28,30,32].includes(age))];
