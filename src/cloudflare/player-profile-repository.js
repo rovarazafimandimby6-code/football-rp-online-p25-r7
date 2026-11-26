@@ -13,7 +13,7 @@ export function normalizePlayerProfile(input = {}, now = () => Date.now()) {
     identity: {
       displayName: clean(identity.displayName, 20, "Nouveau joueur"),
       number: Number.isFinite(Number(identity.number)) ? Math.max(1, Math.min(99, Math.round(Number(identity.number)))) : 10,
-      preferredFoot: oneOf(identity.preferredFoot, ["left", "right"], "right"),
+      preferredFoot: oneOf(identity.preferredFoot, ["left", "right", "both"], "right"),
       role: oneOf(identity.role, ["GK", "DEF", "MID", "FWD"], "MID"),
     },
     appearance: {
@@ -22,6 +22,8 @@ export function normalizePlayerProfile(input = {}, now = () => Date.now()) {
       hairStyle: oneOf(appearance.hairStyle, ["short", "curly", "shaved", "fade", "afro"], "short"),
       hairColor: oneOf(appearance.hairColor, ["dark", "brown", "blond"], "dark"),
       bodyBuild: oneOf(appearance.bodyBuild, ["lean", "athletic", "strong"], "athletic"),
+      faceShape: oneOf(appearance.faceShape, ["oval", "round", "angular", "long", "square"], "oval"),
+      eyeShape: oneOf(appearance.eyeShape, ["almond", "round", "hooded"], "almond"),
     },
     updatedAt: new Date(now()).toISOString(),
   };
