@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ClubManager } from '../src/club-manager.js';
-import { NATIONALITY_GENERATION_WEIGHTS, RARE_NATIONALITY_CODES, SUPPORTED_NATIONALITIES } from '../src/club-roster.js';
+import { generateClubRoster, NATIONALITY_GENERATION_WEIGHTS, RARE_NATIONALITY_CODES, SUPPORTED_NATIONALITIES } from '../src/club-roster.js';
 
 test('P27 nationalités : diversité mondiale et proportion malgache proche de 30%', () => {
   const clubs = new ClubManager().listClubs();
@@ -19,6 +19,24 @@ test('P27 nationalités : diversité mondiale et proportion malgache proche de 3
   for (const code of RARE_NATIONALITY_CODES) {
     assert.ok((counts.get(code) || 0) < 3, `${code} doit rester rare (moins de 3 joueurs)`);
   }
+});
+
+
+test('P27 nationalités : le plafond des pays rares est respecté dans un recrutement continental', () => {
+  const nationalityCounts = new Map([['IS', 1], ['LU', 1]]);
+  const recruitmentCodes = ['IS', 'LU', 'FR'];
+  const roster = generateClubRoster({
+    id: 'continent-rarity-audit',
+    division: 'D5',
+    countryCode: 'FR',
+    rating: 49,
+    colors: ['#123456', '#234567', '#345678'],
+    recruitmentProfile: { mode: 'continent', nationalityCodes: recruitmentCodes }
+  }, { size: 12, nationalityCounts });
+
+  assert.ok(roster.every(player => recruitmentCodes.includes(player.nationality)));
+  assert.ok((nationalityCounts.get('IS') || 0) <= 2, 'IS ne doit jamais dépasser deux joueurs');
+  assert.ok((nationalityCounts.get('LU') || 0) <= 2, 'LU ne doit jamais dépasser deux joueurs');
 });
 
 test('P27 nationalités : chaque effectif contient des noms distincts et des codes pris en charge', () => {
