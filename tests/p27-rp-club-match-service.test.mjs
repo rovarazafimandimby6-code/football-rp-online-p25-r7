@@ -29,7 +29,16 @@ test('Club RP challenge rooms: only scheduled participants enter their assigned 
     publicState(room) { return { id:room.id, phase:room.phase }; },
     persistRoom() {}
   };
-  const service = new RpClubMatchService({ challengeStore, roomManager, now:() => now });
+  const clubStore = {
+    getForAccount(accountId) {
+      if (accountId === 'account-a1' || accountId === 'account-a2')
+        return { club:{ id:'club-a' }, membership:{ role:accountId === 'account-a1' ? 'founder' : 'member' } };
+      if (accountId === 'account-b1' || accountId === 'account-b2')
+        return { club:{ id:'club-b' }, membership:{ role:'member' } };
+      return null;
+    }
+  };
+  const service = new RpClubMatchService({ clubStore, challengeStore, roomManager, now:() => now });
   const denied = service.createRoom(challenge.id, 'outsider');
   assert.deepEqual(denied, { ok:false, reason:'RP_CLUB_PERMISSION_DENIED' });
   const created = service.createRoom(challenge.id, 'account-a1');
@@ -55,7 +64,8 @@ test('Club RP challenge rooms: cannot start before the scheduled window', () => 
     transact(mutator) { return mutator(); }
   };
   const roomManager = { rooms:new Map(), create() { throw new Error('must-not-create'); } };
-  const service = new RpClubMatchService({ challengeStore, roomManager, now:() => now });
+  const clubStore = { getForAccount:() => ({ club:{ id:'club-a' }, membership:{ role:'founder' } }) };
+  const service = new RpClubMatchService({ clubStore, challengeStore, roomManager, now:() => now });
   assert.deepEqual(service.createRoom('challenge-2','account-a1'), {
     ok:false, reason:'RP_CLUB_CHALLENGE_NOT_IN_TIME_WINDOW'
   });
