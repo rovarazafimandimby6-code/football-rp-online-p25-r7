@@ -69,7 +69,7 @@ export class JsonRpClubChallengeStore {
         id:item.id, challengerClubId:item.challengerClubId, challengerName:item.challengerName,
         challengerTag:item.challengerTag, targetClubId:item.targetClubId, targetName:item.targetName,
         targetTag:item.targetTag, status:item.status, createdAt:item.createdAt,
-        scheduledAt:item.scheduledAt, decidedAt:item.decidedAt || null, roomId:item.roomId || null
+        scheduledAt:item.scheduledAt, decidedAt:item.decidedAt || null, roomId:item.roomId || null, result:item.result || null, completedAt:item.completedAt || null
       }));
   }
 
@@ -99,6 +99,55 @@ export class JsonRpClubChallengeStore {
       status:'pending', createdAt, scheduledAt:null, decidedAt:null, decidedByAccountId:null
     };
     return this.transact(() => { this.state.challenges.push(item); return { ok:true, challenge:this.listForAccount(actorAccountId).find(row=>row.id===item.id) }; });
+  }
+
+  completeFromMatch({ challengeId, roomId, score, finalizedAt } = {}) {
+    const item = this.state.challenges.find(row => row.id === challengeId);
+    if (!item) return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_FOUND' };
+    if (item.status === 'completed') {
+      if (item.roomId !== roomId) return { ok:false, reason:'RP_CLUB_CHALLENGE_RESULT_CONFLICT' };
+      return { ok:true, challenge:item, duplicate:true };
+    }
+    if (item.status !== 'accepted' || item.roomId !== roomId)
+      return { ok:false, reason:'RP_CLUB_CHALLENGE_RESULT_CONFLICT' };
+    const blue = Number(score?.blue), red = Number(score?.red);
+    if (!Number.isSafeInteger(blue) || blue < 0 || !Number.isSafeInteger(red) || red < 0
+      || typeof finalizedAt !== 'number' || !Number.isFinite(finalizedAt))
+      return { ok:false, reason:'RP_CLUB_CHALLENGE_INVALID_RESULT' };
+    return this.transact(() => {
+      const current = this.state.challenges.find(row => row.id === challengeId);
+      if (!current || current.status !== 'accepted' || current.roomId !== roomId)
+        return { ok:false, reason:'RP_CLUB_CHALLENGE_RESULT_CONFLICT' };
+      current.status = 'completed';
+      current.result = {
+        roomId, blue, red, outcome:blue === red ? 'draw' : blue > red ? 'challenger_win' : 'target_win',
+        finalizedAt
+      };
+      current.completedAt = new Date(finalizedAt).toISOString();
+      return { ok:true, challenge:current, duplicate:false };
+    });
+  }
+
+  leaderboard() {
+    const table = new Map();
+    const rowFor = (id, name, tag) => {
+      if (!table.has(id)) table.set(id, { clubId:id, name, tag, played:0, wins:0, draws:0, losses:0, goalsFor:0, goalsAgainst:0, points:0 });
+      return table.get(id);
+    };
+    for (const item of this.state.challenges) {
+      if (item.status !== 'completed' || !item.result) continue;
+      const blue = rowFor(item.challengerClubId, item.challengerName, item.challengerTag);
+      const red = rowFor(item.targetClubId, item.targetName, item.targetTag);
+      blue.played++; red.played++;
+      blue.goalsFor += item.result.blue; blue.goalsAgainst += item.result.red;
+      red.goalsFor += item.result.red; red.goalsAgainst += item.result.blue;
+      if (item.result.blue === item.result.red) { blue.draws++; red.draws++; blue.points++; red.points++; }
+      else if (item.result.blue > item.result.red) { blue.wins++; red.losses++; blue.points += 3; }
+      else { red.wins++; blue.losses++; red.points += 3; }
+    }
+    return [...table.values()].sort((a,b) => b.points-a.points
+      || (b.goalsFor-b.goalsAgainst)-(a.goalsFor-a.goalsAgainst)
+      || b.goalsFor-a.goalsFor || a.name.localeCompare(b.name));
   }
 
   decide(challengeId, { clubStore, actorAccountId, decision, scheduledAt } = {}) {
