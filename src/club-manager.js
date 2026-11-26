@@ -186,7 +186,7 @@ export class ClubManager {
         humanAdmission: 'system-only', recruitmentProfile: { mode:'continent', continent:'Africa' }
       });
       if (seedDefaultRosters) reserved.roster = assignSystemContracts(balanceClubRosterQuality(
-        generateClubRoster({ ...reserved, recruitmentProfile: reserved.recruitmentProfile }, { size: Math.min(reserved.initialRosterSize, reserved.capacity), usedNames: globallyUsedNames }),
+        generateClubRoster({ ...reserved, recruitmentProfile: reserved.recruitmentProfile }, { size: Math.min(reserved.initialRosterSize, reserved.capacity), usedNames: globallyUsedNames, nationalityCounts: globallyUsedNationalities }),
         reserved
       ), reserved);
     }
