@@ -362,3 +362,18 @@ Cette amélioration ne crée ni score de contribution arbitraire, ni portefeuill
 Chaque Club RP dispose d'un fil de discussion persistant réservé à ses membres actuels. Les messages sont enregistrés dans le stockage du Club RP, limités à 300 caractères et les 200 derniers sont conservés. L'API exige une session, une identité de joueur valide et l'appartenance actuelle au club ; un délai anti-spam de deux secondes est appliqué par compte. Le panneau affiche les 60 derniers messages aux membres connectés. Le texte est rendu comme texte échappé, jamais comme HTML. Les anciens membres perdent l'accès à la discussion dès leur départ.
 
 Cette première version ne comprend pas encore les messages privés, pièces jointes, notifications push ou outils de modération avancée.
+
+
+### Gouvernance du Club RP — présidence, exclusions et journal des décisions
+
+Le modèle de gouvernance distingue maintenant le **fondateur historique** du **président en exercice**. `presidentAccountId` identifie le détenteur actuel de la présidence ; les anciennes sauvegardes sans ce champ sont migrées en prenant le membre déjà marqué président, ou à défaut le fondateur. Le transfert ne modifie pas l'identité historique du fondateur, mais lui retire les permissions qui dépendent de la présidence.
+
+- Seul le président en exercice peut transférer la présidence à un autre membre, modifier les rôles ou exclure un membre.
+- Le fondateur historique et le président en exercice sont protégés contre l'exclusion ; le président doit transférer sa fonction avant de quitter le Club RP. Le fondateur historique reste membre du club.
+- Les responsables de recrutement (vice-président et recruteur) conservent les actions de recrutement et de défi, mais ne peuvent pas transférer la présidence ni modifier les rôles.
+- Les décisions d'adhésion, d'invitation, de changement de rôle, de transfert de présidence, d'exclusion et de départ sont consignées dans un journal persistant plafonné à 100 événements.
+- Le journal visible aux membres ne divulgue aucun identifiant de compte privé. Le serveur demeure l'autorité pour les permissions ; l'interface ne fait qu'exposer les actions autorisées.
+
+Routes ajoutées : `POST /api/rp-clubs/:clubId/presidency/transfer` avec `playerId`, et `POST /api/rp-clubs/:clubId/members/:playerId/remove`. Les contrôles API couvrent le transfert, la perte des permissions de l'ancien président, l'acceptation par le nouveau président, l'exclusion et la lecture du journal.
+
+Aucun portefeuille, crédit, XP ou récompense collective n'est ajouté dans ce lot. Les résultats sportifs et le moteur de match restent inchangés.
