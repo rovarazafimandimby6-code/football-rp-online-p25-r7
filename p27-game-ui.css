@@ -1961,3 +1961,22 @@
 .rp-club-standing-row>b:first-child{opacity:.6}
 .rp-club-room-ready{display:block;margin:7px 0 0;color:var(--p27-accent,#9bd65a);font-size:10px;font-weight:800;letter-spacing:.06em}
 @media(max-width:560px){.rp-club-standing-row{grid-template-columns:20px minmax(90px,1fr) 42px 50px 48px;gap:5px;padding:8px 6px;font-size:10px}}
+
+
+/* Club RP — saison selector and seasonal honours */
+.rp-club-season-panel{border-color:rgba(91,157,220,.24)}
+.rp-club-current-season{display:flex;align-items:center;gap:10px;padding:11px 13px;margin:10px 0 12px;border:1px solid rgba(74,170,126,.24);border-radius:10px;background:linear-gradient(100deg,rgba(36,111,83,.16),rgba(14,34,54,.28))}
+.rp-club-current-season>div{display:grid;gap:3px;flex:1;min-width:0}
+.rp-club-current-season>div small,.rp-club-season-table-heading small{font-size:9px;letter-spacing:.1em;color:#83a5c2;font-weight:800}
+.rp-club-current-season>div b{font-size:14px;color:#f2f7fc}
+.rp-club-current-season>span:last-child{font-size:10px;color:#a9c5dc;font-weight:800;white-space:nowrap}
+.rp-club-season-live{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#4bd49b;box-shadow:0 0 10px rgba(75,212,155,.55)}
+.rp-club-season-tabs{display:flex;gap:7px;overflow-x:auto;padding:2px 0 9px;scrollbar-width:thin}
+.rp-club-season-tab{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:112px;padding:9px 11px;border:1px solid rgba(120,158,190,.18);border-radius:8px;background:rgba(9,23,38,.72);color:#dbe8f4;text-align:left;cursor:pointer}
+.rp-club-season-tab b{font-size:11px;white-space:nowrap}
+.rp-club-season-tab small{font-size:8px;letter-spacing:.08em;color:#88a5bd}
+.rp-club-season-tab.is-active{border-color:#4d9de0;background:rgba(37,103,158,.22);box-shadow:inset 0 0 0 1px rgba(77,157,224,.12)}
+.rp-club-season-tab.is-active small{color:#91c9f5}
+.rp-club-season-table-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 2px;margin-top:3px}
+.rp-club-season-table-heading>b{font-size:12px;color:#e9f3fc}
+.rp-club-season-table-heading>small{text-align:right}
