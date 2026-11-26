@@ -60,3 +60,14 @@ test('P27: aucun bouton ni script de bascule manuelle plein écran ne subsiste',
   assert.doesNotMatch(css, /\.fullscreen-toggle|#match-fullscreen/);
   assert.match(html, /id="pause"/);
 });
+
+
+test('P27 startup: le splash de présentation est dans le body, pas dans le head', async () => {
+  const html = await read('../index.html');
+  const head = html.slice(0, html.indexOf('</head>'));
+  const body = html.slice(html.indexOf('<body>'));
+  assert.doesNotMatch(head, /id="p27-startup-splash"/);
+  assert.match(body, /<div id="p27-startup-splash"/);
+  assert.ok(body.indexOf('id="p27-startup-splash"') < body.indexOf('id="main-menu"'));
+  assert.match(body, /art\.addEventListener\('error',dismiss/);
+});
