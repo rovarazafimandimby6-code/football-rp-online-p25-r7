@@ -16,9 +16,10 @@ test('P12: le shell ne contient plus de navigation permanente ni de routes fant�
   assert.match(html, /p27-back-home/);
   assert.doesNotMatch(html, /menu-sidebar|menu-secondary-nav/);
   for (const page of ['rankings', 'community']) assert.doesNotMatch(html, new RegExp(`data-page="${page}"`));
-  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato','account','settings']) {
+  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato','account']) {
     assert.match(main, new RegExp(`data-page="${page}"`));
   }
+  assert.match(html, /data-page="settings"/);
 });
 
 test('P12: le moteur de match est chargé seulement après la demande de lancement', () => {
