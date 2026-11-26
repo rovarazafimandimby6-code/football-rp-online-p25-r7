@@ -66,6 +66,35 @@ const REGIONAL_FOREIGN_LOCATIONS = [
 ];
 const CLUB_SUFFIXES = ['', ' Sporting', ' United', ' Athletic', ' SC', ' AC', ' City', ' Rovers', ' Wanderers', ' Olympique', ' Racing', ' Deportivo', ' FC', ' Town', ' Albion', ' Phoenix'];
 const STADIUM_SUFFIXES = ['Park','Ground','Stadium','Arena','Field','Park'];
+const INTERNATIONAL_BRAND_FIRST = ['Silver','Golden','Royal','Iron','Crimson','Azure','Emerald','Cobalt','Scarlet','Velvet','Pacific','Atlantic','Summit','Meridian','Titan','Nova','Solar','Vanguard','Liberty','Victory','Orion','Imperial','Metro','Ocean','Thunder','Valiant','Aurora','Northern','Western','Eastern'];
+const CLUB_NAME_STYLES = Object.freeze({
+  GB:['suffix:United','suffix:City','suffix:Rovers','suffix:Athletic','suffix:Wanderers','suffix:FC','suffix:Town','suffix:Albion'],
+  FR:['prefix:Olympique','prefix:Racing','prefix:Stade','prefix:AS','prefix:FC','prefix:Sporting'],
+  DE:['prefix:SV','prefix:TSV','prefix:FC','prefix:SC','prefix:Sportfreunde','prefix:VfB'],
+  IT:['prefix:AC','prefix:US','prefix:Calcio','prefix:Sporting','prefix:FC'],
+  ES:['prefix:Deportivo','prefix:Atlético','prefix:Unión Deportiva','prefix:Racing','prefix:Club'],
+  PT:['prefix:Sporting','prefix:Vitória','prefix:União','prefix:SC','prefix:FC'],
+  BR:['prefix:Atlético','prefix:Esporte Clube','prefix:Associação','prefix:União','prefix:Sport Club'],
+  JP:['suffix:SC','suffix:United','suffix:FC','suffix:Athletic'],
+  SN:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Étoile','prefix:Sporting'],
+  NG:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Étoile','prefix:Sporting'],
+  KE:['prefix:AS','prefix:United','prefix:Athletic','prefix:Sporting'],
+  MA:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Étoile'],
+  DZ:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Étoile'],
+  TN:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Étoile'],
+  CI:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Étoile'],
+  GH:['prefix:AS','prefix:United','prefix:Athletic','prefix:Sporting'],
+  CM:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Étoile'],
+  EG:['prefix:AS','prefix:Olympique','prefix:Racing','prefix:Sporting'],
+  ZA:['prefix:United','prefix:City','prefix:Athletic','prefix:FC']
+});
+const DEFAULT_CLUB_NAME_STYLES = ['suffix:AC','suffix:FC','suffix:United','suffix:Sporting','suffix:Athletic','suffix:City','suffix:Rovers','suffix:SC'];
+const makeClubName = (brand, countryCode, index) => {
+  const styles = CLUB_NAME_STYLES[countryCode] || DEFAULT_CLUB_NAME_STYLES;
+  const style = styles[index % styles.length];
+  const [kind, label] = style.split(':');
+  return kind === 'prefix' ? label + ' ' + brand : brand + ' ' + label;
+};
 const PALETTE = [
   ['#1f6f78','#123c50','#e8c66a'],['#7b3f8c','#39204d','#f1d5a5'],['#b54b3a','#632b2a','#f2d58a'],
   ['#34764d','#194a38','#e6d58b'],['#345c9c','#1d315f','#e4c76b'],['#9a642e','#57391e','#f0d9a2'],
@@ -75,7 +104,10 @@ const PALETTE = [
 const KIT_DESIGNS = ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'];
 const OFFSETS = [-4,-2,-1,0,1,2,3,4,0,1,-1,2,3,-3,1,0];
 const makeClub = (division, city, country, countryCode, conference, index, tierIndex, stableCity = city) => {
-  const brand = BRAND_FIRST[index % BRAND_FIRST.length] + ' ' + BRAND_SECOND[Math.floor(index / BRAND_FIRST.length) % BRAND_SECOND.length];
+  const malagasyBrand = countryCode === 'MG';
+  const brandFirst = malagasyBrand ? BRAND_FIRST[index % BRAND_FIRST.length] : INTERNATIONAL_BRAND_FIRST[index % INTERNATIONAL_BRAND_FIRST.length];
+  const brandSecond = BRAND_SECOND[Math.floor(index / (malagasyBrand ? BRAND_FIRST.length : INTERNATIONAL_BRAND_FIRST.length)) % BRAND_SECOND.length];
+  const brand = brandFirst + ' ' + brandSecond;
   const slug = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   const id = 'p27-' + division.toLowerCase() + '-' + slug(stableCity) + '-' + String(index + 1).padStart(3,'0');
   const baseline = ({D1:75,D2:68,D3:61.5,D4:55.5,D5:49})[division];
@@ -87,7 +119,7 @@ const makeClub = (division, city, country, countryCode, conference, index, tierI
   const initialRosterSize = division === 'D1' ? 10 + (index % 3) : division === 'D2' ? 9 + (index % 3) : division === 'D3' ? 9 + (index % 3) : 8 + (index % 3);
   const budgetBase = ({D1:3600000,D2:1900000,D3:950000,D4:480000,D5:240000})[division];
   return {
-    id, name: brand + CLUB_SUFFIXES[index % CLUB_SUFFIXES.length], city, location:{city,country,countryCode}, country, countryCode,
+    id, name: makeClubName(brand,countryCode,index), city, location:{city,country,countryCode}, country, countryCode,
     division, ...(conference ? {conference} : {}),
     rating, control:systemOnly ? 'ai' : 'open', humanAdmission:systemOnly ? 'system-only' : 'open',
     colors:palette, kitDesign, stadium:brand + ' ' + STADIUM_SUFFIXES[index % STADIUM_SUFFIXES.length], reputation:Math.max(28,Math.min(94,Math.round(rating + 7 + OFFSETS[(index+4)%OFFSETS.length]))),
