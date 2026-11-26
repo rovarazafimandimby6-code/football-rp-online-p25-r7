@@ -16,6 +16,14 @@ test('P23 avatar : le profil propose cinq coiffures et trois morphologies contr�
   assert.equal(createDefaultProfile().appearance.bodyBuild, 'athletic');
 });
 
+test('P27 joueur : le pied préféré accepte droit, gauche et ambidextre', () => {
+  assert.equal(validateProfile({ identity:{ preferredFoot:'right' } }).identity.preferredFoot, 'right');
+  assert.equal(validateProfile({ identity:{ preferredFoot:'left' } }).identity.preferredFoot, 'left');
+  assert.equal(validateProfile({ identity:{ preferredFoot:'both' } }).identity.preferredFoot, 'both');
+  assert.equal(validateProfile({ identity:{ preferredFoot:'invalid' } }).identity.preferredFoot, 'right');
+  assert.match(mainSource, /value:'both',label:'Ambidextre'/);
+});
+
 test('P23 avatar : silhouette humanoïde anatomique avec torse profilé, mâchoire et membres articulés', () => {
   assert.match(playerSource, /new THREE\.LatheGeometry\(torsoProfile, 20\)/);
   assert.match(playerSource, /const jaw = new THREE\.Mesh/);
