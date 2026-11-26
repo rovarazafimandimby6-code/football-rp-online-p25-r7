@@ -273,7 +273,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
         ...(dls26Profile.preferredFoot ? { preferredFoot: dls26Profile.preferredFoot } : {})
       } : {}),
       loyalty: { clubLoyalty, transferWillingness, departurePolicy },
-      preferredFoot: random() < 0.28 ? 'left' : 'right',
+      preferredFoot: dls26Profile?.preferredFoot || (random() < 0.28 ? 'left' : 'right'),
       archetype,
       appearance: {
         skinTone, bodyBuild,
