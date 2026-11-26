@@ -17,7 +17,7 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
     const founder = await createPlayerSession();
-    const member = await createPlayerSession();
+    const member = await createPlayerSession();\n    const invitee = await createPlayerSession();
     const create = await fetch(`${base}/api/rp-clubs`, {
       method: 'POST',
       headers: { authorization: `Bearer ${founder.token}`, 'content-type': 'application/json' },
@@ -54,6 +54,30 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
 
     const memberView = await fetch(`${base}/api/rp-clubs/me`, { headers: { authorization: `Bearer ${member.token}` } });
     assert.equal((await memberView.json()).membership.membership.role, 'member');
+
+    const invitationResponse = await fetch(`${base}/api/rp-clubs/${created.club.id}/invitations`, {
+      method:'POST',
+      headers:{ authorization:`Bearer ${founder.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ playerId:invitee.identity.playerId })
+    });
+    assert.equal(invitationResponse.status, 201);
+    const invitation = await invitationResponse.json();
+    const inviteeView = await fetch(`${base}/api/rp-clubs/me`, { headers:{ authorization:`Bearer ${invitee.token}` } });
+    assert.equal((await inviteeView.json()).invitations[0].id, invitation.invitation.id);
+    const invitationDecision = await fetch(`${base}/api/rp-clubs/${created.club.id}/invitations/${invitation.invitation.id}/decision`, {
+      method:'POST',
+      headers:{ authorization:`Bearer ${invitee.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ decision:'accept' })
+    });
+    assert.equal(invitationDecision.status, 200);
+    assert.equal((await invitationDecision.json()).memberCount, 3);
+    const assignRole = await fetch(`${base}/api/rp-clubs/${created.club.id}/members/${invitee.identity.playerId}/role`, {
+      method:'POST',
+      headers:{ authorization:`Bearer ${founder.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ role:'recruiter' })
+    });
+    assert.equal(assignRole.status, 200);
+    assert.equal((await assignRole.json()).role, 'recruiter');
 
     const leave = await fetch(`${base}/api/rp-clubs/${created.club.id}/leave`, {
       method: 'POST', headers: { authorization: `Bearer ${member.token}` }
