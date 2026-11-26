@@ -607,3 +607,347 @@
   #main-menu #menu-content .club-discovery-toolbar,
   #main-menu #menu-content .roster-filters {grid-template-columns:1fr}
 }
+
+
+/* P27 player profile, avatar customizer and training centre. */
+#main-menu #menu-content .profile-layout {
+  display:grid;
+  grid-template-columns:minmax(220px,.82fr) minmax(0,1.18fr);
+  gap:12px;
+  align-items:stretch;
+}
+#main-menu #menu-content .profile-layout>.player-card {
+  position:relative;
+  overflow:hidden;
+  padding:14px;
+  border:1px solid rgba(148,190,229,.3);
+  border-radius:6px;
+  background:linear-gradient(155deg,rgba(25,59,88,.96),rgba(5,16,28,.98));
+  box-shadow:inset 0 1px rgba(255,255,255,.08),0 9px 24px rgba(0,0,0,.22);
+}
+#main-menu #menu-content .avatar-preview-stage {
+  position:relative;
+  display:grid;
+  place-items:center;
+  min-height:clamp(160px,25vh,250px);
+  margin:-14px -14px 12px;
+  overflow:hidden;
+  border-bottom:1px solid rgba(151,194,232,.25);
+  background:radial-gradient(ellipse at 50% 75%,rgba(58,122,175,.38),transparent 60%),linear-gradient(180deg,#0c2034,#071321);
+}
+#main-menu #menu-content .avatar-preview-stage:after {
+  content:"";
+  position:absolute;
+  inset:auto 12% 12px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(148,200,239,.7),transparent);
+  box-shadow:0 0 22px 8px rgba(65,139,197,.16);
+}
+#main-menu #menu-content .avatar-preview-stage>span {
+  position:absolute;
+  z-index:2;
+  right:12px;
+  bottom:12px;
+  color:#f3f7fc;
+  font-size:28px;
+  font-weight:950;
+  text-shadow:0 2px 9px #000;
+}
+#main-menu #menu-content .profile-layout>.player-card>.eyebrow {
+  color:#8ebbe2;
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+#main-menu #menu-content .profile-layout>.player-card>h2 {
+  margin:6px 0 3px;
+  color:#f4f8fd;
+  font-size:clamp(17px,2vw,23px);
+  font-style:italic;
+  font-weight:950;
+  text-transform:uppercase;
+}
+#main-menu #menu-content .profile-layout>.player-card>p {
+  margin:0;
+  color:#9db4cc;
+  font-size:10px;
+}
+#main-menu #menu-content .profile-meta {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+  margin-top:13px;
+}
+#main-menu #menu-content .profile-meta>span {
+  display:grid;
+  gap:3px;
+  padding:9px;
+  border:1px solid rgba(146,188,227,.2);
+  border-radius:4px;
+  background:rgba(1,10,19,.45);
+  color:#f2f7fc;
+  font-size:15px;
+  font-weight:950;
+  font-variant-numeric:tabular-nums;
+}
+#main-menu #menu-content .profile-meta small {
+  color:#8fa9c3;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+#main-menu #menu-content .attribute-list {
+  display:grid;
+  align-content:center;
+  gap:10px;
+  padding:13px;
+  border:1px solid rgba(139,181,220,.22);
+  border-radius:6px;
+  background:linear-gradient(145deg,rgba(16,39,60,.9),rgba(4,14,25,.95));
+}
+#main-menu #menu-content .attribute-list>div {
+  display:grid;
+  grid-template-columns:minmax(70px,1fr) auto;
+  gap:4px 10px;
+  align-items:center;
+}
+#main-menu #menu-content .attribute-list span {
+  color:#a8bed4;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+#main-menu #menu-content .attribute-list b {
+  color:#f3f7fc;
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
+}
+#main-menu #menu-content .attribute-list i,
+#main-menu #menu-content .player-career-attributes i {
+  grid-column:1/-1;
+  display:block;
+  height:5px;
+  overflow:hidden;
+  border-radius:10px;
+  background:rgba(0,0,0,.42);
+}
+#main-menu #menu-content .attribute-list i em,
+#main-menu #menu-content .player-career-attributes i em {
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#2675b5,#74c8f4);
+  box-shadow:0 0 9px rgba(81,169,226,.35);
+}
+#main-menu #menu-content .profile-editor {
+  padding:clamp(11px,1.6vw,17px);
+  border:1px solid rgba(141,183,222,.23);
+  border-radius:6px;
+  background:linear-gradient(150deg,rgba(17,42,65,.91),rgba(4,14,25,.97));
+  box-shadow:inset 0 1px rgba(255,255,255,.05);
+}
+#main-menu #menu-content .profile-editor>h3,
+#main-menu #menu-content .training-panel>h3 {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin:0 0 12px;
+  color:#f2f7fc;
+  font-size:13px;
+  font-style:italic;
+  font-weight:950;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+#main-menu #menu-content .profile-editor>h3:before,
+#main-menu #menu-content .training-panel>h3:before {
+  content:"";
+  width:3px;
+  height:17px;
+  border-radius:2px;
+  background:#55a9e8;
+  box-shadow:0 0 10px rgba(85,169,232,.35);
+}
+#main-menu #menu-content .editor-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:9px;
+}
+#main-menu #menu-content .editor-grid label,
+#main-menu #menu-content .training-controls label {
+  display:grid;
+  gap:5px;
+  min-width:0;
+  color:#9eb7d0;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+#main-menu #menu-content .editor-grid input,
+#main-menu #menu-content .editor-grid select,
+#main-menu #menu-content .training-controls select {
+  min-height:36px;
+  border:1px solid rgba(139,181,220,.25);
+  border-radius:4px;
+  background:#091a2b;
+  color:#eff6fc;
+  padding:7px 9px;
+  font-size:11px;
+  font-weight:650;
+  letter-spacing:normal;
+  text-transform:none;
+}
+#main-menu #menu-content .profile-editor>.primary-cta {
+  margin-top:12px;
+  min-height:39px;
+}
+#main-menu #menu-content .training-panel>p {
+  max-width:850px;
+  margin:0 0 12px;
+  color:#a5bad0;
+  font-size:10px;
+  line-height:1.55;
+}
+#main-menu #menu-content .training-controls {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr)) minmax(150px,.8fr);
+  align-items:end;
+  gap:9px;
+  padding:11px;
+  border:1px solid rgba(138,180,219,.19);
+  border-radius:5px;
+  background:rgba(1,10,19,.42);
+}
+#main-menu #menu-content .training-controls .small-action {
+  min-height:36px;
+  padding:8px 10px;
+  font-size:9px;
+}
+#main-menu #menu-content .player-stats-panel .quick-grid {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:7px;
+}
+#main-menu #menu-content .player-stats-panel .quick-card {
+  min-width:0;
+  padding:9px;
+  border:1px solid rgba(139,181,220,.18);
+  border-radius:4px;
+  background:linear-gradient(145deg,rgba(19,48,73,.8),rgba(4,14,25,.92));
+}
+#main-menu #menu-content .player-stats-panel .quick-card b {
+  display:block;
+  color:#f4f8fc;
+  font-size:18px;
+  font-weight:950;
+  font-variant-numeric:tabular-nums;
+}
+#main-menu #menu-content .player-stats-panel .quick-card small {
+  color:#91aac4;
+  font-size:8px;
+  font-weight:800;
+}
+#main-menu #menu-content .career-form {
+  margin-top:12px;
+  padding:11px;
+  border:1px solid rgba(135,178,218,.16);
+  border-radius:5px;
+  background:rgba(2,12,22,.55);
+}
+#main-menu #menu-content .form-strip {
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+#main-menu #menu-content .form-chip {
+  display:grid;
+  place-items:center;
+  min-width:36px;
+  padding:6px;
+  border:1px solid rgba(142,183,221,.2);
+  border-radius:4px;
+  background:#10263a;
+  color:#f2f7fc;
+  font-size:12px;
+  font-weight:950;
+}
+#main-menu #menu-content .form-chip.win {border-color:rgba(91,190,139,.5);background:rgba(34,112,76,.3)}
+#main-menu #menu-content .form-chip.draw {border-color:rgba(210,177,95,.45);background:rgba(125,99,38,.25)}
+#main-menu #menu-content .form-chip.loss {border-color:rgba(211,104,104,.45);background:rgba(126,43,43,.25)}
+#main-menu #menu-content .form-chip small {color:#a8bfd5;font-size:8px}
+#main-menu #menu-content .history-list {
+  display:grid;
+  gap:6px;
+  margin-top:10px;
+}
+#main-menu #menu-content .history-list>div {
+  display:grid;
+  grid-template-columns:minmax(110px,.5fr) minmax(0,1.5fr) auto;
+  align-items:center;
+  gap:8px;
+  padding:9px;
+  border:1px solid rgba(135,178,218,.15);
+  border-radius:4px;
+  background:rgba(4,14,25,.62);
+}
+#main-menu #menu-content .history-list b {color:#f1f6fc;font-size:10px}
+#main-menu #menu-content .history-list span,
+#main-menu #menu-content .history-list small {color:#9cb3ca;font-size:9px}
+#main-menu #menu-content .player-career-hero {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:15px;
+  border:1px solid rgba(142,184,224,.27);
+  border-radius:6px;
+  background:radial-gradient(ellipse at 15% 50%,rgba(53,116,169,.25),transparent 58%),linear-gradient(120deg,rgba(20,48,73,.96),rgba(5,15,27,.98));
+}
+#main-menu #menu-content .player-career-avatar {
+  display:grid;
+  place-items:center;
+  flex:0 0 76px;
+  width:76px;
+  height:88px;
+  border:1px solid rgba(156,199,238,.32);
+  border-radius:5px;
+  background:linear-gradient(145deg,#24547d,#0b1d30);
+  color:#eef6ff;
+}
+#main-menu #menu-content .player-career-avatar b {font-size:22px;font-weight:950}
+#main-menu #menu-content .player-career-avatar span {font-size:8px;color:#a9c8e4}
+#main-menu #menu-content .player-career-identity {min-width:0}
+#main-menu #menu-content .player-career-identity h2 {margin:4px 0;color:#f4f8fc;font-size:clamp(18px,2.4vw,26px);font-style:italic;font-weight:950;text-transform:uppercase}
+#main-menu #menu-content .player-career-identity p {margin:0;color:#a2b8cf;font-size:10px}
+#main-menu #menu-content .player-career-tags {display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+#main-menu #menu-content .player-career-tags span {padding:5px 7px;border:1px solid rgba(147,190,230,.22);border-radius:3px;background:rgba(1,10,19,.42);color:#d8e9f8;font-size:8px;font-weight:900}
+#main-menu #menu-content .player-career-columns {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+#main-menu #menu-content .player-career-attributes {display:grid;gap:8px}
+#main-menu #menu-content .player-career-attributes>div {display:grid;grid-template-columns:1fr auto;gap:4px 9px;align-items:center}
+#main-menu #menu-content .player-career-attributes span {color:#a3bad1;font-size:9px}
+#main-menu #menu-content .player-career-attributes b {color:#f1f6fc;font-size:11px}
+#main-menu #menu-content .player-career-timeline {display:grid;gap:8px}
+#main-menu #menu-content .player-career-timeline-item {display:flex;align-items:center;gap:9px;padding:9px;border-left:2px solid #438ac2;background:rgba(3,13,23,.55)}
+#main-menu #menu-content .player-career-timeline-item>div {display:grid;gap:3px;flex:1}
+#main-menu #menu-content .player-career-timeline-item b {color:#f2f7fc;font-size:10px}
+#main-menu #menu-content .player-career-timeline-item span,
+#main-menu #menu-content .player-career-timeline-item small {color:#96aec6;font-size:8px}
+#main-menu #menu-content .player-career-timeline-item strong {color:#8fc6ef;font-size:8px}
+#main-menu #menu-content .player-career-empty {padding:12px;border:1px dashed rgba(136,180,221,.23);border-radius:5px;background:rgba(3,13,23,.45)}
+#main-menu #menu-content .player-career-empty b {color:#eaf3fc;font-size:10px}
+#main-menu #menu-content .player-career-empty p {margin:5px 0 0;color:#9bb2c9;font-size:9px;line-height:1.5}
+@media(max-width:760px) {
+  #main-menu #menu-content .profile-layout {grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  #main-menu #menu-content .editor-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu #menu-content .training-controls {grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu #menu-content .player-stats-panel .quick-grid {grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:480px) and (orientation:portrait) {
+  #main-menu #menu-content .profile-layout,
+  #main-menu #menu-content .player-career-columns {grid-template-columns:1fr}
+  #main-menu #menu-content .avatar-preview-stage {min-height:175px}
+  #main-menu #menu-content .player-stats-panel .quick-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  #main-menu #menu-content .history-list>div {grid-template-columns:1fr auto}
+  #main-menu #menu-content .history-list span {grid-column:1/-1;grid-row:2}
+}
