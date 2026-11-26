@@ -355,3 +355,10 @@ La création admin attend `id`, `name`, `startsAt` et `endsAt` (dates ISO 8601).
 Le tableau d’activité du Club RP distingue maintenant les performances de chaque membre sur la semaine UTC. Le classement applique un ordre transparent : matchs joués, victoires, buts, passes décisives, puis nom en cas d’égalité complète. Chaque ligne expose les quatre statistiques et le rôle communautaire du membre. Les données restent calculées côté serveur depuis les matchs de carrière enregistrés ; l’interface ne peut pas modifier ces valeurs.
 
 Cette amélioration ne crée ni score de contribution arbitraire, ni portefeuille de Club RP, ni récompense. La trésorerie collective reste séparée de l’économie du footballeur et attend une définition explicite de ses règles de financement, de dépense et de contrôle.
+
+
+### Discussion privée du Club RP
+
+Chaque Club RP dispose d'un fil de discussion persistant réservé à ses membres actuels. Les messages sont enregistrés dans le stockage du Club RP, limités à 300 caractères et les 200 derniers sont conservés. L'API exige une session, une identité de joueur valide et l'appartenance actuelle au club ; un délai anti-spam de deux secondes est appliqué par compte. Le panneau affiche les 60 derniers messages aux membres connectés. Le texte est rendu comme texte échappé, jamais comme HTML. Les anciens membres perdent l'accès à la discussion dès leur départ.
+
+Cette première version ne comprend pas encore les messages privés, pièces jointes, notifications push ou outils de modération avancée.
