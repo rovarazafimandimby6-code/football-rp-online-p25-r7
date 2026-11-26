@@ -587,7 +587,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
           goals:matches.reduce((sum, match) => sum + Number(match.stats?.goals || 0), 0),
           assists:matches.reduce((sum, match) => sum + Number(match.stats?.assists || 0), 0)
         };
-      }).sort((a,b) => b.matches-a.matches || b.goals-a.goals || a.displayName.localeCompare(b.displayName));
+      }).sort((a,b) => b.matches-a.matches || b.wins-a.wins || b.goals-a.goals || b.assists-a.assists || a.displayName.localeCompare(b.displayName));
       const totals = contributions.reduce((sum, member) => ({
         matches:sum.matches+member.matches, wins:sum.wins+member.wins,
         goals:sum.goals+member.goals, assists:sum.assists+member.assists
