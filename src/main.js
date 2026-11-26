@@ -598,7 +598,10 @@ async function performRpClubAction(action, button) {
       const scheduledAt = decision === 'accept' && input?.value ? new Date(input.value).toISOString() : null;
       if (decision === 'accept' && (!scheduledAt || !Number.isFinite(Date.parse(scheduledAt)))) throw new Error('INVALID_RP_CLUB_CHALLENGE_DATE');
       await rpClubApi('/challenges/' + button.dataset.challenge + '/decision', { method:'POST', body:JSON.stringify({ decision, scheduledAt }) });
-    } else if (action === 'rp-club-season-select') {\n      await loadRpClubPage(button.dataset.season);\n      return;\n    } else if (action === 'rp-club-leave') {
+    } else if (action === 'rp-club-season-select') {
+      await loadRpClubPage(button.dataset.season);
+      return;
+    } else if (action === 'rp-club-leave') {
       await rpClubApi('/' + button.dataset.club + '/leave', { method:'POST' });
     }
     await loadRpClubPage();
