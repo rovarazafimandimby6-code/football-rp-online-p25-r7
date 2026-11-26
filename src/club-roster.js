@@ -239,11 +239,20 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
     const talent = playerPotential(overall, random);
     const bodyBuild = pick(['lean','athletic','strong'], random);
     const archetype = pick(ARCHETYPES[role], random);
-    const attributes = generateAttributes(overall, role, archetype, random);
     const dls26Reference = findDls26Reference(role, archetype, random);
     const dls26Profile = dls26Reference
       ? applyDls26Reference(dls26Reference, { targetOverall: overall, random })
       : null;
+    const dlsStats = dls26Profile?.stats;
+    // Keep the existing six-field gameplay contract, but derive it from the DLS card.
+    const attributes = dlsStats ? {
+      pace: Math.round(((dlsStats.SPE || 0) + (dlsStats.ACC || 0)) / 2),
+      shooting: dlsStats.SHO ?? 25,
+      passing: dlsStats.PAS ?? 25,
+      defense: role === 'GK' ? (dlsStats.GKR ?? dlsStats.TAC ?? 25) : (dlsStats.TAC ?? 25),
+      stamina: dlsStats.STA ?? 60,
+      control: dlsStats.CON ?? 50
+    } : generateAttributes(overall, role, archetype, random);
     const skinTone = pick((({
       MG: ['light','tan','tan','medium','brown','dark','medium','brown'],
       SN: ['brown','dark','dark','deep','medium','brown'], NG: ['brown','dark','dark','deep','medium','brown'], KE: ['light','tan','medium','brown','dark','medium'],
