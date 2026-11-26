@@ -278,6 +278,14 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
       name, nationality: code, age, role, number: index + 1,
       rating: overall, potential: talent.potential, potentialBand: talent.potentialBand, attributes,
       ...(dls26Profile ? {
+        // Generic provenance is primary; legacy dls26* aliases remain for
+        // compatibility with existing save readers and UI code.
+        playerReferenceStats: dls26Profile.stats,
+        playerReference: {
+          ...dls26Profile.reference,
+          inspirationStyle: archetype,
+          identityPersonalized: true
+        },
         dls26Stats: dls26Profile.stats,
         dls26Reference: dls26Profile.reference,
         heightCm: dls26Profile.heightCm,
