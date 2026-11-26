@@ -462,11 +462,12 @@ function renderPage(page = 'home') {
     </section>`;
   } else if (page === 'home' || page === 'career-hub') {
     const profile = profileStore.profile;
-    const season = seasonStats.snapshot().totals;
-    const latestMatch = seasonStats.snapshot().matches.slice(-1)[0];
+    const seasonSnapshot = seasonStats.snapshot();
+    const season = seasonSnapshot.totals;
+    const latestMatch = seasonSnapshot.matches.slice(-1)[0];
     const careerClub = career.clubId ? clubs.getClub(career.clubId) : null;
     const contractStatus = career.getContractStatus?.();
-    const contractLabel = contractStatus?.active ? `Contrat actif · ${contractStatus.daysRemaining} j` : 'Agent libre';
+    const contractLabel = contractStatus?.status === 'active' ? `Contrat actif · ${contractStatus.daysRemaining} j` : contractStatus?.status === 'expired' ? 'Contrat expiré' : contractStatus?.status === 'terminated' ? 'Contrat terminé' : 'Agent libre';
     const clubLabel = careerClub?.name || 'Sans club';
     title.textContent = page === 'career-hub' ? 'Carrière' : 'Accueil';
     subtitle.textContent = `VOTRE PARCOURS · ${profile.identity.displayName}`;
