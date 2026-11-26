@@ -518,7 +518,7 @@ async function loadRpClubPage() {
       '<div class="rp-club-actions"><button type="button" class="rp-club-refresh" data-action="rp-club-reload">ACTUALISER</button><button type="button" class="rp-club-leave" data-action="rp-club-leave" data-club="' + escapeHTML(club.id) + '">QUITTER LE CLUB</button></div><p id="rp-club-status" class="rp-club-status" role="status" aria-live="polite"></p>';
     return;
   }
-  const canCreate = !authError || authError.message !== 'SESSION_EXPIRED';
+  const canCreate = accountClient.hasSession && (!authError || authError.message !== 'SESSION_EXPIRED');
   const directoryHtml = (directory.clubs || []).map(club => '<article class="rp-club-directory-item"><div class="rp-club-directory-mark">' + escapeHTML(club.tag) + '</div><div class="rp-club-directory-copy"><b>' + escapeHTML(club.name) + '</b><small>NIVEAU ' + club.level + ' · ' + club.memberCount + '/' + club.capacity + ' MEMBRES</small><p>' + escapeHTML(club.description || 'Communauté Football RP') + '</p></div><button type="button" data-action="rp-club-join" data-club="' + escapeHTML(club.id) + '" ' + (canCreate ? '' : 'disabled') + '>DEMANDER À REJOINDRE</button></article>').join('');
   host.innerHTML = '<section class="rp-club-intro"><span class="eyebrow">CLAN DLS · ADAPTATION FOOTBALL RP</span><h2>Formez votre Club RP</h2><p>Rassemblez des joueurs, recrutez des membres et construisez votre communauté. Votre Club RP est indépendant de votre équipe de championnat.</p></section>' +
     (canCreate ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">NOUVEAU GROUPEMENT</span><h3>Créer un Club RP</h3></div></div><div class="rp-club-create-grid"><label>Nom du club<input id="rp-club-name" maxlength="24" placeholder="Ex. Kintana United"></label><label>Sigle<input id="rp-club-tag" maxlength="5" placeholder="KIN"></label><label class="rp-club-description-field">Description<input id="rp-club-description" maxlength="120" placeholder="Présentez votre communauté"></label></div><button type="button" class="rp-club-create" data-action="rp-club-create">CRÉER LE CLUB</button></section>' :
@@ -1322,7 +1322,7 @@ menu.addEventListener('click', event => {
   else if (action === 'open-player-profile') { const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); }
   else if (action === 'back-player-library') { selectedPlayerProfile = null; renderPage(playerProfileReturnPage); }
   else if (action === 'view-roster') { selectedClubId = event.target.closest('[data-club]')?.dataset.club || null; renderPage('clubs'); }
-  else if (action.startsWith('rp-club-')) { void performRpClubAction(action, event.target.closest('[data-action]')); }
+  else if (action?.startsWith('rp-club-')) { void performRpClubAction(action, event.target.closest('[data-action]')); }
   else if (action === 'back-clubs') { selectedClubId = null; renderPage('clubs'); }
   else if (action === 'results-page') { renderResultsPage(Number(event.target.closest('[data-offset]')?.dataset.offset || 0)); }
   else if (action === 'show-result') { const roomId = event.target.closest('[data-room]')?.dataset.room; if (roomId) renderResultDetail(roomId); }
