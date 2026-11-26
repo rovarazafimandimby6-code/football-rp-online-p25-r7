@@ -66,6 +66,12 @@ test('P23 avatar : aperçu 3D interactif du profil monté puis nettoyé à la na
 });
 
 
+test('P27 studio joueur : les choix actualisent l’aperçu 3D sans accumuler les rendus', () => {
+  assert.match(mainSource, /mountAvatarPreview\(profileStore\.profile\)/);
+  assert.match(mainSource, /function mountAvatarPreview\(profile\) \{[\\s\\S]*?disposeAvatarPreview\(\);/);
+  assert.match(mainSource, /'faceShape','eyeShape'/);
+});
+
 test('P23 avatar : rotation tactile/souris réellement câblée et reprise automatique', () => {
   assert.match(mainSource, /addEventListener\('pointerdown'/);
   assert.match(mainSource, /addEventListener\('pointermove'/);
