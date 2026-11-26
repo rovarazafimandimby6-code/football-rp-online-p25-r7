@@ -11,9 +11,12 @@ test('P12: le menu principal est affiché avant le conteneur de match', () => {
   assert.match(html, /<main id="game-shell" class="hidden"/);
 });
 
-test('P12: la navigation expose les espaces joueur, clubs et paramètres', () => {
-  for (const page of ['home', 'player', 'clubs', 'competitions', 'mercato', 'rankings', 'community', 'settings']) {
+test('P12: la navigation expose les modules réellement disponibles sans routes fantômes', () => {
+  for (const page of ['career-hub', 'player', 'players', 'clubs', 'competitions', 'results', 'mercato', 'account', 'settings']) {
     assert.match(html, new RegExp(`data-page="${page}"`));
+  }
+  for (const page of ['rankings', 'community']) {
+    assert.doesNotMatch(html, new RegExp(`data-page="${page}"`));
   }
 });
 
@@ -53,12 +56,15 @@ test('P12.1: la liste des clubs et la pause utilisent le composant d’écusson 
 });
 
 
-test('P27 UI: accueil carrière présente les statistiques réelles et les accès rapides', () => {
-  assert.match(main, /home-dashboard/);
-  assert.match(main, /seasonStats\.snapshot\(\)\.totals/);
+test('P27 UI: accueil carrière présente les statistiques réelles et les cinq accès approuvés', () => {
+  assert.match(main, /p27-career-home/);
+  assert.match(main, /const seasonSnapshot = seasonStats\.snapshot\(\)/);
+  assert.match(main, /const season = seasonSnapshot\.totals/);
   assert.match(main, /data-action="choose-match"/);
-  assert.match(main, /data-action="online-menu"/);
+  assert.match(main, /data-page="career-hub"/);
   assert.match(main, /data-page="mercato"/);
+  assert.match(main, /data-page="competitions"/);
+  assert.match(main, /data-page="player"/);
 });
 
 test('P27 UI: shell principal verrouillé en paysage sans défilement vertical', () => {
@@ -141,8 +147,8 @@ test('P27 UI: bibliothèque joueurs centralise les effectifs avec recherche, fil
 });
 
 
-test('P27 mobile fullscreen: menu and match expose a touch fullscreen control', () => {
-  assert.ok(html.includes('id="menu-fullscreen"'));
+test('P27 mobile fullscreen: seul le match expose un contrôle plein écran', () => {
+  assert.ok(!html.includes('id="menu-fullscreen"'));
   assert.ok(html.includes('id="match-fullscreen"'));
   assert.ok(main.includes("requestFullscreen({ navigationUI: 'hide' })"));
   assert.ok(main.includes("screen.orientation.lock('landscape')"));
