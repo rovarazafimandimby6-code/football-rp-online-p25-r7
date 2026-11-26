@@ -470,7 +470,7 @@ function renderPage(page = 'home') {
     const clubLabel = careerClub?.name || 'Sans club';
     title.textContent = page === 'career-hub' ? 'Carrière' : 'Accueil';
     subtitle.textContent = `VOTRE PARCOURS · ${profile.identity.displayName}`;
-    const levelStars = Math.max(1, Math.min(5, Number(profile.progression.level) || 1));
+    const levelStars = Math.max(1, Math.min(5, Math.ceil((Number(profile.progression.level) || 1) / 20)));
     const stars = '★'.repeat(levelStars) + '☆'.repeat(5-levelStars);
     content.innerHTML = `
       <div class="p27-career-home">
