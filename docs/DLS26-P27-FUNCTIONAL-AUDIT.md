@@ -286,3 +286,16 @@ Les cartes restent horizontales et compactes, en quatre colonnes en paysage. Un 
 Le studio P27 existant est conservé : aperçu 3D manipulable, tenue, teint, coiffure, couleur des cheveux, morphologie, identité et poste. Le modèle de profil prend maintenant aussi en charge les formes de visage (ovale, rond, anguleux, allongé, carré) et les formes d'yeux (amande, ronds, tombants), déjà interprétées par le rendu 3D. Le pied préféré accepte droit, gauche ou ambidextre.
 
 Ces choix sont persistés dans le profil local via la validation centralisée. Les anciennes sauvegardes restent compatibles : les nouveaux champs reçoivent des valeurs par défaut sans réinitialiser les autres personnalisations. Il s'agit d'un enrichissement du studio existant, pas d'un second éditeur.
+
+
+### Objectifs collectifs hebdomadaires — première intégration
+
+Le tableau Club RP expose maintenant quatre défis calculés à partir des mêmes statistiques serveur que le classement de contribution :
+- jouer 10 matchs ;
+- remporter 5 matchs ;
+- inscrire 20 buts ;
+- délivrer 10 passes décisives.
+
+Chaque défi expose sa valeur réelle, sa cible, son pourcentage et son état atteint/non atteint. La période est la semaine UTC en cours (lundi 00:00 à lundi suivant). Les valeurs sont recalculées depuis les matchs de carrière finalisés des membres ; elles ne sont pas saisies par le client et ne sont pas ajoutées à une progression parallèle.
+
+**Périmètre de cette livraison :** affichage et suivi des objectifs uniquement. Aucun XP, niveau, monnaie ou récompense n'est distribué. Les seuils sont une première configuration de défis, à équilibrer après les essais de jeu. Les objectifs n'altèrent ni les effectifs de championnat ni les résultats du moteur de match.
