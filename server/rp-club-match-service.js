@@ -1,8 +1,9 @@
 export class RpClubMatchService {
-  constructor({ clubStore, challengeStore, roomManager, now = () => Date.now() } = {}) {
+  constructor({ clubStore, challengeStore, roomManager, seasonStore = null, now = () => Date.now() } = {}) {
     this.clubStore = clubStore;
     this.challengeStore = challengeStore;
     this.roomManager = roomManager;
+    this.seasonStore = seasonStore;
     this.now = now;
   }
 
@@ -57,10 +58,21 @@ export class RpClubMatchService {
   recordFinalizedResult(result, room) {
     const metadata = result?.rpClubChallenge || room?.rpClubChallenge;
     if (!metadata || !result || result.phase !== 'fulltime') return { ok:false, reason:'NOT_RP_CLUB_CHALLENGE' };
-    return this.challengeStore.completeFromMatch({
+    const completion = this.challengeStore.completeFromMatch({
       challengeId:metadata.challengeId, roomId:result.roomId || room?.id,
       score:result.score, finalizedAt:result.finalizedAt
     });
+    if (!completion.ok || !this.seasonStore) return completion;
+    const season = this.seasonStore.current();
+    if (!season) return { ...completion, seasonResult:null };
+    const challenge = completion.challenge;
+    const seasonal = this.seasonStore.recordResult({
+      seasonId:season.id, challengeId:challenge.id, roomId:result.roomId || room?.id,
+      challenger:{ id:challenge.challengerClubId, name:challenge.challengerName, tag:challenge.challengerTag },
+      target:{ id:challenge.targetClubId, name:challenge.targetName, tag:challenge.targetTag },
+      score:result.score, finalizedAt:result.finalizedAt
+    });
+    return { ...completion, seasonResult:seasonal };
   }
 
   reconcileChallenge(challengeId) {
@@ -81,6 +93,10 @@ export class RpClubMatchService {
 
   leaderboard() {
     return this.challengeStore.leaderboard();
+  }
+
+  seasonLeaderboard(seasonId) {
+    return this.seasonStore?.leaderboard(seasonId) ?? null;
   }
 
   resolveJoin(roomId, accountId) {
