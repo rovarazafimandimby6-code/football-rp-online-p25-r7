@@ -26,10 +26,14 @@ function normalizeClub(row) {
   if (members.length !== row.members.length || members.length > MAX_MEMBERS
     || new Set(members.map(member => member.accountId)).size !== members.length
     || new Set(members.map(member => member.playerId)).size !== members.length) return null;
-  const founder = members.find(member => member.role === 'founder');
-  if (!founder) return null;
+  const founder = members.find(member => member.accountId === row.founderAccountId)
+    || members.find(member => member.role === 'founder');
+  const founderAccountId = typeof row.founderAccountId === 'string' && row.founderAccountId
+    ? row.founderAccountId : founder?.accountId;
+  if (!founderAccountId) return null;
   const president = members.find(member => member.accountId === row.presidentAccountId && ['founder','president'].includes(member.role))
-    || members.find(member => member.role === 'president') || founder;
+    || members.find(member => member.role === 'president') || (founder && founder.role === 'founder' ? founder : null);
+  if (!president) return null;
   const governanceLog = (Array.isArray(row.governanceLog) ? row.governanceLog : []).filter(event => event
     && typeof event.id === 'string' && typeof event.action === 'string'
     && typeof event.actorDisplayName === 'string' && typeof event.details === 'string'
@@ -67,6 +71,7 @@ function normalizeClub(row) {
     experience: Number.isSafeInteger(row.experience) && row.experience >= 0 ? row.experience : 0,
     createdAt: typeof row.createdAt === 'string' ? row.createdAt : new Date(0).toISOString(),
     updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : new Date(0).toISOString(),
+    founderAccountId,
     presidentAccountId: president.accountId,
     governanceLog: governanceLog.slice(-MAX_GOVERNANCE_EVENTS).map(event => ({ id:event.id, action:clean(event.action,32), actorDisplayName:clean(event.actorDisplayName,20), targetDisplayName:clean(event.targetDisplayName,20), details:clean(event.details,120), createdAt:event.createdAt })),
     members: members.map(member => ({
@@ -244,7 +249,7 @@ export class JsonRpClubStore {
       const club = normalizeClub({
         id: this.idFactory(), name: safeName, tag: safeTag, description: safeDescription,
         level: 1, experience: 0, createdAt: now, updatedAt: now,
-        presidentAccountId: accountId, governanceLog:[],
+        founderAccountId:accountId, presidentAccountId: accountId, governanceLog:[],
         members: [{ accountId, playerId, displayName: clean(displayName, 20), role: 'founder', joinedAt: now }],
         joinRequests: []
       });
@@ -391,10 +396,10 @@ export class JsonRpClubStore {
       if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
       const member = club.members.find(item => item.accountId === accountId);
       if (!member) return { ok: false, reason: 'RP_CLUB_MEMBERSHIP_NOT_FOUND' };
-      if (member.role === 'founder') return { ok:false, reason:'FOUNDER_CANNOT_LEAVE' };
+      if (member.role === 'founder' && club.presidentAccountId === accountId) return { ok:false, reason:'FOUNDER_MUST_TRANSFER_PRESIDENCY' };
       if (club.presidentAccountId === accountId) return { ok:false, reason:'PRESIDENT_MUST_TRANSFER_PRESIDENCY' };
       club.members = club.members.filter(item => item.accountId !== accountId);
-      this.recordGovernance(club, { action:'member_left', actor:member, target:member, details:`${member.displayName} a quitté le Club RP` });
+      this.recordGovernance(club, { action:member.role === 'founder' ? 'founder_left' : 'member_left', actor:member, target:member, details:`${member.displayName} a quitté le Club RP` });
       return { ok: true, memberCount: club.members.length };
     });
   }
