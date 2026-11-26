@@ -51,13 +51,47 @@ export const DLS26_REFERENCE_PROFILES = Object.freeze([
   PROFILE('goalkeeper-reflex-85', 'GK', 85, 196, { SPE:58, ACC:55, GKR:84, STR:68, CON:61, PAS:66, GKH:80, TAC:43 }, {
     preferredFoot:'right', source:'https://sakibpro.com/players/normal/gianluigi-donnarumma/14078/'
   })
+
+  PROFILE('forward-wing-84b', 'RW', 84, 175, { SPE:85, ACC:86, STA:82, STR:72, CON:86, PAS:88, SHO:88, TAC:39 }, {
+    source:'https://sakibpro.com/players/team/africa-all-stars/squad/'
+  }),
+  PROFILE('forward-mobile-81', 'SS', 81, 171, { SPE:91, ACC:91, STA:82, STR:69, CON:81, PAS:80, SHO:84, TAC:35 }, {
+    source:'https://sakibpro.com/players/team/africa-all-stars/squad/'
+  }),
+  PROFILE('forward-power-81', 'RW', 81, 185, { SPE:84, ACC:79, STA:83, STR:82, CON:83, PAS:76, SHO:83, TAC:37 }, {
+    source:'https://sakibpro.com/players/team/africa-all-stars/squad/'
+  }),
+  PROFILE('forward-creator-80', 'SS', 80, 174, { SPE:82, ACC:87, STA:72, STR:65, CON:83, PAS:79, SHO:82, TAC:37 }, {
+    source:'https://sakibpro.com/players/team/africa-all-stars/squad/'
+  }),
+  PROFILE('forward-pace-80', 'CF', 80, 180, { SPE:88, ACC:88, STA:72, STR:65, CON:82, PAS:81, SHO:81, TAC:30 }, {
+    source:'https://sakibpro.com/players/team/africa-all-stars/squad/'
+  }),
+  PROFILE('midfielder-engine-80', 'CM', 80, 184, { SPE:74, ACC:68, STA:84, STR:84, CON:78, PAS:79, SHO:74, TAC:75 }, {
+    source:'https://sakibpro.com/players/team/africa-all-stars/squad/'
+  }),
+  PROFILE('midfielder-controller-83', 'CM', 83, 174, { SPE:72, ACC:80, STA:88, STR:75, CON:85, PAS:86, SHO:75, TAC:82 }, {
+    source:'https://sakibpro.com/players/team/paris-saint-germain/squad/'
+  }),
+  PROFILE('midfielder-organizer-82', 'CM', 82, 189, { SPE:74, ACC:73, STA:80, STR:71, CON:84, PAS:85, SHO:74, TAC:76 }, {
+    source:'https://sakibpro.com/players/team/paris-saint-germain/squad/'
+  }),
+  PROFILE('defender-centre-84', 'CB', 84, 192, { SPE:83, ACC:75, STA:81, STR:86, CON:80, PAS:82, SHO:49, TAC:93 }, {
+    source:'https://sakibpro.com/players/team/arsenal/squad/'
+  }),
+  PROFILE('defender-centre-78', 'CB', 78, 190, { SPE:80, ACC:68, STA:71, STR:82, CON:73, PAS:76, SHO:45, TAC:84 }, {
+    source:'https://sakibpro.com/players/team/morocco/squad'
+  }),
+  PROFILE('goalkeeper-balanced-78', 'GK', 78, 195, { SPE:61, ACC:59, GKR:63, STR:61, CON:58, PAS:62, GKH:74, TAC:75 }, {
+    source:'https://sakibpro.com/players/team/morocco/squad'
+  }),
 ]);
 
 const ARCHETYPE_PROFILE_IDS = Object.freeze({
-  GK: ['goalkeeper-reflex-85'],
-  DEF: ['defender-fullback-85','defender-fullback-84','defender-centre-85','defender-centre-83'],
-  MID: ['midfielder-creator-85','midfielder-controller-85','midfielder-box-to-box-84','midfielder-defensive-82'],
-  FWD: ['forward-pace-86','forward-creator-86','forward-wing-84','forward-finisher-82']
+  GK: ['goalkeeper-reflex-85','goalkeeper-balanced-78'],
+  DEF: ['defender-fullback-85','defender-fullback-84','defender-centre-85','defender-centre-83','defender-centre-84','defender-centre-78'],
+  MID: ['midfielder-creator-85','midfielder-controller-85','midfielder-box-to-box-84','midfielder-defensive-82','midfielder-engine-80','midfielder-controller-83','midfielder-organizer-82'],
+  FWD: ['forward-pace-86','forward-creator-86','forward-wing-84','forward-finisher-82','forward-wing-84b','forward-mobile-81','forward-power-81','forward-creator-80','forward-pace-80']
 });
 const PROFILE_BY_ID = new Map(DLS26_REFERENCE_PROFILES.map(profile => [profile.id, profile]));
 
