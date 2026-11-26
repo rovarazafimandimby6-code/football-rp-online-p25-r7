@@ -24,6 +24,17 @@ test('P27 joueur : le pied préféré accepte droit, gauche et ambidextre', () =
   assert.match(mainSource, /value:'both',label:'Ambidextre'/);
 });
 
+test('P27 studio joueur : formes du visage et des yeux sauvegardées et validées', () => {
+  const p = validateProfile({ appearance:{ faceShape:'square', eyeShape:'hooded' } });
+  assert.equal(p.appearance.faceShape, 'square');
+  assert.equal(p.appearance.eyeShape, 'hooded');
+  const fallback = validateProfile({ appearance:{ faceShape:'invalid', eyeShape:'invalid' } });
+  assert.equal(fallback.appearance.faceShape, 'oval');
+  assert.equal(fallback.appearance.eyeShape, 'almond');
+  assert.match(mainSource, /value:'square',label:'Carré'/);
+  assert.match(mainSource, /value:'hooded',label:'Tombant'/);
+});
+
 test('P23 avatar : silhouette humanoïde anatomique avec torse profilé, mâchoire et membres articulés', () => {
   assert.match(playerSource, /new THREE\.LatheGeometry\(torsoProfile, 20\)/);
   assert.match(playerSource, /const jaw = new THREE\.Mesh/);
