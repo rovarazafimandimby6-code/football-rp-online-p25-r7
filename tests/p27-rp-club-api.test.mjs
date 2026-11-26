@@ -114,6 +114,51 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
       method: 'POST', headers: { authorization: `Bearer ${member.token}` }
     });
     assert.equal(leave.status, 200);
+    const targetFounder = await createPlayerSession();
+    const targetCreate = await fetch(`${base}/api/rp-clubs`, {
+      method:'POST', headers:{ authorization:`Bearer ${targetFounder.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ name:`Rivals ${targetFounder.identity.playerId.slice(-2)}`, tag:`R${targetFounder.identity.playerId.slice(-2)}` })
+    });
+    assert.equal(targetCreate.status, 201);
+    const targetClub = (await targetCreate.json()).club;
+    const challengeCreate = await fetch(`${base}/api/rp-clubs/${targetClub.id}/challenges`, {
+      method:'POST', headers:{ authorization:`Bearer ${founder.token}` }
+    });
+    assert.equal(challengeCreate.status, 201);
+    const challenge = (await challengeCreate.json()).challenge;
+    assert.equal(challenge.status, 'pending');
+
+    const targetInbox = await fetch(`${base}/api/rp-clubs/challenges/me`, {
+      headers:{ authorization:`Bearer ${targetFounder.token}` }
+    });
+    assert.equal((await targetInbox.json()).challenges[0].id, challenge.id);
+
+    const unauthorizedDecision = await fetch(`${base}/api/rp-clubs/challenges/${challenge.id}/decision`, {
+      method:'POST', headers:{ authorization:`Bearer ${outsider.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ decision:'accept', scheduledAt:new Date(Date.now()+2*60*60*1000).toISOString() })
+    });
+    assert.equal(unauthorizedDecision.status, 403);
+
+    const invalidSchedule = await fetch(`${base}/api/rp-clubs/challenges/${challenge.id}/decision`, {
+      method:'POST', headers:{ authorization:`Bearer ${targetFounder.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ decision:'accept', scheduledAt:new Date(Date.now()+5*60*1000).toISOString() })
+    });
+    assert.equal(invalidSchedule.status, 409);
+
+    const acceptedChallenge = await fetch(`${base}/api/rp-clubs/challenges/${challenge.id}/decision`, {
+      method:'POST', headers:{ authorization:`Bearer ${targetFounder.token}`, 'content-type':'application/json' },
+      body:JSON.stringify({ decision:'accept', scheduledAt:new Date(Date.now()+2*60*60*1000).toISOString() })
+    });
+    assert.equal(acceptedChallenge.status, 200);
+    const scheduled = (await acceptedChallenge.json()).challenge;
+    assert.equal(scheduled.status, 'accepted');
+    assert.ok(Date.parse(scheduled.scheduledAt) > Date.now());
+
+    const duplicateChallenge = await fetch(`${base}/api/rp-clubs/${targetClub.id}/challenges`, {
+      method:'POST', headers:{ authorization:`Bearer ${founder.token}` }
+    });
+    assert.equal(duplicateChallenge.status, 409);
+
     const founderLeave = await fetch(`${base}/api/rp-clubs/${created.club.id}/leave`, {
       method: 'POST', headers: { authorization: `Bearer ${founder.token}` }
     });
