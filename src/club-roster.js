@@ -142,7 +142,7 @@ const NATIONALITY_WEIGHTS = Object.freeze({
   FR:9, BR:9, AR:8, ES:8, GB:8, DE:8, IT:7, PT:7, NL:6,
   SN:5, NG:5, MA:5, JP:5, US:4, CA:4, CO:4, MX:4, CI:4, GH:4,
   BE:4, HR:3, RS:3, PE:3, UY:3, CL:3, KE:3, DZ:3, TN:3, EG:3,
-  AU:3, ZA:3, KR:3, TR:3, GR:2, PL:2, CD:3, CG:2, CR:2, EC:3, PY:2, VE:2, JM:2, PA:1.5, SA:2, IR:2, DK:2, SE:2, NO:2, CH:2, AT:2, UA:2, CZ:2, RO:2, HT:0.15, IS:0.1, NZ:0.1, LU:0.08
+  AU:3, ZA:3, KR:3, TR:3, GR:2, PL:2, CD:3, CG:2, CR:2, EC:3, PY:2, VE:2, JM:2, PA:1.5, SA:2, IR:2, DK:2, SE:2, NO:2, CH:2, AT:2, UA:2, CZ:2, RO:2, IE:3, CM:3, HT:0.15, IS:0.1, NZ:0.1, LU:0.08
 });
 function pickWeightedNationality(codes, random, nationalityCounts = new Map()) {
   const eligible = codes.filter(code => NATIONAL_POOLS[code] &&
