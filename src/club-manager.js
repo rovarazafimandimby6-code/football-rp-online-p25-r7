@@ -588,15 +588,23 @@ export class ClubManager {
   replenishSystemRosterVacancies({ clubIds = null, now = Date.now() } = {}) {
     if (!Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-time', recruited:[], clubsUpdated:[] };
     const selected = Array.isArray(clubIds) ? new Set(clubIds.map(safeId)) : null;
-    const usedNames = new Set([...this.clubs.values()].flatMap(item => item.roster.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase())));
-    const usedIds = new Set([...this.clubs.values()].flatMap(item => item.roster.map(player => player.id)));
+    const worldPlayers = [...this.clubs.values()].flatMap(item => item.roster);
+    const usedNames = new Set(worldPlayers.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase()));
+    const usedIds = new Set(worldPlayers.map(player => player.id));
+    const nationalityCounts = new Map();
+    for (const player of worldPlayers) nationalityCounts.set(player.nationality, (nationalityCounts.get(player.nationality) || 0) + 1);
+    let worldPlayerCount = worldPlayers.length;
+    let malagasyPlayerCount = nationalityCounts.get('MG') || 0;
     const recruited = [];
     for (const club of this.clubs.values()) {
       if (selected && !selected.has(club.id)) continue;
       const targetSize = Math.min(club.capacity, Math.max(0, Number(club.initialRosterSize) || club.capacity));
       const vacancies = Math.max(0, targetSize - club.roster.length);
       if (!vacancies) continue;
-      const candidates = generateClubRoster({ ...club, recruitmentProfile:club.recruitmentProfile }, { size:vacancies, usedNames });
+      const malagasyQuota = Math.max(0, Math.min(vacancies, Math.round((worldPlayerCount + vacancies) * 0.3) - malagasyPlayerCount));
+      const candidates = generateClubRoster({ ...club, recruitmentProfile:club.recruitmentProfile }, { size:vacancies, usedNames, nationalityCounts, malagasyQuota });
+      worldPlayerCount += candidates.length;
+      malagasyPlayerCount += candidates.filter(player => player.nationality === 'MG').length;
       for (let index = 0; index < candidates.length; index++) {
         const candidate = candidates[index];
         let serial = Math.max(1, club.releasedPlayers.length + club.roster.length + index + 1);
