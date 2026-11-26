@@ -1042,3 +1042,11 @@ body:has(#main-menu:not(.hidden)){overflow:hidden}
 #main-menu .menu-sidebar [data-action="choose-match"]{border-color:rgba(123,189,255,.18)}
 @media(max-width:760px){#main-menu .p27-home-primary{grid-template-columns:repeat(2,minmax(0,1fr))}#main-menu .p27-home-card,#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{grid-column:span 1;min-height:125px}#main-menu .p27-home-card-career,#main-menu .p27-home-card-friendly{min-height:145px}#main-menu .p27-career-hero{grid-template-columns:minmax(0,1fr) 100px;gap:10px}#main-menu .p27-career-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){#main-menu .p27-career-hero{grid-template-columns:1fr}#main-menu .p27-career-hero-identity{display:none}#main-menu .p27-career-hero h2{font-size:34px}#main-menu .p27-career-hero-actions{display:grid;grid-template-columns:1fr}#main-menu .p27-home-primary{gap:7px}#main-menu .p27-home-card{padding:11px;min-height:115px}#main-menu .p27-home-card>b{font-size:15px}#main-menu .p27-home-card>small{font-size:9px}#main-menu .p27-career-topline{padding:9px}#main-menu .p27-stars{letter-spacing:0;font-size:15px}}
+
+/* Hybrid secondary navigation: horizontally browsable tabs, compact on mobile landscape. */
+#main-menu .menu-secondary-nav{display:flex;align-items:center;gap:6px;max-width:100%;margin:0 0 14px;padding:8px 10px;border:1px solid var(--p27-border);border-radius:9px;background:rgba(7,15,25,.78);overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:thin}
+#main-menu .menu-secondary-nav>span{flex:0 0 auto;padding:0 7px;color:#7f98b6;font-size:9px;font-weight:900;letter-spacing:.7px}
+#main-menu .menu-secondary-nav button{flex:0 0 auto;min-height:34px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:#b8c9dd;font-size:10px;font-weight:850;white-space:nowrap}
+#main-menu .menu-secondary-nav button.active{border-color:rgba(113,181,242,.32);background:rgba(42,91,142,.32);color:#f0f7ff}
+#main-menu .menu-secondary-nav button:hover{background:rgba(85,151,216,.15);color:#fff}
+@media(max-height:520px) and (orientation:landscape){#main-menu .menu-secondary-nav{margin-bottom:8px;padding:5px 8px}#main-menu .menu-secondary-nav button{min-height:30px;padding:0 9px}}
