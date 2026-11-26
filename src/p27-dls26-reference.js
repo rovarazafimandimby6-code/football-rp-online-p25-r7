@@ -76,6 +76,7 @@ export function findDls26Reference(role, archetype, random = Math.random, exclud
   const ids = ROLE_PROFILE_IDS[role] || ROLE_PROFILE_IDS.FWD;
   const eligible = ids.map(id => PROFILE_BY_ID.get(id)).filter(Boolean);
   const preferred = eligible.filter(profile => {
+    if (profile.sourceGame === 'DLS23') return profile.archetype === archetype;
     if (role === 'GK') return true;
     if (role === 'DEF') {
       const isFullback = profile.position === 'RB' || profile.position === 'LWB';
