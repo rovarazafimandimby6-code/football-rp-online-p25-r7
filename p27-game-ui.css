@@ -1324,3 +1324,18 @@
  #main-menu #menu-content .results-pagination>div{width:100%}
  #main-menu #menu-content .results-pagination button{flex:1}
 }
+
+
+/* Dedicated rankings destination opened from the P27 home hub. */
+#main-menu #menu-content .ranking-screen{
+  display:grid;gap:10px;padding:clamp(12px,1.8vw,19px);
+  border:1px solid rgba(142,184,224,.24);border-radius:5px;
+  background:linear-gradient(150deg,rgba(17,43,67,.96),rgba(4,14,25,.98));
+}
+#main-menu #menu-content .ranking-screen>.panel-heading{margin-bottom:0}
+#main-menu #menu-content .ranking-division-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#main-menu #menu-content .ranking-division{min-width:0;margin:0;padding:9px}
+#main-menu #menu-content .ranking-screen>.text-cta{justify-self:start}
+@media(max-width:620px){
+ #main-menu #menu-content .ranking-division-list{grid-template-columns:minmax(0,1fr)}
+}
