@@ -33,6 +33,53 @@ function countryFlag(value) {
   return String.fromCodePoint(...[...code].map(letter => 127397 + letter.charCodeAt(0)));
 }
 
+const WORLD_COUNTRY_CODES = 'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' ');
+const countryDisplayNames = (() => {
+  try { return new Intl.DisplayNames(['fr'], { type: 'region' }); } catch (_) { return null; }
+})();
+const countryOptions = WORLD_COUNTRY_CODES.map(code => ({
+  code,
+  name: countryDisplayNames?.of(code) || code,
+  flag: countryFlag(code)
+})).sort((a,b) => a.name.localeCompare(b.name, 'fr'));
+const POSITION_OPTIONS = [
+  {code:'GB',name:'Gardien',role:'GK',group:'GARDIEN'},
+  {code:'DC',name:'Défenseur central',role:'DEF',group:'DÉFENSE'},
+  {code:'DG',name:'Latéral gauche',role:'DEF',group:'DÉFENSE'},
+  {code:'DD',name:'Latéral droit',role:'DEF',group:'DÉFENSE'},
+  {code:'DLD',name:'Piston gauche',role:'DEF',group:'DÉFENSE'},
+  {code:'DLD',name:'Piston droit',role:'DEF',group:'DÉFENSE'},
+  {code:'MDC',name:'Milieu défensif',role:'MID',group:'MILIEU'},
+  {code:'MC',name:'Milieu central',role:'MID',group:'MILIEU'},
+  {code:'MOC',name:'Milieu offensif',role:'MID',group:'MILIEU'},
+  {code:'MG',name:'Milieu gauche',role:'MID',group:'MILIEU'},
+  {code:'MD',name:'Milieu droit',role:'MID',group:'MILIEU'},
+  {code:'AG',name:'Ailier gauche',role:'FWD',group:'ATTAQUE'},
+  {code:'AD',name:'Ailier droit',role:'FWD',group:'ATTAQUE'},
+  {code:'AC',name:'Avant-centre',role:'FWD',group:'ATTAQUE'},
+  {code:'BU',name:'Buteur',role:'FWD',group:'ATTAQUE'}
+];
+const PLAYER_OPTIONS_STORAGE_KEY = 'fpro-player-creation-options.v1';
+function loadPlayerOptions() {
+  try {
+    const value = JSON.parse(localStorage.getItem(PLAYER_OPTIONS_STORAGE_KEY) || '{}');
+    return {
+      nationality: WORLD_COUNTRY_CODES.includes(value.nationality) ? value.nationality : 'MG',
+      position: POSITION_OPTIONS.some(option => option.code === value.position) ? value.position : 'MOC'
+    };
+  } catch (_) { return { nationality:'MG', position:'MOC' }; }
+}
+let playerOptions = loadPlayerOptions();
+function savePlayerOptions() {
+  try { localStorage.setItem(PLAYER_OPTIONS_STORAGE_KEY, JSON.stringify(playerOptions)); } catch (_) {}
+}
+function renderCountryPicker() {
+  return `<div class="country-picker"><div class="country-picker-heading"><b>NATIONALITÉ</b><span>${countryFlag(playerOptions.nationality)} ${escapeHTML(countryOptions.find(item => item.code === playerOptions.nationality)?.name || playerOptions.nationality)}</span></div><input id="country-search" type="search" placeholder="Rechercher un pays…" autocomplete="off" aria-label="Rechercher un pays"><div class="country-flag-grid" id="country-flag-grid">${countryOptions.map(country => `<button type="button" class="country-flag-option ${country.code === playerOptions.nationality ? 'active' : ''}" data-country-code="${country.code}" title="${escapeHTML(country.name)}" aria-label="${escapeHTML(country.name)}"><span>${country.flag}</span><small>${escapeHTML(country.name)}</small></button>`).join('')}</div></div>`;
+}
+function renderPositionPicker() {
+  return `<div class="position-picker"><b>POSTE PRINCIPAL</b><div class="position-picker-groups">${['GARDIEN','DÉFENSE','MILIEU','ATTAQUE'].map(group => `<section><small>${group}</small><div>${POSITION_OPTIONS.filter(option => option.group === group).map(option => `<button type="button" class="position-option ${option.code === playerOptions.position ? 'active' : ''}" data-position-code="${option.code}" data-position-role="${option.role}" title="${option.name}"><b>${option.code}</b><span>${option.name}</span></button>`).join('')}</div></section>`).join('')}</div></div>`;
+}
+
 
 const shell = document.getElementById('game-shell');
 const menu = document.getElementById('main-menu');
@@ -535,7 +582,7 @@ function renderPage(page = 'home') {
     content.innerHTML = `<div class="profile-layout"><div class="player-card"><div id="avatar-preview" class="avatar-preview-stage" role="img" aria-label="Aperçu 3D de votre footballeur personnalisé"><span>${escapeHTML(p.identity.number)}</span></div><span class="eyebrow">JOUEUR · NIVEAU ${p.progression.level}</span><h2>${escapeHTML(p.identity.displayName)}</h2><p>${escapeHTML(p.identity.role)} · Pied ${p.identity.preferredFoot === 'left' ? 'gauche' : 'droit'}</p><div class="profile-meta"><span>${p.progression.coins} <small>CRÉDITS</small></span><span>${p.progression.trainingPoints} <small>POINTS D'ENTRAÎNEMENT</small></span></div></div><div class="attribute-list">${Object.entries(a).map(([key,val])=>`<div><span>${({pace:'Vitesse',shooting:'Finition',passing:'Passe',defense:'Défense',stamina:'Endurance',control:'Contrôle'})[key]}</span><b>${val}</b><i><em style="width:${val}%"></em></i></div>`).join('')}</div></div>
 ${renderGoogleProtectionCard({ compact: true })}
       <section class="competition-panel player-stats-panel"><div class="panel-heading"><div><span class="eyebrow">SAISON EN COURS · SAUVEGARDÉE SUR CET APPAREIL</span><h2>Statistiques personnelles</h2></div></div><div class="quick-grid"><div class="quick-card"><b>${season.matches}</b><small>Matchs</small></div><div class="quick-card"><b>${Math.floor(season.minutesPlayedMs/60000)}</b><small>Minutes</small></div><div class="quick-card"><b>${season.goals}</b><small>Buts</small></div><div class="quick-card"><b>${season.assists}</b><small>Passes décisives</small></div><div class="quick-card"><b>${season.passes ? Math.round(season.completedPasses/season.passes*100) : 0}%</b><small>Précision passes</small></div><div class="quick-card"><b>${season.playerOfMatch}</b><small>Homme du match</small></div><div class="quick-card"><b>${season.tackles}</b><small>Tacles</small></div><div class="quick-card"><b>${season.interceptions}</b><small>Interceptions</small></div></div><div class="career-form"><div class="panel-heading"><div><span class="eyebrow">DYNAMIQUE RÉCENTE</span><h3>Forme · 5 derniers matchs</h3></div><b>${seasonSnapshot.averageRating === null ? '—' : seasonSnapshot.averageRating.toFixed(1)+'/10'} <small>MOYENNE</small></b></div><div class="form-strip">${seasonSnapshot.currentForm.length ? seasonSnapshot.currentForm.map(m=>`<span class="form-chip ${m.result}" title="${new Date(m.date).toLocaleDateString('fr-FR')} · ${m.rating.toFixed(1)}/10">${m.result==='win'?'V':m.result==='draw'?'N':'D'}<small>${m.rating.toFixed(1)}</small></span>`).join('') : '<span class="notice">La forme apparaîtra après vos premiers matchs.</span>'}</div></div>${recent.length ? `<div class="history-list">${recent.map(m=>`<div><b>${m.rating.toFixed(1)} / 10 ${m.playerOfMatch?'★':''}</b><span>${m.result==='win'?'Victoire':m.result==='draw'?'Nul':'Défaite'} · ${m.goals} but(s) · ${m.assists} passe(s) décisive(s)${m.opponent?' · '+escapeHTML(m.opponent):''}</span><small>${Math.floor(m.minutesPlayedMs/60000)} min · ${new Date(m.date).toLocaleDateString('fr-FR')}</small></div>`).join('')}</div>` : '<p class="notice">Aucun match enregistré pour le moment.</p>'}<p class="notice">Historique et statistiques enregistrés sur cet appareil. Les notes en ligne proviennent du rapport autoritaire du serveur.</p></section>
-      <form class="profile-editor" id="profile-editor"><h3>Personnaliser mon joueur</h3><div class="editor-grid"><label>Nom affiché<input name="displayName" maxlength="20" value="${escapeHTML(p.identity.displayName)}" required></label><label>Numéro<input name="number" type="number" min="1" max="99" value="${p.identity.number}" required></label><label>Poste<select name="role"><option value="GK" ${p.identity.role==='GK'?'selected':''}>Gardien</option><option value="DEF" ${p.identity.role==='DEF'?'selected':''}>Défenseur</option><option value="MID" ${p.identity.role==='MID'?'selected':''}>Milieu</option><option value="FWD" ${p.identity.role==='FWD'?'selected':''}>Attaquant</option></select></label><label>Pied préféré<select name="preferredFoot"><option value="right" ${p.identity.preferredFoot==='right'?'selected':''}>Droit</option><option value="left" ${p.identity.preferredFoot==='left'?'selected':''}>Gauche</option></select></label><label>Couleur du maillot<select name="kit">${Object.entries({emerald:'Vert émeraude',crimson:'Rouge',gold:'Or',violet:'Violet',monochrome:'Noir et blanc'}).map(([v,l])=>`<option value="${v}" ${p.appearance.kit===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Teint<select name="skinTone"><option value="light" ${p.appearance.skinTone==='light'?'selected':''}>Clair</option><option value="medium" ${p.appearance.skinTone==='medium'?'selected':''}>Moyen</option><option value="dark" ${p.appearance.skinTone==='dark'?'selected':''}>Foncé</option></select></label><label>Coiffure<select name="hairStyle"><option value="short" ${p.appearance.hairStyle==='short'?'selected':''}>Courte</option><option value="curly" ${p.appearance.hairStyle==='curly'?'selected':''}>Bouclée</option><option value="afro" ${p.appearance.hairStyle==='afro'?'selected':''}>Afro</option><option value="fade" ${p.appearance.hairStyle==='fade'?'selected':''}>Dégradé</option><option value="shaved" ${p.appearance.hairStyle==='shaved'?'selected':''}>Rasée</option></select></label><label>Morphologie<select name="bodyBuild"><option value="lean" ${p.appearance.bodyBuild==='lean'?'selected':''}>Fine</option><option value="athletic" ${p.appearance.bodyBuild==='athletic'?'selected':''}>Athlétique</option><option value="strong" ${p.appearance.bodyBuild==='strong'?'selected':''}>Puissante</option></select></label><label>Couleur des cheveux<select name="hairColor"><option value="dark" ${p.appearance.hairColor==='dark'?'selected':''}>Noir</option><option value="brown" ${p.appearance.hairColor==='brown'?'selected':''}>Brun</option><option value="blond" ${p.appearance.hairColor==='blond'?'selected':''}>Blond</option></select></label></div><button class="primary-cta" type="submit">ENREGISTRER MON JOUEUR</button><p class="notice" id="profile-save-status">Personnalisation enregistrée localement sur cet appareil.</p></form>
+      <section class="profile-editor" id="profile-editor"><h3>Personnaliser mon joueur</h3><div class="editor-grid"><label>Nom affiché<input name="displayName" maxlength="20" value="${escapeHTML(p.identity.displayName)}" required></label><label>Numéro<input name="number" type="number" min="1" max="99" value="${p.identity.number}" required></label></div>${renderPositionPicker()}${renderCountryPicker()}<div class="editor-grid"><label>Pied préféré<select name="preferredFoot"><option value="right" ${p.identity.preferredFoot==='right'?'selected':''}>Droit</option><option value="left" ${p.identity.preferredFoot==='left'?'selected':''}>Gauche</option></select></label><label>Couleur du maillot<select name="kit">${Object.entries({emerald:'Vert émeraude',crimson:'Rouge',gold:'Or',violet:'Violet',monochrome:'Noir et blanc'}).map(([v,l])=>`<option value="${v}" ${p.appearance.kit===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Teint<select name="skinTone"><option value="light" ${p.appearance.skinTone==='light'?'selected':''}>Clair</option><option value="medium" ${p.appearance.skinTone==='medium'?'selected':''}>Moyen</option><option value="dark" ${p.appearance.skinTone==='dark'?'selected':''}>Foncé</option></select></label><label>Coiffure<select name="hairStyle"><option value="short" ${p.appearance.hairStyle==='short'?'selected':''}>Courte</option><option value="curly" ${p.appearance.hairStyle==='curly'?'selected':''}>Bouclée</option><option value="afro" ${p.appearance.hairStyle==='afro'?'selected':''}>Afro</option><option value="fade" ${p.appearance.hairStyle==='fade'?'selected':''}>Dégradé</option><option value="shaved" ${p.appearance.hairStyle==='shaved'?'selected':''}>Rasée</option></select></label><label>Morphologie<select name="bodyBuild"><option value="lean" ${p.appearance.bodyBuild==='lean'?'selected':''}>Fine</option><option value="athletic" ${p.appearance.bodyBuild==='athletic'?'selected':''}>Athlétique</option><option value="strong" ${p.appearance.bodyBuild==='strong'?'selected':''}>Puissante</option></select></label><label>Couleur des cheveux<select name="hairColor"><option value="dark" ${p.appearance.hairColor==='dark'?'selected':''}>Noir</option><option value="brown" ${p.appearance.hairColor==='brown'?'selected':''}>Brun</option><option value="blond" ${p.appearance.hairColor==='blond'?'selected':''}>Blond</option></select></label></div><button class="primary-cta" type="button" data-action="save-player-editor">ENREGISTRER MON JOUEUR</button><p class="notice" id="profile-save-status">Personnalisation enregistrée localement sur cet appareil.</p></section>
       <section class="profile-editor training-panel"><h3>Centre d’entraînement</h3><p>Choisis comment financer ta progression : séance individuelle avec crédits et expérience, ou entraînement encadré avec les points gagnés à chaque niveau.</p><div class="training-controls"><label>Capacité<select id="practice-attribute"><option value="pace">Vitesse</option><option value="shooting">Finition</option><option value="passing">Passe</option><option value="defense">Défense</option><option value="stamina">Endurance</option><option value="control">Contrôle</option></select></label><label>Programme<select id="training-method"><option value="practice">Séance individuelle · 80 crédits / point + XP</option><option value="train">Entraînement encadré · 1 point d’entraînement + 40 crédits / point</option></select></label><label>Intensité<select id="practice-amount"><option value="1">Légère · 1 point</option><option value="2">Moyenne · 2 points</option><option value="3">Intense · 3 points</option></select></label><button class="small-action" data-action="practice-player">EFFECTUER LA SÉANCE</button></div><p class="notice">Crédits : ${p.progression.coins} · Points d’entraînement : ${p.progression.trainingPoints} · Attributs plafonnés à 99.</p></section>`;
     mountAvatarPreview(p);
   } else if (page === 'players') {
@@ -1110,6 +1157,33 @@ async function submitAccountForm(action) {
   }
 }
 
+menu.addEventListener('input', event => {
+  if (event.target.id !== 'country-search') return;
+  const query = event.target.value.trim().toLocaleLowerCase('fr');
+  document.querySelectorAll('.country-flag-option').forEach(button => {
+    const country = countryOptions.find(item => item.code === button.dataset.countryCode);
+    button.hidden = !country || !(country.name.toLocaleLowerCase('fr').includes(query) || country.code.toLowerCase().includes(query));
+  });
+});
+menu.addEventListener('click', event => {
+  const countryButton = event.target.closest('[data-country-code]');
+  if (countryButton) {
+    playerOptions.nationality = countryButton.dataset.countryCode;
+    savePlayerOptions();
+    const search = document.getElementById('country-search');
+    const picker = document.querySelector('.country-picker');
+    if (picker) picker.outerHTML = renderCountryPicker();
+    if (search) document.getElementById('country-search')?.focus();
+    return;
+  }
+  const positionButton = event.target.closest('[data-position-code]');
+  if (positionButton) {
+    playerOptions.position = positionButton.dataset.positionCode;
+    savePlayerOptions();
+    document.querySelectorAll('.position-option').forEach(button => button.classList.toggle('active', button === positionButton));
+    return;
+  }
+});
 menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
   if (pageButton) { renderPage(pageButton.dataset.view || pageButton.dataset.page); return; }
@@ -1243,7 +1317,21 @@ menu.addEventListener('click', event => {
     }
     renderPage('competitions');
   }
-  else if (action === 'practice-player') {
+  else if (action === 'save-player-editor') {
+    const editor = document.getElementById('profile-editor');
+    const data = new FormData();
+    editor.querySelectorAll('[name]').forEach(field => data.append(field.name, field.value));
+    const selectedPosition = POSITION_OPTIONS.find(option => option.code === playerOptions.position) || POSITION_OPTIONS[0];
+    profileStore.updateIdentity({displayName:data.get('displayName'),number:data.get('number'),role:selectedPosition.role,preferredFoot:data.get('preferredFoot')});
+    profileStore.updateAppearance({kit:data.get('kit'),skinTone:data.get('skinTone'),hairStyle:data.get('hairStyle'),hairColor:data.get('hairColor'),bodyBuild:data.get('bodyBuild')});
+    savePlayerOptions();
+    try { localPlayerIdentity = localPlayerProfileStore?.update({ displayName: profileStore.profile.identity.displayName }) || localPlayerIdentity; } catch (_) {}
+    syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+    renderPage('player');
+    const status=document.getElementById('profile-save-status');
+    if(status) status.textContent='Profil enregistré sur cet appareil · '+countryFlag(playerOptions.nationality)+' '+(countryOptions.find(item=>item.code===playerOptions.nationality)?.name||playerOptions.nationality)+' · '+selectedPosition.code;
+    void queueAndSyncCurrentProfile().catch(() => {});
+  } else if (action === 'practice-player') {
     const amount = Number(document.getElementById('practice-amount')?.value || 1);
     const attribute = document.getElementById('practice-attribute')?.value;
     const method = document.getElementById('training-method')?.value || 'practice';
@@ -1350,20 +1438,6 @@ menu.addEventListener('submit', event => {
     }
     return;
   }
-  if (event.target.id !== 'profile-editor') return;
-  event.preventDefault();
-  const data = new FormData(event.target);
-  profileStore.updateIdentity({displayName:data.get('displayName'),number:data.get('number'),role:data.get('role'),preferredFoot:data.get('preferredFoot')});
-  profileStore.updateAppearance({kit:data.get('kit'),skinTone:data.get('skinTone'),hairStyle:data.get('hairStyle'),hairColor:data.get('hairColor'),bodyBuild:data.get('bodyBuild')});
-  try { localPlayerIdentity = localPlayerProfileStore?.update({ displayName: profileStore.profile.identity.displayName }) || localPlayerIdentity; } catch (_) {}
-  syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
-  renderPage('player');
-  const status=document.getElementById('profile-save-status');
-  if(status) status.textContent='Profil enregistré localement. Synchronisation cloud en attente ou en cours…';
-  void queueAndSyncCurrentProfile().then(result => {
-    const currentStatus = document.getElementById('profile-save-status');
-    if (currentStatus && result.uploaded > 0) currentStatus.textContent = 'Profil enregistré sur cet appareil et synchronisé avec le compte.';
-  }).catch(() => {});
 });
 
 renderPage(hasSavedPlayerProfile ? 'home' : 'onboarding');
