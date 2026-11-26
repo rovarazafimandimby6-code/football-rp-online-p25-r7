@@ -40,5 +40,6 @@ export class JsonPlayerIdentityStore {
  }
  verifyLocalProof({localProfileKey,localProofSecret}={}){if(!validUuid(localProfileKey)||!validProofSecret(localProofSecret))return null;for(const row of this.state.identities){const item=credentials(row).find(x=>x.localProfileKey===localProfileKey);if(item?.proofHash&&sameDigest(item.proofHash,proofDigest(localProofSecret)))return{accountId:row.accountId,playerId:row.playerId,createdAt:item.createdAt};}return null;}
  getByLocalProfileKey(localProfileKey){if(!validUuid(localProfileKey))return null;for(const row of this.state.identities){const item=credentials(row).find(x=>x.localProfileKey===localProfileKey);if(item)return{accountId:row.accountId,playerId:row.playerId,createdAt:item.createdAt};}return null;}
+ getByPlayerId(playerId){if(!validNumber(playerId))return null;const row=this.state.identities.find(item=>item.playerId===playerId);return row?{accountId:row.accountId,playerId:row.playerId,createdAt:row.createdAt}:null;}
  getByAccountId(accountId){if(!validUuid(accountId))return null;const row=this.state.identities.find(item=>item.accountId===accountId);return row?{accountId:row.accountId,playerId:row.playerId,createdAt:row.createdAt}:null;}
 }
