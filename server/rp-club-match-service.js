@@ -55,12 +55,28 @@ export class RpClubMatchService {
   }
 
   recordFinalizedResult(result, room) {
-    const metadata = room?.rpClubChallenge;
+    const metadata = result?.rpClubChallenge || room?.rpClubChallenge;
     if (!metadata || !result || result.phase !== 'fulltime') return { ok:false, reason:'NOT_RP_CLUB_CHALLENGE' };
     return this.challengeStore.completeFromMatch({
-      challengeId:metadata.challengeId, roomId:room.id,
+      challengeId:metadata.challengeId, roomId:result.roomId || room?.id,
       score:result.score, finalizedAt:result.finalizedAt
     });
+  }
+
+  reconcileChallenge(challengeId) {
+    const challenge = this.challengeStore.state.challenges.find(item => item.id === challengeId);
+    if (!challenge || challenge.status !== 'accepted' || !challenge.roomId) return { ok:false, reason:'RP_CLUB_CHALLENGE_NOT_READY' };
+    const result = this.roomManager.resultStore?.get(challenge.roomId);
+    if (!result || result.phase !== 'fulltime' || result.rpClubChallenge?.challengeId !== challengeId)
+      return { ok:false, reason:'RP_CLUB_CHALLENGE_RESULT_NOT_ARCHIVED' };
+    return this.recordFinalizedResult(result, null);
+  }
+
+  reconcileForAccount(accountId) {
+    const rows = this.challengeStore.listForAccount(accountId);
+    for (const challenge of rows) if (challenge.status === 'accepted' && challenge.roomId)
+      this.reconcileChallenge(challenge.id);
+    return this.challengeStore.listForAccount(accountId);
   }
 
   leaderboard() {
