@@ -75,3 +75,65 @@
  #main-menu .p27-dls-mode-kicker{padding:3px 6px}#main-menu .p27-dls-mode-art{min-height:25px}#main-menu .p27-dls-career-footer{min-height:32px}
 }
 @media(prefers-reduced-motion:reduce){#main-menu .p27-tile,#main-menu .p27-dls-mode{transition:none}}
+
+/* Shared in-game presentation for every existing internal screen. */
+#main-menu .eyebrow{color:#78b5e9;font-size:8px;font-weight:950;letter-spacing:.14em}
+#main-menu h1,#main-menu h2,#main-menu h3{color:#f4f8ff;font-weight:950;letter-spacing:.015em}
+#main-menu h2{font-size:clamp(16px,2.4vh,23px);font-style:italic;text-transform:uppercase}
+#main-menu p{color:#a9bdd3}
+#main-menu .competition-panel,#main-menu .settings-card,#main-menu .player-card,#main-menu .attribute-list,#main-menu .training-panel,#main-menu .club-card,#main-menu .match-intro,#main-menu .match-centre,#main-menu .player-stats-panel{
+ border:1px solid rgba(142,183,222,.22);border-radius:5px;background:linear-gradient(145deg,rgba(20,46,72,.9),rgba(5,16,29,.96));box-shadow:inset 0 1px rgba(255,255,255,.06),0 7px 18px rgba(0,0,0,.2)
+}
+#main-menu .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:9px;border-bottom:1px solid rgba(141,181,219,.16)}
+#main-menu .panel-heading h2{margin:3px 0 0;font-size:clamp(14px,2.1vh,20px)}
+#main-menu .panel-heading .eyebrow{font-size:7px}
+#main-menu button:not(.p27-tile):not(.p27-dls-mode){border-radius:4px;font-weight:900;letter-spacing:.035em}
+#main-menu .primary-cta,#main-menu .secondary-cta,#main-menu .text-cta{min-height:36px;padding:8px 14px;border:1px solid rgba(163,207,246,.3);background:linear-gradient(180deg,#286ba5,#17446d);color:#fff;font-size:10px;font-style:italic}
+#main-menu .secondary-cta{background:linear-gradient(180deg,#435a70,#26394d)}
+#main-menu input,#main-menu select,#main-menu textarea{min-height:34px;border:1px solid rgba(137,179,220,.28);border-radius:4px;background:#09192a;color:#edf5ff;font:700 11px Inter,system-ui,sans-serif}
+#main-menu input:focus,#main-menu select:focus,#main-menu textarea:focus{outline:1px solid #6eb8f2;border-color:#6eb8f2}
+#main-menu label{color:#a9bfd6;font-size:9px;font-weight:850;letter-spacing:.045em}
+#main-menu .career-form{gap:12px}
+#main-menu .notice{padding:8px 10px;border-left:2px solid rgba(103,169,224,.55);background:rgba(5,17,30,.55);color:#9eb4cc;font-size:9px;line-height:1.45}
+#main-menu .quick-grid{gap:8px}
+#main-menu .quick-card{border:1px solid rgba(139,182,224,.2);border-radius:4px;background:linear-gradient(145deg,#183957,#0a1b2d)}
+#main-menu .quick-card b{color:#f2f7ff;font-size:clamp(19px,3vh,28px);font-variant-numeric:tabular-nums}
+#main-menu .quick-card small{color:#8faac5;font-size:8px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+#main-menu .attribute-list>div{display:grid;grid-template-columns:minmax(80px,1fr) 28px minmax(80px,2fr);align-items:center;gap:9px;padding:9px 10px;border-bottom:1px solid rgba(137,179,220,.12);color:#b7cbe0;font-size:10px;font-weight:850}
+#main-menu .attribute-list>div b{color:#f2f7ff;font-size:13px;font-variant-numeric:tabular-nums}
+#main-menu .attribute-list>div i{height:5px;border-radius:0;background:#071321}
+#main-menu .attribute-list>div i em{display:block;height:100%;background:linear-gradient(90deg,#2378b8,#72c1f5)}
+#main-menu .table-scroll{border:1px solid rgba(142,183,222,.2);border-radius:4px;background:rgba(4,14,25,.7)}
+#main-menu .table-scroll table{border-collapse:collapse}
+#main-menu .table-scroll th{background:linear-gradient(180deg,#1a456b,#102b46);color:#bcd7f1;font-size:8px;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+#main-menu .table-scroll td{color:#c5d5e6;font-size:9px}
+#main-menu .table-scroll tr:nth-child(even) td{background:rgba(75,119,160,.07)}
+#main-menu .table-scroll tr:last-child td{border-bottom:0}
+#main-menu .menu-main [class*="toolbar"]{border-color:rgba(141,182,222,.18);border-radius:4px;background:rgba(5,16,28,.75)}
+#main-menu .club-card{padding:12px}
+#main-menu .club-card h3{font-size:13px}
+#main-menu .profile-layout{gap:12px}
+#main-menu .profile-meta span{color:#f1d77e}
+#main-menu .settings-card{display:grid;gap:13px;padding:15px}
+#main-menu .settings-card label{display:grid;gap:6px}
+#main-menu .settings-card input[type="range"]{min-height:20px;accent-color:#69b6ef}
+#main-menu .p27-top-section{max-width:36vw}
+@media(max-width:760px) and (orientation:landscape){
+ #main-menu .p27-top-section strong{font-size:11px}
+ #main-menu .p27-top-section span{font-size:7px}
+ #main-menu .p27-top-player strong{max-width:105px;font-size:9px}
+ #main-menu .p27-top-player span{font-size:7px}
+ #main-menu .p27-top-currency{padding-left:7px}
+ #main-menu .p27-top-currency strong{font-size:10px}
+ #main-menu .menu-main{padding-top:7px}
+ #main-menu .settings-card{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}
+ #main-menu .settings-card>button{grid-column:1/-1}
+}
+@media(max-width:420px) and (orientation:portrait){
+ #main-menu .p27-top-section{max-width:28vw}
+ #main-menu .p27-top-player{max-width:90px}
+ #main-menu .p27-top-player strong{max-width:90px;font-size:9px}
+ #main-menu .p27-top-currency small{font-size:6px}
+ #main-menu .p27-top-currency strong{font-size:9px}
+ #main-menu .settings-card{padding:10px}
+}
