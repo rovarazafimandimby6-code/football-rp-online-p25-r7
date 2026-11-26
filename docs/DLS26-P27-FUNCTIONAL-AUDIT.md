@@ -317,3 +317,12 @@ Un défi accepté peut maintenant être converti en salon P27 via `POST /api/rp-
 Les salons liés à un défi exigent une session authentifiée et une identité de footballeur P27 valide. Le serveur vérifie que le compte appartient à l'un des deux Clubs RP mémorisés au moment du défi, puis impose le camp : Club challenger en bleu, Club ciblé en rouge. Un compte extérieur ne peut pas rejoindre par l'API standard des salons ; le choix de camp envoyé par le client ne remplace pas l'affectation serveur. Les cinq places humaines par camp sont contrôlées avant l'entrée.
 
 **Limites actuelles :** cette livraison raccorde la création et l'accès sécurisé au salon, pas encore le cycle complet du défi. Le résultat final n'est pas encore associé automatiquement au défi, et aucun classement, récompense ou objectif inter-Club n'est calculé. L'interface doit encore exposer l'action « Ouvrir le match » et l'accès au salon. Les tests ajoutés couvrent l'autorisation des participants, l'affectation des camps et la fenêtre horaire ; CI et APK restent à confirmer.
+
+
+### Résultats officiels et classement inter-Club RP — première intégration
+
+Les salons issus d'un défi conservent une référence au défi dans la session et dans l'archive du résultat final. Quand le moteur P27 finalise réellement le match, le service Club RP récupère le score bleu/rouge archivé et clôt le défi correspondant. Le lien est idempotent : un même résultat de salon ne peut pas être compté deux fois, et un identifiant de salon différent est rejeté.
+
+Le classement est dérivé des seuls défis terminés : victoire = 3 points, nul = 1 point, défaite = 0 ; départage par différence de buts puis buts marqués. L'interface Club RP expose ce classement et affiche le score final dans la ligne du défi. Si la liaison de résultat échoue momentanément après l'archivage du match, l'ouverture ultérieure de la boîte des défis tente de réconcilier le résultat depuis l'archive serveur.
+
+**Limites actuelles :** il s'agit d'un classement global de tous les défis terminés, sans saison, récompenses, sanctions ni arbitrage manuel. Le résultat est celui du moteur P27 ; aucune saisie de score par les joueurs n'est acceptée. Les tests et le build Android de cette livraison restent à exécuter/confirmer.
