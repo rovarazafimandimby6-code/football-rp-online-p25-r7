@@ -445,6 +445,15 @@ function renderPage(page = 'home') {
   if (content) content.scrollTop = 0;
   const title = document.getElementById('menu-page-title');
   const subtitle = document.getElementById('menu-page-subtitle');
+  const topName = document.getElementById('p27-top-player-name');
+  const topClub = document.getElementById('p27-top-player-club');
+  if (topName) topName.textContent = profileStore.profile.identity.displayName || 'Mon footballeur';
+  if (topClub) topClub.textContent = career.clubId ? (clubs.getClub(career.clubId)?.name || 'Sans club') : 'Sans club';
+  const menuRoot = document.getElementById('main-menu');
+  if (menuRoot) menuRoot.classList.toggle('p27-home-active', page === 'home');
+  const backButton = document.querySelector('.p27-back-home');
+  if (backButton) backButton.hidden = page === 'home';
+
   document.querySelectorAll('[data-page]').forEach(button => button.classList.toggle('active', button.dataset.page === page || (page === 'home' && button.dataset.page === 'career-hub')));
   if (page === 'onboarding') {
     title.textContent = 'Créer votre footballeur';
@@ -462,42 +471,26 @@ function renderPage(page = 'home') {
     </section>`;
   } else if (page === 'home' || page === 'career-hub') {
     const profile = profileStore.profile;
-    const seasonSnapshot = seasonStats.snapshot();
-    const season = seasonSnapshot.totals;
-    const latestMatch = seasonSnapshot.matches.slice(-1)[0];
     const careerClub = career.clubId ? clubs.getClub(career.clubId) : null;
-    const contractStatus = career.getContractStatus?.();
-    const contractLabel = contractStatus?.status === 'active' ? `Contrat actif · ${contractStatus.daysRemaining} j` : contractStatus?.status === 'expired' ? 'Contrat expiré' : contractStatus?.status === 'terminated' ? 'Contrat terminé' : 'Agent libre';
     const clubLabel = careerClub?.name || 'Sans club';
-    title.textContent = page === 'career-hub' ? 'Carrière' : 'Accueil';
-    subtitle.textContent = `VOTRE PARCOURS · ${profile.identity.displayName}`;
-    const levelStars = Math.max(1, Math.min(5, Math.ceil((Number(profile.progression.level) || 1) / 20)));
-    const stars = '★'.repeat(levelStars) + '☆'.repeat(5-levelStars);
-    content.innerHTML = `
-      <div class="p27-career-home">
-        <section class="p27-career-topline">
-          <div class="p27-progression"><span class="p27-stars" aria-label="Progression ${levelStars} sur 5">${stars}</span><b>NIVEAU ${profile.progression.level}</b></div>
-          <div class="p27-currency"><span>CRÉDITS JOUEUR</span><b>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</b></div>
-        </section>
-        <section class="p27-career-hero">
-          <div class="p27-career-hero-copy"><span class="eyebrow">ESPACE CARRIÈRE · PROFIL LOCAL</span><h2>Ta carrière.<br>Ton histoire.</h2><p>Construis ton parcours, fais évoluer ton joueur et trouve ta place dans le football P27.</p>
-          <div class="p27-career-hero-actions"><button class="primary-cta" data-page="player">CONTINUER MA CARRIÈRE <span>→</span></button><button class="secondary-cta" data-action="choose-match">MATCH AMICAL</button></div></div>
-          <div class="p27-career-hero-identity"><span class="p27-player-number">#${escapeHTML(profile.identity.number)}</span><b>${escapeHTML(profile.identity.displayName)}</b><small>${escapeHTML(profile.identity.role)} · ${escapeHTML(clubLabel)}</small></div>
-        </section>
-        <div class="p27-home-section-title"><span>ACCÈS RAPIDES</span><small>TES MODES DE JEU</small></div>
-        <nav class="p27-home-primary" aria-label="Modes principaux">
-          <button class="p27-home-card p27-home-card-career" data-page="career-hub"><span class="p27-card-kicker">01 · PROGRESSION</span><b>CARRIÈRE</b><small>Profil · évolution · statistiques</small><i>→</i></button>
-          <button class="p27-home-card p27-home-card-friendly" data-action="choose-match"><span class="p27-card-kicker">02 · SUR LE TERRAIN</span><b>MATCH AMICAL</b><small>Préparer une rencontre 5 contre 5</small><i>→</i></button>
-          <button class="p27-home-card" data-page="mercato"><span class="p27-card-kicker">03 · GESTION</span><b>MERCATO</b><small>Transferts, joueurs et clubs</small><i>→</i></button>
-          <button class="p27-home-card" data-page="competitions"><span class="p27-card-kicker">04 · SAISON</span><b>COMPÉTITIONS</b><small>Championnats, classements et résultats</small><i>→</i></button>
-          <button class="p27-home-card" data-page="player"><span class="p27-card-kicker">05 · IDENTITÉ</span><b>MON JOUEUR</b><small>Personnalisation et entraînement</small><i>→</i></button>
-        </nav>
-        <section class="p27-career-summary">
-          <div class="p27-home-section-title"><span>MON PARCOURS</span><small>DONNÉES LOCALES RÉELLES</small></div>
-          <div class="p27-career-facts"><div><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div><div><span>CONTRAT</span><b>${escapeHTML(contractLabel)}</b></div><div><span>MATCHS</span><b>${season.matches}</b></div><div><span>BUTS</span><b>${season.goals}</b></div></div>
-          <div class="p27-last-performance"><span>DERNIÈRE PERFORMANCE</span>${latestMatch ? `<b>${latestMatch.rating.toFixed(1)} / 10</b><small>${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · ${latestMatch.goals} but(s)</small>` : '<b>Pas encore de match enregistré</b><small>Les statistiques apparaîtront après une rencontre.</small>'}</div>
-        </section>
-      </div>`;
+    title.textContent = page === 'career-hub' ? 'Carrière' : 'Football RP Online';
+    subtitle.textContent = page === 'career-hub' ? 'Votre parcours et votre progression.' : 'Choisissez votre prochaine étape.';
+    const level = Number(profile.progression.level) || 1;
+    const stars = Math.max(1, Math.min(5, Math.ceil(level / 20)));
+    content.innerHTML = page === 'career-hub' ? `
+      <section class="p27-career-hero"><div class="p27-career-hero-copy"><span class="eyebrow">ESPACE CARRIÈRE</span><h2>Ta carrière. Ton histoire.</h2><p>Joueur · niveau ${level} · ${escapeHTML(clubLabel)}</p><div class="p27-career-hero-actions"><button class="primary-cta" data-page="player">MON JOUEUR →</button><button class="secondary-cta" data-action="choose-match">MATCH AMICAL</button></div></div></section>
+      <section class="p27-career-summary"><div class="p27-career-facts"><div><span>NIVEAU</span><b>${level}</b></div><div><span>CRÉDITS</span><b>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</b></div><div><span>CLUB</span><b>${escapeHTML(clubLabel)}</b></div></div></section>
+      <button class="p27-home-return" data-page="home">← RETOUR AU HUB</button>` : `
+      <section class="p27-home-tiles" aria-label="Modes et rubriques">
+        <button class="p27-tile p27-tile-career" data-page="career-hub"><span class="p27-tile-title">CARRIÈRE <i>›</i></span><span class="p27-tile-art"><b>★</b><small>${'★'.repeat(stars)}${'☆'.repeat(5-stars)} · NIVEAU ${level}</small></span><span class="p27-tile-info">Votre parcours et votre progression</span></button>
+        <button class="p27-tile p27-tile-friendly" data-action="choose-match"><span class="p27-tile-title">MATCH AMICAL <i>›</i></span><span class="p27-tile-art"><b>⚽</b></span><span class="p27-tile-info">Jouer un match 5 contre 5</span></button>
+        <button class="p27-tile p27-tile-player" data-page="player"><span class="p27-tile-title">MON JOUEUR <i>›</i></span><span class="p27-tile-art p27-tile-avatar"><b>♟</b></span><span class="p27-tile-info">${escapeHTML(profile.identity.displayName)}</span></button>
+        <button class="p27-tile p27-tile-compet" data-page="competitions"><span class="p27-tile-title">COMPÉTITIONS <i>›</i></span><span class="p27-tile-art"><b>🏆</b></span><span class="p27-tile-info">Championnats et coupes</span></button>
+        <button class="p27-tile p27-tile-market" data-page="mercato"><span class="p27-tile-title">MERCATO <i>›</i></span><span class="p27-tile-art"><b>⇄</b></span><span class="p27-tile-info">Transferts et contrats</span></button>
+        <button class="p27-tile p27-tile-rank" data-page="competitions" data-view="rankings"><span class="p27-tile-title">CLASSEMENTS <i>›</i></span><span class="p27-tile-art"><b>▤</b></span><span class="p27-tile-info">Voir les positions des clubs</span></button>
+        <button class="p27-tile p27-tile-clubs" data-page="clubs"><span class="p27-tile-title">CLUBS <i>›</i></span><span class="p27-tile-art"><b>⬟</b></span><span class="p27-tile-info">Explorer les clubs</span></button>
+        <button class="p27-tile p27-tile-results" data-page="results"><span class="p27-tile-title">RÉSULTATS <i>›</i></span><span class="p27-tile-art"><b>▣</b></span><span class="p27-tile-info">Historique des rencontres</span></button>
+      </section>`;
   } else if (page === 'player') {
     const p = profileStore.profile;
     const a = p.progression.attributes;
