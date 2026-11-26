@@ -226,6 +226,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
   const ages = [18,30,19,28,21,32,...shuffledAges.filter(age => ![18,19,21,28,30,32].includes(age))];
   while (ages.length < count) ages.push(18 + Math.floor(random() * 16));
   const roster = [];
+  const usedDlsProfileIds = new Set();
   for (let index = 0; index < count; index++) {
     const code = nationalities[index];
     const name = createUniqueName(code, random, usedNames, index, club.id);
@@ -239,7 +240,8 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
     const talent = playerPotential(overall, random);
     const bodyBuild = pick(['lean','athletic','strong'], random);
     const archetype = pick(ARCHETYPES[role], random);
-    const dls26Reference = findDls26Reference(role, archetype, random);
+    const dls26Reference = findDls26Reference(role, archetype, random, usedDlsProfileIds);
+    if (dls26Reference) usedDlsProfileIds.add(dls26Reference.id);
     const dls26Profile = dls26Reference
       ? applyDls26Reference(dls26Reference, { targetOverall: overall, random })
       : null;
