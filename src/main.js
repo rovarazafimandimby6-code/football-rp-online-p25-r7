@@ -500,9 +500,11 @@ function setRpClubStatus(message, isError = false) {
   const status = document.getElementById('rp-club-status');
   if (status) { status.textContent = message; status.classList.toggle('is-error', isError); }
 }
+let rpClubPageRequestSequence = 0;
 async function loadRpClubPage(selectedSeasonId = null) {
   const host = document.getElementById('rp-club-root');
   if (!host) return;
+  const requestId = ++rpClubPageRequestSequence;
   host.innerHTML = '<div class="rp-club-loading">SYNCHRONISATION DU CLUB RP…</div>';
   let membership = null, invitations = [], activity = null, challenges = [], standings = [], seasons = [], currentSeason = null, seasonStandings = [], selectedSeason = null, authError = null, directory = { clubs:[], total:0 };
   try { const mine = await rpClubApi('/me'); membership = mine.membership; invitations = mine.invitations || []; } catch (error) { authError = error; }
@@ -520,7 +522,7 @@ async function loadRpClubPage(selectedSeasonId = null) {
       catch (error) { if (!authError) authError = error; }
     }
   }
-  if (!document.getElementById('rp-club-root')) return;
+  if (requestId !== rpClubPageRequestSequence || !document.getElementById('rp-club-root')) return;
   if (membership) {
     const club = membership.club;
     const roleNames = { founder:'FONDATEUR', president:'PRÉSIDENT', vice_president:'VICE-PRÉSIDENT', recruiter:'RECRUTEUR', member:'MEMBRE' };
