@@ -79,7 +79,7 @@ test('Club RP : fondateur protégé, membre peut partir, demandes refusées nett
       actorAccountId: 'founder', decision: 'reject'
     }).decision, 'reject');
     assert.equal(store.get(club.id).memberCount, 1);
-    assert.equal(store.leave(club.id, 'founder').reason, 'FOUNDER_CANNOT_LEAVE');
+    assert.equal(store.leave(club.id, 'founder').reason, 'FOUNDER_MUST_TRANSFER_PRESIDENCY');
     const req2 = store.requestJoin(club.id, {
       accountId: 'member', playerId: 'FRP-100012', displayName: 'Tovo'
     });
@@ -111,9 +111,12 @@ test('Club RP : transfert réel de présidence, permissions et journal persistan
     }).reason, 'RP_CLUB_PERMISSION_DENIED');
     assert.equal(store.removeMember(club.id, 'FRP-210001', 'member').reason, 'RP_CLUB_MEMBER_PROTECTED');
     assert.equal(store.leave(club.id, 'member').reason, 'PRESIDENT_MUST_TRANSFER_PRESIDENCY');
-    assert.equal(store.leave(club.id, 'founder').reason, 'FOUNDER_CANNOT_LEAVE');
+    assert.equal(store.leave(club.id, 'founder').memberCount, 1);
+    assert.equal(store.getForAccount('founder'), null);
     const restored = new JsonRpClubStore(directory);
     assert.equal(restored.getForAccount('member').membership.isPresident, true);
+    assert.equal(restored.get(club.id).memberCount, 1);
+    assert.equal(restored.getForAccount('member').governanceLog.some(event => event.action === 'founder_left'), true);
     assert.equal(restored.getForAccount('founder').membership.isPresident, false);
     assert.ok(restored.getForAccount('member').governanceLog.some(event => event.action === 'presidency_transferred'));
     assert.equal(restored.getForAccount('member').governanceLog.some(event => Object.hasOwn(event, 'accountId')), false);
