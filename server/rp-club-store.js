@@ -167,13 +167,13 @@ export class JsonRpClubStore {
 
   requestJoin(clubId, { accountId, playerId, displayName } = {}) {
     if (!accountId || !/^FRP-\\d{6}$/.test(String(playerId || '')) || !clean(displayName, 20)) return { ok: false, reason: 'PLAYER_IDENTITY_REQUIRED' };
-    const club = this.state.clubs.find(item => item.id === clubId);
-    if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
-    if (this.findMembership(accountId)) return { ok: false, reason: 'ALREADY_IN_RP_CLUB' };
-    if (club.members.length >= MAX_MEMBERS) return { ok: false, reason: 'RP_CLUB_FULL' };
-    if (club.joinRequests.some(item => item.accountId === accountId)) return { ok: false, reason: 'JOIN_REQUEST_ALREADY_PENDING' };
-    if (club.joinRequests.length >= MAX_PENDING_REQUESTS) return { ok: false, reason: 'JOIN_REQUESTS_FULL' };
     return this.transact(() => {
+      const club = this.state.clubs.find(item => item.id === clubId);
+      if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
+      if (this.findMembership(accountId)) return { ok: false, reason: 'ALREADY_IN_RP_CLUB' };
+      if (club.members.length >= MAX_MEMBERS) return { ok: false, reason: 'RP_CLUB_FULL' };
+      if (club.joinRequests.some(item => item.accountId === accountId)) return { ok: false, reason: 'JOIN_REQUEST_ALREADY_PENDING' };
+      if (club.joinRequests.length >= MAX_PENDING_REQUESTS) return { ok: false, reason: 'JOIN_REQUESTS_FULL' };
       const request = { id: this.idFactory(), accountId, playerId, displayName: clean(displayName, 20), createdAt: new Date(this.now()).toISOString() };
       club.joinRequests.push(request);
       club.updatedAt = request.createdAt;
@@ -182,17 +182,16 @@ export class JsonRpClubStore {
   }
 
   decideJoinRequest(clubId, requestId, { actorAccountId, decision } = {}) {
-    const club = this.state.clubs.find(item => item.id === clubId);
-    if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
-    const actor = club.members.find(item => item.accountId === actorAccountId);
-    if (!actor || !MANAGER_ROLES.has(actor.role)) return { ok: false, reason: 'RP_CLUB_PERMISSION_DENIED' };
-    const request = club.joinRequests.find(item => item.id === requestId);
-    if (!request) return { ok: false, reason: 'JOIN_REQUEST_NOT_FOUND' };
     if (!['accept', 'reject'].includes(decision)) return { ok: false, reason: 'INVALID_JOIN_DECISION' };
-    if (decision === 'accept' && this.findMembership(request.accountId)) return { ok: false, reason: 'APPLICANT_ALREADY_IN_RP_CLUB' };
-    if (decision === 'accept' && club.members.length >= MAX_MEMBERS) return { ok: false, reason: 'RP_CLUB_FULL' };
     return this.transact(() => {
+      const club = this.state.clubs.find(item => item.id === clubId);
+      if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
+      const actor = club.members.find(item => item.accountId === actorAccountId);
+      if (!actor || !MANAGER_ROLES.has(actor.role)) return { ok: false, reason: 'RP_CLUB_PERMISSION_DENIED' };
       const pending = club.joinRequests.find(item => item.id === requestId);
+      if (!pending) return { ok: false, reason: 'JOIN_REQUEST_NOT_FOUND' };
+      if (decision === 'accept' && this.findMembership(pending.accountId)) return { ok: false, reason: 'APPLICANT_ALREADY_IN_RP_CLUB' };
+      if (decision === 'accept' && club.members.length >= MAX_MEMBERS) return { ok: false, reason: 'RP_CLUB_FULL' };
       club.joinRequests = club.joinRequests.filter(item => item.id !== requestId);
       if (decision === 'accept') club.members.push({
         accountId: pending.accountId, playerId: pending.playerId, displayName: pending.displayName,
@@ -204,15 +203,16 @@ export class JsonRpClubStore {
   }
 
   leave(clubId, accountId) {
-    const club = this.state.clubs.find(item => item.id === clubId);
-    if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
-    const member = club.members.find(item => item.accountId === accountId);
-    if (!member) return { ok: false, reason: 'RP_CLUB_MEMBERSHIP_NOT_FOUND' };
-    if (member.role === 'founder') return { ok: false, reason: 'FOUNDER_MUST_TRANSFER_PRESIDENCY' };
     return this.transact(() => {
+      const club = this.state.clubs.find(item => item.id === clubId);
+      if (!club) return { ok: false, reason: 'RP_CLUB_NOT_FOUND' };
+      const member = club.members.find(item => item.accountId === accountId);
+      if (!member) return { ok: false, reason: 'RP_CLUB_MEMBERSHIP_NOT_FOUND' };
+      if (member.role === 'founder') return { ok: false, reason: 'FOUNDER_MUST_TRANSFER_PRESIDENCY' };
       club.members = club.members.filter(item => item.accountId !== accountId);
       club.updatedAt = new Date(this.now()).toISOString();
       return { ok: true, memberCount: club.members.length };
     });
   }
+}
 }
