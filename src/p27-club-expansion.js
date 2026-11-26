@@ -104,6 +104,7 @@ const CLUB_NAME_STYLES = Object.freeze({
   KR:['suffix:FC','suffix:United','suffix:SC','suffix:Athletic'],
   AU:['suffix:United','suffix:City','suffix:Athletic','suffix:FC','suffix:SC']
 });
+export const P27_CLUB_NAMING_COUNTRY_CODES = Object.freeze(Object.keys(CLUB_NAME_STYLES));
 const DEFAULT_CLUB_NAME_STYLES = ['suffix:AC','suffix:FC','suffix:United','suffix:Sporting','suffix:Athletic','suffix:City','suffix:Rovers','suffix:SC'];
 const makeClubName = (brand, countryCode, index) => {
   const styles = CLUB_NAME_STYLES[countryCode] || DEFAULT_CLUB_NAME_STYLES;
