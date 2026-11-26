@@ -15,6 +15,7 @@ const NATIONAL_POOLS = Object.freeze({
   MA: { names: ['Yassine','Amine','Hamza','Anas','Ilyas','Mehdi','Rayan','Sofiane'], surnames: ['El Amrani','Bennani','Alaoui','Idrissi','Boukhris','Mansouri','Ziani','Chakir'] },
   DZ: { names: ['Yacine','Amir','Karim','Nassim','Walid','Samir','Riad','Adel'], surnames: ['Bensaid','Bouzid','Mansouri','Haddad','Belkacem','Ait Ali','Mebarki','Khelifi'] },
   TN: { names: ['Aymen','Fares','Malek','Wassim','Tarek','Nizar','Sami','Zied'], surnames: ['Trabelsi','Ben Youssef','Gharbi','Jaziri','Khemiri','Saidi','Mabrouk','Ayari'] },
+  IE: { names:['Conor','Cian','Evan','Rory','Finn','Darragh','Sean','Callum'], surnames:['Murphy','Kelly','Byrne','Ryan','Doyle','Walsh','O’Sullivan','McCarthy'] },
   DE: { names:['Lukas','Leon','Finn','Jonas','Niklas','Felix','Noah','Elias'], surnames:['Muller','Schneider','Fischer','Weber','Wagner','Becker','Hoffmann','Schulz'] },
   NL: { names:['Daan','Sem','Milan','Luuk','Jesse','Thijs','Bram','Lars'], surnames:['de Jong','Jansen','de Vries','van den Berg','Bakker','Visser','Smit','Meijer'] },
   BE: { names:['Noah','Arthur','Lucas','Louis','Liam','Victor','Adam','Milan'], surnames:['Peeters','Janssens','Maes','Jacobs','Mertens','Willems','Claes','Goossens'] },
