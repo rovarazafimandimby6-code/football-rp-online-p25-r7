@@ -47,6 +47,25 @@ const D5_CITIES = {
 };
 const BRAND_FIRST = ['Kintana','Ravinala','Atsimo','Avaratra','Manga','Vato','Onja','Tsiry','Volana','Sahondra','Lakana','Tselatra','Tandroka','Masoandro','Rija','Anjara','Soa','Horizon','Nofy','Andry'];
 const BRAND_SECOND = ['Atlas','Comets','Rovers','Dynasty','Voyagers','Phoenix','Waves','Falcons','Pioneers','Legends','United','Athletic','Storm','Lions','Stars','Rangers','Guardians','Wanderers'];
+const REGIONAL_FOREIGN_LOCATIONS = [
+  ['Berlin','Allemagne','DE'],['Hambourg','Allemagne','DE'],['Munich','Allemagne','DE'],['Dortmund','Allemagne','DE'],['Leipzig','Allemagne','DE'],
+  ['Rotterdam','Pays-Bas','NL'],['Utrecht','Pays-Bas','NL'],['Eindhoven','Pays-Bas','NL'],
+  ['Bruxelles','Belgique','BE'],['Anvers','Belgique','BE'],['Zagreb','Croatie','HR'],['Split','Croatie','HR'],
+  ['Belgrade','Serbie','RS'],['Novi Sad','Serbie','RS'],['Istanbul','Turquie','TR'],['Izmir','Turquie','TR'],['Ankara','Turquie','TR'],
+  ['Athènes','Grèce','GR'],['Thessalonique','Grèce','GR'],
+  ['New York','États-Unis','US'],['Los Angeles','États-Unis','US'],['Miami','États-Unis','US'],
+  ['Toronto','Canada','CA'],['Montréal','Canada','CA'],
+  ['Mexico','Mexique','MX'],['Guadalajara','Mexique','MX'],['Monterrey','Mexique','MX'],
+  ['Bogota','Colombie','CO'],['Medellin','Colombie','CO'],['Lima','Pérou','PE'],['Arequipa','Pérou','PE'],
+  ['Montevideo','Uruguay','UY'],['Salto','Uruguay','UY'],['Santiago','Chili','CL'],['Valparaiso','Chili','CL'],
+  ['Tokyo','Japon','JP'],['Osaka','Japon','JP'],['Seoul','Corée du Sud','KR'],['Busan','Corée du Sud','KR'],
+  ['Sydney','Australie','AU'],['Melbourne','Australie','AU'],['Casablanca','Maroc','MA'],['Rabat','Maroc','MA'],
+  ['Abidjan','Côte d’Ivoire','CI'],['Yamoussoukro','Côte d’Ivoire','CI'],['Accra','Ghana','GH'],['Kumasi','Ghana','GH'],
+  ['Lagos','Nigeria','NG'],['Abuja','Nigeria','NG'],['Dakar','Sénégal','SN'],['Thiès','Sénégal','SN'],
+  ['Le Caire','Égypte','EG']
+];
+const CLUB_SUFFIXES = ['', ' Sporting', ' United', ' Athletic', ' SC', ' AC', ' City', ' Rovers', ' Wanderers', ' Olympique', ' Racing', ' Deportivo', ' FC', ' Town', ' Albion', ' Phoenix'];
+const STADIUM_SUFFIXES = ['Park','Ground','Stadium','Arena','Field','Park'];
 const PALETTE = [
   ['#1f6f78','#123c50','#e8c66a'],['#7b3f8c','#39204d','#f1d5a5'],['#b54b3a','#632b2a','#f2d58a'],
   ['#34764d','#194a38','#e6d58b'],['#345c9c','#1d315f','#e4c76b'],['#9a642e','#57391e','#f0d9a2'],
@@ -55,10 +74,10 @@ const PALETTE = [
 ];
 const KIT_DESIGNS = ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'];
 const OFFSETS = [-4,-2,-1,0,1,2,3,4,0,1,-1,2,3,-3,1,0];
-const makeClub = (division, city, country, countryCode, conference, index, tierIndex) => {
+const makeClub = (division, city, country, countryCode, conference, index, tierIndex, stableCity = city) => {
   const brand = BRAND_FIRST[index % BRAND_FIRST.length] + ' ' + BRAND_SECOND[Math.floor(index / BRAND_FIRST.length) % BRAND_SECOND.length];
   const slug = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  const id = 'p27-' + division.toLowerCase() + '-' + slug(city) + '-' + String(index + 1).padStart(3,'0');
+  const id = 'p27-' + division.toLowerCase() + '-' + slug(stableCity) + '-' + String(index + 1).padStart(3,'0');
   const baseline = ({D1:75,D2:68,D3:61.5,D4:55.5,D5:49})[division];
   const range = ({D1:[70,82],D2:[63,76],D3:[57,71],D4:[50,64],D5:[43,58]})[division];
   const rating = Math.max(range[0],Math.min(range[1],Math.round(baseline + OFFSETS[(index + tierIndex * 3) % OFFSETS.length])));
@@ -68,10 +87,10 @@ const makeClub = (division, city, country, countryCode, conference, index, tierI
   const initialRosterSize = division === 'D1' ? 10 + (index % 3) : division === 'D2' ? 9 + (index % 3) : division === 'D3' ? 9 + (index % 3) : 8 + (index % 3);
   const budgetBase = ({D1:3600000,D2:1900000,D3:950000,D4:480000,D5:240000})[division];
   return {
-    id, name: brand + ' FC', city, location:{city,country,countryCode}, country, countryCode,
+    id, name: brand + CLUB_SUFFIXES[index % CLUB_SUFFIXES.length], city, location:{city,country,countryCode}, country, countryCode,
     division, ...(conference ? {conference} : {}),
     rating, control:systemOnly ? 'ai' : 'open', humanAdmission:systemOnly ? 'system-only' : 'open',
-    colors:palette, kitDesign, stadium:brand + ' Arena', reputation:Math.max(28,Math.min(94,Math.round(rating + 7 + OFFSETS[(index+4)%OFFSETS.length]))),
+    colors:palette, kitDesign, stadium:brand + ' ' + STADIUM_SUFFIXES[index % STADIUM_SUFFIXES.length], reputation:Math.max(28,Math.min(94,Math.round(rating + 7 + OFFSETS[(index+4)%OFFSETS.length]))),
     budget:Math.round(budgetBase * (0.78 + ((index*7)%9)*0.075)), capacity:12, initialRosterSize
   };
 };
@@ -83,11 +102,23 @@ for (const [division, start, count] of [['D1',0,12],['D2',12,16],['D3',28,20]]) 
     clubs.push(makeClub(division,city,country,code,null,index++,division.charCodeAt(1)));
   }
 }
+let foreignLocationIndex = 0;
 for (const conference of ['A','B']) {
-  for (const city of D4_CITIES[conference]) clubs.push(makeClub('D4',city,'Madagascar','MG',conference,index++,conference==='A'?4:5));
+  for (let cityIndex = 0; cityIndex < D4_CITIES[conference].length; cityIndex++) {
+    const originalCity = D4_CITIES[conference][cityIndex];
+    const isMalagasy = cityIndex < 8;
+    const [city,country,code] = isMalagasy ? [originalCity,'Madagascar','MG'] : REGIONAL_FOREIGN_LOCATIONS[foreignLocationIndex++];
+    clubs.push(makeClub('D4',city,country,code,conference,index++,conference==='A'?4:5,originalCity));
+  }
 }
 for (const conference of ['A','B','C','D']) {
-  for (const city of D5_CITIES[conference]) clubs.push(makeClub('D5',city,'Madagascar','MG',conference,index++,({A:6,B:7,C:8,D:9})[conference]));
+  const malagasyLimit = conference === 'D' ? 5 : 6;
+  for (let cityIndex = 0; cityIndex < D5_CITIES[conference].length; cityIndex++) {
+    const originalCity = D5_CITIES[conference][cityIndex];
+    const isMalagasy = cityIndex < malagasyLimit;
+    const [city,country,code] = isMalagasy ? [originalCity,'Madagascar','MG'] : REGIONAL_FOREIGN_LOCATIONS[foreignLocationIndex++];
+    clubs.push(makeClub('D5',city,country,code,conference,index++,({A:6,B:7,C:8,D:9})[conference],originalCity));
+  }
 }
 export const P27_EXPANSION_CLUBS = Object.freeze(clubs.map(club => Object.freeze(club)));
 export const P27_EXPANSION_COUNTS = Object.freeze({
@@ -96,5 +127,7 @@ export const P27_EXPANSION_COUNTS = Object.freeze({
   D2:P27_EXPANSION_CLUBS.filter(club=>club.division==='D2').length,
   D3:P27_EXPANSION_CLUBS.filter(club=>club.division==='D3').length,
   D4:P27_EXPANSION_CLUBS.filter(club=>club.division==='D4').length,
-  D5:P27_EXPANSION_CLUBS.filter(club=>club.division==='D5').length
+  D5:P27_EXPANSION_CLUBS.filter(club=>club.division==='D5').length,
+  Malagasy:P27_EXPANSION_CLUBS.filter(club=>club.countryCode==='MG').length,
+  international:P27_EXPANSION_CLUBS.filter(club=>club.countryCode!=='MG').length
 });
