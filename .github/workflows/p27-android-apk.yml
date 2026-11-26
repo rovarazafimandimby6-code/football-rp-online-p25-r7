@@ -80,6 +80,7 @@ jobs:
           import android.view.WindowInsets;
           import android.view.WindowInsetsController;
           import android.view.WindowManager;
+          import androidx.core.view.WindowCompat;
           '''
               source = source[:package_end + 1] + imports + source[package_end + 1:]
               methods = '''
@@ -96,6 +97,7 @@ jobs:
               }
 
               private void applyP27ImmersiveFullscreen() {
+                  WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                       WindowManager.LayoutParams params = getWindow().getAttributes();
                       params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
@@ -127,7 +129,7 @@ jobs:
               print('P27 immersive fullscreen already configured.')
 
           check = activity_path.read_text()
-          for token in ('applyP27ImmersiveFullscreen', 'WindowInsets.Type.statusBars()', 'WindowInsets.Type.navigationBars()', 'BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE'):
+          for token in ('applyP27ImmersiveFullscreen', 'WindowInsets.Type.statusBars()', 'WindowInsets.Type.navigationBars()', 'BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE', 'WindowCompat.setDecorFitsSystemWindows(getWindow(), false)'):
               if token not in check:
                   raise SystemExit(f'Missing immersive fullscreen token: {token}')
           if 'android:screenOrientation="landscape"' not in manifest_path.read_text():
