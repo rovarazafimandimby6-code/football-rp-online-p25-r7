@@ -224,3 +224,18 @@ test('P27 quality: feuille de style sans séquence \u005c\u005cn littérale hors
   const css = readFileSync(new URL('../p27-rebirth.css', import.meta.url), 'utf8');
   assert.doesNotMatch(css, /\\\\n\\\\n/);
 });
+
+
+test('P27 catalogue joueur : cartes, filtres et pagination ont une présentation dédiée', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.player-library-toolbar','.player-library-card','.player-card-rating','.player-card-attributes','.player-library-footer']) {
+    assert.ok(css.includes(selector), `missing P27 style: ${selector}`);
+  }
+});
+
+test('P27 clubs, résultats et mercato : composants réels couverts par le thème de jeu', () => {
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.club-division-heading','.club-detail-hero','.results-panel','.result-card','.market-panel','.offer-card','.results-pagination']) {
+    assert.ok(css.includes(selector), `missing P27 style: ${selector}`);
+  }
+});
