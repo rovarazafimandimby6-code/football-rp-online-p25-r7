@@ -36,3 +36,13 @@ test("calendar list clamps page size and provides stable cursor",async()=>{const
  const page=await repo.list({limit:2});assert.deepEqual(page.seasons.map(s=>s.seasonId),["season-28","season-27"]);assert.equal(page.nextCursor,300);
  const next=await repo.list({limit:2,beforeStartsAt:page.nextCursor});assert.deepEqual(next.seasons.map(s=>s.seasonId),["season-26"]);assert.equal(next.nextCursor,null);
 }finally{db.close();}});
+
+test("calendar validates IDs, interval values and timestamps before touching D1",async()=>{const{db,repo}=setup();try{
+ await assert.rejects(repo.create(season("x","bad",200)),/INVALID_SEASON_DEFINITION/);
+ await assert.rejects(repo.create(season("bad id",100,200)),/INVALID_SEASON_DEFINITION/);
+ await assert.rejects(repo.create(season("season-bad",200,200)),/INVALID_SEASON_DEFINITION/);
+ await assert.rejects(repo.getActiveAt(-1),/INVALID_SEASON_TIMESTAMP/);
+ await assert.rejects(repo.getActiveAt(1.5),/INVALID_SEASON_TIMESTAMP/);
+ await assert.rejects(repo.list({beforeStartsAt:-1}),/INVALID_SEASON_CURSOR/);
+ assert.equal((await repo.list()).seasons.length,0);
+}finally{db.close();}});
