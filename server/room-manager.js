@@ -568,6 +568,15 @@ export class RoomManager {
       this.progressionStore?.grantMatchReward(livePlayer.accountId, { matchId: room.id, result: outcome, minutesPlayedMs: player.minutesPlayedMs, rating: player.rating });
     }
     this.resultStore?.save(committedResult);
+    if (room.rpClubChallenge && typeof this.onResultFinalized === 'function') {
+      try {
+        const linked = this.onResultFinalized(committedResult, room);
+        if (!linked?.ok) room.rpClubChallenge.finalizationError = linked?.reason || 'RP_CLUB_RESULT_LINK_FAILED';
+        else delete room.rpClubChallenge.finalizationError;
+      } catch (error) {
+        room.rpClubChallenge.finalizationError = String(error?.message || 'RP_CLUB_RESULT_LINK_FAILED').slice(0, 120);
+      }
+    }
     room.result = committedResult;
     if (this.roomStore) this.roomStore.delete(room.id);
     this.lastCheckpointAt.delete(room.id);
