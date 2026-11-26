@@ -6,6 +6,10 @@ import path from 'node:path';
 import {JsonCompetitionStore} from '../server/competition-store.js';
 import {auditLeagueSchedule} from '../src/league-schedule-audit.js';
 import {RoomManager} from '../server/room-manager.js';
+import {JsonRoomStore} from '../server/room-store.js';
+import {JsonResultStore} from '../server/result-store.js';
+import {JsonCareerStore} from '../server/career-store.js';
+import {JsonProgressionStore} from '../server/progression-store.js';
 const setup=()=>{const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-competitions-'));return {directory,store:new JsonCompetitionStore(directory,{seasonId:'test-season',now:()=>1000}),cleanup:()=>rmSync(directory,{recursive:true,force:true})};};
 const finishPromotionPlayoffs=store=>{
  store.previewSeasonMovements();
@@ -624,4 +628,50 @@ test('P27 confrontations directes : les bilans historiques restent cohérents ap
   assert.equal(restored.headToHead('unknown-club',fixture.homeClubId),null);
   assert.equal(restored.headToHead(fixture.awayClubId,fixture.homeClubId).matches,1);
  }finally{f.cleanup();}
+});
+
+test('P27 reprise officielle : classement, carrière et récompense restent uniques après panne et redémarrage',()=>{
+ const root=mkdtempSync(path.join(os.tmpdir(),'fpro-official-recovery-'));
+ try{
+  let now=50_000;
+  const dirs={rooms:path.join(root,'rooms'),results:path.join(root,'results'),careers:path.join(root,'careers'),progression:path.join(root,'progression'),competitions:path.join(root,'competitions')};
+  const competitionStore=new JsonCompetitionStore(dirs.competitions,{seasonId:'recovery-season',now:()=>now});
+  const fixture=competitionStore.snapshot().competitions.find(item=>item.id==='recovery-season-league-D1').fixtures[0];
+  const roomStore=new JsonRoomStore(dirs.rooms), resultStore=new JsonResultStore(dirs.results);
+  const careerStore=new JsonCareerStore(dirs.careers), progressionStore=new JsonProgressionStore(dirs.progression);
+  const first=new RoomManager({now:()=>now,roomStore,resultStore,careerStore,progressionStore,competitionStore});
+  const created=first.create({blueClubId:fixture.homeClubId,redClubId:fixture.awayClubId,competitionFixtureId:fixture.id});
+  const joined=first.join(created.id,{displayName:'Joueur officiel',accountId:'account-official'});
+  const room=first.rooms.get(created.id), player=room.players.get(joined.playerId);
+  player.matchTimePlayedMs=120_000; player.stats.goals=1;
+  room.phase='fulltime'; room.elapsedMs=room.durationMinutes*60_000; room.score={blue:2,red:1};
+  progressionStore.persist=()=>{throw new Error('DISK_FULL');};
+  assert.equal(first.tryFinalizeResult(room),false);
+  assert.equal(competitionStore.getFixture(fixture.id).status,'completed');
+  assert.equal(competitionStore.getFixture(fixture.id).result.home,2);
+  assert.equal(careerStore.get('account-official').totals.matches,1);
+  assert.equal(resultStore.get(created.id),null);
+  assert.equal(roomStore.readAll().find(item=>item.id===created.id).phase,'fulltime');
+
+  now+=5_000;
+  const restoredCompetition=new JsonCompetitionStore(dirs.competitions,{seasonId:'ignored',now:()=>now});
+  const restoredCareer=new JsonCareerStore(dirs.careers);
+  const restoredProgression=new JsonProgressionStore(dirs.progression);
+  const restarted=new RoomManager({
+   now:()=>now,roomStore:new JsonRoomStore(dirs.rooms),resultStore:new JsonResultStore(dirs.results),
+   careerStore:restoredCareer,progressionStore:restoredProgression,competitionStore:restoredCompetition,
+  });
+  restarted.tick(0);
+  const archived=restarted.getResult(created.id);
+  assert.equal(archived.score.blue,2);
+  assert.equal(archived.competition.result.home,2);
+  assert.equal(restoredCompetition.getFixture(fixture.id).result.home,2);
+  const standings=restoredCompetition.snapshot().competitions.find(item=>item.id==='recovery-season-league-D1').standings;
+  assert.equal(standings.reduce((sum,row)=>sum+row.played,0),2);
+  assert.equal(restoredCareer.get('account-official').totals.matches,1);
+  assert.equal(restoredCareer.get('account-official').totals.goals,1);
+  assert.equal(restoredProgression.get('account-official').processedMatchIds.filter(id=>id===created.id).length,1);
+  assert.ok(restoredProgression.get('account-official').experience>0);
+  assert.deepEqual(new JsonRoomStore(dirs.rooms).readAll(),[]);
+ }finally{rmSync(root,{recursive:true,force:true});}
 });
