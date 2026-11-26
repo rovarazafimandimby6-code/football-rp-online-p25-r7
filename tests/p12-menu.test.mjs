@@ -60,10 +60,10 @@ test('P12.1: la liste des clubs et la pause utilisent le composant d’écusson 
 
 test('P27 UI: accueil modulaire inspiré de DLS et connecté aux données réelles', () => {
   assert.match(main, /p27-dls-home/);
-  for (const label of ['MATCH AMICAL','JOUEURS','COMPÉTITIONS','MERCATO','MON CLUB','RÉSULTATS']) assert.ok(main.includes(label), `module manquant: ${label}`);
+  for (const label of ['MATCH AMICAL','JOUEURS','COMPÉTITIONS','MERCATO','MON ÉQUIPE','CLUB RP','RÉSULTATS']) assert.ok(main.includes(label), `module manquant: ${label}`);
   assert.doesNotMatch(main, /p27-home-tiles/);
   assert.match(main, /data-action="choose-match"/);
-  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato']) assert.match(main,new RegExp(`data-page="${page}"`));
+  for (const page of ['career-hub','player','players','clubs','rp-club','competitions','results','mercato']) assert.match(main,new RegExp(`data-page="${page}"`));
   assert.match(main, /const pendingOffers =/);
   assert.match(main, /const latestMatch = seasonStats\.snapshot\(\)/);
   assert.match(main, /p27-career-progress-fill/);
