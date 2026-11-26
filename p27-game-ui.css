@@ -1538,3 +1538,18 @@
  #main-menu #menu-content .compact-club-card .club-crest,
  #main-menu #menu-content .compact-club-card svg{width:27px!important;height:27px!important}
 }
+
+
+#main-menu #menu-content .club-discovery-toolbar .club-division-tabs{
+  grid-column:1/-1;display:flex;align-items:center;gap:5px;margin:2px 0 0
+}
+#main-menu #menu-content .club-discovery-toolbar .club-library-pagination{
+  grid-column:1/-1;display:flex;align-items:center;justify-content:flex-end;gap:8px
+}
+#main-menu #menu-content .club-library-pagination span{min-width:38px;text-align:center;color:#9eb6ce;font-size:8px;font-weight:850}
+#main-menu #menu-content .club-library-pagination button{min-width:29px;min-height:27px;padding:2px 8px;font-size:15px}
+#main-menu #menu-content .club-library-pagination button:disabled{opacity:.35;cursor:default}
+@media(max-width:700px){
+ #main-menu #menu-content .club-discovery-toolbar .club-division-tabs,
+ #main-menu #menu-content .club-discovery-toolbar .club-library-pagination{grid-column:1/-1}
+}
