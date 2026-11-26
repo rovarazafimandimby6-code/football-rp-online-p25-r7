@@ -394,7 +394,7 @@ export class RoomManager {
     for (const [id, room] of this.rooms) {
       const pendingOfficialResult = room.phase === 'fulltime' && !room.result;
       const roomExpired = now - room.updatedAt > this.roomTtlMs && room.phase !== 'playing' && room.phase !== 'halftime' && !pendingOfficialResult;
-      const allPlayersExpired = !pendingOfficialResult && room.phase !== 'playing' && room.phase !== 'halftime' && room.players.size > 0 && [...room.players.values()].every(p => !p.connected && p.disconnectedAt && now - p.disconnectedAt > this.disconnectGraceMs);
+      const allPlayersExpired = !pendingOfficialResult && room.phase !== 'playing' && room.phase !== 'halftime' && room.players.size > 0 && [...room.players.values()].every(p => !p.connected && Number.isFinite(p.disconnectedAt) && now - p.disconnectedAt > this.disconnectGraceMs);
       if (roomExpired || allPlayersExpired) {
         this.rooms.delete(id); this.lastCheckpointAt.delete(id);
         if (this.roomStore) this.roomStore.delete(id);
