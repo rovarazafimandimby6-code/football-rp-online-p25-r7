@@ -299,3 +299,12 @@ Le tableau Club RP expose maintenant quatre défis calculés à partir des même
 Chaque défi expose sa valeur réelle, sa cible, son pourcentage et son état atteint/non atteint. La période est la semaine UTC en cours (lundi 00:00 à lundi suivant). Les valeurs sont recalculées depuis les matchs de carrière finalisés des membres ; elles ne sont pas saisies par le client et ne sont pas ajoutées à une progression parallèle.
 
 **Périmètre de cette livraison :** affichage et suivi des objectifs uniquement. Aucun XP, niveau, monnaie ou récompense n'est distribué. Les seuils sont une première configuration de défis, à équilibrer après les essais de jeu. Les objectifs n'altèrent ni les effectifs de championnat ni les résultats du moteur de match.
+
+
+### Défis et planification inter-Club RP — première étape
+
+Les responsables (fondateur, président, vice-président ou recruteur) peuvent lancer un défi à un autre Club RP. Les membres responsables du club ciblé peuvent accepter en choisissant une date et une heure, ou refuser. Les demandes sont persistées côté serveur, consultables par les membres concernés et protégées par vérification d'appartenance et de rôle.
+
+La date doit être située entre 30 minutes et 30 jours après l'acceptation. Un seul défi actif est autorisé entre une même paire de clubs afin d'éviter les doublons.
+
+**Limite volontaire :** l'acceptation crée une rencontre planifiée, pas un résultat sportif. Aucun score, victoire, classement ou statistique n'est généré par ce module. La validation du résultat et le classement inter-Club attendent le raccordement à une vraie session de match P27 ; le moteur 3D et les matchs de championnat restent inchangés.
