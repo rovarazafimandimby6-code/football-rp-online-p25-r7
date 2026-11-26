@@ -32,6 +32,11 @@ function countryFlag(value) {
   if (!/^[A-Z]{2}$/.test(code)) return '🏳️';
   return String.fromCodePoint(...[...code].map(letter => 127397 + letter.charCodeAt(0)));
 }
+function countryName(value) {
+  const raw = String(value || '').trim().toUpperCase();
+  const code = COUNTRY_NAME_CODES[raw] || raw;
+  return countryOptions?.find(country => country.code === code)?.name || String(value || code);
+}
 
 const WORLD_COUNTRY_CODES = 'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' ');
 const countryDisplayNames = (() => {
@@ -65,9 +70,9 @@ function loadPlayerOptions() {
     const value = JSON.parse(localStorage.getItem(PLAYER_OPTIONS_STORAGE_KEY) || '{}');
     return {
       nationality: WORLD_COUNTRY_CODES.includes(value.nationality) ? value.nationality : 'MG',
-      position: POSITION_OPTIONS.some(option => option.code === value.position) ? value.position : 'MOC'
+      position: POSITION_OPTIONS.some(option => option.code === value.position) ? value.position : null
     };
-  } catch (_) { return { nationality:'MG', position:'MOC' }; }
+  } catch (_) { return { nationality:'MG', position:null }; }
 }
 let playerOptions = loadPlayerOptions();
 function savePlayerOptions() {
@@ -132,6 +137,7 @@ const clubs = new ClubManager();
 let hasSavedPlayerProfile = false;
 try { hasSavedPlayerProfile = Boolean(globalThis.localStorage?.getItem('football-rp-online.player-profile.v1')); } catch (_) {}
 const profileStore = new PlayerProfileStore();
+if (!playerOptions.position) playerOptions.position = ({ GK:'GB', DEF:'DC', MID:'MC', FWD:'BU' })[profileStore.profile.identity.role] || 'MC';
 let localPlayerProfileStore = null;
 let localPlayerIdentity = null;
 try {
@@ -609,7 +615,7 @@ ${renderGoogleProtectionCard({ compact: true })}
       <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>`<article class="player-library-card" role="button" tabindex="0" aria-label="Ouvrir le profil de ${escapeHTML(player.name)}" data-player-profile="${index}" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
         <div class="player-card-top"><span class="player-card-number">#${player.number}</span><span class="player-card-role">${roleNames[player.role]||player.role}</span><b class="player-card-rating">${player.rating}</b></div>
         <div class="player-card-identity"><span class="player-card-monogram">${escapeHTML(player.name.split(/\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase())}</span><div><h3>${escapeHTML(player.name)}</h3><p>${escapeHTML(player.clubName)}</p></div></div>
-        <div class="player-card-meta"><span class="player-nationality" title="${escapeHTML(player.nationality)}"><b aria-hidden="true">${countryFlag(player.nationality)}</b><span>${escapeHTML(player.nationality)}</span></span><span>${player.age} ans</span><span>Pot. ${player.potential}</span></div>
+        <div class="player-card-meta"><span class="player-nationality" title="${escapeHTML(player.nationality)}"><b aria-hidden="true">${countryFlag(player.nationality)}</b><span>${escapeHTML(countryName(player.nationality))}</span></span><span>${player.age} ans</span><span>Pot. ${player.potential}</span></div>
         <div class="player-card-attributes">${[['pace','VIT'],['shooting','TIR'],['passing','PAS'],['defense','DEF'],['stamina','END'],['control','CTR']].map(([key,label])=>`<span><small>${label}</small><b>${player.attributes?.[key]??player.rating}</b></span>`).join('')}</div>
         <details class="player-card-details"><summary>Profil & archétype</summary><div><b>${escapeHTML(player.archetype)}</b><span>Pied préféré : ${player.preferredFoot==='left'?'Gauche':'Droit'}</span><span>Potentiel : ${player.potential}/99</span><span>Division : ${escapeHTML(player.clubDivision)}</span></div></details>
       </article>`).join('')}</div>
@@ -629,7 +635,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     content.innerHTML = `<button class="text-cta" data-action="back-player-library">← RETOUR À LA BIBLIOTHÈQUE</button>
       <section class="player-career-hero">
         <div class="player-career-avatar"><span>#${player.number}</span><b>${escapeHTML(initials)}</b></div>
-        <div class="player-career-identity"><span class="eyebrow">${escapeHTML(player.clubDivision)} · ${escapeHTML(roleNames[player.role]||player.role)}</span><h2>${escapeHTML(player.name)}</h2><p>${escapeHTML(player.clubName)} · <span class="player-nationality"><b aria-hidden="true">${countryFlag(player.nationality)}</b> ${escapeHTML(nationalityNames[player.nationality]||player.nationality)}</span> · ${player.age} ans</p><div class="player-career-tags"><span>NOTE ${player.rating}</span><span>POTENTIEL ${player.potential}</span><span>PIED ${player.preferredFoot==='left'?'GAUCHE':'DROIT'}</span></div></div>
+        <div class="player-career-identity"><span class="eyebrow">${escapeHTML(player.clubDivision)} · ${escapeHTML(roleNames[player.role]||player.role)}</span><h2>${escapeHTML(player.name)}</h2><p>${escapeHTML(player.clubName)} · <span class="player-nationality"><b aria-hidden="true">${countryFlag(player.nationality)}</b>  ${escapeHTML(countryName(player.nationality))}</span> · ${player.age} ans</p><div class="player-career-tags"><span>NOTE ${player.rating}</span><span>POTENTIEL ${player.potential}</span><span>PIED ${player.preferredFoot==='left'?'GAUCHE':'DROIT'}</span></div></div>
       </section>
       <div class="player-career-columns">
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ SPORTIVE</span><h2>Profil technique</h2></div></div><div class="player-career-attributes">${Object.entries(attributeNames).map(([key,label])=>{const value=Number(player.attributes?.[key]??player.rating);return `<div><span>${label}</span><b>${value}</b><i><em style="width:${Math.max(0,Math.min(99,value))}%"></em></i></div>`;}).join('')}</div><p class="notice">${escapeHTML(player.archetype)} · Les attributs décrivent le joueur dans l'effectif actuel.</p></section>
