@@ -6,6 +6,7 @@ import path from 'node:path';
 import { JsonRoomStore } from '../server/room-store.js';
 import { JsonResultStore } from '../server/result-store.js';
 import { RoomManager } from '../server/room-manager.js';
+import { JsonProgressionStore } from '../server/progression-store.js';
 
 function temporaryDirectory(prefix) { return mkdtempSync(path.join(os.tmpdir(), prefix)); }
 
@@ -268,4 +269,48 @@ test('P27 salons persistés : un salon inactif nettoie aussi une déconnexion ho
   now = 20_001;
   manager.tick(0);
   assert.equal(manager.rooms.has(created.id), false);
+});
+
+test('P27 résultat final : un coup de sifflet non finalisé survit au redémarrage et termine sa sauvegarde', () => {
+  const directory = temporaryDirectory('p27-room-fulltime-recovery-');
+  try {
+    let now = 50_000;
+    const roomDirectory = path.join(directory, 'rooms');
+    const resultDirectory = path.join(directory, 'results');
+    const progressionDirectory = path.join(directory, 'progression');
+    const roomStore = new JsonRoomStore(roomDirectory);
+    const resultStore = new JsonResultStore(resultDirectory);
+    const progressionStore = new JsonProgressionStore(progressionDirectory);
+    const first = new RoomManager({ now: () => now, roomStore, resultStore, progressionStore });
+    const created = first.create({ name: 'Finalisation récupérable' });
+    const joined = first.join(created.id, { displayName: 'Joueur carrière', accountId: 'account-final-recovery' });
+    const room = first.rooms.get(created.id);
+    const player = room.players.get(joined.playerId);
+    player.matchTimePlayedMs = 90_000;
+    player.stats.goals = 1;
+    room.phase = 'fulltime';
+    room.elapsedMs = room.durationMinutes * 60_000;
+    room.score = { blue: 1, red: 0 };
+
+    progressionStore.persist = () => { throw new Error('DISK_FULL'); };
+    assert.equal(first.tryFinalizeResult(room), false);
+    assert.equal(resultStore.get(created.id), null);
+    const checkpoint = roomStore.readAll().find(item => item.id === created.id);
+    assert.equal(checkpoint.phase, 'fulltime');
+    assert.equal(checkpoint.score.blue, 1);
+
+    now += 5_000;
+    const recoveredProgression = new JsonProgressionStore(progressionDirectory);
+    const restarted = new RoomManager({
+      now: () => now,
+      roomStore: new JsonRoomStore(roomDirectory),
+      resultStore: new JsonResultStore(resultDirectory),
+      progressionStore: recoveredProgression,
+    });
+    assert.equal(restarted.rooms.get(created.id).phase, 'fulltime');
+    restarted.tick(0);
+    assert.equal(restarted.getResult(created.id).score.blue, 1);
+    assert.ok(recoveredProgression.get('account-final-recovery').processedMatchIds.includes(created.id));
+    assert.deepEqual(new JsonRoomStore(roomDirectory).readAll(), []);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });
