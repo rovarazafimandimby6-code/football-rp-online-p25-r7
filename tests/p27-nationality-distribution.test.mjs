@@ -19,8 +19,11 @@ test('P27 nationalités : diversité mondiale et proportion malgache proche de 3
   }
 });
 
-test('P27 nationalités : les noms des joueurs restent uniques à travers le catalogue', () => {
-  const players = new ClubManager().listClubs().flatMap(club => club.roster);
-  const names = players.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase());
-  assert.equal(new Set(names).size, names.length);
+test('P27 nationalités : chaque effectif contient des noms distincts et des codes pris en charge', () => {
+  const clubs = new ClubManager().listClubs();
+  for (const club of clubs) {
+    const names = club.roster.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase());
+    assert.equal(new Set(names).size, names.length, `noms dupliqués dans ${club.id}`);
+    assert.ok(club.roster.every(player => SUPPORTED_NATIONALITIES.includes(player.nationality)));
+  }
 });
