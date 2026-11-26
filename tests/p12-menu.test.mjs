@@ -348,3 +348,15 @@ test('P27 créateur joueur : sélection visuelle des postes détaillés et drape
     assert.ok(styles.includes(selector), `missing creator selector: ${selector}`);
   }
 });
+
+test('P27 personnalisation joueur : apparence et pied se règlent par choix visuels, sans listes déroulantes', () => {
+  assert.match(main, /function renderVisualChoices\(title, key, options, current\)/);
+  assert.match(main, /renderVisualChoices\('PIED PRÉFÉRÉ'/);
+  assert.match(main, /renderVisualChoices\('TENUE'/);
+  assert.match(main, /data-player-choice=/);
+  assert.match(main, /data-action="save-player-editor"/);
+  const css = readFileSync(new URL('../p27-game-ui.css', import.meta.url), 'utf8');
+  for (const selector of ['.player-visual-customizer','.player-choice-group','.player-choice','.choice-swatch']) {
+    assert.ok(css.includes(selector), `missing visual customization style: ${selector}`);
+  }
+});
