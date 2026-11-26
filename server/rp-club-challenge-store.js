@@ -25,7 +25,8 @@ export class JsonRpClubChallengeStore {
         && item.challengerClubId !== item.targetClubId
         && typeof item.challengerName === 'string' && typeof item.challengerTag === 'string'
         && typeof item.targetName === 'string' && typeof item.targetTag === 'string'
-        && typeof item.createdByAccountId === 'string'
+        && typeof item.createdByAccountId === 'string' && Array.isArray(item.targetMemberAccountIds)
+        && item.targetMemberAccountIds.every(id => typeof id === 'string')
         && ['pending','accepted','declined','cancelled','completed'].includes(item.status)
         && typeof item.createdAt === 'string'
         && (item.scheduledAt === null || typeof item.scheduledAt === 'string'));
