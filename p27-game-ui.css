@@ -1906,3 +1906,17 @@
 #main-menu .rp-club-contributor>strong{color:#b5d6ee;font-size:8px}
 #main-menu .rp-club-activity-note{display:block;margin-top:7px;color:#7895ae;font-size:7px}
 @media(orientation:portrait){#main-menu .rp-club-contributors{grid-template-columns:1fr}}
+
+/* P27 library portraits use player initials until a licensed-free portrait exists. */
+#main-menu #menu-content .player-card-portrait{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#f3d783;font-weight:1000;letter-spacing:.04em}
+#main-menu #menu-content .player-card-portrait>b{font-size:13px;line-height:1}
+#main-menu #menu-content .player-card-portrait>small{color:#a9bfd6;font-size:6px;font-weight:900;line-height:1}
+#main-menu #menu-content .player-library-card[data-status="free"] .player-card-compact-copy>small:last-of-type{color:#f0cf7a}
+#main-menu #menu-content .player-library-card[data-status="loaned"] .player-card-compact-copy>small:last-of-type{color:#8fc8f5}
+#main-menu #menu-content .player-library-toolbar{grid-template-columns:repeat(auto-fit,minmax(105px,1fr))}
+@media(max-width:760px) and (orientation:landscape){
+ #main-menu #menu-content .player-library-toolbar{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:420px) and (orientation:portrait){
+ #main-menu #menu-content .player-library-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
