@@ -806,3 +806,42 @@ test('P27 rapport de match : finalizeResult inclut notes, homme du match et meil
   assert.equal(result.awards.playerOfMatch.playerId,joined.playerId);
   assert.equal(result.awards.teamStandouts.blue.playerId,joined.playerId);
 });
+
+test('P27 heartbeat : une session active conserve ses commandes de déplacement', () => {
+  let now = 400_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create({ name: 'Heartbeat sans interruption' });
+  const joined = manager.join(room.id, { displayName: 'Joueur en mouvement' });
+  manager.submitInput(room.id, joined.token, { x: 0.6, z: -0.4, sprint: true, sequence: 1 });
+  const player = manager.rooms.get(room.id).players.get(joined.playerId);
+  const inputBefore = { ...player.input };
+  now += 1_000;
+
+  const heartbeat = manager.heartbeat(room.id, joined.token);
+  assert.equal(heartbeat.alive, true);
+  assert.equal(heartbeat.nextSequence, 2);
+  assert.deepEqual(player.input, inputBefore);
+  assert.equal(player.lastSeen, now);
+  assert.equal(player.connected, true);
+  assert.equal(player.aiControlled, false);
+});
+
+test('P27 heartbeat : une session réellement déconnectée récupère le contrôle IA du même avatar', () => {
+  let now = 500_000;
+  const manager = new RoomManager({ now: () => now, disconnectGraceMs: 300_000 });
+  const room = manager.create({ name: 'Heartbeat reprise réseau' });
+  const joined = manager.join(room.id, { displayName: 'Joueur reconnecté' });
+  const player = manager.rooms.get(room.id).players.get(joined.playerId);
+  manager.leave(room.id, joined.token);
+  assert.equal(player.aiControlled, true);
+  now += 2_000;
+
+  const heartbeat = manager.heartbeat(room.id, joined.token);
+  assert.equal(heartbeat.alive, true);
+  assert.equal(heartbeat.nextSequence, 1);
+  assert.equal(player.connected, true);
+  assert.equal(player.aiControlled, false);
+  assert.equal(player.controlMode, 'human');
+  assert.deepEqual(player.input, { x: 0, z: 0, sprint: false });
+  assert.equal(manager.get(room.id).players.filter(candidate => candidate.id === joined.playerId).length, 1);
+});
