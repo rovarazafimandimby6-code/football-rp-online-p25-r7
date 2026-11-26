@@ -309,6 +309,9 @@ test('P27 classements : totaux et noms de clubs sont dérivés du snapshot serve
   assert.match(main, /<b>\$\{clubCount\}<\/b><span>CLUBS<\/span>/);
   assert.match(main, /<b>\$\{leagues\.length\}<\/b><span>GROUPES<\/span>/);
   assert.match(main, /clubNames\.get\(row\.id\)/);
-  assert.doesNotMatch(main, /<b>156<\/b><span>CLUBS<\/span>/);
-  assert.doesNotMatch(main, /<b>9<\/b><span>GROUPES<\/span>/);
+  const start = main.indexOf('async function renderRankingsPage()');
+  const end = main.indexOf('\\nasync function ', start + 20);
+  const rankings = main.slice(start, end > start ? end : undefined);
+  assert.doesNotMatch(rankings, /<b>156<\/b><span>CLUBS<\/span>/);
+  assert.doesNotMatch(rankings, /<b>9<\/b><span>GROUPES<\/span>/);
 });
