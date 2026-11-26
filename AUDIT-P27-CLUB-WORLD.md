@@ -206,3 +206,12 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - **Blocage de récupération identifié :** `OnlineAccountClient.getAccountSnapshot()` appelle `GET /api/account/snapshot`, mais aucune route correspondante n'existe actuellement dans `src/cloudflare/worker.js`. Les tests client simulent cette réponse ; ils ne prouvent donc pas que le Worker la fournit. La restauration complète inter-appareils n'est pas encore opérationnelle de bout en bout.
 - Le Worker possède actuellement des sources cloud distinctes pour le profil, la progression et la carrière. Les sections `seasonStats` et `contract` requises par le plan de récupération ne disposent pas encore d'une source serveur agrégée vérifiée. Il ne faut pas fabriquer un snapshot complet à partir de valeurs locales ou par défaut.
 - Les commits ajoutent la correction et les tests, mais aucun workflow CI n'a été observé pour le dernier commit lors du contrôle. Les tests n'ont pas été exécutés ici ; aucun déploiement Cloudflare ni APK n'est revendiqué.
+
+
+### Détail des sources de données manquantes pour la restauration cloud
+
+- La carrière serveur D1 (`D1PlayerCareerRepository`) expose un historique paginé limité à 100 lignes par lecture. Une récupération intégrale doit parcourir les curseurs jusqu'à épuisement ; une seule lecture ne suffit pas à certifier l'archive complète.
+- Les statistiques de saison (`PlayerSeasonStats`) sont actuellement persistées dans le stockage local du navigateur via `persistent-json`, pas dans une table D1. Les confondre avec les statistiques de carrière D1 serait une corruption sémantique.
+- Le portefeuille/contrat de joueur est géré par les modules de domaine et les données de roster/mercato ; aucune table D1 dédiée au contrat du compte n'a été trouvée dans les migrations actuelles. Le champ `contract` du snapshot ne peut donc pas être reconstitué de façon fiable côté Worker aujourd'hui.
+- La progression D1 est disponible via `D1PlayerProgressionRepository`; le profil D1 via `D1PlayerProfileRepository`; l'identité serveur via `D1PlayerIdentityRepository`; la carrière D1 via `D1PlayerCareerRepository`.
+- Décision de sûreté : ne pas exposer un faux snapshot `schemaVersion: 1` présenté comme complet. Avant d'activer la restauration, ajouter des stockages D1 explicites pour les données de saison et de contrat, puis un agrégateur qui lit les historiques paginés jusqu'au bout et calcule un digest sur une représentation canonique stable.
