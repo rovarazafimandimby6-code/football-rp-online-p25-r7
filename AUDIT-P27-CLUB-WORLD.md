@@ -150,3 +150,13 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Les checkpoints privés conservent les jetons afin de restaurer la session du même joueur après un redémarrage. Le stockage est écrit avec les permissions de fichier `0600`.
 - Les nouveaux tests couvrent l'absence de secrets dans les vues publiques, le refus d'un jeton invalide sur les opérations de contrôle et la reconnexion valide du même avatar sans doublon.
 - Ce commit ajoute des tests de sécurité ; il ne modifie ni le moteur de match, ni le HUD, ni les commandes tactiles. L'exécution de la suite reste à confirmer par CI.
+
+
+## Audit HTTP et correction du heartbeat — 26/11/2026
+
+- Le parcours HTTP des salons est désormais couvert : création, entrée, état public, commande avec jeton valide/invalide, sortie puis reconnexion.
+- Les réponses contenant le jeton de contrôle sont vérifiées avec `Cache-Control: no-store`; l'état public ne doit pas révéler les jetons ni les identifiants de compte ou données internes de commande.
+- Défaut corrigé dans `RoomManager.heartbeat` : auparavant, chaque heartbeat appelait `reconnect`, ce qui remettait les commandes de déplacement à zéro même pour un joueur déjà connecté.
+- Désormais, une session humaine active actualise sa présence sans modifier son input. Une session réellement passée sous contrôle IA emprunte toujours le chemin de reconnexion et reprend le même avatar.
+- Tests ajoutés pour les deux comportements. Aucun changement au moteur de simulation, au HUD ou aux commandes tactiles.
+- La suite de tests doit encore être exécutée ; aucun résultat CI n'est disponible au moment de cet audit.
