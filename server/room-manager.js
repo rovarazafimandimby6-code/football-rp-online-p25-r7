@@ -527,7 +527,13 @@ export class RoomManager {
       outcome: blue === red ? 'draw' : blue > red ? 'blue' : 'red',
       durationMs: room.elapsedMs, durationMinutes: room.durationMinutes,
       awards: Object.freeze(performance.awards),
-      finalizedAt: this.now(), players: Object.freeze(performance.players.map(player => Object.freeze({ ...player, stats: Object.freeze({ ...player.stats }) }))),
+      finalizedAt: this.now(),
+      ...(room.rpClubChallenge ? { rpClubChallenge:{
+        challengeId:room.rpClubChallenge.challengeId,
+        challengerClubId:room.rpClubChallenge.challengerClubId,
+        targetClubId:room.rpClubChallenge.targetClubId
+      } } : {}),
+      players: Object.freeze(performance.players.map(player => Object.freeze({ ...player, stats: Object.freeze({ ...player.stats }) }))),
       teamStats: Object.freeze({
         blue: Object.freeze({ passes: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.passes,0), completedPasses: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.completedPasses,0), shots: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.interceptions,0) }),
         red: Object.freeze({ passes: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.passes,0), completedPasses: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.completedPasses,0), shots: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.interceptions,0) }),
