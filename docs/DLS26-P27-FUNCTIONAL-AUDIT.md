@@ -279,3 +279,10 @@ Ce tableau constitue la première base de futurs objectifs collectifs. Il ne dis
 L'écran Bibliothèque ne se limite plus à un aplatissement des effectifs actifs. Il consomme désormais le répertoire central `listP27Players` et récupère les joueurs par pages pour ne pas tronquer le catalogue à la première centaine. Les statuts actifs, libres et prêtés sont affichés et filtrables ; l'origine distingue les joueurs RP des joueurs du monde P27.
 
 Les cartes restent horizontales et compactes, en quatre colonnes en paysage. Un appui développe la carte pour afficher les attributs, et l'accès à la fiche complète conserve le détail du parcours. Les joueurs transférés ne sont pas reclassés comme libres à partir d'une ancienne archive. Les fiches de joueurs libres indiquent leur dernier club connu au lieu d'inventer un club actuel.
+
+
+### Studio 3D du footballeur — enrichissement DLS19
+
+Le studio P27 existant est conservé : aperçu 3D manipulable, tenue, teint, coiffure, couleur des cheveux, morphologie, identité et poste. Le modèle de profil prend maintenant aussi en charge les formes de visage (ovale, rond, anguleux, allongé, carré) et les formes d'yeux (amande, ronds, tombants), déjà interprétées par le rendu 3D. Le pied préféré accepte droit, gauche ou ambidextre.
+
+Ces choix sont persistés dans le profil local via la validation centralisée. Les anciennes sauvegardes restent compatibles : les nouveaux champs reçoivent des valeurs par défaut sans réinitialiser les autres personnalisations. Il s'agit d'un enrichissement du studio existant, pas d'un second éditeur.
