@@ -536,7 +536,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
     if (req.method === 'GET' && url.pathname === '/api/rp-clubs/me') {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
-      return json(res, 200, { membership:rpClubStore.getForAccount(account.id) });
+      return json(res, 200, { membership:rpClubStore.getForAccount(account.id), invitations:rpClubStore.getInvitationsForAccount(account.id) });
     }
     const rpClubPublicMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})$/i);
     if (req.method === 'GET' && rpClubPublicMatch) {
@@ -574,6 +574,41 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const body = await readBody(req);
       const result = rpClubStore.decideJoinRequest(rpClubDecisionMatch[1], rpClubDecisionMatch[2], { actorAccountId:account.id, decision:body.decision });
       const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'JOIN_REQUEST_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    const rpClubInviteMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/invitations$/i);
+    if (req.method === 'POST' && rpClubInviteMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const identity = playerIdentityStore.getByPlayerId(body.playerId);
+      if (!identity) return json(res, 404, { error:'PLAYER_IDENTITY_NOT_FOUND' });
+      const result = rpClubStore.invite(rpClubInviteMatch[1], {
+        actorAccountId:account.id, accountId:identity.accountId, playerId:identity.playerId,
+        displayName:playerProfileStore.get(identity.accountId)?.identity?.displayName || identity.playerId
+      });
+      const status = result.ok ? 201 : result.reason === 'RP_CLUB_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403
+        : result.reason === 'PLAYER_IDENTITY_REQUIRED' ? 400 : 409;
+      return json(res, status, result);
+    }
+    const rpClubInviteDecisionMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/invitations\\/([a-f0-9-]{36})\\/decision$/i);
+    if (req.method === 'POST' && rpClubInviteDecisionMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const result = rpClubStore.respondInvitation(rpClubInviteDecisionMatch[1], rpClubInviteDecisionMatch[2], { accountId:account.id, decision:body.decision });
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_INVITATION_NOT_FOUND' ? 404 : 409;
+      return json(res, status, result);
+    }
+    const rpClubRoleMatch = url.pathname.match(/^\\/api\\/rp-clubs\\/([a-f0-9-]{36})\\/members\\/(FRP-\\d{6})\\/role$/i);
+    if (req.method === 'POST' && rpClubRoleMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const result = rpClubStore.assignRole(rpClubRoleMatch[1], rpClubRoleMatch[2], { actorAccountId:account.id, role:body.role });
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_MEMBER_NOT_FOUND' ? 404
         : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
       return json(res, status, result);
     }
