@@ -177,3 +177,11 @@ Cet audit certifie le périmètre données/serveur décrit ci-dessus. Il ne cert
 - Un marqueur empêche de réécrire le même checkpoint à chaque tick pendant une panne de stockage.
 - Un test de récupération simule une panne pendant la récompense, redémarre les stores et vérifie l'archivage du score et la progression.
 - Aucun changement au moteur de simulation, au HUD ou aux commandes tactiles. Résultats CI et APK non vérifiés.
+
+## Cohérence résultat officiel / classement / carrière / récompenses — 26/11/2026
+
+- Ajout d'un test d'intégration qui interrompt volontairement la finalisation après l'écriture du classement et de la carrière, au moment de la sauvegarde de la récompense.
+- Le test redémarre ensuite les quatre stores et le gestionnaire de salons, puis vérifie la reprise du même résultat officiel.
+- Il contrôle qu'une seule rencontre est comptabilisée dans le classement, qu'une seule ligne de carrière et ses statistiques sont conservées, qu'une seule récompense est créditée et que le checkpoint du salon est supprimé après archivage.
+- Cette couverture s'appuie sur les identifiants de match déjà utilisés pour rendre les écritures carrière et progression idempotentes, ainsi que sur l'identifiant de salon du résultat de compétition.
+- Le test a été ajouté mais n'a pas encore été exécuté par une CI disponible. Aucun APK généré.
