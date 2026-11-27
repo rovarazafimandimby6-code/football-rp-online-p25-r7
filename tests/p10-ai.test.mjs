@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, getDefensiveBlockShift, predictDefensiveThreatPosition, getSpacedDefensiveTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
+import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, getDefensiveBlockShift, predictDefensiveThreatPosition, getDefensiveRecoveryTarget, getSpacedDefensiveTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
 
 const player = (id, team, x, z, specialty = 'balanced') => ({
   id, team, role: 'FWD', specialty,
@@ -283,6 +283,30 @@ test('P27: la défense anticipe une course adverse vers son but', () => {
     'l’anticipation fonctionne aussi lorsque l’équipe défend vers +X');
   assert.ok(oppositePredicted.z < oppositeRunner.pos.z,
     'la dérive latérale est conservée dans l’autre sens d’attaque');
+});
+
+test('P27: après une passe en profondeur, la défense récupère derrière le receveur sans quitter son couloir', () => {
+  const defender = player('recovery-defender', 'blue', -10, -6);
+  defender.homePos = { x: -10, z: -6 };
+  const runner = player('through-runner', 'red', -5, -4, 'runner');
+  runner.vel = { x: -8, z: 3 };
+  const recovery = getDefensiveRecoveryTarget(defender, runner, 1);
+  assert.ok(recovery.x < -12, 'le défenseur doit se replacer côté but du receveur');
+  assert.ok(recovery.z < 0 && Math.abs(recovery.z - defender.homePos.z) < 3.8,
+    'le défenseur protège la profondeur tout en gardant son couloir');
+
+  const notBroken = player('not-broken', 'red', 8, -4, 'runner');
+  notBroken.vel = { x: -2, z: 0 };
+  assert.deepEqual(getDefensiveRecoveryTarget(defender, notBroken, 1), defender.homePos,
+    'sans ligne franchie, le défenseur conserve son poste');
+
+  const oppositeDefender = player('opposite-defender', 'red', 10, 6);
+  oppositeDefender.homePos = { x: 10, z: 6 };
+  const oppositeRunner = player('opposite-through-runner', 'blue', 5, 4, 'runner');
+  oppositeRunner.vel = { x: 8, z: -3 };
+  const oppositeRecovery = getDefensiveRecoveryTarget(oppositeDefender, oppositeRunner, -1);
+  assert.ok(oppositeRecovery.x > 12,
+    'le repli côté but fonctionne également lorsque le sens de défense est inversé');
 });
 
 test('P27: le bloc se place plus tôt côté but face à un appel en profondeur', () => {
