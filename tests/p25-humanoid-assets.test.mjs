@@ -127,3 +127,15 @@ test('P25 R7 : la course rapide sélectionne le vrai clip Sprint_Loop du GLB', a
   assert.equal(resolvePlayerAnimationClip(names, 'run', 9), 'Sprint_Loop');
   assert.equal(resolvePlayerAnimationClip(names, 'run', 6), 'Jog_Fwd_Loop');
 });
+
+
+test('P27 humanoïde : la libération d’un joueur ne détruit pas les géométries glTF partagées', async () => {
+  const loader = await readFile(path.join(root, 'src/player-models.js'), 'utf8');
+  assert.match(loader, /userData\.p27OwnedGeometry = true/);
+  assert.match(loader, /const ownedGeometries = new Set\(\)/);
+  assert.match(loader, /if \(node\.userData\?\.p27OwnedGeometry && node\.geometry\)/);
+  assert.match(loader, /root\.remove\(model\)/);
+  assert.match(loader, /mixer\.uncacheRoot\(model\)/);
+  assert.match(loader, /for \(const material of materials\) material\.dispose\(\)/);
+  assert.match(loader, /for \(const geometry of ownedGeometries\) geometry\.dispose\(\)/);
+});
