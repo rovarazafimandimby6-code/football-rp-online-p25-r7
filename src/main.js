@@ -16,7 +16,7 @@ import { PlayerSyncOutbox } from './player-sync-outbox.js';
 import { ProfileSyncCoordinator } from './profile-sync-coordinator.js';
 import { createAccountRecoveryAdapters, hasAccountRecoveryData } from './account-recovery-adapters.js';
 import { restoreAccountSnapshot } from './account-recovery.js';
-import { mountPlayerShop } from './player-shop-ui.js';
+import { mountPlayerShop, syncEquippedCosmetics } from './player-shop-ui.js';
 import { mountClubShop } from './club-shop-ui.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
@@ -142,6 +142,14 @@ const queueAndSyncCurrentProfile = async () => {
   profileSyncCoordinator.enqueueCurrentProfile();
   return profileSyncCoordinator.flush();
 };
+async function syncPlayerShopAppearanceFromServer() {
+  if (!accountClient.hasSession) return false;
+  try {
+    const snapshot = await accountClient.getShopSnapshot('player');
+    syncEquippedCosmetics(snapshot.inventory, snapshot.catalog);
+    return true;
+  } catch (_) { return false; }
+}
 if (!P27_OFFLINE_TEST) {
 void accountClient.resumeCookieSession().then(async () => {
   if (!localPlayerIdentity && localPlayerProfileStore && /^FRP-[0-9]{6}$/.test(accountClient.account?.playerId || '')) {
@@ -152,6 +160,7 @@ void accountClient.resumeCookieSession().then(async () => {
       // Do not overwrite or fabricate a local identity if safe adoption is unavailable.
     }
   }
+  await syncPlayerShopAppearanceFromServer();
   void profileSyncCoordinator.flush();
   const button = document.querySelector('[data-action="account-recovery-preview"]');
   if (button) button.disabled = false;
@@ -751,11 +760,15 @@ function renderPage(page = 'home') {
   } else if (page === 'player') {
     const p = profileStore.profile;
     const a = p.progression.attributes;
+    let shopAppearance = {};
+    try { shopAppearance = JSON.parse(localStorage.getItem('fpro.player-shop-equipped.v1') || '{}') || {}; } catch {}
+    const profileFrame = ['profile-frame-standard','profile-frame-rare','profile-frame-premium'].includes(shopAppearance['profile-frames']) ? shopAppearance['profile-frames'] : '';
+    const profileBackground = ['profile-background-standard','profile-background-rare','profile-background-premium'].includes(shopAppearance['profile-backgrounds']) ? shopAppearance['profile-backgrounds'] : '';
     const seasonSnapshot = seasonStats.snapshot();
     const season = seasonSnapshot.totals;
     const recent = seasonSnapshot.matches.slice(-8).reverse();
     title.textContent = 'MON JOUEUR'; subtitle.textContent = 'PROFIL · APPARENCE · PROGRESSION';
-    content.innerHTML = `<div class="profile-layout"><div class="player-card"><div id="avatar-preview" class="avatar-preview-stage" role="img" aria-label="Aperçu 3D de votre footballeur personnalisé"><span>${escapeHTML(p.identity.number)}</span></div><span class="eyebrow">JOUEUR · NIVEAU ${p.progression.level}</span><h2>${escapeHTML(p.identity.displayName)}</h2><p>${countryFlag(playerOptions.nationality)} ${escapeHTML(countryOptions.find(item => item.code === playerOptions.nationality)?.name || playerOptions.nationality)} · ${escapeHTML(playerOptions.position)} · Pied ${p.identity.preferredFoot === 'left' ? 'gauche' : 'droit'}</p><div class="profile-meta"><span>${p.progression.coins} <small>CRÉDITS</small></span><span>${p.progression.trainingPoints} <small>POINTS D'ENTRAÎNEMENT</small></span></div></div><div class="attribute-list">${Object.entries(a).map(([key,val])=>`<div><span>${({pace:'Vitesse',shooting:'Finition',passing:'Passe',defense:'Défense',stamina:'Endurance',control:'Contrôle'})[key]}</span><b>${val}</b><i><em style="width:${val}%"></em></i></div>`).join('')}</div></div>
+    content.innerHTML = `<div class="profile-layout"><div class="player-card p27-shop-profile-card ${profileBackground}"><div id="avatar-preview" class="avatar-preview-stage ${profileFrame}" role="img" aria-label="Aperçu 3D de votre footballeur personnalisé"><span>${escapeHTML(p.identity.number)}</span></div><span class="eyebrow">JOUEUR · NIVEAU ${p.progression.level}</span><h2>${escapeHTML(p.identity.displayName)}</h2><p>${countryFlag(playerOptions.nationality)} ${escapeHTML(countryOptions.find(item => item.code === playerOptions.nationality)?.name || playerOptions.nationality)} · ${escapeHTML(playerOptions.position)} · Pied ${p.identity.preferredFoot === 'left' ? 'gauche' : 'droit'}</p><div class="profile-meta"><span>${p.progression.coins} <small>CRÉDITS</small></span><span>${p.progression.trainingPoints} <small>POINTS D'ENTRAÎNEMENT</small></span></div></div><div class="attribute-list">${Object.entries(a).map(([key,val])=>`<div><span>${({pace:'Vitesse',shooting:'Finition',passing:'Passe',defense:'Défense',stamina:'Endurance',control:'Contrôle'})[key]}</span><b>${val}</b><i><em style="width:${val}%"></em></i></div>`).join('')}</div></div>
 ${renderGoogleProtectionCard({ compact: true })}
       <section class="competition-panel player-stats-panel"><div class="panel-heading"><div><span class="eyebrow">SAISON EN COURS · SAUVEGARDÉE SUR CET APPAREIL</span><h2>Statistiques personnelles</h2></div></div><div class="quick-grid"><div class="quick-card"><b>${season.matches}</b><small>Matchs</small></div><div class="quick-card"><b>${Math.floor(season.minutesPlayedMs/60000)}</b><small>Minutes</small></div><div class="quick-card"><b>${season.goals}</b><small>Buts</small></div><div class="quick-card"><b>${season.assists}</b><small>Passes décisives</small></div><div class="quick-card"><b>${season.passes ? Math.round(season.completedPasses/season.passes*100) : 0}%</b><small>Précision passes</small></div><div class="quick-card"><b>${season.playerOfMatch}</b><small>Homme du match</small></div><div class="quick-card"><b>${season.tackles}</b><small>Tacles</small></div><div class="quick-card"><b>${season.interceptions}</b><small>Interceptions</small></div></div><div class="career-form"><div class="panel-heading"><div><span class="eyebrow">DYNAMIQUE RÉCENTE</span><h3>Forme · 5 derniers matchs</h3></div><b>${seasonSnapshot.averageRating === null ? '—' : seasonSnapshot.averageRating.toFixed(1)+'/10'} <small>MOYENNE</small></b></div><div class="form-strip">${seasonSnapshot.currentForm.length ? seasonSnapshot.currentForm.map(m=>`<span class="form-chip ${m.result}" title="${new Date(m.date).toLocaleDateString('fr-FR')} · ${m.rating.toFixed(1)}/10">${m.result==='win'?'V':m.result==='draw'?'N':'D'}<small>${m.rating.toFixed(1)}</small></span>`).join('') : '<span class="notice">La forme apparaîtra après vos premiers matchs.</span>'}</div></div>${recent.length ? `<div class="history-list">${recent.map(m=>`<div><b>${m.rating.toFixed(1)} / 10 ${m.playerOfMatch?'★':''}</b><span>${m.result==='win'?'Victoire':m.result==='draw'?'Nul':'Défaite'} · ${m.goals} but(s) · ${m.assists} passe(s) décisive(s)${m.opponent?' · '+escapeHTML(m.opponent):''}</span><small>${Math.floor(m.minutesPlayedMs/60000)} min · ${new Date(m.date).toLocaleDateString('fr-FR')}</small></div>`).join('')}</div>` : '<p class="notice">Aucun match enregistré pour le moment.</p>'}<p class="notice">Historique et statistiques enregistrés sur cet appareil. Les notes en ligne proviennent du rapport autoritaire du serveur.</p></section>
       <section class="profile-editor" id="profile-editor"><h3>Personnaliser mon joueur</h3><div class="editor-grid"><label>Nom affiché<input name="displayName" maxlength="20" value="${escapeHTML(p.identity.displayName)}" required></label><label>Numéro<input name="number" type="number" min="1" max="99" value="${p.identity.number}" required></label></div>${renderPositionPicker()}${renderCountryPicker()}<div class="player-visual-customizer">${renderVisualChoices('PIED PRÉFÉRÉ','preferredFoot',[{value:'right',label:'Droit'},{value:'left',label:'Gauche'},{value:'both',label:'Ambidextre'}],p.identity.preferredFoot)}${renderVisualChoices('TENUE','kit',[{value:'emerald',label:'Émeraude',swatch:'#16834a'},{value:'crimson',label:'Rouge',swatch:'#dc3a32'},{value:'gold',label:'Or',swatch:'#d7a928'},{value:'violet',label:'Violet',swatch:'#8054c7'},{value:'monochrome',label:'Noir & blanc',swatch:'#d5dbe3'}],p.appearance.kit)}${renderVisualChoices('TEINT','skinTone',[{value:'light',label:'Clair',swatch:'#e9c6a5'},{value:'medium',label:'Moyen',swatch:'#bd8a65'},{value:'dark',label:'Foncé',swatch:'#70452f'}],p.appearance.skinTone)}${renderVisualChoices('COIFFURE','hairStyle',[{value:'short',label:'Courte'},{value:'curly',label:'Bouclée'},{value:'afro',label:'Afro'},{value:'fade',label:'Dégradé'},{value:'shaved',label:'Rasée'}],p.appearance.hairStyle)}${renderVisualChoices('MORPHOLOGIE','bodyBuild',[{value:'lean',label:'Fine'},{value:'athletic',label:'Athlétique'},{value:'strong',label:'Puissante'}],p.appearance.bodyBuild)}${renderVisualChoices('CHEVEUX','hairColor',[{value:'dark',label:'Noir',swatch:'#171717'},{value:'brown',label:'Brun',swatch:'#68452f'},{value:'blond',label:'Blond',swatch:'#d6b76c'}],p.appearance.hairColor)}${renderVisualChoices('VISAGE','faceShape',[{value:'oval',label:'Ovale'},{value:'round',label:'Rond'},{value:'angular',label:'Anguleux'},{value:'long',label:'Allongé'},{value:'square',label:'Carré'}],p.appearance.faceShape)}${renderVisualChoices('REGARD','eyeShape',[{value:'almond',label:'En amande'},{value:'round',label:'Rond'},{value:'hooded',label:'Tombant'}],p.appearance.eyeShape)}}</div><button class="primary-cta" type="button" data-action="save-player-editor">ENREGISTRER MON JOUEUR</button><p class="notice" id="profile-save-status">Personnalisation enregistrée localement sur cet appareil.</p></section>
@@ -1353,7 +1366,10 @@ async function submitAccountForm(action) {
       return;
     }
     else if (action === 'logout') await accountClient.logout();
-    if (['login', 'register', 'refresh'].includes(action)) await profileSyncCoordinator.flush();
+    if (['login', 'register', 'refresh'].includes(action)) {
+      await syncPlayerShopAppearanceFromServer();
+      await profileSyncCoordinator.flush();
+    }
     renderPage('account');
   } catch (error) {
     if (status) status.textContent = `Opération impossible : ${String(error?.message || error).slice(0, 100)}`;
