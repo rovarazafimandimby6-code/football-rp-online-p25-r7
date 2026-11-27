@@ -102,7 +102,7 @@ const clubWorld = new P27ClubWorldService({
 const resultStore = new JsonResultStore(resultDirectory);
 const roomDirectory = process.env.ROOMS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rooms');
 const roomStore = new JsonRoomStore(roomDirectory);
-const manager = new RoomManager({ resultStore, roomStore, careerStore, careerSyncQueue, progressionStore, competitionStore });
+const manager = new RoomManager({ resultStore, roomStore, careerStore, careerSyncQueue, progressionStore, competitionStore, resolveClubAppearance:clubId => shopService.publicAppearance(clubId) });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
 const rpClubDirectory = process.env.RP_CLUBS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rp-clubs');
