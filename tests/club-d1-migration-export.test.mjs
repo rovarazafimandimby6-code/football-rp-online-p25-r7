@@ -122,3 +122,20 @@ test('migration exporter rejects duplicate transfer-fee checkpoint IDs',async t=
   const report=JSON.parse(result.stdout);
   assert.ok(report.issues.some(item=>item.code==='duplicate-transfer-checkpoint'));
 });
+
+
+test('migration exporter accepts and reconciles club shop purchase and resale ledger categories',async t=>{
+  const root=await fixture(t);
+  const file=path.join(root,'finances/club-finance.json');
+  const finance=JSON.parse(await readFile(file,'utf8'));
+  finance.accounts[0].entries.push(
+    {id:'shop-buy-1',category:'shop-purchase',amount:25,direction:'expense',description:'Club cosmetic purchase',createdAt:1100},
+    {id:'shop-resale-1',category:'shop-resale',amount:25,direction:'income',description:'Eligible club cosmetic resale',createdAt:1200}
+  );
+  await writeFile(file,JSON.stringify(finance));
+  const result=spawnSync(process.execPath,[script,'--data-root',root,'--expected-clubs','1'],{encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr+'\\n'+result.stdout);
+  const report=JSON.parse(result.stdout);
+  assert.equal(report.ledgerEntries,3);
+  assert.equal(report.ok,true);
+});
