@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ClubManager } from '../src/club-manager.js';
 import { CareerManager } from '../src/career-manager.js';
+import { syncCareerPlayerRoster } from '../src/career-roster-sync.js';
 
 test('clubs: seuls les clubs ouverts peuvent être repris', () => {
   const clubs = new ClubManager();
@@ -696,4 +697,28 @@ test('P27 mercato : la fin ou la résiliation du contrat annule et historise les
   career.terminateContract('2041-01-01T12:00:00Z');
   assert.equal(career.offers.get(offer.offer.id).status,'cancelled');
   assert.ok(career.history.some(item=>item.type==='offer-cancelled'&&item.reason==='contract-terminated'));
+});
+
+test('carrière : le club du contrat actif reste la référence si le clubId historique est incohérent', async () => {
+  const { syncCareerPlayerRoster } = await import('../src/career-roster-sync.js');
+  const clubs = new ClubManager([
+    { id: 'contract-club', name: 'Club du contrat', capacity: 12 },
+    { id: 'stale-club', name: 'Ancien identifiant', capacity: 12 }
+  ], null, 'career-contract-source-of-truth');
+  const career = new CareerManager();
+  const now = new Date().toISOString();
+  assert.equal(career.signContract({ clubId: 'contract-club', salary: 100, durationDays: 365, signedAt: now }).ok, true);
+  assert.equal(clubs.addPlayer('contract-club', { id: 'career-player', name: 'Joueur carrière', playerType: 'human' }).ok, true);
+  career.clubId = 'stale-club';
+  const profile = {
+    identity: { displayName: 'Joueur carrière', role: 'MID' },
+    progression: { attributes: { pace: 50, shooting: 50, passing: 50, defense: 50, stamina: 50, control: 50 }, level: 1 },
+    appearance: {}
+  };
+  const synced = syncCareerPlayerRoster({ clubs, career, profile });
+  assert.equal(synced.ok, true);
+  assert.equal(synced.clubId, 'contract-club');
+  assert.equal(clubs.getClub('contract-club').roster.some(player => player.id === 'career-player'), true);
+  assert.equal(clubs.getClub('stale-club').roster.some(player => player.id === 'career-player'), false);
+  assert.equal(synced.player.contract.clubId, 'contract-club');
 });
