@@ -82,7 +82,7 @@ test('P27 boutique club : le maillot domicile équipé conserve la palette offic
     {itemId:'club-kit-away',status:'owned',equipped:false}
   ],'home','MID');
   assert.deepEqual(kit.kitColors,{primary:'#123456',secondary:'#102030',accent:'#eeeeee'});
-  assert.equal(kit.kitDesign,'vertical');
+  assert.equal(kit.kitDesign,'sash');
   assert.equal(kit.kitVariant,'home');
 });
 
@@ -95,15 +95,15 @@ test('P27 boutique club : les maillots extérieur, troisième et gardien changen
   ];
   const away = getP27ClubShopKit(club,inventory,'away','MID');
   assert.deepEqual(away.kitColors,{primary:'#eeeeee',secondary:'#123456',accent:'#102030'});
-  assert.equal(away.kitDesign,'diagonal');
+  assert.equal(away.kitDesign,'hoops');
   assert.equal(away.kitVariant,'away');
   const third = getP27ClubShopKit(club,inventory,'third','MID');
   assert.deepEqual(third.kitColors,{primary:'#102030',secondary:'#eeeeee',accent:'#123456'});
-  assert.equal(third.kitDesign,'hoops');
+  assert.equal(third.kitDesign,'wave');
   assert.equal(third.kitVariant,'third');
   const goalkeeper = getP27ClubShopKit(club,inventory,'home','GK');
   assert.deepEqual(goalkeeper.kitColors,{primary:'#eeeeee',secondary:'#123456',accent:'#102030'});
-  assert.equal(goalkeeper.kitDesign,'central');
+  assert.equal(goalkeeper.kitDesign,'pinstripes');
   assert.equal(goalkeeper.kitVariant,'goalkeeper');
 });
 
