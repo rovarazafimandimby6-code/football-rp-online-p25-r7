@@ -138,7 +138,7 @@ for (const t of transferRows) {
   const valid = t && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 &&
     byId.has(t.fromClubId) && byId.has(t.toClubId) && t.fromClubId!==t.toClubId &&
     MONEY(t.fee) && t.fee>0 && Number.isSafeInteger(t.createdAt) && t.createdAt>=0 &&
-    typeof t.debitPosted==='boolean' && typeof t.creditPosted==='boolean';
+    typeof t.debitPosted==='boolean' && typeof t.creditPosted==='boolean' &&\n    (t.status===undefined || (t.status==='completed' && t.debitPosted && t.creditPosted) ||\n      (t.status==='pending' && !(t.debitPosted && t.creditPosted)));
   if (!valid) issue('invalid-transfer-checkpoint', { transferId:t?.id || null });
   if (typeof t?.id==='string') {
     if (transferIds.has(t.id)) issue('duplicate-transfer-checkpoint', { transferId:t.id });
