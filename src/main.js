@@ -18,6 +18,7 @@ import { createAccountRecoveryAdapters, hasAccountRecoveryData } from './account
 import { restoreAccountSnapshot } from './account-recovery.js';
 import { mountPlayerShop, syncEquippedCosmetics } from './player-shop-ui.js';
 import { mountClubShop } from './club-shop-ui.js';
+import { getP27ClubShopKit } from './p27-club-kit.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
 
@@ -1082,9 +1083,23 @@ async function startMatch(online = null) {
     const onlineTeams = online?.joinResult?.state?.teams || null;
     const homeClub = onlineTeams?.blue?.id ? clubs.getClub(onlineTeams.blue.id) : clubs.getClub(selectedMatchup.home);
     const awayClub = onlineTeams?.red?.id ? clubs.getClub(onlineTeams.red.id) : clubs.getClub(selectedMatchup.away);
-    const kitPalette = (club) => club?.colors?.length >= 3
-      ? { primary: club.colors[0], secondary: club.colors[1], accent: club.colors[2] }
-      : null;
+    const loadClubKit = async (club, kitType) => {
+      if (!club) return null;
+      let inventory = [];
+      if (accountClient.hasSession) {
+        try {
+          const snapshot = await accountClient.getShopSnapshot('club', club.id);
+          inventory = snapshot.inventory;
+        } catch (_) {
+          // Les articles privés d'un autre club ne sont jamais supposés accessibles.
+        }
+      }
+      return getP27ClubShopKit(club, inventory, kitType, 'MID');
+    };
+    const [homeKitAppearance, awayKitAppearance] = await Promise.all([
+      loadClubKit(homeClub, 'home'),
+      loadClubKit(awayClub, 'away')
+    ]);
     game = new Game(container, {
       careerPlayerId: 'career-player',
       playerRole: profileStore.profile.identity.role,
@@ -1097,8 +1112,10 @@ async function startMatch(online = null) {
       preferredFoot: profileStore.profile.identity.preferredFoot,
       homeRoster: homeClub?.roster,
       awayRoster: awayClub?.roster,
-      homeKitColors: kitPalette(homeClub),
-      awayKitColors: kitPalette(awayClub),
+      homeKitColors: homeKitAppearance?.kitColors || null,
+      awayKitColors: awayKitAppearance?.kitColors || null,
+      homeKitAppearance,
+      awayKitAppearance,
       cameraMode: preferences.cameraMode,
       cameraZoom: preferences.cameraZoom,
       onCameraMode: (mode) => { preferences.cameraMode = mode; try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {} },
