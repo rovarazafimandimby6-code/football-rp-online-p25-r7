@@ -190,7 +190,7 @@ export class ClubFinanceStore {
       }
     }
     if(!due.length)return {ok:true,paid:0,account:this.getAccount(id)};
-    let remaining=this.balance(id),entries=[];
+    let remaining=this.balance(id),entries=[],amount=0;
     const paidByLoan=new Map();
     const existing=new Map(account.entries.map(entry=>[entry.id,entry]));
     for(const item of due) {
@@ -206,12 +206,14 @@ export class ClubFinanceStore {
           return {ok:false,reason:'transaction-id-conflict'};
         }
         paidByLoan.set(item.loanId,(paidByLoan.get(item.loanId)||0)+1);
+        amount+=item.amount;
         continue;
       }
       if(remaining<item.amount)break;
       remaining-=item.amount;
       entries.push(candidate);
       paidByLoan.set(item.loanId,(paidByLoan.get(item.loanId)||0)+1);
+      amount+=item.amount;
     }
     if(!paidByLoan.size)return {ok:false,reason:'insufficient-funds',paid:0,unpaid:due.length,amount:0,account:this.getAccount(id)};
     account.entries.push(...entries);
@@ -224,10 +226,6 @@ export class ClubFinanceStore {
       for(const loan of account.loans){const count=paidByLoan.get(loan.id)||0;if(count){loan.paidInstallments-=count;loan.status=loan.paidInstallments>=loan.durationWeeks?'repaid':'active';}}
       return {ok:false,reason:'persistence-failed'};
     }
-    const amount=due.filter(item=>paidByLoan.has(item.loanId)).reduce((sum,item)=>{
-      const count=paidByLoan.get(item.loanId)||0;
-      return sum + (count>0 ? item.amount : 0);
-    },0);
     const paid=[...paidByLoan.values()].reduce((sum,count)=>sum+count,0);
     const unpaid=due.length-paid;
     return {ok:unpaid===0,reason:unpaid?'insufficient-funds':null,paid,unpaid,amount,account:this.getAccount(id)};
