@@ -315,53 +315,82 @@ export class OnlineAccountClient {
     return this.request('/api/progression/me', { method: 'POST', auth: true, body: { action: 'practice', attribute, amount } });
   }
 
-  async getPlayerShopCatalog() {
+  async getShopSnapshot(shop = 'player', clubId = null) {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    const result = await this.request('/api/shop/player/catalog', { auth: true });
-    if (!Array.isArray(result?.catalog) || !result.catalog.every(item =>
-      item && typeof item.id === 'string' && item.shop === 'player'
-      && Number.isSafeInteger(item.price) && item.price > 0
-      && Number.isSafeInteger(item.basePrice) && item.basePrice > 0
-      && Number.isInteger(item.discountPercent) && item.discountPercent >= 0 && item.discountPercent <= 50
-      && ['standard','rare','premium'].includes(item.rarity)
-      && item.currency === 'player-coins')) throw new Error('INVALID_PLAYER_SHOP_CATALOG');
-    return result.catalog;
+    if (!['player','club'].includes(shop)) throw new Error('INVALID_SHOP');
+    if (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim())) throw new Error('INVALID_CLUB_ID');
+    const query = new URLSearchParams({ shop, ...(shop === 'club' ? { clubId:clubId.trim() } : {}) });
+    const result = await this.request('/api/shop?' + query.toString(), { auth:true });
+    const currency = shop === 'player' ? 'player-coins' : 'club-coins';
+    if (result?.shop !== shop || result.currency !== currency
+      || !Number.isSafeInteger(result.balance) || result.balance < 0
+      || !Array.isArray(result.catalog) || !result.catalog.every(item =>
+        item && item.shop === shop && typeof item.id === 'string'
+        && Number.isSafeInteger(item.price) && item.price > 0
+        && Number.isSafeInteger(item.basePrice) && item.basePrice > 0
+        && Number.isInteger(item.discountPercent) && item.discountPercent >= 0 && item.discountPercent <= 50
+        && item.currency === currency)
+      || !Array.isArray(result.inventory) || !result.inventory.every(item =>
+        item && typeof item.itemId === 'string' && typeof item.purchaseId === 'string'
+        && ['owned','resold'].includes(item.status) && typeof item.equipped === 'boolean'
+        && typeof item.resellable === 'boolean')) throw new Error('INVALID_SHOP_RESPONSE');
+    return result;
+  }
+
+  async getOwnedShopClubs() {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    const result = await this.request('/api/shop/clubs', { auth:true });
+    if (!Array.isArray(result?.clubs) || !result.clubs.every(club =>
+      club && typeof club.id === 'string' && typeof club.name === 'string'
+      && Number.isSafeInteger(club.balance) && club.balance >= 0)) throw new Error('INVALID_OWNED_CLUBS_RESPONSE');
+    return result.clubs;
+  }
+
+  async purchaseShopItem(shop, itemId, purchaseId, clubId = null) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!['player','club'].includes(shop) || typeof itemId !== 'string' || !itemId.trim()
+      || typeof purchaseId !== 'string' || !purchaseId.trim() || purchaseId.length > 64
+      || (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim()))) throw new Error('INVALID_SHOP_PURCHASE');
+    return this.request('/api/shop/purchase', { method:'POST', auth:true,
+      body:{ shop, itemId:itemId.trim(), purchaseId:purchaseId.trim(), ...(shop === 'club' ? { clubId:clubId.trim() } : {}) } });
+  }
+
+  async resellShopItem(shop, itemId, resaleId, clubId = null) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!['player','club'].includes(shop) || typeof itemId !== 'string' || !itemId.trim()
+      || typeof resaleId !== 'string' || !resaleId.trim() || resaleId.length > 64
+      || (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim()))) throw new Error('INVALID_SHOP_RESALE');
+    return this.request('/api/shop/resale', { method:'POST', auth:true,
+      body:{ shop, itemId:itemId.trim(), resaleId:resaleId.trim(), ...(shop === 'club' ? { clubId:clubId.trim() } : {}) } });
+  }
+
+  async equipShopItem(shop, itemId, equipped = true, clubId = null) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!['player','club'].includes(shop) || typeof itemId !== 'string' || !itemId.trim()
+      || typeof equipped !== 'boolean'
+      || (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim()))) throw new Error('INVALID_SHOP_EQUIPMENT');
+    return this.request('/api/shop/equip', { method:'POST', auth:true,
+      body:{ shop, itemId:itemId.trim(), equipped, ...(shop === 'club' ? { clubId:clubId.trim() } : {}) } });
+  }
+
+  async getPlayerShopCatalog() {
+    return (await this.getShopSnapshot('player')).catalog;
   }
 
   async getPlayerShopInventory() {
-    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    const result = await this.request('/api/shop/player/inventory', { auth: true });
-    if (!Array.isArray(result?.inventory) || !result.inventory.every(item =>
-      item && typeof item.itemId === 'string' && typeof item.purchaseId === 'string'
-      && ['owned','resold'].includes(item.status) && typeof item.equipped === 'boolean'
-      && typeof item.resellable === 'boolean')) throw new Error('INVALID_PLAYER_SHOP_INVENTORY');
-    return result.inventory;
+    return (await this.getShopSnapshot('player')).inventory;
   }
 
   async purchasePlayerShopItem(itemId, purchaseId) {
-    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    if (typeof itemId !== 'string' || !itemId.trim()
-      || typeof purchaseId !== 'string' || !purchaseId.trim() || purchaseId.length > 64) throw new Error('INVALID_SHOP_PURCHASE');
-    return this.request('/api/shop/player/purchase', {
-      method: 'POST', auth: true, body: { itemId: itemId.trim(), purchaseId: purchaseId.trim() }
-    });
+    return this.purchaseShopItem('player', itemId, purchaseId);
   }
 
   async resellPlayerShopItem(itemId, resaleId) {
-    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    if (typeof itemId !== 'string' || !itemId.trim()
-      || typeof resaleId !== 'string' || !resaleId.trim() || resaleId.length > 64) throw new Error('INVALID_SHOP_RESALE');
-    return this.request('/api/shop/player/resale', {
-      method: 'POST', auth: true, body: { itemId: itemId.trim(), resaleId: resaleId.trim() }
-    });
+    return this.resellShopItem('player', itemId, resaleId);
   }
 
   async equipPlayerShopItem(itemId, equipped = true) {
-    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
-    if (typeof itemId !== 'string' || !itemId.trim() || typeof equipped !== 'boolean') throw new Error('INVALID_SHOP_EQUIPMENT');
-    return this.request('/api/shop/player/equip', {
-      method: 'POST', auth: true, body: { itemId: itemId.trim(), equipped }
-    });
+    return this.equipShopItem('player', itemId, equipped);
   }
 
   async logout() {
