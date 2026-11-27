@@ -135,12 +135,13 @@ export class D1PlayerShopRepository {
     const statements = [
       this.db.prepare(
         "UPDATE p27_player_shop_inventory SET status='resold',resold_at=?,resale_id=? " +
-        "WHERE account_id=? AND purchase_id=? AND status='owned' AND equipped=0"
-      ).bind(now,id,accountId,owned.purchaseId),
+        "WHERE account_id=? AND purchase_id=? AND status='owned' AND equipped=0 " +
+        "AND EXISTS (SELECT 1 FROM p27_player_progression WHERE account_id=? AND coins<=1000000000-?)"
+      ).bind(now,id,accountId,owned.purchaseId,accountId,amount),
       this.db.prepare(
-        "UPDATE p27_player_progression SET coins=MIN(1000000000,coins+?),revision=revision+1,updated_at=? " +
-        "WHERE account_id=? AND changes()=1"
-      ).bind(amount,new Date(now).toISOString(),accountId),
+        "UPDATE p27_player_progression SET coins=coins+?,revision=revision+1,updated_at=? " +
+        "WHERE account_id=? AND changes()=1 AND coins<=1000000000-?"
+      ).bind(amount,new Date(now).toISOString(),accountId,amount),
       this.db.prepare(
         "INSERT INTO p27_player_shop_resales (account_id,resale_id,purchase_id,item_id,amount,currency,created_at) " +
         "SELECT ?,?,?,?,?,?,? WHERE changes()=1"
@@ -154,6 +155,17 @@ export class D1PlayerShopRepository {
       if (committed) return committed.itemId === item.id
         ? { ok:true, duplicate:true, inventory:await this.inventory(accountId) }
         : { ok:false, reason:"resale-id-conflict" };
+      const stillOwned = await this.db.prepare(
+        "SELECT 1 AS owned FROM p27_player_shop_inventory WHERE account_id=? AND purchase_id=? AND status='owned'"
+      ).bind(accountId,owned.purchaseId).first();
+      if (stillOwned) {
+        const wallet = await this.db.prepare(
+          "SELECT coins FROM p27_player_progression WHERE account_id=?"
+        ).bind(accountId).first();
+        if (Number(wallet?.coins || 0) > 1000000000 - amount) {
+          return { ok:false, reason:"coin-balance-limit" };
+        }
+      }
       return { ok:false, reason:"item-not-owned" };
     }
     return { ok:true, duplicate:false, amount, currency:item.currency, inventory:await this.inventory(accountId) };
