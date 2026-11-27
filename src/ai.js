@@ -90,9 +90,9 @@ export function getDefensiveShapeTarget(player, ball, opponents, attackDir = 1, 
  * Choisit une zone de soutien qui conserve le rôle du joueur tout en évitant
  * les couloirs déjà occupés par les défenseurs adverses.
  */
-export function getSupportTarget(player, owner, players, attackDir = 1) {
+export function getSupportTarget(player, owner, players, attackDir = 1, opponentPlayers = null) {
   const ball = owner?.pos || { x: 0, z: 0 };
-  const opponents = players.filter((other) => other.team !== player.team && other.role !== 'GK');
+  const opponents = opponentPlayers || players.filter((other) => other.team !== player.team && other.role !== 'GK');
   const forwardOffset = player.specialty === 'runner' ? 8.2
     : player.specialty === 'finisher' ? 5.6
       : player.specialty === 'playmaker' ? -3.2 : 0;
@@ -205,6 +205,18 @@ export function createTeamRoster(team, formationName = '2-2', clubRoster = null,
   });
 }
 
+/** Prépare une seule fois les groupes tactiques partagés pour ce tick. */
+export function buildTeamContexts(players) {
+  const blue = players.filter(player => player.team === 'blue');
+  const red = players.filter(player => player.team === 'red');
+  const blueOutfield = blue.filter(player => player.role !== 'GK');
+  const redOutfield = red.filter(player => player.role !== 'GK');
+  return {
+    blue: { players: blue, teammates: blueOutfield, opponents: redOutfield },
+    red: { players: red, teammates: redOutfield, opponents: blueOutfield }
+  };
+}
+
 export class TeamAI {
   constructor() {
     this.formation = '2-2';
@@ -227,6 +239,7 @@ export class TeamAI {
   }
 
   update(players, ball, dt, actions) {
+    const contexts = buildTeamContexts(players);
     // Trouver le joueur de champ le plus proche du ballon pour chaque équipe
     const closestByTeam = { blue: null, red: null };
     const coverByTeam = { blue: null, red: null };
@@ -259,7 +272,7 @@ export class TeamAI {
       if (p.role === 'GK') {
         this.updateGoalkeeper(p, ball, dt, actions);
       } else {
-        this.updateOutfield(p, players, ball, closestByTeam[p.team] === p, coverByTeam[p.team] === p, dt, actions);
+        this.updateOutfield(p, players, ball, closestByTeam[p.team] === p, coverByTeam[p.team] === p, dt, actions, contexts[p.team]);
       }
     }
   }
@@ -283,7 +296,7 @@ export class TeamAI {
     }
   }
 
-  updateOutfield(p, players, ball, isChaser, isCover, dt, actions) {
+  updateOutfield(p, players, ball, isChaser, isCover, dt, actions, context = null) {
     const attackDir = this.attackDirection[p.team] || (p.team === 'blue' ? 1 : -1);
     const staminaFactor = 0.76 + p.stamina * 0.24;
     const paceFactor = 0.82 + clamp(Number(p.attributes?.pace ?? 50), 1, 99) / 100 * 0.36;
@@ -291,8 +304,8 @@ export class TeamAI {
 
     // Si ce joueur IA a le ballon : choisir selon pression, espace et options.
     if (ball.owner === p) {
-      const opponents = players.filter((other) => other.team !== p.team && other.role !== 'GK');
-      const teammates = players.filter((other) => other.team === p.team && other !== p);
+      const opponents = context?.opponents || players.filter((other) => other.team !== p.team && other.role !== 'GK');
+      const teammates = context?.teammates || players.filter((other) => other.team === p.team && other !== p);
       const requestedReceiver = actions.requestedReceiver?.team === p.team ? actions.requestedReceiver : null;
       const passOptions = teammates
         .map((mate) => ({ mate, score: scorePassOptionWithRequest(p, mate, opponents, attackDir, requestedReceiver) }))
@@ -308,8 +321,9 @@ export class TeamAI {
         return;
       }
       // Passer si pressé par un adversaire
-      const pressed = players.some(
-        (other) => other.team !== p.team && Math.hypot(other.pos.x - p.pos.x, other.pos.z - p.pos.z) < 3.4
+      const opponents = context?.opponents || players.filter((other) => other.team !== p.team && other.role !== 'GK');
+      const pressed = opponents.some(
+        (other) => Math.hypot(other.pos.x - p.pos.x, other.pos.z - p.pos.z) < 3.4
       );
       const passBias = p.specialty === 'playmaker' ? 1.05 : p.specialty === 'runner' ? 0.32 : 0.55;
       const usefulPass = bestPass && bestPass.score > -0.25;
@@ -352,7 +366,7 @@ export class TeamAI {
     } else if (teamHasBall) {
       // Soutien sans ballon, y compris lorsque le porteur est un joueur humain.
       const owner = ball.owner;
-      const support = getSupportTarget(p, owner, players, attackDir);
+      const support = getSupportTarget(p, owner, players, attackDir, context?.opponents);
       const ownerDir = owner ? Math.sign((owner.pos.x - p.pos.x) * attackDir) : 0;
       const tx = clamp(support.x + ownerDir * attackDir * 0.45, -PITCH.HALF_L + 2, PITCH.HALF_L - 2);
       const tz = support.z;
@@ -360,7 +374,7 @@ export class TeamAI {
     } else {
       // Les joueurs éloignés du ballon protègent l'axe et les menaces proches,
       // au lieu de simplement glisser tous vers la position du ballon.
-      const opponents = players.filter((other) => other.team !== p.team && other.role !== 'GK');
+      const opponents = context?.opponents || players.filter((other) => other.team !== p.team && other.role !== 'GK');
       const shape = getDefensiveShapeTarget(p, ball, opponents, attackDir, this.mentality);
       this.steerPlayer(p, shape.x, shape.z, 6.7 * staminaFactor * paceFactor, dt);
     }
