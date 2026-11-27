@@ -47,3 +47,28 @@ test('P27 rotations serveur : un coéquipier ne peut pas remplacer un humain san
   incoming.isOnPitch = false;
   assert.throws(() => manager.rotate(created.id, captain.token, { outgoingId: teammate.playerId, incomingId: incoming.id }), /OUTGOING_PLAYER_CONSENT_REQUIRED/);
 });
+
+
+test('P27 rotations serveur : un joueur humain sorti ne peut revenir qu’après dix minutes de temps de match', () => {
+  const manager = new RoomManager();
+  const created = manager.create();
+  const joined = manager.join(created.id, { displayName:'Joueur carrière' });
+  const room = manager.rooms.get(created.id);
+  const reserve = [...room.players.values()].find(player => player.team === joined.team && player.isBot && player.isOnPitch === false);
+  assert.ok(reserve);
+  room.phase = 'playing';
+  room.elapsedMs = 600_000;
+  room.goalPauseMs = 1_000;
+  assert.equal(manager.rotate(created.id, joined.token, { outgoingId:joined.playerId, incomingId:reserve.id }).rotated,true);
+  assert.equal(room.players.get(joined.playerId).isOnPitch,false);
+  room.elapsedMs = 1_199_999;
+  room.goalPauseMs = 1_000;
+  const early = manager.requestEntry(created.id, joined.token);
+  assert.equal(early.queued,false);
+  assert.equal(room.players.get(joined.playerId).isOnPitch,false);
+  room.elapsedMs = 1_200_000;
+  room.goalPauseMs = 1_000;
+  const ready = manager.requestEntry(created.id, joined.token);
+  assert.equal(ready.queued,false);
+  assert.equal(room.players.get(joined.playerId).isOnPitch,true);
+});
