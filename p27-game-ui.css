@@ -2089,3 +2089,18 @@
  #main-menu #menu-content .p27-shop-wallet strong{font-size:18px}
  #main-menu #menu-content .p27-shop-categories button{white-space:nowrap}
 }
+
+
+/* Seven-tile hub balance including the new personal shop entry. */
+#main-menu .p27-hub-career{grid-column:span 4}
+#main-menu .p27-hub-match{grid-column:span 3;grid-row:1}
+#main-menu .p27-hub-team{grid-column:span 2;grid-row:1}
+#main-menu .p27-hub-competitions{grid-column:span 1;grid-row:1}
+#main-menu .p27-hub-shop{grid-column:span 2;grid-row:1;background:radial-gradient(ellipse at 85% 12%,rgba(233,187,92,.24),transparent 58%),linear-gradient(145deg,#72552a,#292116 90%)}
+#main-menu .p27-hub-market{grid-column:span 3;grid-row:2}
+#main-menu .p27-hub-club{grid-column:span 3;grid-row:2}
+#main-menu .p27-hub-results{grid-column:span 2;grid-row:2}
+@media(orientation:portrait){
+ #main-menu .p27-hub-career{grid-column:span 2;grid-row:auto}
+ #main-menu .p27-hub-match,#main-menu .p27-hub-team,#main-menu .p27-hub-competitions,#main-menu .p27-hub-shop,#main-menu .p27-hub-market,#main-menu .p27-hub-club,#main-menu .p27-hub-results{grid-column:span 1;grid-row:auto}
+}
