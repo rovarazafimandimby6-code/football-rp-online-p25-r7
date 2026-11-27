@@ -34,6 +34,34 @@ export function resolvePlayerAnimationClip(clipNames, state, speed = 0) {
   return findClip(clipNames, RULES[state]);
 }
 
+
+/** Build a semantic clip lookup once when a 3D model is mounted. */
+export function createPlayerAnimationClipMap(clipNames) {
+  return {
+    idle: resolvePlayerAnimationClip(clipNames, 'idle'),
+    walk: resolvePlayerAnimationClip(clipNames, 'walk'),
+    jog: resolvePlayerAnimationClip(clipNames, 'run', 0),
+    sprint: resolvePlayerAnimationClip(clipNames, 'run', 8),
+    pass: resolvePlayerAnimationClip(clipNames, 'pass'),
+    shoot: resolvePlayerAnimationClip(clipNames, 'shoot'),
+    control: resolvePlayerAnimationClip(clipNames, 'control'),
+    tackle: resolvePlayerAnimationClip(clipNames, 'tackle'),
+    dive: resolvePlayerAnimationClip(clipNames, 'dive'),
+    celebrate: resolvePlayerAnimationClip(clipNames, 'celebrate')
+  };
+}
+
+/** Select from the precomputed map without scanning GLTF names during a frame. */
+export function resolveCachedPlayerAnimationClip(clipMap, state, speed = 0) {
+  if (!clipMap) return null;
+  if (state === 'run') {
+    return speed > 7.5
+      ? (clipMap.sprint || clipMap.jog || null)
+      : (clipMap.jog || clipMap.sprint || null);
+  }
+  return clipMap[state] || null;
+}
+
 export function isLoopingPlayerAnimation(state) {
   return LOOPING_STATES.has(state);
 }
