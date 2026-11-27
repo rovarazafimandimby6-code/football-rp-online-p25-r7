@@ -10,6 +10,21 @@ const timestamp = value => {
   return Number.isFinite(n) ? n : null;
 };
 
+const MAX_PENDING_OFFERS = 5;
+const calculateSalaryAccrual = (contract, wallet, at) => {
+  const now = timestamp(at);
+  if (now === null) return { ok:false, reason:'invalid-date', paid:0, periods:0 };
+  if (!contract || contract.status !== 'active') return { ok:true, paid:0, periods:0, paidThrough:null };
+  const signed = timestamp(contract.signedAt);
+  const expiry = timestamp(contract.expiresAt);
+  const lastPaid = timestamp(contract.lastSalaryPaidAt) ?? signed;
+  if (signed === null || expiry === null || lastPaid === null) return { ok:false, reason:'invalid-contract', paid:0, periods:0 };
+  const payableUntil = Math.min(now, expiry);
+  const periods = Math.max(0, Math.floor((payableUntil - lastPaid) / (7 * 86400000)));
+  const paid = Math.min(1_000_000_000 - nonNegativeInt(wallet), nonNegativeInt(contract.salary) * periods);
+  return { ok:true, paid, periods, paidThrough:lastPaid + periods * 7 * 86400000 };
+};
+
 const normalizeCareerState = state => {
   if (!state || typeof state !== 'object' || Array.isArray(state)) return null;
   const contract = state.contract && typeof state.contract === 'object' && idOf(state.contract.clubId)
@@ -88,28 +103,19 @@ export class CareerManager {
   }
 
   processSalary(at = Date.now()) {
+    const accrual = calculateSalaryAccrual(this.contract, this.wallet, at);
+    if (!accrual.ok) return { ...accrual, paid:0, periods:0 };
+    if (!accrual.periods) return { ok:true, paid:0, periods:0 };
     const now = timestamp(at);
-    if (now === null) return { ok: false, reason: 'invalid-date', paid: 0, periods: 0 };
-    const contract = this.contract;
-    if (!contract || contract.status !== 'active') return { ok: true, paid: 0, periods: 0 };
-    const signed = timestamp(contract.signedAt);
-    const expiry = timestamp(contract.expiresAt);
-    const lastPaid = timestamp(contract.lastSalaryPaidAt) ?? signed;
-    if (signed === null || expiry === null || lastPaid === null) return { ok: false, reason: 'invalid-contract', paid: 0, periods: 0 };
-    const payableUntil = Math.min(now, expiry);
-    const periods = Math.max(0, Math.floor((payableUntil - lastPaid) / (7 * 86400000)));
-    if (!periods) return { ok: true, paid: 0, periods: 0 };
     const before = this.captureState();
-    const paid = Math.min(1_000_000_000 - this.wallet, nonNegativeInt(contract.salary) * periods);
-    const paidThrough = lastPaid + periods * 7 * 86400000;
-    this.wallet += paid;
-    this.contract = { ...contract, lastSalaryPaidAt: new Date(paidThrough).toISOString() };
-    if (paid > 0) this.history.push({ type: 'salary', salary: contract.salary, periods, amount: paid, date: new Date(paidThrough).toISOString(), paidAt: new Date(now).toISOString() });
+    this.wallet += accrual.paid;
+    this.contract = { ...this.contract, lastSalaryPaidAt:new Date(accrual.paidThrough).toISOString() };
+    if (accrual.paid > 0) this.history.push({ type:'salary', salary:this.contract.salary, periods:accrual.periods, amount:accrual.paid, date:new Date(accrual.paidThrough).toISOString(), paidAt:new Date(now).toISOString() });
     if (!this.saveState()) {
       this.restoreState(before);
       return { ok:false, reason:'persistence-failed', paid:0, periods:0 };
     }
-    return { ok: true, paid, periods, nextPaymentAt: new Date(paidThrough + 7 * 86400000).toISOString() };
+    return { ok:true, paid:accrual.paid, periods:accrual.periods, nextPaymentAt:new Date(accrual.paidThrough + 7 * 86400000).toISOString() };
   }
 
   getSalaryStatus(at = Date.now()) {
@@ -175,7 +181,10 @@ export class CareerManager {
     }
     if (salary !== undefined && !Number.isFinite(Number(salary))) return { ok: false, reason: 'invalid-salary' };
     const before = this.captureState();
-    this.processSalary(now);
+    const accrual = calculateSalaryAccrual(this.contract, this.wallet, now);
+    if (!accrual.ok) return { ok:false, reason:accrual.reason };
+    this.wallet += accrual.paid;
+    if (accrual.periods > 0 && accrual.paid > 0) this.history.push({ type:'salary', salary:this.contract.salary, periods:accrual.periods, amount:accrual.paid, date:new Date(accrual.paidThrough).toISOString(), paidAt:new Date(now).toISOString() });
     const days = Math.max(1, Math.min(3650, nonNegativeInt(durationDays, 180) || 180));
     const wage = salary === undefined ? this.contract.salary : nonNegativeInt(salary);
     this.contract = {
@@ -202,7 +211,10 @@ export class CareerManager {
       return { ok: false, reason: 'contract-expired' };
     }
     const before = this.captureState();
-    this.processSalary(now);
+    const accrual = calculateSalaryAccrual(this.contract, this.wallet, now);
+    if (!accrual.ok) return { ok:false, reason:accrual.reason };
+    this.wallet += accrual.paid;
+    if (accrual.periods > 0 && accrual.paid > 0) this.history.push({ type:'salary', salary:this.contract.salary, periods:accrual.periods, amount:accrual.paid, date:new Date(accrual.paidThrough).toISOString(), paidAt:new Date(now).toISOString() });
     const previousClub = this.clubId;
     this.contract = { ...this.contract, status: 'terminated', terminatedAt: new Date(now).toISOString() };
     this.clubId = null;
@@ -237,13 +249,18 @@ export class CareerManager {
     return { ok: true, contract: { ...this.contract } };
   }
 
-  makeOffer({ fromClubId, salary = 0, fee = 0, expiresAt = null } = {}) {
+  makeOffer({ fromClubId, salary = 0, fee = 0, expiresAt = null, at = Date.now() } = {}) {
     const from = idOf(fromClubId);
-    if (!from || !this.contract || this.getContractStatus().expired) return { ok: false, reason: 'no-current-contract' };
+    const now = timestamp(at);
+    if (now === null) return { ok:false, reason:'invalid-date' };
+    if (!from || !this.contract || this.getContractStatus(now).expired) return { ok: false, reason: 'no-current-contract' };
     if (from === this.clubId) return { ok: false, reason: 'same-club' };
     const expiry = expiresAt == null ? null : timestamp(expiresAt);
     if (expiresAt != null && expiry === null) return { ok: false, reason: 'invalid-expiry' };
-    if (expiry !== null && expiry <= Date.now()) return { ok: false, reason: 'offer-expired' };
+    if (expiry !== null && expiry <= now) return { ok: false, reason: 'offer-expired' };
+    const refreshed = this.refreshOfferStatuses(now);
+    if (!refreshed.ok) return { ok:false, reason:'persistence-failed' };
+    if ([...this.offers.values()].filter(offer => offer.status === 'pending').length >= MAX_PENDING_OFFERS) return { ok:false, reason:'pending-offer-limit' };
     const before = this.captureState();
     const offerId = `offer-${this.nextOfferNumber++}`;
     const offer = {
@@ -310,20 +327,10 @@ export class CareerManager {
     const before = this.captureState();
     const previousClub = this.clubId;
     const signedAt = new Date(now).toISOString();
-    const signed = timestamp(this.contract.signedAt);
-    const expiry = timestamp(this.contract.expiresAt);
-    const lastPaid = timestamp(this.contract.lastSalaryPaidAt) ?? signed;
-    if (signed === null || expiry === null || lastPaid === null) return { ok:false, reason:'invalid-contract' };
-    const payableUntil = Math.min(now, expiry);
-    const periods = Math.max(0, Math.floor((payableUntil - lastPaid) / (7 * 86400000)));
-    const paid = Math.min(1_000_000_000 - this.wallet, nonNegativeInt(this.contract.salary) * periods);
-    const paidThrough = lastPaid + periods * 7 * 86400000;
-
-    this.wallet += paid;
-    if (periods > 0) {
-      this.contract = { ...this.contract, lastSalaryPaidAt:new Date(paidThrough).toISOString() };
-      if (paid > 0) this.history.push({ type:'salary', salary:this.contract.salary, periods, amount:paid, date:new Date(paidThrough).toISOString(), paidAt:signedAt });
-    }
+    const accrual = calculateSalaryAccrual(this.contract, this.wallet, now);
+    if (!accrual.ok) return { ok:false, reason:accrual.reason };
+    this.wallet += accrual.paid;
+    if (accrual.periods > 0 && accrual.paid > 0) this.history.push({ type:'salary', salary:this.contract.salary, periods:accrual.periods, amount:accrual.paid, date:new Date(accrual.paidThrough).toISOString(), paidAt:signedAt });
     this.wallet -= offer.fee;
     this.clubId = offer.fromClubId;
     this.contract = {
