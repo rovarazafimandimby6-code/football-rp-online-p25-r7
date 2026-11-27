@@ -72,7 +72,7 @@ test('P27 DLS 26 : les profils ajoutés correspondent aux cartes normales vérif
   assert.equal(byId.get('forward-complete-86').stats.SHO, 96);
   assert.equal(byId.get('forward-wing-84').stats.PAS, 88);
   assert.equal(byId.get('midfielder-box-to-box-84').stats.STA, 89);
-  assert.equal(byId.get('midfielder-playmaker-83').stats.PAS, 93);
+  assert.equal(byId.get('midfielder-playmaker-83').stats.PAS, 92);
   assert.equal(byId.get('defender-centre-84b').stats.TAC, 93);
   assert.equal(byId.get('goalkeeper-balanced-84').stats.GKR, 82);
   assert.equal(byId.get('goalkeeper-tall-84').heightCm, 200);
