@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { applyStadiumTint } from './stadium-appearance.js';
 
 export { PITCH } from './pitch.js';
 import { PITCH } from './pitch.js';
@@ -82,14 +83,7 @@ export class FieldBuilder {
 
     const stadium = appearance.stadiumSkin || 'default';
     const stadiumTint = stadium === 'premium' ? 0x8aa0b7 : stadium === 'standard' ? 0x687f91 : 0xffffff;
-    for (const material of this.stadiumMaterials) {
-      // Capture the source color once: repeated club switches must not compound tints.
-      if (!Number.isInteger(material.userData.p27BaseColor)) {
-        material.userData.p27BaseColor = material.color.getHex();
-      }
-      material.color.setHex(material.userData.p27BaseColor);
-      material.color.multiply(new THREE.Color(stadiumTint));
-    }
+    applyStadiumTint(this.stadiumMaterials, stadiumTint);
 
     this.clubExpansionGroup?.parent?.remove(this.clubExpansionGroup);
     this.clubExpansionGroup = null;
