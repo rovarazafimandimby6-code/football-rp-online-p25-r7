@@ -50,3 +50,15 @@ test('P27 boutique : seuls les propriétaires peuvent acheter dans la boutique d
  assert.equal(validateShopPurchase({shop:'player',itemId:'boots-standard',actorId:'player-1'}).ok,true);
  assert.equal(validateShopPurchase({shop:'player',itemId:'club-kit-home',actorId:'player-1'}).reason,'item-not-found');
 });
+
+
+test('P27 boutique : définit des emplacements d’équipement stables pour joueur et club',()=>{
+ const player=getShopCatalog('player');
+ assert.ok(player.every(item=>typeof item.equipSlot==='string'&&item.equipSlot.length>0));
+ assert.equal(getShopItem('boots-standard').equipSlot,'crampons');
+ assert.equal(getShopItem('boots-rare').equipSlot,'crampons');
+ assert.equal(getShopItem('club-kit-home').equipSlot,'kit-home');
+ assert.equal(getShopItem('club-kit-away').equipSlot,'kit-away');
+ assert.equal(getShopItem('club-kit-goalkeeper').equipSlot,'kit-goalkeeper');
+ assert.equal(getShopItem('club-capacity-level-1').equipSlot,null);
+});
