@@ -600,3 +600,51 @@ test('P27 récompenses : une panne de sauvegarde annule pièces, expérience et 
   assert.equal(JSON.stringify(career.snapshot()),before);
   assert.equal(career.recordMatch({result:'win',matchId:'match-atomic-reward'}).ok,false);
 });
+
+
+test('P27 carrière : le renouvellement règle les salaires échus une seule fois avant de prolonger', () => {
+  const career = new CareerManager({ initialCoins:100 });
+  career.signContract({ clubId:'club-a', salary:80, durationDays:90, signedAt:'2036-01-01T00:00:00Z' });
+  const renewed = career.renewContract({ salary:100, durationDays:180, renewedAt:'2036-01-15T00:00:00Z' });
+  assert.equal(renewed.ok,true);
+  assert.equal(career.wallet,180);
+  assert.equal(career.history.filter(item=>item.type==='salary').length,1);
+  assert.equal(career.history.filter(item=>item.type==='renewal').length,1);
+  assert.equal(career.contract.lastSalaryPaidAt,'2036-01-15T00:00:00.000Z');
+});
+
+test('P27 carrière : la résiliation règle les salaires échus et libère le contrat en une opération', () => {
+  const career = new CareerManager({ initialCoins:100 });
+  career.signContract({ clubId:'club-a', salary:80, durationDays:90, signedAt:'2036-01-01T00:00:00Z' });
+  const ended = career.terminateContract('2036-01-15T00:00:00Z');
+  assert.equal(ended.ok,true);
+  assert.equal(career.wallet,180);
+  assert.equal(career.clubId,null);
+  assert.equal(career.contract.status,'terminated');
+  assert.equal(career.history.filter(item=>item.type==='salary').length,1);
+  assert.equal(career.history.at(-1).type,'termination');
+});
+
+test('P27 mercato : la couche métier refuse une sixième offre en attente', () => {
+  const career = new CareerManager();
+  career.signContract({ clubId:'club-current', durationDays:365 });
+  for (let index=0; index<5; index++) {
+    const result=career.makeOffer({ fromClubId:`club-${index}`});
+    assert.equal(result.ok,true);
+  }
+  assert.deepEqual(career.makeOffer({ fromClubId:'club-sixth' }),{ok:false,reason:'pending-offer-limit'});
+  assert.equal([...career.offers.values()].filter(offer=>offer.status==='pending').length,5);
+});
+
+test('P27 mercato : une offre expirée libère une place dans la limite des cinq', () => {
+  const career = new CareerManager();
+  career.signContract({ clubId:'club-current', durationDays:365, signedAt:'2037-01-01T00:00:00Z' });
+  for (let index=0; index<5; index++) {
+    const result=career.makeOffer({ fromClubId:`club-expire-${index}`, expiresAt:'2037-01-02T00:00:00Z', at:'2037-01-01T00:00:00Z' });
+    assert.equal(result.ok,true);
+  }
+  const replacement=career.makeOffer({ fromClubId:'club-new', expiresAt:'2037-01-04T00:00:00Z', at:'2037-01-03T00:00:00Z' });
+  assert.equal(replacement.ok,true);
+  assert.equal([...career.offers.values()].filter(offer=>offer.status==='pending').length,1);
+  assert.equal([...career.offers.values()].filter(offer=>offer.status==='expired').length,5);
+});
