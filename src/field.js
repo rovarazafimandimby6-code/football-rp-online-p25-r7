@@ -530,11 +530,20 @@ export class FieldBuilder {
       const shirtColor = palette[idx % palette.length];
       crowd.setColorAt(idx, shirtColor);
 
-      // Arms hang naturally beside the torso; slight deterministic variation
-      // keeps the crowd from looking like a row of identical rigid figures.
+      // Most supporters keep their arms relaxed; a small deterministic
+      // cheering pattern adds stadium life without per-frame animation or draw calls.
+      const cheering = idx % 11 === 0;
       for (const side of [-1, 1]) {
-        armDummy.position.set(x + side * 0.39, y - 0.035, z);
-        armDummy.rotation.set(0, rotation, side * (0.10 + (idx % 4) * 0.025));
+        armDummy.position.set(
+          x + side * (cheering ? 0.29 : 0.39),
+          y + (cheering ? 0.38 : -0.035),
+          z
+        );
+        armDummy.rotation.set(
+          0,
+          rotation,
+          side * (cheering ? 0.92 : 0.10 + (idx % 4) * 0.025)
+        );
         armDummy.scale.set(0.92, 0.88 + (idx % 3) * 0.08, 0.92);
         armDummy.updateMatrix();
         const armIndex = idx * 2 + (side > 0 ? 1 : 0);
