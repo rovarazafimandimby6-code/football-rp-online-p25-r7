@@ -410,3 +410,14 @@ Le passage transversal applique désormais une base commune à tous les écrans 
 - respect de la préférence système de réduction des animations.
 
 Ce lot est une harmonisation CSS transversale : il ne prétend pas ajouter les fonctions métier absentes, ne modifie pas les règles économiques ou sportives et ne change pas le moteur 3D du match.
+
+
+## 10. Lot UI — bibliothèque joueurs et espace mercato
+
+- Les cartes de la bibliothèque reçoivent une hiérarchie sportive plus nette : fond contrasté, liseré latéral, portrait cadré et note globale mise en évidence.
+- L'état développé conserve l'accès aux attributs et au potentiel sans transformer chaque carte en fiche longue.
+- Les raccourcis du mercato sont traités comme deux accès fonctionnels distincts vers les bibliothèques joueurs et clubs.
+- Les panneaux de budget et de fenêtre de transfert sont visuellement différenciés ; les informations de contrat et l'historique restent lisibles sur écran mobile.
+- Les règles métier ne changent pas : portefeuille de transfert, salaire hebdomadaire et crédits d'entraînement restent distincts ; les fenêtres de transfert continuent de contrôler les actions existantes. Aucun transfert entre joueurs ou vente entre clubs n'est ajouté par cette passe UI.
+- Les vues restent compactes en paysage et basculent vers une composition à deux colonnes sur les petits écrans portrait.
+- Cette passe améliore la présentation ; elle n'ajoute pas de moteur de transfert de joueurs entre clubs ni d'agents/recruteurs non implémentés.
