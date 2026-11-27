@@ -79,15 +79,14 @@ export async function renderSystemPlayerPortrait3D(player) {
       if (!node.isMesh) return;
       node.castShadow = true;
       node.receiveShadow = true;
-      const mats = Array.isArray(node.material) ? node.material : [node.material];
-      for (const mat of mats) {
-        mat = mat.clone();
+      const recolor = source => {
+        const mat = source.clone();
         const name = String(mat.name || '').toLowerCase();
-        if (/hair/.test(name)) mat.color?.set(safeColor(player?.appearance?.hairColor === 'blond' ? '#b58a4d' : player?.appearance?.hairColor === 'brown' ? '#493027' : '#211b1a', '#211b1a'));
+        if (/hair/.test(name)) mat.color?.set(player?.appearance?.hairColor === 'blond' ? '#b58a4d' : player?.appearance?.hairColor === 'brown' ? '#493027' : '#211b1a');
         if (/superhero|shirt|jersey|cloth/.test(name)) mat.color?.set(safeColor(player?.appearance?.kitColors?.primary, '#2865a8'));
-        if (Array.isArray(node.material)) node.material[node.material.indexOf(mats[0])] = mat;
-        else node.material = mat;
-      }
+        return mat;
+      };
+      node.material = Array.isArray(node.material) ? node.material.map(recolor) : recolor(node.material);
     });
     attachHair(model, hairSource);
     const bounds = new THREE.Box3().setFromObject(model);
