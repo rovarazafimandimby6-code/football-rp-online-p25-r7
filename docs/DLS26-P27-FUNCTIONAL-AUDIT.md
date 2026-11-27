@@ -486,3 +486,28 @@ La sollicitation d'offres locales ne génère plus une proposition pour presque 
 ### Gestion d'équipe — choix tactique avant le coup d'envoi
 
 L'écran de présentation des équipes permet maintenant de choisir entre les trois schémas pris en charge (2–2, 1–2–1 et 2–1–1). Le onze et le banc sont recalculés immédiatement avec le schéma sélectionné, puis le même choix est transmis au moteur de match pour initialiser les postes et les positions. Le joueur carrière reste prioritaire dans le onze et conserve son identité et son numéro. Une valeur non reconnue retombe sur le schéma 2–2. Tests couvrant les trois schémas, la feuille de match et le passage de configuration au moteur.
+
+
+### Gestion d'équipe — composition manuelle du cinq de départ
+
+L'écran avant-match permet maintenant de titulariser un remplaçant ou de sortir un titulaire : le joueur choisi entre dans le cinq et le titulaire non-carrière le moins bien noté rejoint le banc, ou inversement le meilleur remplaçant disponible entre lorsque le manager sort un titulaire. Le joueur carrière reste obligatoirement dans le cinq. Les identifiants sélectionnés sont validés contre l'effectif du club, sauvegardés localement par club et transmis au moteur de match ; les formations réorganisent les rôles sans perdre la sélection. En l'absence de contrat, le joueur carrière est ajouté comme invité temporaire au match local, sans inscription permanente dans un club.
+
+### Gestion d'équipe — banc configurable et rotations
+
+La feuille de match accepte désormais 5 titulaires et 3 à 7 réservistes. Le manager choisit le nombre de remplaçants avant le coup d'envoi ; cette préférence est persistée. Les rotations locales ne sont plus limitées à trois changements et peuvent changer un joueur de poste, tout en conservant le rôle tactique du slot remplacé. Les échanges manuels ont lieu pendant la pause ; les changements automatiques des joueurs du système sont déclenchés sur les arrêts de jeu et respectent le délai de retour de dix minutes.
+
+### Multijoueur — effectif humain et mode banc
+
+Le serveur construit désormais des effectifs de 12 places par club : cinq titulaires et sept réservistes. Jusqu'à sept humains peuvent rejoindre chaque club ; les sixième et septième arrivent sur le banc. Le joueur sur le terrain peut demander à sortir en remplaçant un bot, puis demander à entrer depuis le banc. Un joueur ne peut pas sortir un autre humain sans son consentement. Le retour d'un joueur déjà sorti reste bloqué pendant dix minutes de temps de match. Les tests couvrent les deux places humaines de réserve, la limite de sept humains et le délai de retour.
+
+### Carrière — cohérence transactionnelle des effectifs
+
+La synchronisation du joueur carrière vérifie maintenant les échecs de persistance et ne retire pas un joueur si la sauvegarde du club échoue. Les suppressions d'effectif sont atomiques : en cas d'échec d'écriture, la liste et l'historique des joueurs libérés sont restaurés. Les données de contrat (salaire hebdomadaire, dates et club) sont également répercutées dans la fiche de l'effectif après signature, renouvellement ou transfert. Les mutations de contrat explicites sont annulées si la synchronisation de l'effectif échoue. La progression gagnée à la fin d'un match est synchronisée avant la prochaine composition.
+
+### Carrière — versements salariaux transactionnels
+
+Le calcul des salaires échus est désormais partagé par le versement hebdomadaire, le renouvellement, la résiliation et l'acceptation d'un transfert. Chaque action applique le rattrapage salarial et sa mutation de contrat dans une seule sauvegarde, sans ignorer un échec de paiement. Lors d'un transfert, le salaire déjà dû est crédité avant le contrôle du budget de l'indemnité.
+
+### Mercato — cycle de vie des offres
+
+La limite de cinq offres en attente est maintenant appliquée dans CareerManager, et pas uniquement dans l'interface. Une offre expirée libère sa place ; les négociations, refus, expirations et annulations sont ajoutés à l'historique de carrière. L'acceptation d'une offre annule les autres offres ouvertes. Les destinations proposées et acceptées sont filtrées selon l'admission des joueurs humains, la capacité totale et la limite de sept joueurs humains. Les offres restent des simulations locales du prototype : aucune négociation réseau entre clubs n'est prétendue.
