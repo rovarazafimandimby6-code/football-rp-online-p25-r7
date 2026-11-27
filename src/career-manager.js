@@ -174,6 +174,7 @@ export class CareerManager {
       return { ok: false, reason: 'contract-expired' };
     }
     if (salary !== undefined && !Number.isFinite(Number(salary))) return { ok: false, reason: 'invalid-salary' };
+    const before = this.captureState();
     this.processSalary(now);
     const days = Math.max(1, Math.min(3650, nonNegativeInt(durationDays, 180) || 180));
     const wage = salary === undefined ? this.contract.salary : nonNegativeInt(salary);
@@ -186,7 +187,10 @@ export class CareerManager {
       status: 'active'
     };
     this.history.push({ type: 'renewal', clubId: this.clubId, date: new Date(now).toISOString(), salary: wage, durationDays: days });
-    this.persist();
+    if (!this.saveState()) {
+      this.restoreState(before);
+      return { ok:false, reason:'persistence-failed' };
+    }
     return { ok: true, contract: { ...this.contract } };
   }
 
@@ -197,13 +201,17 @@ export class CareerManager {
       if (this.contract) this.refreshContractStatus(now);
       return { ok: false, reason: 'contract-expired' };
     }
+    const before = this.captureState();
     this.processSalary(now);
     const previousClub = this.clubId;
     this.contract = { ...this.contract, status: 'terminated', terminatedAt: new Date(now).toISOString() };
     this.clubId = null;
     for (const offer of this.offers.values()) if (offer.status === 'pending') offer.status = 'cancelled';
     this.history.push({ type: 'termination', clubId: previousClub, date: new Date(now).toISOString() });
-    this.persist();
+    if (!this.saveState()) {
+      this.restoreState(before);
+      return { ok:false, reason:'persistence-failed' };
+    }
     return { ok: true, previousClub, contract: { ...this.contract } };
   }
 
@@ -354,6 +362,7 @@ export class CareerManager {
       const savedReward = this.matchRewards.find(item => item.matchId === id);
       return { experience: savedReward?.experience || 0, coins: savedReward?.coins || 0, duplicate: true, recoverable: Boolean(savedReward) };
     }
+    const before = this.captureState();
     const scored = nonNegativeInt(goals, 0, 99);
     const assisted = nonNegativeInt(assists, 0, 99);
     const points = (result === 'win' ? 30 : result === 'draw' ? 15 : 5) + scored * 12 + assisted * 8 + (cleanSheet ? 8 : 0);
@@ -365,7 +374,10 @@ export class CareerManager {
       this.matchRewards.push({ matchId: id, experience: points, coins: reward });
       this.matchRewards = this.matchRewards.slice(-2000);
     }
-    this.persist();
+    if (!this.saveState()) {
+      this.restoreState(before);
+      return { ok:false, reason:'persistence-failed' };
+    }
     return { experience: points, coins: reward };
   }
 }
