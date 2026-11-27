@@ -99,12 +99,16 @@ export class CareerManager {
     const payableUntil = Math.min(now, expiry);
     const periods = Math.max(0, Math.floor((payableUntil - lastPaid) / (7 * 86400000)));
     if (!periods) return { ok: true, paid: 0, periods: 0 };
+    const before = this.captureState();
     const paid = Math.min(1_000_000_000 - this.wallet, nonNegativeInt(contract.salary) * periods);
     const paidThrough = lastPaid + periods * 7 * 86400000;
     this.wallet += paid;
     this.contract = { ...contract, lastSalaryPaidAt: new Date(paidThrough).toISOString() };
     if (paid > 0) this.history.push({ type: 'salary', salary: contract.salary, periods, amount: paid, date: new Date(paidThrough).toISOString(), paidAt: new Date(now).toISOString() });
-    this.persist();
+    if (!this.saveState()) {
+      this.restoreState(before);
+      return { ok:false, reason:'persistence-failed', paid:0, periods:0 };
+    }
     return { ok: true, paid, periods, nextPaymentAt: new Date(paidThrough + 7 * 86400000).toISOString() };
   }
 
