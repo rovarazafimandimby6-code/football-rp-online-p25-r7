@@ -527,3 +527,19 @@ test('P27 effectifs : un échec de sauvegarde annule le transfert sans perdre le
   assert.equal(clubs.getClub('atomic-target').roster.some(player=>player.id==='atomic-moving-player'),false);
   assert.equal(values.get('club-transfer-atomic-p27'),before);
 });
+
+test('P27 salaire : une panne de sauvegarde ne crédite pas deux fois une échéance',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+  const career=new CareerManager({storage,storageKey:'career-salary-atomic-p27',initialCoins:100});
+  assert.equal(career.signContract({clubId:'club-a',salary:80,durationDays:60,signedAt:'2034-01-01T00:00:00Z'}).ok,true);
+  const saved=values.get('career-salary-atomic-p27');
+  failWrites=true;
+  const failed=career.processSalary('2034-01-15T00:00:00Z');
+  assert.deepEqual(failed,{ok:false,reason:'persistence-failed',paid:0,periods:0});
+  assert.equal(career.wallet,100);
+  assert.equal(career.contract.lastSalaryPaidAt,'2034-01-01T00:00:00.000Z');
+  assert.equal(career.history.some(item=>item.type==='salary'),false);
+  assert.equal(values.get('career-salary-atomic-p27'),saved);
+});
