@@ -17,13 +17,23 @@ const CLUB_KIT_PROFILES = Object.freeze({
   'nairobi-tana-academy': { design:'cross', inspiration:'inspiration est-africaine à croix graphique' },
   'antsiranana-north-fc': { design:'sidepanels', inspiration:'création du Nord à panneaux latéraux' }
 });
+const DESIGN_LIST = [...KIT_DESIGNS];
+function stableClubDesign(club = {}) {
+  const key = String(club.id || club.name || 'p27-club');
+  let hash = 2166136261;
+  for (const character of key) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return DESIGN_LIST[(hash >>> 0) % DESIGN_LIST.length];
+}
 const validColor = value => /^#[0-9a-f]{6}$/i.test(String(value || ''));
 export function getP27ClubKit(club = {}, role = 'MID') {
   const profile = CLUB_KIT_PROFILES[club.id] || null;
   const source = Array.isArray(club.colors) && club.colors.length >= 3 && club.colors.slice(0,3).every(validColor)
     ? club.colors.slice(0,3) : ['#2865a8','#17365d','#f4f6fb'];
   const colors = profile?.colors || source;
-  const design = profile?.design || (KIT_DESIGNS.has(club.kitDesign) ? club.kitDesign : 'central');
+  const design = profile?.design || (KIT_DESIGNS.has(club.kitDesign) ? club.kitDesign : stableClubDesign(club));
   const goalkeeper = role === 'GK';
   return {
     kitColors: goalkeeper
