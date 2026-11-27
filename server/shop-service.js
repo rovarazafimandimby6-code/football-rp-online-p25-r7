@@ -103,7 +103,7 @@ export class JsonShopService {
     const completed={...journal,status:'completed',completedAt:this.now()};
     const ownedItem={itemId:item.id,category:item.category,rarity:item.rarity,paidPrice:journal.paidPrice,
       currency:item.currency,resellable:item.resellable===true,resaleRate:item.resaleRate||0,
-      upgradeLevel:item.upgradeLevel||null,status:'owned',purchasedAt:journal.createdAt,purchaseId:id};
+      upgradeLevel:item.upgradeLevel||null,equipped:false,status:'owned',purchasedAt:journal.createdAt,purchaseId:id};
     this.transaction(()=>{
       const row=this.findInventoryRow(shop,target,true);
       if(row.items.some(entry=>entry.itemId===item.id&&entry.status!=='resold'))throw new Error('ALREADY_OWNED');
@@ -140,6 +140,7 @@ export class JsonShopService {
     const inventory=this.findInventoryRow(shop,target);
     const owned=inventory?.items.find(entry=>entry.itemId===itemId&&entry.status==='owned');
     if(!owned)return {ok:false,reason:'item-not-owned'};
+    if(owned.equipped===true)return {ok:false,reason:'item-active'};
     const value=calculateResaleValue(itemId,owned.paidPrice);
     if(value===null)return {ok:false,reason:'item-not-resellable'};
     if(value<=0)return {ok:false,reason:'resale-value-zero'};
@@ -171,6 +172,17 @@ export class JsonShopService {
       description:'Revente boutique du club',createdAt:resale.createdAt,referenceId:resale.itemId
     });
     return {ok:result.ok,reason:result.reason||null};
+  }
+  setEquipped({shop,actorId,clubId=null,itemId,equipped=true}={}){
+    const actor=cleanId(actorId),club=cleanId(clubId),target=shop==='player'?actor:club;
+    if(!actor||!target)return {ok:false,reason:'invalid-owner'};
+    if(shop==='club'&&this.ownerOf(club)!==actor)return {ok:false,reason:'club-owner-required'};
+    if(typeof equipped!=='boolean')return {ok:false,reason:'invalid-equipped-state'};
+    const row=this.findInventoryRow(shop,target);
+    const item=row?.items.find(entry=>entry.itemId===itemId&&entry.status==='owned');
+    if(!item)return {ok:false,reason:'item-not-owned'};
+    this.transaction(()=>{item.equipped=equipped;return true;});
+    return {ok:true,item:clone(item)};
   }
   getHistory({shop,ownerId}={}){
     const id=cleanId(ownerId);
