@@ -253,3 +253,18 @@ test('P27 boutique club : les quatre maillots gardent des emplacements distincts
   assert.equal(f.service.inventory('club','club-one').filter(x=>x.equipped).length,4);
  }finally{f.cleanup();}
 });
+
+
+test('P27 boutique : rejette un inventaire persistant avec deux équipements actifs dans le même emplacement',()=>{
+ const f=fixture();try{
+  fund(f.progressionStore,'player-conflicting-equipment');
+  f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-conflicting-equipment',purchaseId:'conflict-boots-1'});
+  f.service.purchase({shop:'player',itemId:'boots-rare',actorId:'player-conflicting-equipment',purchaseId:'conflict-boots-2'});
+  const state=JSON.parse(readFileSync(f.service.file,'utf8'));
+  state.players[0].items.forEach(item=>{item.equipped=true;});
+  writeFileSync(f.service.file,JSON.stringify(state));
+  assert.throws(()=>new JsonShopService(path.join(f.directory,'shop'),{
+   progressionStore:f.progressionStore,clubFinanceService:f.clubFinanceService
+  }),/SHOP_STORE_CORRUPT/);
+ }finally{f.cleanup();}
+});
