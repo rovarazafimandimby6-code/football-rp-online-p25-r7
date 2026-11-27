@@ -54,5 +54,7 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(integration, /systemPlayerPortraitDataUri\(p\)/);
   assert.match(integration, /module\.renderSystemPlayerPortrait3D\(player\)/);
   assert.match(main, /renderSystemPlayerPortrait\(player,'roster'\)/);
+  assert.match(main, /renderSystemPlayerPortrait\(player,'roster'\):''\}\)<\/div>/);
+  assert.match(main, /has-system-portrait/);
   assert.match(main, /player\.isHuman!==true&&player\.ownerType!=='human'/);
 });
