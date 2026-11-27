@@ -648,3 +648,40 @@ test('P27 mercato : une offre expirée libère une place dans la limite des cinq
   assert.equal([...career.offers.values()].filter(offer=>offer.status==='pending').length,1);
   assert.equal([...career.offers.values()].filter(offer=>offer.status==='expired').length,5);
 });
+
+
+test('P27 mercato : le salaire hebdomadaire échu est crédité avant de vérifier le coût du transfert', () => {
+  const career = new CareerManager({
+    initialCoins:100,
+    transferWindows:[{start:'2038-01-01T00:00:00Z',end:'2038-02-01T00:00:00Z'}]
+  });
+  career.signContract({clubId:'club-current',salary:80,durationDays:90,signedAt:'2038-01-01T00:00:00Z'});
+  const offer=career.makeOffer({fromClubId:'club-new',salary:100,fee:250,at:'2038-01-01T00:00:00Z'});
+  const accepted=career.acceptOffer(offer.offer.id,'2038-01-15T00:00:00Z');
+  assert.equal(accepted.ok,true);
+  assert.equal(career.wallet,10);
+  assert.equal(career.clubId,'club-new');
+});
+
+test('P27 mercato : accepter une offre annule les autres propositions et historise chaque étape', () => {
+  const career = new CareerManager({
+    initialCoins:1000,
+    transferWindows:[{start:'2039-01-01T00:00:00Z',end:'2039-02-01T00:00:00Z'}]
+  });
+  career.signContract({clubId:'club-current',durationDays:365,signedAt:'2039-01-01T00:00:00Z'});
+  const first=career.makeOffer({fromClubId:'club-first',salary:40,fee:100,at:'2039-01-01T00:00:00Z'});
+  const second=career.makeOffer({fromClubId:'club-second',salary:45,fee:120,at:'2039-01-01T00:00:00Z'});
+  assert.equal(career.negotiate(first.offer.id,{salary:55,fee:90},'2039-01-02T00:00:00Z').ok,true);
+  assert.equal(career.acceptOffer(first.offer.id,'2039-01-03T00:00:00Z').ok,true);
+  assert.equal(career.offers.get(second.offer.id).status,'cancelled');
+  assert.deepEqual(career.history.filter(item=>item.type.startsWith('offer-')).map(item=>item.type),['offer-received','offer-received','offer-negotiated','offer-cancelled']);
+});
+
+test('P27 mercato : refuser une offre déjà expirée l’enregistre comme expirée, pas comme refusée', () => {
+  const career = new CareerManager();
+  career.signContract({clubId:'club-current',durationDays:365,signedAt:'2040-01-01T00:00:00Z'});
+  const offer=career.makeOffer({fromClubId:'club-other',expiresAt:'2040-01-02T00:00:00Z',at:'2040-01-01T00:00:00Z'});
+  assert.equal(career.rejectOffer(offer.offer.id,'2040-01-03T00:00:00Z'),false);
+  assert.equal(career.offers.get(offer.offer.id).status,'expired');
+  assert.equal(career.history.at(-1).type,'offer-expired');
+});
