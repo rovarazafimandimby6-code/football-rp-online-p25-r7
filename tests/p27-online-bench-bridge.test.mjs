@@ -47,4 +47,6 @@ test('P27 banc en ligne : un joueur peut demander à sortir lui-même, sans pouv
  assert.match(ui,/starters\.filter\(player => player\.isBot === true \|\| player\.id === localPlayerId\)/);
  assert.match(server,/if \(!outgoing\.isBot && outgoing\.id !== requester\.id\) throw new Error\('OUTGOING_PLAYER_CONSENT_REQUIRED'\)/);
  assert.match(ui,/requestButton\.textContent = 'DEMANDER À ENTRER'/);
+ assert.match(ui,/Contrôlé par le système · niveau moyen/);
+ assert.doesNotMatch(ui,/Contrôlé par l’IA|· IA|remplacement IA/i);
 });
