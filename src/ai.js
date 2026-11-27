@@ -135,12 +135,18 @@ export function getDefensiveCoverTarget(player, ball, opponents, attackDir = 1) 
  * Choisit une zone de soutien qui conserve le rôle du joueur tout en évitant
  * les couloirs déjà occupés par les défenseurs adverses.
  */
-export function getSupportTarget(player, owner, players, attackDir = 1, opponentPlayers = null) {
+export function getSupportTarget(player, owner, players, attackDir = 1, opponentPlayers = null, transition = false) {
   const ball = owner?.pos || { x: 0, z: 0 };
   const opponents = opponentPlayers || players.filter((other) => other.team !== player.team && other.role !== 'GK');
-  const forwardOffset = player.specialty === 'runner' ? 8.2
+  const baseForwardOffset = player.specialty === 'runner' ? 8.2
     : player.specialty === 'finisher' ? 5.6
       : player.specialty === 'playmaker' ? -3.2 : 0;
+  // Après récupération, les profils offensifs attaquent plus vite la profondeur.
+  const transitionBoost = !transition || player.specialty === 'cover' ? 0
+    : player.specialty === 'runner' ? 3.2
+      : player.specialty === 'finisher' ? 2.4
+        : player.specialty === 'playmaker' ? 3.8 : 1.8;
+  const forwardOffset = baseForwardOffset + transitionBoost;
   const targetX = clamp(ball.x + attackDir * forwardOffset, -PITCH.HALF_L + 2, PITCH.HALF_L - 2);
   if (player.specialty === 'cover') {
     return {
@@ -331,6 +337,9 @@ export class TeamAI {
     this.formation = '2-2';
     this.mentality = 'balanced';
     this.pressStyle = 'normal';
+    this.lastPossessionTeam = null;
+    this.transitionTeam = null;
+    this.transitionTimer = 0;
     // BLEU attaque vers +X en première période ; ROUGE vers -X.
     this.attackDirection = { blue: 1, red: -1 };
   }
@@ -348,6 +357,13 @@ export class TeamAI {
   }
 
   update(players, ball, dt, actions) {
+    const possessionTeam = ball.owner?.team || null;
+    if (possessionTeam && possessionTeam !== this.lastPossessionTeam) {
+      this.transitionTeam = possessionTeam;
+      this.transitionTimer = 2.4;
+      this.lastPossessionTeam = possessionTeam;
+    }
+    this.transitionTimer = Math.max(0, this.transitionTimer - dt);
     const contexts = buildTeamContexts(players);
     // Trouver le joueur de champ le plus proche du ballon pour chaque équipe
     const closestByTeam = { blue: null, red: null };
@@ -386,7 +402,7 @@ export class TeamAI {
       if (p.role === 'GK') {
         this.updateGoalkeeper(p, ball, dt, actions);
       } else {
-        this.updateOutfield(p, players, ball, closestByTeam[p.team] === p, coverByTeam[p.team] === p, dt, actions, contexts[p.team]);
+        this.updateOutfield(p, players, ball, closestByTeam[p.team] === p, coverByTeam[p.team] === p, dt, actions, contexts[p.team], this.transitionTeam === p.team && this.transitionTimer > 0);
       }
     }
   }
@@ -410,7 +426,7 @@ export class TeamAI {
     }
   }
 
-  updateOutfield(p, players, ball, isChaser, isCover, dt, actions, context = null) {
+  updateOutfield(p, players, ball, isChaser, isCover, dt, actions, context = null, inTransition = false) {
     const attackDir = this.attackDirection[p.team] || (p.team === 'blue' ? 1 : -1);
     const staminaFactor = 0.76 + p.stamina * 0.24;
     const paceFactor = 0.82 + clamp(Number(p.attributes?.pace ?? 50), 1, 99) / 100 * 0.36;
@@ -478,7 +494,7 @@ export class TeamAI {
     } else if (teamHasBall) {
       // Soutien sans ballon, y compris lorsque le porteur est un joueur humain.
       const owner = ball.owner;
-      const support = getSupportTarget(p, owner, players, attackDir, context?.opponents);
+      const support = getSupportTarget(p, owner, players, attackDir, context?.opponents, inTransition);
       const spaced = getSpacedSupportTarget(p, support, context?.teammates);
       const ownerDir = owner ? Math.sign((owner.pos.x - p.pos.x) * attackDir) : 0;
       const tx = clamp(spaced.x + ownerDir * attackDir * 0.45, -PITCH.HALF_L + 2, PITCH.HALF_L - 2);
