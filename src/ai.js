@@ -143,7 +143,7 @@ const FORMATIONS = {
   ]
 };
 
-export function createTeamRoster(team, formationName = '2-2', clubRoster = null, priorityPlayerId = null) {
+export function createTeamRoster(team, formationName = '2-2', clubRoster = null, priorityPlayerId = null, preferredStarterIds = null) {
   const layout = FORMATIONS[formationName] || FORMATIONS['2-2'];
   const sign = team === 'blue' ? 1 : -1;
   const blueNames = ['Lucas', 'Théo', 'Nathan', 'Maxime', 'Kylian'];
@@ -153,6 +153,9 @@ export function createTeamRoster(team, formationName = '2-2', clubRoster = null,
   const available = Array.isArray(clubRoster) ? clubRoster : [];
   const ranked = available.filter(Boolean).slice().sort((a,b) => (Number(b.rating)||0)-(Number(a.rating)||0) || (Number(b.potential)||0)-(Number(a.potential)||0) || String(a.id).localeCompare(String(b.id)));
   const used = new Set();
+  const preferred = Array.isArray(preferredStarterIds)
+    ? preferredStarterIds.slice(0, 5).map(id => ranked.find(player => player.id === id)).filter(Boolean)
+    : [];
   const priorityPlayer = team === 'blue' && priorityPlayerId ? ranked.find(player => player.id === priorityPlayerId) : null;
   const prioritySlotIndex = priorityPlayer
     ? Math.max(0, layout.findIndex(slot => slot.role === priorityPlayer.role) < 0 ? layout.length - 1 : layout.findIndex(slot => slot.role === priorityPlayer.role))
@@ -160,7 +163,9 @@ export function createTeamRoster(team, formationName = '2-2', clubRoster = null,
   return layout.map((slot, i) => {
     let source = i === prioritySlotIndex && priorityPlayer && !used.has(priorityPlayer.id)
       ? priorityPlayer
-      : ranked.find(player => player.role === slot.role && !used.has(player.id));
+      : preferred.find(player => player.role === slot.role && !used.has(player.id));
+    if (!source) source = preferred.find(player => !used.has(player.id));
+    if (!source) source = ranked.find(player => player.role === slot.role && !used.has(player.id));
     if (!source) source = ranked.find(player => !used.has(player.id));
     if (source) used.add(source.id);
     const rating = Number(source?.rating) || 55;
