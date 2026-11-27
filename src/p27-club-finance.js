@@ -137,9 +137,18 @@ export class ClubFinanceStore {
     }
     if(!due.length)return {ok:true,paid:0,account:this.getAccount(id)};
     const snapshot=clone(account);
-    const existing=new Set(account.entries.map(entry=>entry.id));
-    const fresh=due.filter(entry=>!existing.has(entry.id)).map(normalizeEntry);
-    if(fresh.some(entry=>!entry))return {ok:false,reason:'invalid-entry'};
+    const existing=new Map(account.entries.map(entry=>[entry.id,entry]));
+    const normalizedDue=due.map(normalizeEntry);
+    if(normalizedDue.some(entry=>!entry))return {ok:false,reason:'invalid-entry'};
+    for(const entry of normalizedDue) {
+      const prior=existing.get(entry.id);
+      if(prior && (prior.category!==entry.category || prior.amount!==entry.amount ||
+          prior.direction!==entry.direction || prior.description!==entry.description ||
+          prior.createdAt!==entry.createdAt || prior.referenceId!==entry.referenceId)) {
+        return {ok:false,reason:'transaction-id-conflict'};
+      }
+    }
+    const fresh=normalizedDue.filter(entry=>!existing.has(entry.id));
     const nextBalance=this.balance(id)+fresh.reduce((sum,entry)=>sum+entry.amount,0);
     if(!Number.isSafeInteger(nextBalance)||nextBalance>MAX_MONEY)return {ok:false,reason:'balance-limit'};
     account.entries.push(...fresh);
@@ -183,28 +192,45 @@ export class ClubFinanceStore {
     if(!due.length)return {ok:true,paid:0,account:this.getAccount(id)};
     let remaining=this.balance(id),entries=[];
     const paidByLoan=new Map();
+    const existing=new Map(account.entries.map(entry=>[entry.id,entry]));
     for(const item of due) {
+      const candidate=normalizeEntry({id:'loan-payment-'+item.loanId+'-'+item.installment,category:'loan',
+        amount:item.amount,direction:'expense',description:'Remboursement du prêt',
+        createdAt:item.createdAt,referenceId:item.loanId});
+      if(!candidate)return {ok:false,reason:'invalid-entry'};
+      const prior=existing.get(candidate.id);
+      if(prior) {
+        if(prior.category!==candidate.category || prior.amount!==candidate.amount ||
+            prior.direction!==candidate.direction || prior.description!==candidate.description ||
+            prior.createdAt!==candidate.createdAt || prior.referenceId!==candidate.referenceId) {
+          return {ok:false,reason:'transaction-id-conflict'};
+        }
+        paidByLoan.set(item.loanId,(paidByLoan.get(item.loanId)||0)+1);
+        continue;
+      }
       if(remaining<item.amount)break;
       remaining-=item.amount;
-      entries.push({id:'loan-payment-'+item.loanId+'-'+item.installment,category:'loan',amount:item.amount,direction:'expense',
-        description:'Remboursement du prêt',createdAt:item.createdAt,referenceId:item.loanId});
+      entries.push(candidate);
       paidByLoan.set(item.loanId,(paidByLoan.get(item.loanId)||0)+1);
     }
-    if(!entries.length)return {ok:false,reason:'insufficient-funds',paid:0,unpaid:due.length,amount:0,account:this.getAccount(id)};
-    const normalized=entries.map(normalizeEntry);
-    account.entries.push(...normalized);
+    if(!paidByLoan.size)return {ok:false,reason:'insufficient-funds',paid:0,unpaid:due.length,amount:0,account:this.getAccount(id)};
+    account.entries.push(...entries);
     for(const loan of account.loans) {
       const count=paidByLoan.get(loan.id)||0;
       if(count){loan.paidInstallments+=count;loan.status=loan.paidInstallments>=loan.durationWeeks?'repaid':'active';}
     }
     if(!this.persist()) {
-      account.entries.splice(-normalized.length,normalized.length);
-      for(const loan of account.loans){const count=paidByLoan.get(loan.id)||0;if(count){loan.paidInstallments-=count;loan.status='active';}}
+      account.entries.splice(-entries.length,entries.length);
+      for(const loan of account.loans){const count=paidByLoan.get(loan.id)||0;if(count){loan.paidInstallments-=count;loan.status=loan.paidInstallments>=loan.durationWeeks?'repaid':'active';}}
       return {ok:false,reason:'persistence-failed'};
     }
-    const amount=entries.reduce((n,x)=>n+x.amount,0);
-    const unpaid=due.length-entries.length;
-    return {ok:unpaid===0,reason:unpaid?'insufficient-funds':null,paid:entries.length,unpaid,amount,account:this.getAccount(id)};
+    const amount=due.filter(item=>paidByLoan.has(item.loanId)).reduce((sum,item)=>{
+      const count=paidByLoan.get(item.loanId)||0;
+      return sum + (count>0 ? item.amount : 0);
+    },0);
+    const paid=[...paidByLoan.values()].reduce((sum,count)=>sum+count,0);
+    const unpaid=due.length-paid;
+    return {ok:unpaid===0,reason:unpaid?'insufficient-funds':null,paid,unpaid,amount,account:this.getAccount(id)};
   }
   balance(clubId) {
     const account=this.accounts.get(cleanId(clubId)); if(!account)return null;
