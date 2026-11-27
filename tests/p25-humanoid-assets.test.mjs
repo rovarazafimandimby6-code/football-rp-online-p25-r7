@@ -55,7 +55,10 @@ test('P25 humanoïde : le chargeur GLTF et les animations standard sont raccord�
   assert.match(player, /modelAction\.progress = this\.animDuration/);
   assert.match(loader, /GLTFLoader/);
   for (const clip of ['Idle_Loop','Walk_Loop','Jog_Fwd_Loop','Sprint_Loop']) assert.ok(animationMap.includes(clip), `clip ${clip} doit être reconnu`);
-  assert.match(loader, /resolvePlayerAnimationClip/);
+  assert.match(loader, /createPlayerAnimationClipMap/);
+  assert.match(loader, /resolveCachedPlayerAnimationClip/);
+  assert.match(loader, /const clipMap = createPlayerAnimationClipMap\(clipNames\)/);
+  assert.match(loader, /resolveCachedPlayerAnimationClip\(clipMap, state, speed\)/);
 });
 
 
