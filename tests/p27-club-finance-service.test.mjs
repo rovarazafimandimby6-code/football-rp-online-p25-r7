@@ -429,3 +429,21 @@ test('P27 réconciliation : détecte les doublons et états incohérents des jou
   assert.equal(audit.issues.some(issue=>issue.type==='player-wage-journal-invalid-state'),true);
  } finally {f.cleanup();}
 });
+
+
+test('P27 réconciliation : signale les événements financiers source ignorés ou invalides',()=>{
+ const club=DEFAULT_CLUBS[0];
+ const events=[
+  {id:'valid-transfer',type:'transfer',fromClubId:club.id,toClubId:club.id,fee:500},
+  {id:'bad-wage',type:'salary-payment',clubId:'missing-club',amount:0},
+  {id:'bad-wage',type:'salary-payment',clubId:club.id,amount:100}
+ ];
+ const f=setup({events});
+ try {
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='source-transfer-event-invalid'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='source-player-wage-event-invalid'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='source-finance-event-duplicate-or-missing-id'),true);
+ } finally {f.cleanup();}
+});
