@@ -21,9 +21,9 @@ test('P27 remplacements : le menu pause expose les paires compatibles et conserv
   assert.match(ui, /data-in-id/);
   assert.match(ui, /onSubstitute/);
   assert.match(game, /validateRotation/);
-  assert.match(game, /elapsedMatchSeconds: this\.match\.elapsedMatchTime/);
+  assert.match(game, /elapsedMatchSeconds: toVirtualMatchSeconds\(this\.match\.elapsedMatchTime, this\.match\.halfDuration\)/);
   assert.match(game, /this\.substitutionLimit = Infinity/);
-  assert.match(game, /lastSubstitutedOutAt:this\.match\.elapsedMatchTime/);
+  assert.match(game, /lastSubstitutedOutAt:toVirtualMatchSeconds\(this\.match\.elapsedMatchTime, this\.match\.halfDuration\)/);
 });
 
 test('P27 présentation : la feuille de match rend les objets squad et non des variables obsolètes', () => {
