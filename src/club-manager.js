@@ -4,6 +4,7 @@ import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './leag
 import { generateClubCharacteristics, generateClubRecruitmentProfile, generateClubStrategicProfile, balanceClubRosterQuality } from './club-profile.js';
 import { generateClubLore } from './p27-club-lore.js';
 import { P27_EXPANSION_CLUBS } from './p27-club-expansion.js';
+import { applyP27ClubKit } from './p27-club-kit.js';
 
 const safeId = value => String(value ?? '').trim().slice(0, 48);
 const safeCount = value => Number.isFinite(Number(value)) && Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 5 ? Number(value) : null;
@@ -51,9 +52,7 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     controlStatus: player?.playerType === 'human' ? (player?.controlStatus === 'automated' ? 'automated' : 'human') : 'system',
     preferredFoot: player?.preferredFoot === 'left' ? 'left' : 'right',
     archetype: cleanText(player?.archetype, 'Joueur polyvalent', 40),
-    appearance: player?.appearance && typeof player.appearance === 'object'
-      ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null }
-      : null
+    appearance: { ...(player?.appearance && typeof player.appearance === 'object' ? player.appearance : {}), ...applyP27ClubKit({ appearance:player?.appearance, role:player?.role }, club).appearance }
   };
 };
 
@@ -105,7 +104,7 @@ const normalizeClubLocation = (location, legacyCity = '') => {
 
 export const DEFAULT_CLUBS = Object.freeze([
   club('antananarivo-fc','Antananarivo Crown FC','Antananarivo','Madagascar','MG','D1',76,'ai',['#1769aa','#092e55','#f3d36a'],'Stade des Hautes-Terres',82,4200000),
-  club('manparis-sporting','Manchester Sporting','Manchester','Royaume-Uni','GB','D1',78,'ai',['#493b91','#211b4e','#e7d8ff'],'Arena des Deux Capitales',86,5100000),
+  club('manparis-sporting','Manchester Sporting','Manchester','Royaume-Uni','GB','D1',78,'ai',['#123b7a','#d72645','#ffffff'],'Arena des Deux Capitales',86,5100000),
   club('dakar-milan-union','Dakar Athletic','Dakar','Sénégal','SN','D1',74,'ai',['#c33c45','#641d2a','#f4e7d0'],'Stade de la Renaissance',80,3900000),
   club('toamasina-united','Toamasina Coast','Toamasina','Madagascar','MG','D1',72,'ai',['#168b83','#064c4b','#e6d78b'],'Stade du Port',77,3400000),
 
@@ -261,7 +260,7 @@ export class ClubManager {
           const releasedIds = new Set((Array.isArray(saved.releasedPlayers) ? saved.releasedPlayers : []).map(item => safeId(item?.player?.id)).filter(Boolean));
           const mergedRoster = new Map(club.roster.filter(player => !releasedIds.has(player.id)).map(player => [player.id, player]));
           for (const player of migratedRoster) mergedRoster.set(player.id, player);
-          club.roster = [...mergedRoster.values()].slice(0, club.capacity);
+          club.roster = [...mergedRoster.values()].slice(0, club.capacity).map(player => applyP27ClubKit(player, club));
         }
         club.releasedPlayers = Array.isArray(saved.releasedPlayers) ? saved.releasedPlayers.filter(item => item && item.player && typeof item.player === 'object').slice(-100).map(item => ({ player:{ ...item.player, contract:item.player.contract ? { ...item.player.contract } : null }, releasedAt:typeof item.releasedAt === 'string' ? item.releasedAt : null, reason:item.reason === 'contract-expired' ? item.reason : 'released' })) : [];
         club.managerId = saved.managerId ? safeId(saved.managerId) : null;
@@ -298,7 +297,7 @@ export class ClubManager {
     const playerType = player?.playerType === 'system' ? 'system' : 'human';
     if (playerType === 'human' && club.humanAdmission === 'system-only') return { ok: false, reason: 'human-admission-closed' };
     if (playerType === 'human' && club.roster.filter(item => item.playerType === 'human').length >= 7) return { ok: false, reason: 'human-player-limit' };
-    const normalized = normalizeRosterPlayer({ ...player, playerType, id }, club, club.roster.length);
+    const normalized = applyP27ClubKit(normalizeRosterPlayer({ ...player, playerType, id }, club, club.roster.length), club);
     normalized.number = availableShirtNumber(club, normalized.number);
     if (!normalized.number) return { ok: false, reason: 'shirt-numbers-full' };
     club.roster.push(normalized);
@@ -393,7 +392,7 @@ export class ClubManager {
         existing.club.releasedPlayers = existing.club.releasedPlayers.slice(-100);
       }
       const source = existing?.player || {};
-      const normalized = normalizeRosterPlayer({
+      const normalized = applyP27ClubKit(normalizeRosterPlayer({
         ...source, id, name:cleanText(name, source.name || 'Joueur humain', 36),
         playerType:'human', controlStatus:'human',
         contract:contract && contract.status === 'active' ? {
@@ -401,7 +400,7 @@ export class ClubManager {
           salary:Math.max(0, Math.floor(Number(contract.salary) || 0)),
           weeklyWage:Math.max(0, Math.floor(Number(contract.salary) || 0))
         } : null
-      }, target, target.roster.length);
+      }, target, target.roster.length), target);
       normalized.number = assignedNumber;
       target.roster.push(normalized);
       if (!this.saveSeason()) {
@@ -466,11 +465,7 @@ export class ClubManager {
     const assignedNumber = availableShirtNumber(to, player.number);
     if (!assignedNumber) return { ok: false, reason: 'shirt-numbers-full' };
     from.roster.splice(sourceIndex, 1);
-    const transferred = {
-      ...player,
-      number: assignedNumber,
-      appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null
-    };
+    const transferred = applyP27ClubKit({ ...player, number:assignedNumber }, to);
     if (transferred.playerType === 'system') {
       transferred.contract = {
         ...createSystemPlayerContract({
