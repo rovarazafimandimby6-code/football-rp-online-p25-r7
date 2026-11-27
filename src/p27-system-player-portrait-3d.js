@@ -130,12 +130,13 @@ export async function renderSystemPlayerPortrait3D(player) {
     model.scale.setScalar(scale);
     model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#17283d');
+    const clubAccent = new THREE.Color(safeColor(player?.appearance?.kitColors?.accent, '#78b8ff'));
+    scene.background = new THREE.Color('#17283d').lerp(clubAccent, 0.16);
     scene.add(model);
     scene.add(new THREE.HemisphereLight(0xe7f1ff, 0x172033, 1.75));
     const keyLight = new THREE.DirectionalLight(0xfff2e4, 2.1);
     keyLight.position.set(-2.8, 4.2, 3.5); scene.add(keyLight);
-    const rimLight = new THREE.DirectionalLight(0x78b8ff, 0.8);
+    const rimLight = new THREE.DirectionalLight(clubAccent, 0.8);
     rimLight.position.set(2.4, 2.8, -2.5); scene.add(rimLight);
     // Tight chest-up framing: prioritize face and kit identity in compact DLS-style player cards.
     const camera = new THREE.PerspectiveCamera(29, WIDTH / HEIGHT, 0.1, 20);
