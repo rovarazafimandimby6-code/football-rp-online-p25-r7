@@ -427,3 +427,23 @@ test('P27 lot 105 : réconcilie les soldes nets après deux transferts successif
   assert.equal(finance.store.getAccount('club-a').entries.filter(e=>e.id==='transfer-fee-out-net-ledger-105-b').length,1);
  } finally {f.cleanup();}
 });
+
+test('P27 effectifs : ajout et modification sont annulés si la sauvegarde échoue',()=>{
+ let failWrites=false;
+ const storage={value:null,getItem(){return this.value;},setItem(key,value){if(failWrites)throw new Error('DISK_FULL');this.value=value;}};
+ const manager=new ClubManager(clubs,storage,'atomic-add-update');
+ assert.equal(manager.addPlayer('club-a',{id:'atomic-roster-player',playerType:'system',rating:60,number:9}).ok,true);
+ const saved=storage.value;
+ failWrites=true;
+ const add=manager.addPlayer('club-b',{id:'atomic-new-player',playerType:'system',rating:61,number:10});
+ assert.deepEqual(add,{ok:false,reason:'roster-persistence-failed'});
+ assert.equal(manager.getClub('club-b').roster.some(player=>player.id==='atomic-new-player'),false);
+ assert.equal(storage.value,saved);
+ const before=manager.getClub('club-a').roster.find(player=>player.id==='atomic-roster-player');
+ const edit=manager.updatePlayer('club-a',{...before,name:'Edited Name',rating:99});
+ assert.deepEqual(edit,{ok:false,reason:'roster-persistence-failed'});
+ const after=manager.getClub('club-a').roster.find(player=>player.id==='atomic-roster-player');
+ assert.equal(after.name,before.name);
+ assert.equal(after.rating,before.rating);
+ assert.equal(storage.value,saved);
+});
