@@ -58,3 +58,23 @@ test('P27 prêts : la résiliation du contrat annule les offres de prêt encore 
   assert.equal(ended.career.loanOffers.find(item=>item.id===offer.offer.id).status,'cancelled');
  }finally{f.cleanup();}
 });
+
+test('P27 carrière : les vues retournées ne permettent pas de modifier les contrats et offres internes',()=>{
+ const f=setup('2027-01-15T12:00:00.000Z');
+ try{
+  f.store.signContract('account-view-isolation',{clubId:'antananarivo-fc',salary:1250,durationDays:180});
+  const offer=f.store.requestLoanOffer('account-view-isolation',{toClubId:'toamasina-united',durationDays:30});
+  assert.equal(offer.ok,true);
+  const accepted=f.store.acceptLoanOffer('account-view-isolation',offer.offer.id);
+  assert.equal(accepted.ok,true);
+  accepted.career.contract.loan.parentContract.salary=1;
+  accepted.career.contract.loan.parentContract.clubId='forged-club';
+  accepted.career.loanOffers[0].status='pending';
+  accepted.career.history[0].type='forged-history';
+  const current=f.store.getCareer('account-view-isolation');
+  assert.equal(current.contract.loan.parentContract.salary,1250);
+  assert.equal(current.contract.loan.parentContract.clubId,'antananarivo-fc');
+  assert.equal(current.loanOffers[0].status,'accepted');
+  assert.equal(current.history[0].type,'signing');
+ }finally{f.cleanup();}
+});
