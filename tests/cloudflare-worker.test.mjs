@@ -74,6 +74,24 @@ test("D1 account routes fail closed when persistent storage is missing", async (
 });
 
 
+test("unified personal shop API requires D1 and an authenticated account", async () => {
+  const missingDb = await worker.fetch(request("/api/shop?shop=player"), {});
+  assert.equal(missingDb.status,503);
+  assert.equal((await missingDb.json()).error,"D1_BINDING_MISSING");
+
+  const db = { prepare() { return { bind() { return this; }, first: async () => null }; }, batch: async () => [] };
+  const anonymousRead = await worker.fetch(request("/api/shop?shop=player"), { P27_DB:db });
+  assert.equal(anonymousRead.status,401);
+  assert.equal((await anonymousRead.json()).error,"SESSION_EXPIRED");
+
+  const anonymousPurchase = await worker.fetch(request("/api/shop/purchase",{
+    method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({shop:"player",itemId:"boots-standard",purchaseId:"p27-test-purchase"})
+  }),{P27_DB:db});
+  assert.equal(anonymousPurchase.status,401);
+  assert.equal((await anonymousPurchase.json()).error,"SESSION_EXPIRED");
+});
+
 test("player shop routes require configured D1 storage and an authenticated account", async () => {
   const missingDb = await worker.fetch(request("/api/shop/player/catalog"), {});
   assert.equal(missingDb.status, 503);
