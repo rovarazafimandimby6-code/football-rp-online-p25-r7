@@ -26,6 +26,20 @@ export function predictDefensiveThreatPosition(opponent, attackDir = 1, horizon 
   };
 }
 
+/** Position de repli d'un défenseur lorsque le receveur a franchi sa ligne sur une passe en profondeur. */
+export function getDefensiveRecoveryTarget(player, threat, attackDir = 1) {
+  if (!player?.pos || !player?.homePos || !threat?.pos) return player?.homePos || player?.pos || { x: 0, z: 0 };
+  const home = player.homePos;
+  const predicted = predictDefensiveThreatPosition(threat, attackDir, 0.85);
+  const runSpeed = -attackDir * (Number(threat.vel?.x) || 0);
+  const hasBrokenLine = attackDir * (predicted.x - home.x) < -0.5;
+  if (runSpeed <= 0.8 || !hasBrokenLine) return { x: home.x, z: home.z };
+  return {
+    x: clamp(predicted.x - attackDir * 2.2, -PITCH.HALF_L + 1.5, PITCH.HALF_L - 1.5),
+    z: clamp(predicted.z * 0.28 + home.z * 0.72, home.z - 3.8, home.z + 3.8)
+  };
+}
+
 /** Tirage déterministe par joueur et action : le même état produit la même décision. */
 export function aiDecisionRoll(player, action = 'decision') {
   const sequence = Math.max(0, Math.floor(Number(player?.aiDecisionSequence) || 0));
@@ -114,6 +128,17 @@ export function getDefensiveShapeTarget(player, ball, opponents, attackDir = 1, 
     const goalSideZ = threatPosition.z + (player.homePos.z - threatPosition.z) * 0.28;
     targetX = targetX * 0.58 + goalSideX * 0.42;
     targetZ = targetZ * 0.62 + goalSideZ * 0.38;
+  }
+  // Après une passe en profondeur, la ligne récupère côté but du receveur
+  // qui a franchi le poste, sans que tous les défenseurs convergent sur lui.
+  if (threat && threatPosition) {
+    const runSpeed = -attackDir * (Number(threat.vel?.x) || 0);
+    const hasBrokenLine = attackDir * (threatPosition.x - player.homePos.x) < -0.5;
+    if (runSpeed > 0.8 && hasBrokenLine) {
+      const recovery = getDefensiveRecoveryTarget(player, threat, attackDir);
+      targetX = targetX * 0.68 + recovery.x * 0.32;
+      targetZ = targetZ * 0.72 + recovery.z * 0.28;
+    }
   }
   targetZ = clamp(targetZ, homeZ - 5.5, homeZ + 5.5);
   return {
