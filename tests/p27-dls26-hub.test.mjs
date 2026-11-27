@@ -67,3 +67,19 @@ test('P27 Club RP : le hub ouvre une communauté séparée des équipes de champ
   assert.match(css, /rp-club-hero/);
   assert.match(audit, /Première brique fonctionnelle du Club RP/);
 });
+
+
+test('P27 interface globale : interactions tactiles, focus clavier et états désactivés sont cohérents', () => {
+  assert.match(css, /global interface pass/);
+  assert.match(css, /:focus-visible/);
+  assert.match(css, /:disabled/);
+  assert.match(css, /prefers-reduced-motion:reduce/);
+  assert.match(css, /overscroll-behavior:contain/);
+  assert.match(css, /color-scheme:dark/);
+});
+
+test('P27 interface globale : les vues compétitions et carrière restent adaptables en portrait', () => {
+  assert.match(css, /@media\(orientation:portrait\)/);
+  assert.match(css, /\.competition-layout,\.player-career-columns/);
+  assert.match(css, /max-width:520px/);
+});
