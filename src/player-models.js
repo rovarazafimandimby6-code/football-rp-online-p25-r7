@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
-import { resolvePlayerAnimationClip, isLoopingPlayerAnimation, resolvePlayerAnimationTimeScale } from './player-animation-map.js';
+import { createPlayerAnimationClipMap, resolveCachedPlayerAnimationClip, isLoopingPlayerAnimation, resolvePlayerAnimationTimeScale } from './player-animation-map.js';
 import { clonePlayerMaterials } from './player-materials.js';
 
 const loader = new GLTFLoader();
@@ -157,6 +157,7 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
     const actions = new Map();
     for (const clip of animationSource.animations || []) actions.set(clip.name, mixer.clipAction(clip));
     const clipNames = [...actions.keys()];
+    const clipMap = createPlayerAnimationClipMap(clipNames);
     let activeAction = null;
     let activeActionMode = null;
     let lastState = null;
@@ -192,7 +193,7 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
       const safeDt = Math.min(Math.max(dt || 0, 0), 0.05);
       model.visible = true;
       fallbackBody.visible = false;
-      const clipName = resolvePlayerAnimationClip(clipNames, state, speed);
+      const clipName = resolveCachedPlayerAnimationClip(clipMap, state, speed);
       const hasClip = clipName ? play(clipName, state, speed) : false;
       mixer.update(safeDt);
 
