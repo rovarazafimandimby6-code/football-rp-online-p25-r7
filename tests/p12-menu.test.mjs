@@ -65,8 +65,8 @@ test('P27 UI: accueil modulaire inspiré de DLS et connecté aux données réell
   assert.match(main, /data-action="choose-match"/);
   for (const page of ['career-hub','player','players','clubs','rp-club','competitions','results','mercato']) assert.match(main,new RegExp(`data-page="${page}"`));
   assert.match(main, /const pendingOffers =/);
-  assert.match(main, /const seasonSnapshot = seasonStats\\.snapshot\\(\\)/);
-  assert.match(main, /const latestMatch = seasonSnapshot\\.matches/);
+  assert.ok(main.includes('const seasonSnapshot = seasonStats.snapshot();'));
+  assert.ok(main.includes('const latestMatch = seasonSnapshot.matches.slice(-1)[0] || null;'));
   assert.match(main, /p27-career-progress-fill/);
 });
 
