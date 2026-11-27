@@ -37,6 +37,17 @@ test("player shop client reads the authoritative server snapshot", async () => {
   assert.equal(calls.every(call=>call.options.headers.authorization === "Bearer p27-test-token-with-enough-length"),true);
 });
 
+test("club shop client reads owner-scoped purchase and resale history", async () => {
+  const history = {
+    purchases:[{id:"club-buy-1",shop:"club",itemId:"club-kit-home",paidPrice:8000,status:"completed"}],
+    resales:[{id:"club-sale-1",shop:"club",itemId:"club-kit-away",amount:3000,status:"completed"}],
+  };
+  const {client,calls} = clientFor([history]);
+  assert.deepEqual(await client.getShopHistory("club","club-one"),history);
+  assert.equal(calls[0].url,"/api/shop/history?shop=club&clubId=club-one");
+  assert.equal(calls[0].options.headers.authorization,"Bearer p27-test-token-with-enough-length");
+});
+
 test("player shop client sends authenticated purchase, resale, and equipment commands", async () => {
   const {client,calls} = clientFor([{ok:true},{ok:true},{ok:true}]);
   await client.purchasePlayerShopItem("boots-standard","purchase-1");
