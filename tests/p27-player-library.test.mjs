@@ -70,6 +70,26 @@ test('P27 bibliothèque joueurs : les fiches retournées ne permettent pas de mo
   assert.equal(original.appearance.kitDesign, 'sash');
 });
 
+test('P27 bibliothèque joueurs : isole aussi les données imbriquées du contrat, des attributs et de l’apparence', () => {
+  const original = player('p-deep-copy','Fiche profonde', {
+    number:8,
+    appearance:{ skinTone:'dark', details:{ scars:['left-cheek'], accessories:{ wristband:'blue' } }, kitColors:{ primary:'#aa1122' } },
+    attributes:{ pace:80, technical:{ control:76, passing:71 } },
+    contract:{ salary:1200, loan:{ status:'active', terms:{ returnDate:'2027-06-30' } } }
+  });
+  const club = { id:'deep-copy-club', name:'Deep Copy FC', division:'D1', colors:['#aa1122','#1122aa','#eeeeee'], roster:[original] };
+  const result = listP27Players({ clubs:[club], filters:{ limit:10 } });
+  const found = result.players[0];
+  found.appearance.details.scars.push('chin');
+  found.appearance.details.accessories.wristband = 'red';
+  found.attributes.technical.control = 1;
+  found.contract.loan.terms.returnDate = '1900-01-01';
+  assert.deepEqual(original.appearance.details.scars, ['left-cheek']);
+  assert.equal(original.appearance.details.accessories.wristband, 'blue');
+  assert.equal(original.attributes.technical.control, 76);
+  assert.equal(original.contract.loan.terms.returnDate, '2027-06-30');
+});
+
 test('P27 bibliothèque joueurs : le gardien reçoit le kit secondaire du club', () => {
   const keeper = player('p-gk','Gardien', { role:'GK', number:1 });
   const club = { id:'keeper-library', name:'Keeper FC', division:'D2', colors:['#123456','#102030','#eeeeee'], kitDesign:'hoops', roster:[keeper] };
