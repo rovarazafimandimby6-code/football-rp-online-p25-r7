@@ -201,7 +201,7 @@ export class UIManager {
     addOptions(this.benchOutgoingSelect, outgoing, 'Joueur à remplacer');
     addOptions(this.benchIncomingSelect, incoming, 'Réserviste à faire entrer');
     this.benchRotateButton.disabled = !canRotate;
-    if (!canRotate && rotationAvailable) this.benchStatusMessageEl.textContent += ' · Aucun remplacement IA disponible';
+    if (!canRotate && rotationAvailable) this.benchStatusMessageEl.textContent += ' · Aucun joueur du système disponible';
   }
 
   setStatus(text) {
@@ -321,8 +321,8 @@ export class UIManager {
       label.classList.toggle('ai-controlled', aiControlled);
       if (label.dataset.aiControlled !== String(aiControlled)) {
         label.dataset.aiControlled = String(aiControlled);
-        label.textContent = `${player.number ? `#${player.number} ` : ''}${player.name}${aiControlled ? ' · IA' : ''}`;
-        label.title = aiControlled ? 'Contrôlé par l’IA · niveau moyen' : '';
+        label.textContent = `${player.number ? `#${player.number} ` : ''}${player.name}${aiControlled ? ' · SYSTÈME' : ''}`;
+        label.title = aiControlled ? 'Contrôlé par le système · niveau moyen' : '';
       }
       label.style.setProperty('--label-scale', player.isControlled ? '1' : String(Math.max(0.84, 1 - item.distanceBall * 0.025)));
     }
