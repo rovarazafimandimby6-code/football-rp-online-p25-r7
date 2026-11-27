@@ -436,3 +436,8 @@ L’ouverture d’une fiche depuis la bibliothèque générale ou depuis l’eff
 ### Effectif club : ouverture accessible des fiches joueur
 
 Les lignes de l’effectif sont désormais des points d’entrée fonctionnels vers la fiche joueur : clic, Entrée et Espace déclenchent la même action. Le contexte de retour est conservé vers le détail du club. Le comportement d’expansion des cartes de la bibliothèque générale reste séparé. Aucun statut, attribut ou mécanisme de transfert n’est modifié.
+
+
+### Fiche joueur — retour contextuel
+
+Le bouton de retour de la fiche joueur adapte désormais son libellé à la provenance : « Retour à l’effectif » depuis un club, « Retour à la bibliothèque » depuis le catalogue. La destination était déjà conservée ; ce correctif rend le parcours immédiatement compréhensible. Un test vérifie le libellé et le retour vers la page mémorisée.
