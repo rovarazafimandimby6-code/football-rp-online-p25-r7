@@ -18,7 +18,14 @@ const messages = {
   'item-not-resellable':'Cet article ne peut pas être revendu.',
   'resale-value-zero':'La valeur de revente est trop faible.'
 };
-function syncEquippedCosmetics(inventory) { const equipped={}; for (const entry of inventory.filter(item=>item.status==='owned'&&item.equipped)) { if (['hair','beard','crampons','accessories'].includes(entry.category)) equipped[entry.category]=entry.itemId; } try { globalThis.localStorage?.setItem('fpro.player-shop-equipped.v1',JSON.stringify(equipped)); } catch {} }
+function syncEquippedCosmetics(inventory, catalog = []) {
+  const equipped = {};
+  for (const entry of inventory.filter(item => item.status === 'owned' && item.equipped)) {
+    const category = entry.category || catalog.find(item => item.id === entry.itemId)?.category;
+    if (['hair', 'beard', 'crampons', 'accessories'].includes(category)) equipped[category] = entry.itemId;
+  }
+  try { globalThis.localStorage?.setItem('fpro.player-shop-equipped.v1', JSON.stringify(equipped)); } catch {}
+}
 export function mountPlayerShop(root, accountClient, onNavigate) {
   const state = {catalog:[],inventory:[],balance:0,view:'catalog',category:'all',busy:false};
   const status = message => { const node=root.querySelector('#player-shop-status'); if(node) node.textContent=message; };
@@ -67,7 +74,7 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
         accountClient.getPlayerShopCatalog(),accountClient.getPlayerShopInventory(),accountClient.getProgression()
       ]);
       if(!root.isConnected)return;
-      state.catalog=catalog;state.inventory=inventory;syncEquippedCosmetics(inventory);state.balance=progression.progression.coins;
+      state.catalog=catalog;state.inventory=inventory;syncEquippedCosmetics(inventory,catalog);state.balance=progression.progression.coins;
       root.querySelector('#player-shop-balance').textContent=money(state.balance);
       root.querySelector('#player-shop-count').textContent=catalog.length+' articles';
       renderItems();status('Catalogue, inventaire et solde synchronisés avec le serveur.');
@@ -105,7 +112,7 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
       else if(action==='resale')await accountClient.resellPlayerShopItem(itemId,'p27-sell-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12));
       else if(action==='equip')await accountClient.equipPlayerShopItem(itemId,button.dataset.equipped==='true');
       const [inventory,progression]=await Promise.all([accountClient.getPlayerShopInventory(),accountClient.getProgression()]);
-      state.inventory=inventory;syncEquippedCosmetics(inventory);state.balance=progression.progression.coins;
+      state.inventory=inventory;syncEquippedCosmetics(inventory,state.catalog);state.balance=progression.progression.coins;
       root.querySelector('#player-shop-balance').textContent=money(state.balance);
       renderItems();
       status(action==='purchase'?'Achat confirmé. Article ajouté à votre inventaire.':action==='resale'?'Revente confirmée. Pièces créditées sur votre compte.':'Équipement mis à jour.');
