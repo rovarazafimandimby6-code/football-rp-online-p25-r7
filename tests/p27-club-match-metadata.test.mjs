@@ -200,3 +200,14 @@ test('P27 match : les extensions du club pilotent des niveaux de tribunes supplÃ
  assert.match(field,/clubExpansionGroup/);
  assert.match(field,/PITCH\.HALF_W - 12\.0 - offset/);
 });
+
+
+test('P27 match : le serveur diffuse les seuls cosmÃ©tiques publics et le client applique les deux clubs',async()=>{
+ const server=await readFile(new URL('../server/index.js',import.meta.url),'utf8');
+ const main=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
+ assert.match(server,/resolveClubAppearance:clubId => shopService\.publicAppearance\(clubId\)/);
+ assert.match(main,/onlineTeams\?\.\[teamKey\]\?\.shopAppearance/);
+ assert.match(main,/loadClubKits\(homeClub, 'home', 'blue'\)/);
+ assert.match(main,/loadClubKits\(awayClub, 'away', 'red'\)/);
+ assert.match(main,/publicTeamAppearance\.equippedItemIds/);
+});
