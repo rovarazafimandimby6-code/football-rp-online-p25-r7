@@ -63,11 +63,57 @@ export class FieldBuilder {
     this.crowdMesh = null;
     this.netPanels = [];
     this.cornerFlags = [];
+    this.stadiumMaterials = [];
+    this.clubBannerGroup = null;
     this.goalPulse = 0;
     this.netAnimating = false;
     this.elapsed = 0;
     this.build();
     scene.add(this.group);
+  }
+
+  applyClubAppearance(appearance = {}) {
+    const grass = appearance.grassSkin || 'default';
+    const grassTint = grass === 'premium' ? 0xc5f4ce : grass === 'standard' ? 0xd7f0d8 : 0xffffff;
+    this.turfMaterial?.color.setHex(grassTint);
+    const outerTint = grass === 'premium' ? 0x2a7040 : grass === 'standard' ? 0x28663a : 0x1e5c31;
+    this.outerMaterial?.color.setHex(outerTint);
+
+    const stadium = appearance.stadiumSkin || 'default';
+    const stadiumTint = stadium === 'premium' ? 0x8aa0b7 : stadium === 'standard' ? 0x687f91 : 0xffffff;
+    for (const material of this.stadiumMaterials) material.color.setHex(
+      material.userData.p27BaseColor ?? material.color.getHex()
+    ), material.color.multiply(new THREE.Color(stadiumTint));
+
+    this.clubBannerGroup?.parent?.remove(this.clubBannerGroup);
+    this.clubBannerGroup = null;
+    const supporters = appearance.supporters || {};
+    if (!supporters.flags && !supporters.banners && !supporters.tifo) return;
+    const colors = Array.isArray(appearance.colors) && appearance.colors.length >= 3
+      ? appearance.colors : ['#2865a8','#17365d','#f4f6fb'];
+    const group = new THREE.Group();
+    const primary = new THREE.Color(colors[0]);
+    const accent = new THREE.Color(colors[2]);
+    if (supporters.flags || supporters.banners) {
+      for (let index = 0; index < 9; index++) {
+        const flag = new THREE.Mesh(
+          new THREE.PlaneGeometry(supporters.banners ? 1.35 : 0.72, supporters.banners ? 0.62 : 0.9),
+          new THREE.MeshLambertMaterial({ color: index % 2 ? accent : primary, side: THREE.DoubleSide })
+        );
+        flag.position.set(-PITCH.HALF_L + 4 + index * ((PITCH.L - 8) / 8), supporters.banners ? 3.0 : 3.15, -PITCH.HALF_W - 7.4);
+        group.add(flag);
+      }
+    }
+    if (supporters.tifo) {
+      const tifo = new THREE.Mesh(
+        new THREE.PlaneGeometry(10, 2.4),
+        new THREE.MeshLambertMaterial({ color: primary, side: THREE.DoubleSide })
+      );
+      tifo.position.set(0, 4.1, -PITCH.HALF_W - 7.45);
+      group.add(tifo);
+    }
+    this.group.add(group);
+    this.clubBannerGroup = group;
   }
 
   build() {
@@ -79,6 +125,7 @@ export class FieldBuilder {
     outer.position.y = -0.02;
     outer.receiveShadow = true;
     this.group.add(outer);
+    this.outerMaterial = outerMat;
 
     // Pelouse principale en 3D
     const turfGeo = new THREE.PlaneGeometry(PITCH.L, PITCH.W);
@@ -87,6 +134,7 @@ export class FieldBuilder {
     turf.rotation.x = -Math.PI / 2;
     turf.receiveShadow = true;
     this.group.add(turf);
+    this.turfMaterial = turfMat;
 
     this.buildLines();
     this.buildCornerFlags();
@@ -332,7 +380,9 @@ export class FieldBuilder {
   buildStadium() {
     // Panneaux publicitaires autour du terrain
     const boardMat = new THREE.MeshLambertMaterial({ color: 0x153024 });
+    this.stadiumMaterials.push(boardMat);
     const accentMat = new THREE.MeshLambertMaterial({ color: 0x26754e });
+    this.stadiumMaterials.push(accentMat);
     const northBoard = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 8, 1.0, 0.35), boardMat);
     northBoard.position.set(0, 0.5, -PITCH.HALF_W - 3.2);
     const northStrip = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 7.5, 0.28, 0.4), accentMat);
@@ -347,9 +397,11 @@ export class FieldBuilder {
 
     // Tribunes nord, ouest et est (sud ouvert pour ne jamais gêner la caméra broadcast)
     const standMat = new THREE.MeshLambertMaterial({ color: 0x2a3540 });
+    this.stadiumMaterials.push(standMat);
     const tierColors = [0x374757, 0x435669, 0x4f647a];
     for (let t = 0; t < 3; t++) {
       const mat = new THREE.MeshLambertMaterial({ color: tierColors[t] });
+      this.stadiumMaterials.push(mat);
       const nTier = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 16, 1.3, 2.4), mat);
       nTier.position.set(0, 1.1 + t * 1.25, -PITCH.HALF_W - 5.4 - t * 2.3);
       this.group.add(nTier);
@@ -436,6 +488,7 @@ export class FieldBuilder {
 
     // Liserés de gradins et bandeaux supérieurs pour donner une lecture architecturale au stade.
     const rimMat = new THREE.MeshLambertMaterial({ color: 0x182632 });
+    this.stadiumMaterials.push(rimMat);
     const rimNorth = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 22, 0.42, 0.72), rimMat);
     rimNorth.position.set(0, 5.05, -PITCH.HALF_W - 11.2);
     const rimWest = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.42, PITCH.W + 18), rimMat);
@@ -447,6 +500,7 @@ export class FieldBuilder {
     // Auvent fin au-dessus des tribunes : lecture de stade plus nette sans
     // alourdir le rendu (trois meshes statiques, aucun update par frame).
     const canopyMat = new THREE.MeshStandardMaterial({ color: 0x111d27, roughness: 0.72, metalness: 0.12 });
+    this.stadiumMaterials.push(canopyMat);
     const canopyNorth = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 24, 0.32, 3.2), canopyMat);
     canopyNorth.position.set(0, 6.15, -PITCH.HALF_W - 11.6);
     const canopyWest = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.32, PITCH.W + 22), canopyMat);
