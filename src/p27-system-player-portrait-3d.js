@@ -89,6 +89,18 @@ export async function renderSystemPlayerPortrait3D(player) {
       node.material = Array.isArray(node.material) ? node.material.map(recolor) : recolor(node.material);
     });
     attachHair(model, hairSource);
+    const faceShape = player?.appearance?.faceShape || 'oval';
+    const faceScale = {
+      oval: [0.98, 1.04, 1], round: [1.08, 0.98, 1],
+      angular: [0.94, 1.06, 1], long: [0.96, 1.12, 1],
+      square: [1.08, 1.02, 1]
+    }[faceShape] || [1, 1, 1];
+    const buildScale = player?.appearance?.bodyBuild === 'strong' ? 1.07 : player?.appearance?.bodyBuild === 'lean' ? 0.95 : 1;
+    model.traverse(node => {
+      if (!node.isBone) return;
+      if (node.name === 'Head') node.scale.multiply(new THREE.Vector3(...faceScale));
+      if (node.name === 'spine_02') node.scale.x *= buildScale;
+    });
     const bounds = new THREE.Box3().setFromObject(model);
     const size = bounds.getSize(new THREE.Vector3());
     const center = bounds.getCenter(new THREE.Vector3());
