@@ -15,7 +15,8 @@ export class RenderFramePacer {
 
   shouldRender(nowMs) {
     if (!Number.isFinite(nowMs)) return true;
-    if (this.lastFrameAt === null) {
+    if (this.lastFrameAt === null || nowMs < this.lastFrameAt) {
+      // A reset/backward clock must not stall rendering until the old timestamp is reached.
       this.lastFrameAt = nowMs;
       return true;
     }
