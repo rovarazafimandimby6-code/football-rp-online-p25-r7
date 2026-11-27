@@ -397,3 +397,16 @@ Tests ajoutés : lecture autorisée pour un membre, refus HTTP 403 pour un non-m
 ### Hub carrière — forme et statistiques réelles
 
 L'écran Carrière affiche désormais les cinq derniers résultats réellement enregistrés, les totaux de saison (matchs, buts et passes décisives) et la note moyenne issue du récapitulatif de saison. La note globale du joueur reste calculée depuis ses attributs de profil. Les accès Derniers matchs et Fiche joueur conduisent aux écrans existants. En l'absence de matchs validés, l'interface indique explicitement qu'aucun match n'a été enregistré au lieu de fabriquer une forme ou des statistiques.
+
+## 10. Harmonisation transversale de l'interface — lot UI global
+
+Le passage transversal applique désormais une base commune à tous les écrans internes sans remplacer leurs composants métier :
+- retours tactiles cohérents, états désactivés lisibles et focus clavier visible ;
+- formulaires en thème sombre, médias limités à la largeur disponible et contenus longs autorisés à revenir à la ligne ;
+- hiérarchie typographique et surfaces des panneaux mieux unifiées ;
+- tableaux avec en-têtes persistants dans leurs zones de défilement ;
+- comportement adaptatif des vues carrière/compétitions et des actions du Mercato en portrait ;
+- défilement contenu maîtrisé sur les écrans paysage courts ;
+- respect de la préférence système de réduction des animations.
+
+Ce lot est une harmonisation CSS transversale : il ne prétend pas ajouter les fonctions métier absentes, ne modifie pas les règles économiques ou sportives et ne change pas le moteur 3D du match.
