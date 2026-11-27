@@ -460,3 +460,26 @@ test('P27 finance : refuse un checkpoint de paie invalide pour un club existant'
   }),/PAYROLL_SCHEDULE_CORRUPT/);
  } finally { rmSync(f.directory,{recursive:true,force:true}); }
 });
+
+
+test('P27 réconciliation : vérifie les identifiants et montants exacts des échéances sponsor et prêt',()=>{
+ const f=setup();
+ try {
+  const club=DEFAULT_CLUBS[0].id;
+  const start=Date.UTC(2027,0,1);
+  const account=f.service.store.getAccount(club);
+  f.service.store.signSponsorContract(club,{id:'audit-sponsor-exact',name:'Partenaire',weeklyPayment:700,durationWeeks:2,signedAt:start});
+  f.service.store.settleSponsorPayments(club,start+8*86400000);
+  f.service.store.issueLoan(club,{id:'audit-loan-exact',lender:'Banque',principal:1000,totalRepayment:1200,durationWeeks:2,issuedAt:start});
+  f.service.store.settleLoanRepayments(club,start+8*86400000);
+  const raw=f.service.store.accounts.get(club);
+  const sponsor=raw.entries.find(entry=>entry.id==='sponsor-audit-sponsor-exact-1');
+  const loan=raw.entries.find(entry=>entry.id==='loan-payment-audit-loan-exact-1');
+  sponsor.amount+=1;
+  loan.amount-=1;
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='sponsor-installment-invalid'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='loan-installment-invalid'),true);
+ } finally {f.cleanup();}
+});
