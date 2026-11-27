@@ -12,6 +12,7 @@ const messages = {
   NOT_AUTHENTICATED:'Connectez votre compte joueur pour accéder à la boutique en ligne.',
   SESSION_EXPIRED:'Votre session a expiré. Reconnectez votre compte joueur.',
   INSUFFICIENT_COINS:'Vous ne possédez pas assez de pièces.',
+  'insufficient-coins':'Votre solde de pièces est insuffisant pour cet achat.',
   'already-owned':'Cet article est déjà dans votre inventaire.',
   'item-not-owned':'Cet article ne se trouve pas dans votre inventaire.',
   'item-active':'Retirez cet article avant de le revendre.',
