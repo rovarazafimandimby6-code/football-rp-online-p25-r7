@@ -108,6 +108,11 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(renderer, /const clubAccent = new THREE\.Color\(safeColor\(player\?\.appearance\?\.kitColors\?\.accent/);
   assert.match(renderer, /lerp\(clubAccent, 0\.16\)/);
   assert.match(renderer, /DirectionalLight\(clubAccent, 0\.8\)/);
+  assert.match(renderer, /function addShirtNumber\(model, value\)/);
+  assert.match(renderer, /P27_SystemPortrait_ShirtNumber/);
+  assert.match(renderer, /sprite\.position\.set\(0, 1\.075, 0\.17\)/);
+  assert.match(renderer, /player\.clubId, player\.number/);
+  assert.match(renderer, /p27PortraitOwnedDecal/);
   assert.match(renderer, /MAX_CACHE = 180/);
   assert.match(renderer, /p27PortraitOwnedGeometry/);
   assert.match(renderer, /if \(node\.userData\?\.p27PortraitOwnedGeometry\) node\.geometry/);
