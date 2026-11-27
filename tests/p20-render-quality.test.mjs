@@ -102,6 +102,7 @@ test('P27 stade : les deux cages partagent les géométries statiques sans parta
   for (const key of ['goal-front-post','goal-crossbar','goal-back-post','goal-top-support','goal-top-net','goal-side-net']) {
     assert.ok(goalBuilder.includes(`getSharedGeometry('${key}'`), `géométrie partagée attendue : ${key}`);
   }
-  assert.ok(goalBuilder.includes('this.goalPostMaterial || (this.goalPostMaterial = new THREE.MeshLambertMaterial'));\n  assert.ok(goalBuilder.includes('const backNetGeo = new THREE.PlaneGeometry'));
+  assert.ok(goalBuilder.includes('this.goalPostMaterial || (this.goalPostMaterial = new THREE.MeshLambertMaterial'));
+  assert.ok(goalBuilder.includes('const backNetGeo = new THREE.PlaneGeometry'));
   assert.ok(goalBuilder.includes('this.netPanels.push({ mesh: backNet, base:'));
 });
