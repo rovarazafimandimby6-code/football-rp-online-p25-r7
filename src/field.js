@@ -492,16 +492,19 @@ export class FieldBuilder {
 
     // Public stylisé en silhouettes humanoïdes instanciées : deux draw calls
     // pour les torses et les têtes, au lieu de 420 blocs rectangulaires.
-    const count = 420;
-    const torsoGeo = new THREE.SphereGeometry(0.5, 10, 8);
+    const lowEndCrowd = this.scene.userData?.renderQuality === 'low';
+    // Instanced spectators retain the stadium atmosphere while trimming
+    // vertex work on entry-level mobile GPUs.
+    const count = lowEndCrowd ? 240 : 420;
+    const torsoGeo = new THREE.SphereGeometry(0.5, lowEndCrowd ? 8 : 10, lowEndCrowd ? 6 : 8);
     const torsoMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     const crowd = new THREE.InstancedMesh(torsoGeo, torsoMat, count);
-    const headGeo = new THREE.SphereGeometry(0.5, 8, 6);
+    const headGeo = new THREE.SphereGeometry(0.5, lowEndCrowd ? 6 : 8, lowEndCrowd ? 5 : 6);
     const headMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     const crowdHeads = new THREE.InstancedMesh(headGeo, headMat, count);
     // A single instanced arm mesh adds a readable human silhouette without
     // creating hundreds of individual meshes or draw calls.
-    const armGeo = new THREE.CylinderGeometry(0.075, 0.09, 0.62, 6);
+    const armGeo = new THREE.CylinderGeometry(0.075, 0.09, 0.62, lowEndCrowd ? 5 : 6);
     const armMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     const crowdArms = new THREE.InstancedMesh(armGeo, armMat, count * 2);
     const dummy = new THREE.Object3D();
