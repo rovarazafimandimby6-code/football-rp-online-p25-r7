@@ -164,7 +164,10 @@ export class CareerManager {
     const previousClub = this.contract.clubId;
     this.contract = { ...this.contract, status: 'expired', expiredAt: date };
     this.clubId = null;
-    for (const offer of this.offers.values()) if (offer.status === 'pending') offer.status = 'cancelled';
+    for (const offer of this.offers.values()) if (offer.status === 'pending') {
+      offer.status = 'cancelled';
+      this.history.push({ type:'offer-cancelled', offerId:offer.id, clubId:offer.fromClubId, reason:'contract-expired', date });
+    }
     this.history.push({ type: 'contract-expired', clubId: previousClub, date });
     if (!this.saveState()) {
       this.restoreState(before);
@@ -219,7 +222,10 @@ export class CareerManager {
     const previousClub = this.clubId;
     this.contract = { ...this.contract, status: 'terminated', terminatedAt: new Date(now).toISOString() };
     this.clubId = null;
-    for (const offer of this.offers.values()) if (offer.status === 'pending') offer.status = 'cancelled';
+    for (const offer of this.offers.values()) if (offer.status === 'pending') {
+      offer.status = 'cancelled';
+      this.history.push({ type:'offer-cancelled', offerId:offer.id, clubId:offer.fromClubId, reason:'contract-terminated', date:new Date(now).toISOString() });
+    }
     this.history.push({ type: 'termination', clubId: previousClub, date: new Date(now).toISOString() });
     if (!this.saveState()) {
       this.restoreState(before);
@@ -354,7 +360,7 @@ export class CareerManager {
     for (const other of this.offers.values()) {
       if (other.id !== offer.id && other.status === 'pending') {
         other.status = 'cancelled';
-        this.history.push({ type:'offer-cancelled', offerId:other.id, clubId:other.fromClubId, date:signedAt });
+        this.history.push({ type:'offer-cancelled', offerId:other.id, clubId:other.fromClubId, reason:'transferred', date:signedAt });
       }
     }
     this.history.push({ type: 'transfer', from: previousClub, to: this.clubId, fee: offer.fee, date: signedAt });
