@@ -131,7 +131,11 @@ const bundle = {
   transferCheckpoints:transferRows,
   playerWageCheckpoints:wageRows,
   // Keep the source event stream for audit/reconciliation; do not replay it as new payments.
-  sourceTransferEvents:(transfers?.events || []).filter(event=>event?.type==='transfer' || event?.type==='salary-payment')
+  sourceTransferEvents:(transfers?.events || []).filter(event=>event?.type==='transfer' || event?.type==='salary-payment').map(event=>({
+    id:event.id, type:event.type, at:event.at, fromClubId:event.fromClubId || null,
+    toClubId:event.toClubId || null, fee:event.fee ?? null, clubId:event.clubId || null,
+    amount:event.amount ?? null
+  }))
 };
 const report = {
   ok:issues.length===0, mode:output?'bundle-export':'dry-run',
