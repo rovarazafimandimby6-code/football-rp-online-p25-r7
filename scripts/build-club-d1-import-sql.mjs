@@ -6,10 +6,12 @@ import process from 'node:process';
 const args=process.argv.slice(2);
 const option=name=>{const i=args.indexOf(name);return i<0?null:args[i+1]||null;};
 const input=option('--bundle'), output=option('--output');
-if(!input||!output){process.stderr.write('Usage: node scripts/build-club-d1-import-sql.mjs --bundle <validated-bundle.json> --output <import.sql>\n');process.exit(2);}
+if(!input||!output){process.stderr.write('Usage: node scripts/build-club-d1-import-sql.mjs --bundle <validated-bundle.json> --output <import.sql>
+');process.exit(2);}
 const fail=message=>{throw new Error(message);};
 const q=value=>value===null?'NULL':typeof value==='number'?String(value):typeof value==='boolean'?(value?'1':'0'):"'"+String(value).replace(/'/g,"''")+"'";
-const safeInt=(n,min=0,max=1_000_000_000_000)=>Number.isSafeInteger(n)&&n>=min&&n<=max;\nconst ledgerCategories=new Set(['sponsorship','ticketing','matchday','merchandise','transfer-income','transfer-expense','wages','staff','stadium-maintenance','medical','training','travel','competition-prize','loan','other','shop-purchase','shop-resale']);
+const safeInt=(n,min=0,max=1_000_000_000_000)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
+const ledgerCategories=new Set(['sponsorship','ticketing','matchday','merchandise','transfer-income','transfer-expense','wages','staff','stadium-maintenance','medical','training','travel','competition-prize','loan','other','shop-purchase','shop-resale']);
 const bundle=JSON.parse(await readFile(path.resolve(input),'utf8'));
 if(bundle?.format!=='p27-club-d1-migration'||bundle.version!==1||!Array.isArray(bundle.clubs)||bundle.clubs.length!==156)
   fail('INVALID_OR_INCOMPLETE_MIGRATION_BUNDLE');
@@ -70,7 +72,8 @@ const transferIds=new Set();
 for(const t of bundle.transferCheckpoints||[]){
   if(!t||typeof t.id!=='string'||t.id.length<1||t.id.length>128||transferIds.has(t.id)||
     !clubIds.has(t.fromClubId)||!clubIds.has(t.toClubId)||t.fromClubId===t.toClubId||
-    !safeInt(t.fee,1)||!safeInt(t.createdAt)||typeof t.debitPosted!=='boolean'||typeof t.creditPosted!=='boolean'||\n    (t.status==='completed'&&(!t.debitPosted||!t.creditPosted))||(t.status==='pending'&&t.debitPosted&&t.creditPosted))fail('INVALID_OR_DUPLICATE_TRANSFER_CHECKPOINT');
+    !safeInt(t.fee,1)||!safeInt(t.createdAt)||typeof t.debitPosted!=='boolean'||typeof t.creditPosted!=='boolean'||
+    (t.status==='completed'&&(!t.debitPosted||!t.creditPosted))||(t.status==='pending'&&t.debitPosted&&t.creditPosted))fail('INVALID_OR_DUPLICATE_TRANSFER_CHECKPOINT');
   transferIds.add(t.id);
   const status=t.status|| (t.debitPosted&&t.creditPosted?'completed':'pending');
   if(!['pending','completed'].includes(status))fail('INVALID_TRANSFER_STATUS');
@@ -86,5 +89,8 @@ for(const w of bundle.playerWageCheckpoints||[]){
 statements.push('COMMIT;');
 statements.push('-- Post-import verification: compare these counts and per-club balances to the source bundle before cutover.');
 statements.push('SELECT (SELECT COUNT(*) FROM p27_clubs) AS clubs, (SELECT COUNT(*) FROM p27_club_finance_accounts) AS finance_accounts, (SELECT COUNT(*) FROM p27_club_finance_entries) AS ledger_entries, (SELECT COUNT(*) FROM p27_club_sponsor_contracts) AS sponsors, (SELECT COUNT(*) FROM p27_club_loans) AS loans, (SELECT COUNT(*) FROM p27_club_payroll_checkpoints) AS payroll_checkpoints, (SELECT COUNT(*) FROM p27_club_transfer_finance_checkpoints) AS transfer_checkpoints, (SELECT COUNT(*) FROM p27_club_player_wage_checkpoints) AS player_wage_checkpoints;');
-const target=path.resolve(output);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,statements.join('\n')+'\n',{mode:0o600});
-process.stdout.write(JSON.stringify({ok:true,clubs:bundle.clubs.length,owners:owners.size,statements:statements.length-5,output:target},null,2)+'\n');
+const target=path.resolve(output);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,statements.join('
+')+'
+',{mode:0o600});
+process.stdout.write(JSON.stringify({ok:true,clubs:bundle.clubs.length,owners:owners.size,statements:statements.length-5,output:target},null,2)+'
+');
