@@ -72,3 +72,25 @@ test("D1 account routes fail closed when persistent storage is missing", async (
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error, "D1_BINDING_MISSING");
 });
+
+
+test("player shop routes require configured D1 storage and an authenticated account", async () => {
+  const missingDb = await worker.fetch(request("/api/shop/player/catalog"), {});
+  assert.equal(missingDb.status, 503);
+  assert.equal((await missingDb.json()).error, "D1_BINDING_MISSING");
+
+  const db = { prepare() { return { bind() { return this; }, first: async () => null }; } };
+  const anonymous = await worker.fetch(request("/api/shop/player/inventory"), { P27_DB: db });
+  assert.equal(anonymous.status, 401);
+  assert.equal((await anonymous.json()).error, "SESSION_EXPIRED");
+});
+
+test("player shop write routes reject cross-origin browser requests", async () => {
+  const response = await worker.fetch(request("/api/shop/player/purchase", {
+    method: "POST",
+    headers: { origin: "https://attacker.example", "content-type": "application/json" },
+    body: JSON.stringify({ itemId: "boots-standard", purchaseId: "purchase-1" }),
+  }), { P27_DB: { prepare() { return { bind() { return this; }, first: async () => null }; } } });
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error, "SESSION_EXPIRED");
+});
