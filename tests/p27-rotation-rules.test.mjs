@@ -75,7 +75,7 @@ test('P27 rotations : le délai de retour de dix minutes suit l’horloge virtue
   const tenVirtualMinutes = 10 * 60;
   const realSecondsForFiveMinuteMatch = (tenVirtualMinutes / (90 * 60)) * (5 * 60);
   const realSecondsForThreeMinuteMatch = (tenVirtualMinutes / (90 * 60)) * (3 * 60);
-  assert.equal(toVirtualMatchSeconds(realSecondsForFiveMinuteMatch, 150), tenVirtualMinutes);
-  assert.equal(toVirtualMatchSeconds(realSecondsForThreeMinuteMatch, 90), tenVirtualMinutes);
+  assert.ok(Math.abs(toVirtualMatchSeconds(realSecondsForFiveMinuteMatch, 150) - tenVirtualMinutes) < 1e-9);
+  assert.ok(Math.abs(toVirtualMatchSeconds(realSecondsForThreeMinuteMatch, 90) - tenVirtualMinutes) < 1e-9);
   assert.equal(toVirtualMatchSeconds(300, 150), 90 * 60);
 });
