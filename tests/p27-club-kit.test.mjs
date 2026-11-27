@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { getP27ClubKit, getP27ClubShopKit, getP27ClubShopAppearance } from '../src/p27-club-kit.js';
+import { getP27StadiumCapacity } from '../src/p27-shop-catalog.js';
 import { renderClubCrest } from '../src/club-identity.js';
 import { listP27Players } from '../src/p27-player-library.js';
 import { renderSystemPlayerPortrait } from '../src/p27-system-player-portrait.js';
@@ -162,4 +163,23 @@ test('P27 boutique club : les extensions achetées restent actives même sans em
     {itemId:'club-capacity-level-2',category:'capacity',upgradeLevel:2,status:'owned',equipped:false}
   ]);
   assert.equal(appearance.stadiumExpansionLevel,2);
+});
+
+
+test('P27 stade : capacité d’accueil mesurable distincte de la capacité de l’effectif',()=>{
+ assert.equal(getP27StadiumCapacity(0),5000);
+ assert.equal(getP27StadiumCapacity(1),7500);
+ assert.equal(getP27StadiumCapacity(2),10000);
+ assert.equal(getP27StadiumCapacity(3),12500);
+ assert.equal(getP27StadiumCapacity(4),15000);
+ assert.equal(getP27StadiumCapacity(99),15000);
+ assert.equal(getP27StadiumCapacity(-1),5000);
+ const appearance=getP27ClubShopAppearance(customClub('capacity-club',['#123456','#102030','#eeeeee'],'vertical'),[
+  {itemId:'club-capacity-level-1',category:'capacity',upgradeLevel:1,status:'owned',equipped:false},
+  {itemId:'club-capacity-level-2',category:'capacity',upgradeLevel:2,status:'owned',equipped:false},
+  {itemId:'club-capacity-level-3',category:'capacity',upgradeLevel:3,status:'resold',equipped:false}
+ ]);
+ assert.equal(appearance.stadiumExpansionLevel,2);
+ assert.equal(appearance.stadiumCapacity,10000);
+ assert.equal(customClub('capacity-club',['#123456','#102030','#eeeeee'],'vertical').capacity,12);
 });
