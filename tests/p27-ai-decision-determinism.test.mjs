@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aiDecisionRoll } from '../src/ai.js';
+import { aiDecisionRoll, buildTeamContexts } from '../src/ai.js';
 
 test('P27 gameplay: tirages du joueur du système reproductibles à état égal', () => {
   const first = { id: 'system-17', aiDecisionSequence: 0 };
@@ -33,4 +33,27 @@ test('P27 gameplay: décisions de terrain sans Math.random non reproductible', a
   assert.match(source, /aiDecisionRoll\\(p, 'shoot-trigger'\\)/);
   assert.match(source, /aiDecisionRoll\\(p, 'pressed-pass'\\)/);
   assert.match(source, /aiDecisionRoll\\(p, 'tackle-trigger'\\)/);
+});
+
+test('P27 gameplay: contexte tactique partagé sépare équipes et gardiens', () => {
+  const blueGK = { id: 'b-gk', team: 'blue', role: 'GK' };
+  const blueField = { id: 'b-field', team: 'blue', role: 'DEF' };
+  const redGK = { id: 'r-gk', team: 'red', role: 'GK' };
+  const redField = { id: 'r-field', team: 'red', role: 'FWD' };
+  const contexts = buildTeamContexts([blueGK, blueField, redGK, redField]);
+  assert.deepEqual(contexts.blue.players.map(p => p.id), ['b-gk', 'b-field']);
+  assert.deepEqual(contexts.blue.teammates.map(p => p.id), ['b-field']);
+  assert.deepEqual(contexts.blue.opponents.map(p => p.id), ['r-field']);
+  assert.deepEqual(contexts.red.opponents.map(p => p.id), ['b-field']);
+});
+
+test('P27 gameplay: TeamAI prépare les contextes avant la boucle des joueurs', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/ai.js', import.meta.url), 'utf8');
+  const updateStart = source.indexOf('  update(players, ball, dt, actions) {');
+  const updateEnd = source.indexOf('  updateGoalkeeper(', updateStart);
+  const update = source.slice(updateStart, updateEnd);
+  assert.match(update, /const contexts = buildTeamContexts\(players\)/);
+  assert.match(update, /contexts\[p\.team\]/);
+  assert.doesNotMatch(update, /players\.filter\(/);
 });
