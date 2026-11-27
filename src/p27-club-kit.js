@@ -44,6 +44,39 @@ export function getP27ClubKit(club = {}, role = 'MID') {
     kitInspiration:profile?.inspiration || `identité originale ${design}`
   };
 }
+export function getP27ClubShopKit(club = {}, inventory = [], kitType = 'home', role = 'MID') {
+  const base = getP27ClubKit(club, role);
+  const owned = Array.isArray(inventory)
+    ? inventory.filter(item => item && item.status === 'owned' && item.equipped === true)
+    : [];
+  const has = itemId => owned.some(item => item.itemId === itemId);
+  const selected = role === 'GK' && has('club-kit-goalkeeper')
+    ? 'goalkeeper'
+    : kitType === 'away' && has('club-kit-away')
+      ? 'away'
+      : kitType === 'third' && has('club-kit-third')
+        ? 'third'
+        : kitType !== 'away' && kitType !== 'third' && has('club-kit-home')
+          ? 'home' : null;
+  if (!selected) return base;
+
+  const colors = base.kitColors;
+  const palettes = {
+    home: { primary:colors.primary, secondary:colors.secondary, accent:colors.accent },
+    away: { primary:colors.accent, secondary:colors.primary, accent:colors.secondary },
+    third: { primary:colors.secondary, secondary:colors.accent, accent:colors.primary },
+    goalkeeper: { primary:colors.accent, secondary:colors.secondary, accent:colors.primary }
+  };
+  const designs = { home:base.kitDesign, away:'diagonal', third:'hoops', goalkeeper:'central' };
+  return {
+    ...base,
+    kitColors:palettes[selected],
+    kitDesign:designs[selected],
+    kitVariant:selected === 'goalkeeper' ? 'goalkeeper' : selected,
+    kitInspiration:'tenue '+selected+' équipée depuis la boutique du club'
+  };
+}
+
 export function applyP27ClubKit(player = {}, club = {}) {
   const appearance = player.appearance && typeof player.appearance === 'object' ? player.appearance : {};
   return { ...player, appearance:{ ...appearance, ...getP27ClubKit(club, player.role) } };
