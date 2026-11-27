@@ -51,7 +51,7 @@ export class Game {
     this.players = rosterConfigs.map((cfg) => {
       const kitColors = cfg.team === 'blue' ? callbacks.homeKitColors : callbacks.awayKitColors;
       const appearance = {
-        ...(cfg === controlledConfig ? (callbacks.playerAppearance || {}) : {}),
+        ...(cfg === controlledConfig ? { ...(callbacks.playerAppearance || {}), shopCosmeticsEnabled:true } : {}),
         ...(kitColors ? { kitColors } : {})
       };
       return new Player({
@@ -292,7 +292,7 @@ export class Game {
         stamina: incoming.rating ?? 50, control: incoming.rating ?? 50
       },
       preferredFoot: incoming.preferredFoot || null,
-      appearance: incoming.appearance || null
+      appearance: { ...(incoming.appearance || {}), ...(incoming.id === callbacks.careerPlayerId ? { shopCosmeticsEnabled:true } : {}) }
     });
     replacement.pos = { ...outgoing.pos };
     replacement.vel = { x: 0, z: 0 };
@@ -338,7 +338,7 @@ export class Game {
       specialty: incoming.specialty || incoming.archetype || 'balanced', slotIndex: outgoing.slotIndex,
       homePos: { ...outgoing.homePos },
       attributes: incoming.attributes || { pace: incoming.rating ?? 50, shooting: incoming.rating ?? 50, passing: incoming.rating ?? 50, defense: incoming.rating ?? 50, stamina: incoming.rating ?? 50, control: incoming.rating ?? 50 },
-      preferredFoot: incoming.preferredFoot || null, appearance: incoming.appearance || null
+      preferredFoot: incoming.preferredFoot || null, appearance: { ...(incoming.appearance || {}), ...(incoming.id === callbacks.careerPlayerId ? { shopCosmeticsEnabled:true } : {}) }
     });
     replacement.pos = { ...outgoing.pos };
     replacement.vel = { x: 0, z: 0 };
