@@ -1,5 +1,6 @@
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { LEAGUE_DIVISIONS, CONFERENCE_NAMES, normalizeConference, conferenceForClub } from '../src/league-structure.js';
+import { getP27StadiumCapacity } from '../src/p27-shop-catalog.js';
 
 const divisionOrder = new Map(LEAGUE_DIVISIONS.map((item,index)=>[item.id,index]));
 const conferenceOrder = { D4:['A','B'], D5:['A','B','C','D'] };
@@ -112,7 +113,8 @@ export function cloneMatchTeams(teams) {
   const publicTeam = team => {
     if (!team) return null;
     const { roster, ...identity } = team;
-    return { ...identity, colors: [...team.colors], location:team.location ? { ...team.location } : null, shopAppearance:team.shopAppearance ? { equippedItemIds:[...(team.shopAppearance.equippedItemIds || [])], stadiumExpansionLevel:team.shopAppearance.stadiumExpansionLevel || 0 } : { equippedItemIds:[], stadiumExpansionLevel:0 } };
+    const stadiumExpansionLevel = Number.isInteger(team.shopAppearance?.stadiumExpansionLevel) ? Math.max(0,Math.min(4,team.shopAppearance.stadiumExpansionLevel)) : 0;
+    return { ...identity, colors: [...team.colors], location:team.location ? { ...team.location } : null, shopAppearance:{ equippedItemIds:[...(team.shopAppearance?.equippedItemIds || [])], stadiumExpansionLevel, stadiumCapacity:getP27StadiumCapacity(stadiumExpansionLevel) } };
   };
   return { blue: publicTeam(teams?.blue), red: publicTeam(teams?.red) };
 }
