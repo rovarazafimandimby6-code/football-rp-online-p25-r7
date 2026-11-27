@@ -10,6 +10,20 @@ export function getDefensiveBlockShift(ballZ) {
   return clamp((Number(ballZ) || 0) * 0.24, -3.4, 3.4);
 }
 
+/** Anticipe une course adverse vers notre but sans extrapoler les déplacements latéraux excessifs. */
+export function predictDefensiveThreatPosition(opponent, attackDir = 1, horizon = 0.7) {
+  const pos = opponent?.pos || { x: 0, z: 0 };
+  const vx = Number(opponent?.vel?.x) || 0;
+  const vz = Number(opponent?.vel?.z) || 0;
+  const towardOwnGoal = -attackDir * vx;
+  if (towardOwnGoal <= 0.8) return { x: pos.x, z: pos.z };
+  const time = clamp(Number(horizon) || 0, 0, 1);
+  return {
+    x: clamp(pos.x + clamp(vx * time, -4.5, 0), -PITCH.HALF_L + 1.5, PITCH.HALF_L - 1.5),
+    z: clamp(pos.z + clamp(vz * time, -2.2, 2.2), -PITCH.HALF_W + 1.5, PITCH.HALF_W - 1.5)
+  };
+}
+
 /** Tirage déterministe par joueur et action : le même état produit la même décision. */
 export function aiDecisionRoll(player, action = 'decision') {
   const sequence = Math.max(0, Math.floor(Number(player?.aiDecisionSequence) || 0));
@@ -67,15 +81,18 @@ export function getDefensiveShapeTarget(player, ball, opponents, attackDir = 1, 
   const ownGoalX = -attackDir * PITCH.HALF_L;
   const threats = (opponents || []).filter((opponent) => opponent && opponent.pos && opponent.role !== 'GK');
   let threat = null;
+  let threatPosition = null;
   let threatScore = Infinity;
   for (const opponent of threats) {
-    const distanceToPlayer = Math.hypot(opponent.pos.x - player.pos.x, opponent.pos.z - player.pos.z);
-    const distanceToBall = Math.hypot(opponent.pos.x - ball.pos.x, opponent.pos.z - ball.pos.z);
+    const predicted = predictDefensiveThreatPosition(opponent, attackDir);
+    const distanceToPlayer = Math.hypot(predicted.x - player.pos.x, predicted.z - player.pos.z);
+    const distanceToBall = Math.hypot(predicted.x - ball.pos.x, predicted.z - ball.pos.z);
     // Un défenseur ne traverse pas tout le bloc pour suivre une menace éloignée
     // de son couloir : la priorité reste la menace proche ET dans sa zone.
-    const laneDrift = Math.abs(opponent.pos.z - (player.homePos?.z ?? player.pos.z));
-    const score = distanceToPlayer + distanceToBall * 0.24 + laneDrift * 0.42;
-    if (score < threatScore) { threat = opponent; threatScore = score; }
+    const laneDrift = Math.abs(predicted.z - (player.homePos?.z ?? player.pos.z));
+    const runThreatBonus = Math.max(0, -attackDir * (Number(opponent.vel?.x) || 0)) * 0.12;
+    const score = distanceToPlayer + distanceToBall * 0.24 + laneDrift * 0.42 - runThreatBonus;
+    if (score < threatScore) { threat = opponent; threatPosition = predicted; threatScore = score; }
   }
   const tacticalPush = mentality === 'defensive' ? -2.4 : mentality === 'attacking' ? 1.8 : 0;
   const homeZ = player.homePos?.z ?? player.pos.z;
@@ -89,9 +106,10 @@ export function getDefensiveShapeTarget(player, ball, opponents, attackDir = 1, 
   const collectiveRetreat = ownHalfDanger * (mentality === 'defensive' ? 4.1 : mentality === 'attacking' ? 2.2 : 3.2);
   let targetX = player.homePos.x + ballShiftX + attackDir * (tacticalPush - collectiveRetreat);
   let targetZ = homeZ + ballShiftZ;
-  if (threat) {
-    const goalSideX = threat.pos.x + (ownGoalX - threat.pos.x) * 0.16;
-    const goalSideZ = threat.pos.z + (player.homePos.z - threat.pos.z) * 0.28;
+  if (threat && threatPosition) {
+    // Se placer côté but de la position anticipée pour fermer la course en profondeur.
+    const goalSideX = threatPosition.x + (ownGoalX - threatPosition.x) * 0.16;
+    const goalSideZ = threatPosition.z + (player.homePos.z - threatPosition.z) * 0.28;
     targetX = targetX * 0.58 + goalSideX * 0.42;
     targetZ = targetZ * 0.62 + goalSideZ * 0.38;
   }
@@ -112,15 +130,17 @@ export function getDefensiveCoverTarget(player, ball, opponents, attackDir = 1) 
   let bestScore = Infinity;
   for (const opponent of opponents || []) {
     if (!opponent?.pos || opponent === ball?.owner || opponent.role === 'GK') continue;
-    const dx = opponent.pos.x - carrier.x;
-    const dz = opponent.pos.z - carrier.z;
+    const predicted = predictDefensiveThreatPosition(opponent, attackDir, 0.8);
+    const dx = predicted.x - carrier.x;
+    const dz = predicted.z - carrier.z;
     const distance = Math.hypot(dx, dz);
     if (distance < 2 || distance > 24) continue;
     const forwardThreat = Math.max(0, -attackDir * dx);
-    const score = distance - forwardThreat * 0.18;
+    const runBonus = Math.max(0, -attackDir * (Number(opponent.vel?.x) || 0)) * 0.1;
+    const score = distance - forwardThreat * 0.18 - runBonus;
     if (score < bestScore) {
       bestScore = score;
-      receiver = opponent;
+      receiver = { ...opponent, pos: predicted };
     }
   }
 
