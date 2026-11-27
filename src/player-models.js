@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { resolvePlayerAnimationClip, isLoopingPlayerAnimation } from './player-animation-map.js';
+import { clonePlayerMaterials } from './player-materials.js';
 
 const loader = new GLTFLoader();
 const BASE_URL = './assets/players/';
@@ -36,7 +37,7 @@ function setKitMaterials(model, team, isGK, appearance) {
     for (const material of materials) {
       const name = (material.name || '').toLowerCase();
       // Preserve skin, eyes and hair textures; recolor only garment-like materials.
-      if (/shirt|jersey|cloth|body|suit|superhero/.test(name) && !/skin|hair|eye/.test(name)) {
+      if (/shirt|jersey|cloth|suit/.test(name) && !/skin|hair|eye/.test(name)) {
         material.color?.set(isGK ? accent : primary);
         if (material.roughness !== undefined) material.roughness = 0.82;
       } else if (/short|pant|trouser/.test(name)) material.color?.set(secondary);
@@ -68,6 +69,8 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
     if (!root?.parent && root?.userData?.disposed) return null;
     const model = cloneSkeleton(base.scene);
     model.name = 'P25_Male_Humanoid';
+    // SkeletonUtils clones the rig but shares source materials; isolate them before applying club colors.
+    clonePlayerMaterials(model);
     model.traverse((node) => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
     setKitMaterials(model, team, isGK, appearance);
 
