@@ -87,6 +87,11 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(renderer, /Hair_SimpleParted|Hair_Buzzed/);
   assert.match(renderer, /Hair_Beard/);
   assert.match(renderer, /function hairColorHex\(value\)/);
+  assert.match(renderer, /function skinToneHex\\(value\\)/);
+  assert.match(renderer, /p27SkinColor/);
+  assert.match(renderer, /p27FaceMask/);
+  assert.match(renderer, /p27NeckMask/);
+  assert.match(renderer, /p27SkinMask \\* 0\\.72/);
   assert.match(renderer, /materials\.forEach\(item => item\.color\?\.set\(color\)\)/);
   assert.match(renderer, /mat\.color\?\.set\(hairColorHex\(player\?\.appearance\?\.hairColor\)\)/);
   assert.match(renderer, /a\.eyeShape/);
