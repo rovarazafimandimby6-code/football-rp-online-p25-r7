@@ -227,3 +227,29 @@ test('P27 boutique : refuse un journal personnel où acteur et propriétaire div
   assert.throws(()=>new JsonShopService(path.join(f.directory,'shop'),{progressionStore:f.progressionStore,clubFinanceService:f.clubFinanceService}),/SHOP_STORE_CORRUPT/);
  }finally{f.cleanup();}
 });
+
+
+test('P27 boutique : un seul cosmétique équipé par emplacement et revente après remplacement',()=>{
+ const f=fixture();try{
+  fund(f.progressionStore,'player-equip-slot');
+  assert.equal(f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-equip-slot',purchaseId:'slot-boots-1'}).ok,true);
+  assert.equal(f.service.purchase({shop:'player',itemId:'boots-rare',actorId:'player-equip-slot',purchaseId:'slot-boots-2'}).ok,true);
+  assert.equal(f.service.setEquipped({shop:'player',actorId:'player-equip-slot',itemId:'boots-standard',equipped:true}).ok,true);
+  assert.equal(f.service.setEquipped({shop:'player',actorId:'player-equip-slot',itemId:'boots-rare',equipped:true}).ok,true);
+  const items=f.service.inventory('player','player-equip-slot');
+  assert.equal(items.find(x=>x.itemId==='boots-standard').equipped,false);
+  assert.equal(items.find(x=>x.itemId==='boots-rare').equipped,true);
+  assert.equal(f.service.resale({shop:'player',actorId:'player-equip-slot',itemId:'boots-standard',resaleId:'slot-resale-old'}).ok,true);
+  assert.equal(f.service.resale({shop:'player',actorId:'player-equip-slot',itemId:'boots-rare',resaleId:'slot-resale-active'}).reason,'item-active');
+ }finally{f.cleanup();}
+});
+
+test('P27 boutique club : les quatre maillots gardent des emplacements distincts',()=>{
+ const f=fixture();try{
+  for(const itemId of ['club-kit-home','club-kit-away','club-kit-third','club-kit-goalkeeper']){
+   assert.equal(f.service.purchase({shop:'club',itemId,actorId:'owner-one',clubId:'club-one',purchaseId:'kit-slot-'+itemId}).ok,true);
+   assert.equal(f.service.setEquipped({shop:'club',actorId:'owner-one',clubId:'club-one',itemId,equipped:true}).ok,true);
+  }
+  assert.equal(f.service.inventory('club','club-one').filter(x=>x.equipped).length,4);
+ }finally{f.cleanup();}
+});
