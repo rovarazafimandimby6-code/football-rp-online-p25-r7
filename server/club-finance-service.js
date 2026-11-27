@@ -511,6 +511,43 @@ export class JsonClubFinanceService {
         { amount: wage.amount, direction: 'expense', category: 'wages', referenceId: wage.id }, wage.posted, 'player-wage');
     }
 
+    // Validate every system-player payroll ledger entry against the club's retained contract history.
+    for (const [clubId, club] of this.clubs) {
+      const contracts = new Map();
+      const roster = (club.roster || []).map(player => ({ player, releasedAt: null }));
+      const released = (club.releasedPlayers || []).map(item => ({
+        player: item?.player, releasedAt: Date.parse(item?.releasedAt)
+      }));
+      for (const { player, releasedAt } of [...roster, ...released]) {
+        const contract = player?.contract;
+        if (player?.playerType !== 'system' || !contract?.id ||
+            contract.clubId !== clubId || contract.playerId !== player.id) continue;
+        const wage = safeAmount(contract.weeklyWage ?? contract.salary);
+        if (wage === null || wage === 0) continue;
+        const signedAt = Date.parse(contract.signedAt);
+        const expiresAt = Date.parse(contract.expiresAt);
+        const endAt = Number.isFinite(releasedAt)
+          ? (Number.isFinite(expiresAt) ? Math.min(releasedAt, expiresAt) : releasedAt)
+          : (Number.isFinite(expiresAt) ? expiresAt : Number.POSITIVE_INFINITY);
+        contracts.set(String(contract.id), {
+          wage, signedAt: Number.isFinite(signedAt) ? signedAt : Number.NEGATIVE_INFINITY, endAt
+        });
+      }
+      const account = this.store.accounts.get(clubId);
+      for (const entry of account?.entries || []) {
+        if (!entry.id.startsWith('system-wage-')) continue;
+        const match = entry.id.match(/^system-wage-(.+)-(\\d{13})$/);
+        const contract = match ? contracts.get(match[1]) : null;
+        const dueAt = match ? Number(match[2]) : NaN;
+        if (!contract || !Number.isSafeInteger(dueAt) || entry.category !== 'wages' ||
+            entry.direction !== 'expense' || entry.amount !== contract.wage ||
+            entry.referenceId !== match[1] || entry.createdAt !== dueAt ||
+            dueAt <= contract.signedAt || dueAt > contract.endAt) {
+          issues.push({ type: 'system-wage-entry-invalid', clubId, entryId: entry.id });
+        }
+      }
+    }
+
     const totalsSafe = [openingBalance, totalIncome, totalExpenses, totalBalance].every(Number.isSafeInteger);
     if (!totalsSafe) issues.push({ type: 'aggregate-overflow' });
     return {
