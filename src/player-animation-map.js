@@ -11,25 +11,31 @@ const RULES = {
   celebrate: [/celebrat/i, /victory/i, /cheer/i, /goal.*celebrat/i]
 };
 
-/** Resolve optional animation clips by semantic name; keep procedural fallback when absent. */
-export function resolvePlayerAnimationClip(clipNames, state, speed = 0) {
-  const names = (Array.isArray(clipNames) ? clipNames : [])
-    .map((clip) => typeof clip === 'string' ? clip : clip?.name)
-    .filter((name) => typeof name === 'string' && name.length > 0);
-  const keys = state === 'run'
-    ? (speed > 7.5 ? ['sprint', 'jog'] : ['jog', 'sprint'])
-    : [state];
-  for (const key of keys) {
-    for (const pattern of RULES[key] || []) {
-      const match = names.find((name) => pattern.test(name));
-      if (match) return match;
+const LOOPING_STATES = new Set(['idle', 'walk', 'run', 'control']);
+
+function findClip(clipNames, patterns) {
+  if (!Array.isArray(clipNames) || !patterns) return null;
+  for (const pattern of patterns) {
+    for (const clip of clipNames) {
+      const name = typeof clip === 'string' ? clip : clip?.name;
+      if (typeof name === 'string' && name.length > 0 && pattern.test(name)) return name;
     }
   }
   return null;
 }
 
+/** Resolve optional animation clips without per-frame array mapping or filtering. */
+export function resolvePlayerAnimationClip(clipNames, state, speed = 0) {
+  if (state === 'run') {
+    const primary = speed > 7.5 ? RULES.sprint : RULES.jog;
+    const secondary = speed > 7.5 ? RULES.jog : RULES.sprint;
+    return findClip(clipNames, primary) || findClip(clipNames, secondary);
+  }
+  return findClip(clipNames, RULES[state]);
+}
+
 export function isLoopingPlayerAnimation(state) {
-  return ['idle', 'walk', 'run', 'control'].includes(state);
+  return LOOPING_STATES.has(state);
 }
 
 
