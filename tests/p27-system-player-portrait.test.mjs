@@ -51,5 +51,5 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(renderer, /MAX_CACHE = 180/);
   assert.match(integration, /IntersectionObserver/);
   assert.match(integration, /systemPlayerPortraitDataUri\(p\)/);
-  assert.match(integration, /renderSystemPlayerPortrait3D\(player\)/);
+  assert.match(integration, /module\.renderSystemPlayerPortrait3D\(player\)/);
 });
