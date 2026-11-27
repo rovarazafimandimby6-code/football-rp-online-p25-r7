@@ -11,7 +11,7 @@ import { PhysicsEngine } from './physics.js';
 import { BroadcastCamera } from './camera.js';
 import { TeamAI, createTeamRoster } from './ai.js';
 import { createMatchSquad } from './match-squad.js';
-import { validateSubstitution } from './substitution-manager.js';
+import { validateRotation } from './rotation-rules.js';
 import { selectAISubstitution } from './ai-substitution-manager.js';
 import { ControlsManager } from './controls.js';
 import { MatchState } from './match.js';
@@ -73,13 +73,14 @@ export class Game {
     });
     const startingIds = new Set(this.players.filter(player => player.team === 'blue').map(player => player.id));
     this.benchPlayers = {
-      blue: createMatchSquad('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId).substitutes
+      blue: createMatchSquad('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId, this.benchSize).substitutes.map(player => ({ ...player, team:'blue' }))
         .filter(player => player.id !== null && player.id !== undefined && !startingIds.has(player.id)),
-      red: createMatchSquad('red', formation, callbacks.awayRoster).substitutes
+      red: createMatchSquad('red', formation, callbacks.awayRoster, null, this.benchSize).substitutes.map(player => ({ ...player, team:'red' }))
         .filter(player => player.id !== null && player.id !== undefined && !this.players.some(starter => starter.team === 'red' && starter.id === player.id))
     };
     this.substitutionsUsed = { blue: 0, red: 0 };
-    this.substitutionLimit = 3;
+    this.substitutionLimit = Infinity;
+    this.benchSize = Number.isInteger(callbacks.benchSize) ? Math.max(3, Math.min(7, callbacks.benchSize)) : 5;
     this.aiSubstitutionCheckTimer = 0;
 
     for (const p of this.players) {
@@ -262,14 +263,18 @@ export class Game {
   }
 
   getSubstitutionOptions() {
-    if (this.onlineBridge || this.match.phase !== 'paused' || this.substitutionsUsed.blue >= this.substitutionLimit) {
-      return { pairs: [], used: this.substitutionsUsed.blue, limit: this.substitutionLimit };
+    if (this.onlineBridge || this.match.phase !== 'paused') {
+      return { pairs: [], used: this.substitutionsUsed.blue, limit: Infinity };
     }
+    const squad = [...this.players.filter(player => player.team === 'blue'), ...this.benchPlayers.blue];
     const outgoing = this.players.filter(player => player.team === 'blue' && !player.isControlled);
     const pairs = outgoing.flatMap(player => this.benchPlayers.blue
-      .filter(candidate => candidate.role === player.role)
+      .filter(candidate => validateRotation({
+        phase:'paused', elapsedMatchSeconds:this.match.elapsedMatchTime,
+        outgoing:player, incoming:candidate, teamPlayers:squad
+      }).ok)
       .map(candidate => ({ outgoing: player, incoming: candidate })));
-    return { pairs, used: this.substitutionsUsed.blue, limit: this.substitutionLimit };
+    return { pairs, used: this.substitutionsUsed.blue, limit: Infinity };
   }
 
   applySubstitution(outgoingId, incomingId) {
@@ -278,14 +283,13 @@ export class Game {
     const incoming = incomingIndex >= 0 ? this.benchPlayers.blue[incomingIndex] : null;
     const validation = validateSubstitution({
       phase: this.match.phase,
-      online: Boolean(this.onlineBridge),
+      elapsedMatchSeconds: this.match.elapsedMatchTime,
       outgoing,
       incoming,
-      activePlayer: this.activePlayer,
-      used: this.substitutionsUsed.blue,
-      limit: this.substitutionLimit
+      teamPlayers: [...this.players.filter(player => player.team === 'blue'), ...this.benchPlayers.blue]
     });
-    if (!validation.ok) return validation;
+    if (!validation.ok) return { ok:false, code:validation.code, message:validation.message };
+    if (outgoing?.isControlled || outgoing?.id === this.activePlayer?.id) return { ok:false, code:'controlled-player-protected', message:'Votre footballeur personnel reste sur le terrain.' };
 
     const replacement = new Player({
       id: incoming.id,
@@ -328,7 +332,7 @@ export class Game {
     this.benchPlayers.blue.push({
       id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number,
       attributes, rating: averageRating, specialty: outgoing.specialty,
-      preferredFoot: outgoing.preferredFoot
+      preferredFoot: outgoing.preferredFoot, team:'blue', lastSubstitutedOutAt:this.match.elapsedMatchTime
     });
     this.substitutionsUsed.blue += 1;
     this.match.recordEvent('substitution', 'blue', `${outgoing.name} → ${replacement.name}`);
@@ -373,7 +377,7 @@ export class Game {
   }
 
   processAISubstitutions(dt) {
-    if (this.onlineBridge || this.match.phase !== 'playing') return;
+    if (this.onlineBridge || this.match.phase !== 'goal') return;
     this.aiSubstitutionCheckTimer -= Math.max(0, dt);
     if (this.aiSubstitutionCheckTimer > 0) return;
     this.aiSubstitutionCheckTimer = 2.5;
@@ -382,8 +386,8 @@ export class Game {
     for (const team of ['blue', 'red']) {
       const pair = selectAISubstitution({
         team, players: this.players, bench: this.benchPlayers[team],
-        used: this.substitutionsUsed[team], limit: this.substitutionLimit,
-        elapsedRatio
+        used: this.substitutionsUsed[team], limit: Infinity,
+        elapsedMatchSeconds:this.match.elapsedMatchTime, elapsedRatio
       });
       if (pair && this.applyAISubstitution(team, pair)) {
         this.ui.setStatus(`REMPLACEMENT IA · ${team === 'blue' ? 'BLEUS' : 'ROUGES'} : ${pair.outgoing.name} → ${pair.incoming.name}`);
@@ -825,6 +829,7 @@ export class Game {
           this.ui.showOverlay('Fin du match', `Score final : ${this.match.blueScore} – ${this.match.redScore}`, 'RETOUR');
         }
       } else if (this.match.phase === 'goal') {
+        this.processAISubstitutions(dt);
         this.match.phaseTimer -= dt;
         for (const p of this.players) p.updateVisual(dt);
         const goalPeriodEnd = this.match.stepClock(clockDt, this.ball.owner?.team || this.ball.lastTouchTeam);
@@ -862,8 +867,6 @@ export class Game {
           tryTackle: (p) => this.tryTackle(p),
           requestedReceiver: this.activePlayer?.callTimer > 0 ? this.activePlayer : null
         });
-        this.processAISubstitutions(dt);
-
         this.physics.resolvePlayerCollisions(this.players);
 
         const ballEvent = this.physics.stepBall(
