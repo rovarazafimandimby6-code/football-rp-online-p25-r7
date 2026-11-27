@@ -139,3 +139,19 @@ test('migration exporter accepts and reconciles club shop purchase and resale le
   assert.equal(report.ledgerEntries,3);
   assert.equal(report.ok,true);
 });
+
+
+test('migration exporter rejects completed transfer checkpoints with missing debit or credit',async t=>{
+  const root=await fixture(t);
+  const journalFile=path.join(root,'finances/transfer-finance-journal.json');
+  const journal=JSON.parse(await readFile(journalFile,'utf8'));
+  journal.transfers=[{
+    id:'transfer-bad-state',fromClubId:'club-one',toClubId:'club-two',fee:100,
+    createdAt:1000,debitPosted:true,creditPosted:false,status:'completed'
+  }];
+  await writeFile(journalFile,JSON.stringify(journal));
+  const result=spawnSync(process.execPath,[script,'--data-root',root,'--expected-clubs','1'],{encoding:'utf8'});
+  assert.equal(result.status,1);
+  const report=JSON.parse(result.stdout);
+  assert.ok(report.issues.some(item=>item.code==='invalid-transfer-checkpoint'));
+});
