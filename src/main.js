@@ -979,7 +979,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     const historyTitle = item => ({
       signing:'Signature', transfer:'Transfert', renewal:'Renouvellement', termination:'Résiliation',
       'contract-expired':'Fin de contrat', salary:'Salaire', 'offer-received':'Offre reçue',
-      'offer-negotiated':'Négociation', 'offer-rejected':'Offre refusée', 'offer-expired':'Offre expirée'
+      'offer-negotiated':'Négociation', 'offer-rejected':'Offre refusée', 'offer-expired':'Offre expirée', 'offer-cancelled':'Offre annulée'
     }[item.type] || 'Match');
     const historySummary = item => {
       const clubName = id => escapeHTML(clubs.getClub(id)?.name || id || 'Club inconnu');
@@ -993,6 +993,7 @@ ${renderGoogleProtectionCard({ compact: true })}
       if (item.type === 'offer-negotiated') return `Négociation avec ${clubName(item.clubId)} · ${Number(item.salary||0).toLocaleString('fr-FR')} crédits / semaine · indemnité ${Number(item.fee||0).toLocaleString('fr-FR')}`;
       if (item.type === 'offer-rejected') return `Offre refusée de ${clubName(item.clubId)}`;
       if (item.type === 'offer-expired') return `Offre expirée de ${clubName(item.clubId)}`;
+      if (item.type === 'offer-cancelled') return `Offre annulée après un transfert · ${clubName(item.clubId)}`;
       return `${item.result==='win'?'Victoire':item.result==='draw'?'Match nul':'Défaite'} · ${item.goals||0} but(s)`;
     };
     const salaryStatus = career.getSalaryStatus();
