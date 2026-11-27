@@ -70,6 +70,9 @@ test('P27 boutique club : liste uniquement les clubs réellement dirigés par le
 
     // Exercise the complete financial lifecycle through authenticated HTTP routes.
     const balanceBeforePurchase = ownedPayload.clubs[0].balance;
+    const personalBeforeResponse = await fetch(base+'/api/account/snapshot',{headers:{authorization:`Bearer ${owner.token}`}});
+    assert.equal(personalBeforeResponse.status,200);
+    const personalCoinsBefore = (await personalBeforeResponse.json()).snapshot.progression.coins;
     const purchaseId = randomUUID();
     const purchase = await fetch(base+'/api/shop/purchase',{
       method:'POST',headers:{authorization:`Bearer ${owner.token}`,'content-type':'application/json'},
@@ -82,6 +85,8 @@ test('P27 boutique club : liste uniquement les clubs réellement dirigés par le
     });
     const purchasedShop = await afterPurchase.json();
     assert.equal(purchasedShop.balance,balanceBeforePurchase-8000);
+    const personalAfterResponse = await fetch(base+'/api/account/snapshot',{headers:{authorization:`Bearer ${owner.token}`}});
+    assert.equal((await personalAfterResponse.json()).snapshot.progression.coins,personalCoinsBefore);
     assert.ok(purchasedShop.inventory.some(item=>item.itemId==='club-kit-home'&&item.status==='owned'));
 
     // Ownership moves, but the club inventory and treasury do not.
