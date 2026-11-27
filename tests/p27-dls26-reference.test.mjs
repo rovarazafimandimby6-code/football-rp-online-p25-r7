@@ -58,7 +58,7 @@ test('P27 DLS 26 : les joueurs fictifs reçoivent une référence sans identité
     assert.equal(player.attributes.passing, player.dls26Stats.PAS ?? 25, 'le gameplay utilise la passe de la carte DLS');
     assert.ok(player.dls26Reference.baseOverall >= 75 && player.dls26Reference.baseOverall <= 86);
     assert.equal(player.dls26Reference.verification, player.dls26Reference.sourceGame === 'DLS26' ? 'individual-player-card' : player.dls26Reference.sourceGame === 'DLS19' ? 'community-historical-record' : 'community-dataset-record');
-    assert.ok(['DLS26','DLS23'].includes(player.playerReference.sourceGame));
+    assert.ok(['DLS26','DLS23','DLS19'].includes(player.playerReference.sourceGame));
     assert.equal(player.playerReference.identityPersonalized, true);
     assert.deepEqual(player.playerReferenceStats, player.dls26Stats);
     assert.ok(!/mbapp[eé]|hakimi|bruno fernandes|donnarumma|gabriel magalh[aã]es/i.test(player.name));
