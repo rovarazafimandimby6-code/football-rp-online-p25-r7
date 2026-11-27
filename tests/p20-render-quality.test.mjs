@@ -42,3 +42,15 @@ test('P20 : les fanions de corner sont légers et les réglages avancés restent
   assert.match(sceneSource, /resolveRenderProfile\(level/);
   assert.match(mainSource, /Les options détaillées seront ajoutées après la finalisation des écrans principaux/);
 });
+
+
+test('P27 : la pelouse gagne en relief par bandes de tonte sans augmenter la géométrie', () => {
+  assert.match(fieldSource, /const stripes = 24/);
+  assert.match(fieldSource, /createLinearGradient\(i \* sw/);
+  assert.match(fieldSource, /Fines traces de tonte transversales/);
+  assert.match(fieldSource, /tex\.anisotropy = 4/);
+});
+
+test('P27 : les lignes du terrain partagent un matériau unique', () => {
+  assert.match(fieldSource, /this\.lineMaterial \|\| \(this\.lineMaterial = new THREE\.MeshBasicMaterial/);
+});
