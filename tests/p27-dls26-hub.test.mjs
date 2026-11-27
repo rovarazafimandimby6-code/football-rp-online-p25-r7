@@ -107,3 +107,10 @@ test("P27 Mercato : le centre de négociation est distinct des catalogues joueur
   assert.match(css, /p27-market-shortcuts-intro/);
   assert.match(css, /player-card-portrait::after\{content:none\}/);
 });
+
+
+test("P27 fiche joueur : le retour conserve le catalogue d’origine", () => {
+  assert.ok(main.includes("playerProfileReturnPage = careerButton.closest('[data-profile-origin]')?.dataset.profileOrigin === 'clubs' ? 'clubs' : 'players'"));
+  assert.ok(main.includes("playerProfileReturnPage = origin === 'clubs' ? 'clubs' : 'players'"));
+  assert.ok(main.includes("renderPage(playerProfileReturnPage)"));
+});
