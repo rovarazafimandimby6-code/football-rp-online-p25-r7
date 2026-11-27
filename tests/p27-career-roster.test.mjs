@@ -146,3 +146,18 @@ test('P27 carrière / Mercato : les actions de contrat annulent la mutation si l
   assert.match(main, /const before = career\.captureState\(\);\s*let result = canRegister/);
   assert.match(main, /career\.restoreState\(before\);\s*career\.saveState\(\);\s*result = \{ ok:false, reason:'roster-sync-failed' \};/);
 });
+
+test('P27 Mercato : le club du contrat reste la référence même si le clubId mémoire diverge', () => {
+  const career = new CareerManager({
+    transferWindows: [{ start:'2034-01-01T00:00:00Z', end:'2034-02-01T00:00:00Z' }]
+  });
+  career.signContract({ clubId:'contract-club', salary:20, durationDays:365, signedAt:'2034-01-01T00:00:00Z' });
+  career.clubId = 'stale-memory-club';
+  assert.equal(career.makeOffer({ fromClubId:'contract-club', at:'2034-01-02T00:00:00Z' }).reason, 'same-club');
+  const offer = career.makeOffer({ fromClubId:'new-club', salary:35, fee:0, at:'2034-01-02T00:00:00Z' });
+  assert.equal(offer.ok, true);
+  const accepted = career.acceptOffer(offer.offer.id, '2034-01-03T00:00:00Z');
+  assert.equal(accepted.ok, true);
+  assert.equal(career.history.filter(item => item.type === 'transfer').at(-1).from, 'contract-club');
+  assert.equal(career.history.filter(item => item.type === 'transfer').at(-1).to, 'new-club');
+});
