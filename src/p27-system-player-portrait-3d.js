@@ -191,7 +191,7 @@ export async function renderSystemPlayerPortrait3D(player) {
     const hairTint = hairColorHex(player?.appearance?.hairColor);
     attachHair(model, hairSource, hairTint);
     attachHair(model, beardSource, hairTint);
-    const shirtNumberDecal = addShirtNumber(model, player?.number);
+    addShirtNumber(model, player?.number);
     const faceShape = player?.appearance?.faceShape || 'oval';
     const faceScale = {
       oval: [0.98, 1.04, 1], round: [1.08, 0.98, 1],
