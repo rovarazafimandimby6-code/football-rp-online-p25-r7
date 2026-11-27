@@ -431,3 +431,8 @@ Le centre Mercato est explicitement présenté comme l'espace des contrats, fen�
 ### Navigation contextuelle des fiches joueur — lot UI
 
 L’ouverture d’une fiche depuis la bibliothèque générale ou depuis l’effectif d’un club mémorise maintenant son origine. Le retour de la fiche restaure le catalogue correspondant, au lieu de renvoyer systématiquement à la bibliothèque joueurs. Cette correction est limitée à la navigation et ne change pas les données ni les actions de carrière.
+
+
+### Effectif club : ouverture accessible des fiches joueur
+
+Les lignes de l’effectif sont désormais des points d’entrée fonctionnels vers la fiche joueur : clic, Entrée et Espace déclenchent la même action. Le contexte de retour est conservé vers le détail du club. Le comportement d’expansion des cartes de la bibliothèque générale reste séparé. Aucun statut, attribut ou mécanisme de transfert n’est modifié.
