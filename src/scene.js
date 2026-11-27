@@ -42,7 +42,11 @@ export class SceneManager {
     container.appendChild(this.renderer.domElement);
     this.contextLost = false;
     this._onContextLost = (event) => { event.preventDefault(); this.contextLost = true; };
-    this._onContextRestored = () => { this.contextLost = false; this.resize(); };
+    this._onContextRestored = () => {
+      this.contextLost = false;
+      this.framePacer?.reset();
+      this.resize();
+    };
     this.renderer.domElement.addEventListener('webglcontextlost', this._onContextLost, false);
     this.renderer.domElement.addEventListener('webglcontextrestored', this._onContextRestored, false);
 
