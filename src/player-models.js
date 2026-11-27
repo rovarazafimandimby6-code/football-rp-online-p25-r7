@@ -17,7 +17,7 @@ function loadAnimations() {
   return animationPromise;
 }
 function loadHair(style) {
-  const files = { buzzed: 'Hair_Buzzed', short: 'Hair_SimpleParted', long: 'Hair_Long', buns: 'Hair_Buns' };
+  const files = { buzzed: 'Hair_Buzzed', short: 'Hair_SimpleParted', long: 'Hair_Long', buns: 'Hair_Buns', beard: 'Hair_Beard' };
   const file = files[style];
   if (!file) return Promise.resolve(null);
   if (!hairPromises.has(file)) hairPromises.set(file, loader.loadAsync(`${BASE_URL}hairstyles/${file}.gltf`));
@@ -81,6 +81,41 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
     const hairStyle = ({ shaved: 'buzzed', fade: 'buzzed', short: 'short', curly: 'short', long: 'long' })[appearance?.shopHairStyle] || ({ shaved: 'buzzed', fade: 'buzzed', short: 'short', curly: 'short', long: 'long' })[appearance?.hairStyle] || 'short';
     const hair = await loadHair(hairStyle).catch(() => null);
     attachHair(model, hair);
+    if (appearance?.shopBeardStyle) {
+      const beard = await loadHair('beard').catch(() => null);
+      attachHair(model, beard);
+    }
+    const bonesForCosmetics = new Map();
+    model.traverse((node) => { if (node.isBone && node.name) bonesForCosmetics.set(node.name, node); });
+    if (appearance?.shopBootStyle) {
+      const premium = appearance.shopBootStyle === 'boots-premium';
+      const rare = appearance.shopBootStyle === 'boots-rare';
+      const color = premium ? '#d8ad55' : rare ? '#63b7ff' : '#26384f';
+      for (const side of ['l','r']) {
+        const foot = bonesForCosmetics.get(`foot_${side}`);
+        if (!foot) continue;
+        const shoe = new THREE.Group();
+        shoe.name = `ShopBoot_${side}`;
+        const upper = new THREE.Mesh(new THREE.BoxGeometry(0.58,0.28,0.92), new THREE.MeshStandardMaterial({color,roughness:0.72,metalness:0.08}));
+        upper.position.set(0,-0.08,0.16);
+        const sole = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.075,0.94), new THREE.MeshStandardMaterial({color:'#111820',roughness:0.9}));
+        sole.position.set(0,-0.23,0.16);
+        shoe.add(upper,sole); shoe.traverse((node)=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
+        foot.add(shoe);
+      }
+    }
+    if (appearance?.shopAccessoryStyle) {
+      const color = appearance.shopAccessoryStyle === 'accessory-premium' ? '#d8ad55' : appearance.shopAccessoryStyle === 'accessory-rare' ? '#63b7ff' : '#e7edf4';
+      for (const side of ['l','r']) {
+        const arm = bonesForCosmetics.get(`lowerarm_${side}`);
+        if (!arm) continue;
+        const band = new THREE.Mesh(new THREE.TorusGeometry(0.105,0.025,8,20), new THREE.MeshStandardMaterial({color,metalness:0.18,roughness:0.55}));
+        band.name = `ShopWristBand_${side}`;
+        band.rotation.x = Math.PI/2;
+        band.position.y = 0.20;
+        arm.add(band);
+      }
+    }
 
     const mixer = new THREE.AnimationMixer(model);
     const bones = new Map();
