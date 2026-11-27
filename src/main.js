@@ -515,6 +515,7 @@ function setRpClubStatus(message, isError = false) {
 }
 let rpClubPageRequestSequence = 0;
 let rpClubChatRefreshTimer = null;
+let rpClubChatRefreshPending = false;
 function stopRpClubChatPolling() {
   if (rpClubChatRefreshTimer !== null) clearInterval(rpClubChatRefreshTimer);
   rpClubChatRefreshTimer = null;
@@ -528,7 +529,8 @@ function renderRpClubChatMessages(messages) {
 }
 async function refreshRpClubChat(clubId) {
   const history = document.getElementById('rp-club-chat-history');
-  if (!history) return;
+  if (!history || rpClubChatRefreshPending) return;
+  rpClubChatRefreshPending = true;
   try {
     const payload = await rpClubApi('/' + encodeURIComponent(clubId) + '/messages');
     const current = document.getElementById('rp-club-chat-history');
@@ -541,6 +543,8 @@ async function refreshRpClubChat(clubId) {
     if (wasAtBottom) current.scrollTop = current.scrollHeight;
   } catch (error) {
     if (error?.message === 'SESSION_EXPIRED' || error?.message === 'RP_CLUB_MEMBERSHIP_REQUIRED') stopRpClubChatPolling();
+  } finally {
+    rpClubChatRefreshPending = false;
   }
 }
 function startRpClubChatPolling(clubId) {
@@ -670,7 +674,9 @@ async function performRpClubAction(action, button) {
       return;
     } else if (action === 'rp-club-message') {
       const input = document.getElementById('rp-club-chat-input');
-      await rpClubApi('/' + button.dataset.club + '/messages', { method:'POST', body:JSON.stringify({ text:input?.value || '' }) });
+      const messageText = input?.value || '';
+      await rpClubApi('/' + button.dataset.club + '/messages', { method:'POST', body:JSON.stringify({ text:messageText }) });
+      if (input) input.value = '';
     } else if (action === 'rp-club-leave') {
       await rpClubApi('/' + button.dataset.club + '/leave', { method:'POST' });
     }
@@ -1457,6 +1463,12 @@ menu.addEventListener('input', event => {
   });
 });
 menu.addEventListener('keydown', event => { if(event.target.closest('[data-club-card]')) { const action=event.target.closest('[data-action]')?.dataset.action; if(!action) { const card=event.target.closest('[data-club-card]'); if(card){event.preventDefault();const opening=!card.classList.contains('is-expanded');menu.querySelectorAll('.club-card.compact-club-card.is-expanded').forEach(item=>{if(item!==card){item.classList.remove('is-expanded');item.setAttribute('aria-expanded','false');}});card.classList.toggle('is-expanded',opening);card.setAttribute('aria-expanded',String(opening));}} } });
+menu.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' || event.target?.id !== 'rp-club-chat-input') return;
+  event.preventDefault();
+  const button = menu.querySelector('[data-action="rp-club-message"]');
+  if (button && !button.disabled) void performRpClubAction('rp-club-message', button);
+});
 menu.addEventListener('click', event => {
   const playerChoice = event.target.closest('[data-player-choice]');
   if (playerChoice) {
