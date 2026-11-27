@@ -44,6 +44,19 @@ export class CareerManager {
 
   persist() { return writeJsonWithBackup(this.storage, this.storageKey, this.snapshot(), normalizeCareerState); }
 
+  captureState() { return JSON.parse(JSON.stringify(this.snapshot())); }
+
+  restoreState(state) {
+    this.wallet = state.wallet;
+    this.clubId = state.clubId;
+    this.contract = state.contract;
+    this.offers = new Map(state.offers.map(item => [item.id, item]));
+    this.history = state.history;
+    this.matchRewards = state.matchRewards;
+    this.processedMatchIds = state.processedMatchIds;
+    this.nextOfferNumber = state.nextOfferNumber;
+  }
+
   load() {
     const state = readJsonWithBackup(this.storage, this.storageKey, normalizeCareerState);
     if (!state) return this.snapshot();
@@ -189,10 +202,14 @@ export class CareerManager {
     if (current && !current.expired) return { ok: false, reason: 'active-contract' };
     const start = new Date(startMs);
     const expires = new Date(startMs + days * 86400000);
+    const before = this.captureState();
     this.clubId = club;
     this.contract = { clubId: club, salary: wage, signedAt: start.toISOString(), lastSalaryPaidAt: start.toISOString(), expiresAt: expires.toISOString(), status: 'active' };
     this.history.push({ type: 'signing', clubId: club, date: start.toISOString(), salary: wage });
-    this.persist();
+    if (!this.persist()) {
+      this.restoreState(before);
+      return { ok:false, reason:'persistence-failed' };
+    }
     return { ok: true, contract: { ...this.contract } };
   }
 
@@ -203,6 +220,7 @@ export class CareerManager {
     const expiry = expiresAt == null ? null : timestamp(expiresAt);
     if (expiresAt != null && expiry === null) return { ok: false, reason: 'invalid-expiry' };
     if (expiry !== null && expiry <= Date.now()) return { ok: false, reason: 'offer-expired' };
+    const before = this.captureState();
     const offerId = `offer-${this.nextOfferNumber++}`;
     const offer = {
       id: offerId,
@@ -213,7 +231,10 @@ export class CareerManager {
       status: 'pending'
     };
     this.offers.set(offerId, offer);
-    this.persist();
+    if (!this.persist()) {
+      this.restoreState(before);
+      return { ok:false, reason:'persistence-failed' };
+    }
     return { ok: true, offer: { ...offer } };
   }
 
@@ -243,15 +264,34 @@ export class CareerManager {
     if (!this.contract || this.getContractStatus(now).expired) return { ok: false, reason: 'contract-expired' };
     if (!this.isTransferWindowOpen(now)) return { ok: false, reason: 'window-closed' };
     if (offer.expiresAt && timestamp(offer.expiresAt) <= now) {
+      const beforeExpiry = this.captureState();
       offer.status = 'expired';
-      this.persist();
+      if (!this.persist()) {
+        this.restoreState(beforeExpiry);
+        return { ok:false, reason:'persistence-failed' };
+      }
       return { ok: false, reason: 'offer-expired' };
     }
     if (offer.fromClubId === this.clubId) return { ok: false, reason: 'same-club' };
     if (this.wallet < offer.fee) return { ok: false, reason: 'insufficient-funds' };
+
+    const before = this.captureState();
     const previousClub = this.clubId;
     const signedAt = new Date(now).toISOString();
-    this.processSalary(now);
+    const signed = timestamp(this.contract.signedAt);
+    const expiry = timestamp(this.contract.expiresAt);
+    const lastPaid = timestamp(this.contract.lastSalaryPaidAt) ?? signed;
+    if (signed === null || expiry === null || lastPaid === null) return { ok:false, reason:'invalid-contract' };
+    const payableUntil = Math.min(now, expiry);
+    const periods = Math.max(0, Math.floor((payableUntil - lastPaid) / (7 * 86400000)));
+    const paid = Math.min(1_000_000_000 - this.wallet, nonNegativeInt(this.contract.salary) * periods);
+    const paidThrough = lastPaid + periods * 7 * 86400000;
+
+    this.wallet += paid;
+    if (periods > 0) {
+      this.contract = { ...this.contract, lastSalaryPaidAt:new Date(paidThrough).toISOString() };
+      if (paid > 0) this.history.push({ type:'salary', salary:this.contract.salary, periods, amount:paid, date:new Date(paidThrough).toISOString(), paidAt:signedAt });
+    }
     this.wallet -= offer.fee;
     this.clubId = offer.fromClubId;
     this.contract = {
@@ -264,7 +304,10 @@ export class CareerManager {
     };
     offer.status = 'accepted';
     this.history.push({ type: 'transfer', from: previousClub, to: this.clubId, fee: offer.fee, date: signedAt });
-    this.persist();
+    if (!this.persist()) {
+      this.restoreState(before);
+      return { ok:false, reason:'persistence-failed' };
+    }
     return { ok: true, clubId: this.clubId, wallet: this.wallet, contract: { ...this.contract } };
   }
 
