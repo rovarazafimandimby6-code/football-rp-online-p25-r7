@@ -32,6 +32,9 @@ test('P27 effectifs carrière : la signature inscrit le footballeur une seule fo
   assert.equal(result.player.role, 'FWD');
   assert.equal(result.player.number, 17);
   assert.equal(result.player.rating, 65);
+  assert.equal(result.player.contract.status, 'active');
+  assert.equal(result.player.contract.weeklyWage, 25);
+  assert.equal(result.player.contract.signedAt, career.contract.signedAt);
   assert.equal(clubs.getClub('club-a').roster.filter(item => item.id === CAREER_ROSTER_PLAYER_ID).length, 1);
   assert.equal(clubs.getClub('club-b').roster.some(item => item.id === CAREER_ROSTER_PLAYER_ID), false);
 });
@@ -53,6 +56,7 @@ test('P27 effectifs carrière : un transfert déplace le même joueur sans dupli
   assert.equal(result.clubId, 'club-b');
   assert.equal(clubs.getClub('club-a').roster.some(item => item.id === CAREER_ROSTER_PLAYER_ID), false);
   assert.equal(clubs.getClub('club-b').roster.filter(item => item.id === CAREER_ROSTER_PLAYER_ID).length, 1);
+  assert.equal(clubs.getClub('club-b').roster.find(item => item.id === CAREER_ROSTER_PLAYER_ID).contract.weeklyWage, 35);
 });
 
 test('P27 effectifs carrière : résiliation ou expiration libère la place dans le club', () => {
@@ -101,6 +105,12 @@ test('P27 effectifs carrière : mise à jour du profil répercute le joueur déj
   assert.equal(updated.player.name, 'Nouveau nom');
   assert.equal(updated.player.role, 'MID');
   assert.equal(updated.player.attributes.passing, 90);
+  assert.equal(updated.player.contract.weeklyWage, 25);
+  assert.equal(updated.player.contract.expiresAt, career.contract.expiresAt);
+  assert.equal(career.renewContract({salary:42,durationDays:180}).ok,true);
+  const renewed = syncCareerPlayerRoster({ clubs, career, profile });
+  assert.equal(renewed.player.contract.weeklyWage, 42);
+  assert.equal(renewed.player.contract.expiresAt, career.contract.expiresAt);
 });
 
 
