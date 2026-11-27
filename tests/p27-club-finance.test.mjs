@@ -126,3 +126,26 @@ test('P27 finance : le versement sponsor et son compteur sont atomiques en cas d
  assert.equal(restored.getAccount('club').balance,700);
  assert.equal(restored.getAccount('club').sponsors[0].paidWeeks,1);
 });
+
+test('P27 finance : un identifiant de journal ne peut pas être réutilisé avec un contenu différent',()=>{
+ const f=new ClubFinanceStore(null,'finance-id-conflict');f.openAccount('club',1000);
+ const original={id:'immutable-entry',category:'ticketing',amount:250,direction:'income',description:'Billetterie',createdAt:100,referenceId:'match-1'};
+ assert.equal(f.post('club',original).ok,true);
+ assert.equal(f.post('club',{...original}).duplicate,true);
+ const changed=f.post('club',{...original,amount:900,direction:'expense'});
+ assert.deepEqual(changed,{ok:false,reason:'transaction-id-conflict'});
+ assert.equal(f.balance('club'),1250);
+ assert.equal(f.getAccount('club').entries.length,1);
+});
+
+test('P27 finance : un lot contenant un identifiant rejoué avec un autre montant est entièrement refusé',()=>{
+ const f=new ClubFinanceStore(null,'finance-batch-id-conflict');f.openAccount('club',1000);
+ f.post('club',{id:'existing-entry',category:'wages',amount:100,direction:'expense'});
+ const result=f.postBatch('club',[
+  {id:'new-entry',category:'ticketing',amount:500,direction:'income'},
+  {id:'existing-entry',category:'wages',amount:999,direction:'expense'}
+ ]);
+ assert.deepEqual(result,{ok:false,reason:'transaction-id-conflict'});
+ assert.equal(f.balance('club'),900);
+ assert.equal(f.getAccount('club').entries.length,1);
+});
