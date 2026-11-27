@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolvePlayerAnimationClip, isLoopingPlayerAnimation } from '../src/player-animation-map.js';
+import { resolvePlayerAnimationClip, isLoopingPlayerAnimation, resolvePlayerAnimationTimeScale } from '../src/player-animation-map.js';
 
 const clips = [
   'Idle_Loop','Walk_Loop','Jog_Fwd_Loop','Sprint_Fwd_Loop',
@@ -34,4 +34,15 @@ test('P27 animation : conserve le fallback procédural quand un clip manque',()=
 test('P27 animation : distingue les cycles continus des gestes ponctuels',()=>{
  for(const state of ['idle','walk','run','control']) assert.equal(isLoopingPlayerAnimation(state),true);
  for(const state of ['pass','shoot','tackle','dive','celebrate']) assert.equal(isLoopingPlayerAnimation(state),false);
+});
+
+
+test('P27 animation : adapte la cadence de locomotion à la vitesse sans valeurs extrêmes',()=>{
+ assert.equal(resolvePlayerAnimationTimeScale('run',7.5),1);
+ assert.ok(resolvePlayerAnimationTimeScale('run',3) >= 0.82);
+ assert.equal(resolvePlayerAnimationTimeScale('run',99),1.2);
+ assert.equal(resolvePlayerAnimationTimeScale('walk',3.2),1);
+ assert.equal(resolvePlayerAnimationTimeScale('walk',99),1.15);
+ assert.equal(resolvePlayerAnimationTimeScale('idle',8),1);
+ assert.equal(resolvePlayerAnimationTimeScale('run',Number.NaN),0.82);
 });
