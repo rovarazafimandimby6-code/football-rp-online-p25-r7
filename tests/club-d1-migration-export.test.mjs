@@ -14,7 +14,7 @@ async function fixture(t,{badBalance=false}={}) {
   const write=(file,value)=>writeFile(path.join(root,file),JSON.stringify(value));
   await write('club-rosters/club-rosters.json',{version:8,clubs:[{id:'club-one',managerId:accountId}]});
   await write('finances/club-finance.json',{version:1,accounts:[{
-    clubId:'club-one',openingBalance:1000,balance:badBalance?999:900,
+    clubId:'club-one',openingBalance:badBalance?50:1000,
     entries:[{id:'expense-1',category:'wages',amount:100,direction:'expense',description:'Wage',createdAt:1000,referenceId:'contract-1'}],
     sponsors:[{id:'sponsor-1',name:'Sponsor',weeklyPayment:50,durationWeeks:10,signedAt:1000,paidWeeks:2,status:'active'}],
     loans:[{id:'loan-1',lender:'Bank',principal:200,totalRepayment:220,durationWeeks:10,issuedAt:1000,paidInstallments:1,status:'active'}]
@@ -44,7 +44,7 @@ test('migration exporter refuses a balance mismatch and does not write a bundle'
   assert.equal(result.status,1);
   const report=JSON.parse(result.stdout);
   assert.equal(report.ok,false);
-  assert.ok(report.issues.some(item=>item.code==='ledger-balance-mismatch'));
+  assert.ok(report.issues.some(item=>item.code==='ledger-balance-out-of-range'));
   await assert.rejects(readFile(output));
 });
 test('migration exporter writes a deterministic normalized bundle only after clean audit',async t=>{
