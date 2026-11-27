@@ -45,6 +45,11 @@ test('P27 DLS26: l’audit distingue les fonctions présentes et celles à const
 });
 
 test('P27 Club RP : le hub ouvre une communauté séparée des équipes de championnat', () => {
+  assert.match(main, /function startRpClubChatPolling\\(clubId\\)/);
+  assert.match(main, /setInterval\\(\\(\\) => \\{ if \\(!document\\.hidden\\) void refreshRpClubChat\\(clubId\\); \\}, 10000\\)/);
+  assert.match(main, /function stopRpClubChatPolling\\(\\)/);
+  assert.match(main, /id=\\\"rp-club-chat-history\\\"/);
+  assert.match(main, /event\\.key !== 'Enter' \\|\\| event\\.target\\?\\.id !== 'rp-club-chat-input'/);
   assert.match(main, /async function loadRpClubPage\(selectedSeasonId = null\)/);
   assert.match(main, /function rpClubApi\(/);
   assert.match(main, /rp-club-decision/);
