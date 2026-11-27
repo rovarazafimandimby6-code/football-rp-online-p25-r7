@@ -481,3 +481,8 @@ Correction d'un défaut d'intégration entre le Mercato et les effectifs de cham
 ### Mercato — génération d'offres en liste courte
 
 La sollicitation d'offres locales ne génère plus une proposition pour presque chaque club du monde. Le système complète désormais une liste de cinq offres en attente au maximum, en privilégiant les clubs dont la note est la plus proche de celle du club actuel, puis en départageant par nom. Les offres déjà en attente ne sont pas dupliquées. Les règles d'acceptation restent inchangées : contrat actif, fenêtre officielle ouverte, budget suffisant et place disponible dans l'effectif cible. Les offres restent explicitement des simulations locales, pas des offres réseau. Test de non-régression ajouté.
+
+
+### Gestion d'équipe — choix tactique avant le coup d'envoi
+
+L'écran de présentation des équipes permet maintenant de choisir entre les trois schémas pris en charge (2–2, 1–2–1 et 2–1–1). Le onze et le banc sont recalculés immédiatement avec le schéma sélectionné, puis le même choix est transmis au moteur de match pour initialiser les postes et les positions. Le joueur carrière reste prioritaire dans le onze et conserve son identité et son numéro. Une valeur non reconnue retombe sur le schéma 2–2. Tests couvrant les trois schémas, la feuille de match et le passage de configuration au moteur.
