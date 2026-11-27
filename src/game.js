@@ -374,7 +374,7 @@ export class Game {
     const averageRating = Math.round(values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length));
     bench.push({ id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number, attributes, rating: averageRating, specialty: outgoing.specialty, preferredFoot: outgoing.preferredFoot, team, lastSubstitutedOutAt:this.match.elapsedMatchTime });
     this.substitutionsUsed[team] += 1;
-    this.match.recordEvent('substitution', team, `${outgoing.name} → ${replacement.name} (IA)`);
+    this.match.recordEvent('substitution', team, `${outgoing.name} → ${replacement.name} (système)`);
     return true;
   }
 
@@ -392,7 +392,7 @@ export class Game {
         elapsedMatchSeconds:this.match.elapsedMatchTime, elapsedRatio
       });
       if (pair && this.applyAISubstitution(team, pair)) {
-        this.ui.setStatus(`REMPLACEMENT IA · ${team === 'blue' ? 'BLEUS' : 'ROUGES'} : ${pair.outgoing.name} → ${pair.incoming.name}`);
+        this.ui.setStatus(`REMPLACEMENT DU SYSTÈME · ${team === 'blue' ? 'BLEUS' : 'ROUGES'} : ${pair.outgoing.name} → ${pair.incoming.name}`);
       }
     }
   }
