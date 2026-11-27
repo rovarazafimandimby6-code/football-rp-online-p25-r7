@@ -51,6 +51,13 @@ const CLUB_ITEMS = [
 ].map(([id,category,name,price,resellable]) => ({
   id, shop:'club', category, name, price, rarity:'standard', currency:'club-coins',
   resellable, resaleRate:resellable ? 0.50 : 0, permanent:true,
+  equipSlot:({
+    'club-crest-custom':'club-crest','club-official-colors':'club-colors',
+    'club-kit-home':'kit-home','club-kit-away':'kit-away','club-kit-third':'kit-third','club-kit-goalkeeper':'kit-goalkeeper',
+    'club-stadium-standard':'stadium-skin','club-stadium-premium':'stadium-skin',
+    'club-grass-standard':'stadium-grass','club-grass-premium':'stadium-grass',
+    'club-supporter-flags':'supporter-flags','club-supporter-banners':'supporter-banners','club-supporter-tifo':'supporter-tifo'
+  })[id]||null,
   ...(category==='capacity' ? { upgradeLevel:Number(id.slice(-1)) } : {})
 }));
 
