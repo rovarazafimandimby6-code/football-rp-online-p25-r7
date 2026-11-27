@@ -181,7 +181,7 @@ test('P27: les bots des clubs utilisent une identité stable reliée aux fiches 
 test('P27 match : les apparences publiques des clubs sont jointes au salon sans inventaire privé',()=>{
  const manager=new RoomManager({
   resolveClubAppearance:clubId=>clubId==='antananarivo-fc'
-   ? {equippedItemIds:['club-crest-custom','club-supporter-flags'],stadiumExpansionLevel:3,stadiumCapacity:12500,ownerId:'must-not-leak',balance:999999}
+   ? {equippedItemIds:['club-crest-custom','club-supporter-flags'],stadiumExpansionLevel:3,stadiumCapacity:999999,ownerId:'must-not-leak',balance:999999}
    : {equippedItemIds:[],stadiumExpansionLevel:0}
  });
  const created=manager.create({blueClubId:'antananarivo-fc',redClubId:'fianarantsoa-athletic'});
