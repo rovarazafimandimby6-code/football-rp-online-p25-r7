@@ -158,6 +158,18 @@ test('P27: le bloc défensif protège la profondeur côté but et conserve les c
   assert.ok(target.z < 0, 'le défenseur ne quitte pas son couloir pour suivre le joueur éloigné');
 });
 
+test('P27: toute la ligne défensive recule collectivement quand le ballon entre dans sa moitié', () => {
+  const defender = player('line-defender', 'blue', -7, 3);
+  defender.homePos = { x: -7, z: 3 };
+  const safeBall = { pos: { x: 12, z: 0 } };
+  const dangerousBall = { pos: { x: -20, z: 0 } };
+  const safeTarget = getDefensiveShapeTarget(defender, safeBall, [], 1, 'balanced');
+  const retreatTarget = getDefensiveShapeTarget(defender, dangerousBall, [], 1, 'balanced');
+  assert.ok(retreatTarget.x < safeTarget.x - 2,
+    'la ligne doit reculer nettement lorsque le ballon approche de son propre but');
+  assert.ok(retreatTarget.x >= -26 && retreatTarget.x <= 26);
+});
+
 test('P27: le bloc défensif se replie davantage avec une mentalité prudente', async () => {
 
   const defender = player('defender', 'blue', -5, 4);
