@@ -49,26 +49,31 @@ test('P27 rotations serveur : un coéquipier ne peut pas remplacer un humain san
 });
 
 
-test('P27 rotations serveur : un joueur humain sorti ne peut revenir qu’après dix minutes de temps de match', () => {
-  const manager = new RoomManager();
-  const created = manager.create();
-  const joined = manager.join(created.id, { displayName:'Joueur carrière' });
-  const room = manager.rooms.get(created.id);
-  const reserve = [...room.players.values()].find(player => player.team === joined.team && player.isBot && player.isOnPitch === false);
-  assert.ok(reserve);
-  room.phase = 'playing';
-  room.elapsedMs = 40_000;
-  room.goalPauseMs = 1_000;
-  assert.equal(manager.rotate(created.id, joined.token, { outgoingId:joined.playerId, incomingId:reserve.id }).rotated,true);
-  assert.equal(room.players.get(joined.playerId).isOnPitch,false);
-  room.elapsedMs = 73_332;
-  room.goalPauseMs = 1_000;
-  const early = manager.requestEntry(created.id, joined.token);
-  assert.equal(early.queued,false);
-  assert.equal(room.players.get(joined.playerId).isOnPitch,false);
-  room.elapsedMs = 73_334;
-  room.goalPauseMs = 1_000;
-  const ready = manager.requestEntry(created.id, joined.token);
-  assert.equal(ready.queued,false);
-  assert.equal(room.players.get(joined.playerId).isOnPitch,true);
+test('P27 rotations serveur : le retour humain suit dix minutes virtuelles en matchs de 3 et 5 minutes', () => {
+  for (const durationMinutes of [3,5]) {
+    const manager = new RoomManager();
+    const created = manager.create({durationMinutes});
+    const joined = manager.join(created.id, { displayName:'Joueur carrière' });
+    const room = manager.rooms.get(created.id);
+    const reserve = [...room.players.values()].find(player => player.team === joined.team && player.isBot && player.isOnPitch === false);
+    assert.ok(reserve);
+    const totalRealMs = durationMinutes * 60_000;
+    const startAt = totalRealMs * (12 / 90);
+    const returnAt = startAt + totalRealMs * (10 / 90);
+    room.phase = 'playing';
+    room.elapsedMs = startAt;
+    room.goalPauseMs = 1_000;
+    assert.equal(manager.rotate(created.id, joined.token, { outgoingId:joined.playerId, incomingId:reserve.id }).rotated,true);
+    assert.equal(room.players.get(joined.playerId).isOnPitch,false);
+    room.elapsedMs = returnAt - 2;
+    room.goalPauseMs = 1_000;
+    const early = manager.requestEntry(created.id, joined.token);
+    assert.equal(early.queued,false);
+    assert.equal(room.players.get(joined.playerId).isOnPitch,false);
+    room.elapsedMs = returnAt + 2;
+    room.goalPauseMs = 1_000;
+    const ready = manager.requestEntry(created.id, joined.token);
+    assert.equal(ready.queued,false);
+    assert.equal(room.players.get(joined.playerId).isOnPitch,true);
+  }
 });
