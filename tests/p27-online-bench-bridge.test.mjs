@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { OnlineMatchBridge } from '../src/online-match-bridge.js';
 
 test('P27 banc : applique une rotation uniquement pendant une fenêtre serveur autorisée',async()=>{
@@ -37,4 +38,13 @@ test('P27 caméra en ligne : le mode spectateur préféré survit au passage sur
  assert.equal(camera.mode,'broadcast');
  assert.equal(bridge.setPreferredCameraMode('invalid'),false);
  bridge.dispose();
+});
+
+
+test('P27 banc en ligne : un joueur peut demander à sortir lui-même, sans pouvoir remplacer un autre humain', async()=>{
+ const ui=await readFile(new URL('../src/ui.js',import.meta.url),'utf8');
+ const server=await readFile(new URL('../server/room-manager.js',import.meta.url),'utf8');
+ assert.match(ui,/starters\.filter\(player => player\.isBot === true \|\| player\.id === localPlayerId\)/);
+ assert.match(server,/if \(!outgoing\.isBot && outgoing\.id !== requester\.id\) throw new Error\('OUTGOING_PLAYER_CONSENT_REQUIRED'\)/);
+ assert.match(ui,/requestButton\.textContent = 'DEMANDER À ENTRER'/);
 });
