@@ -2106,6 +2106,18 @@
 }
 
 
+#main-menu #menu-content .p27-shop-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 1px}
+#main-menu #menu-content .p27-shop-switch>span{color:#9eb1c7;font-size:8px;font-weight:900;letter-spacing:.12em}
+#main-menu #menu-content .p27-club-shop-select{display:flex;align-items:center;gap:8px;color:#91a8bf;font-size:9px;font-weight:900;letter-spacing:.08em}
+#main-menu #menu-content .p27-club-shop-select select{max-width:250px;min-height:32px;padding:6px 28px 6px 10px;border:1px solid #40546b;border-radius:6px;background:#101c2a;color:#edf4fc;font-size:10px;font-weight:800}
+#main-menu #menu-content .p27-club-shop-art{background:radial-gradient(circle at 50% 30%,#6b5839,#292317 72%);border-color:#806b43}
+#main-menu #menu-content .p27-club-shop-art.premium{background:radial-gradient(circle at 50% 30%,#8b713d,#332717 72%);border-color:#b08c4d}
+@media(max-width:560px){
+ #main-menu #menu-content .p27-shop-switch{align-items:flex-start;flex-direction:column}
+ #main-menu #menu-content .p27-club-shop-select{width:100%;justify-content:space-between}
+ #main-menu #menu-content .p27-club-shop-select select{max-width:68%;flex:1}
+}
+
 /* P27 shop: transparent server-calculated resale estimate */
 .p27-shop-refund{display:block;color:#e4bd6b;font-weight:700;margin-top:5px;letter-spacing:.02em}
 
