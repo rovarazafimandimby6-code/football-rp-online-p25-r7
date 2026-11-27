@@ -35,7 +35,10 @@ test('P27 gestion équipe : le choix de formation avant match met à jour la feu
   assert.match(main, /id="pre-match-bench-size"/);
   assert.match(main, /selectedBenchSize = size/);
   assert.match(main, /benchSize: selectedBenchSize/);
-  assert.match(main, /homeStarterIds: selectedHomeStarterIds/);
+  assert.match(main, /homeStarterIds: online \? null : selectedHomeStarterIds/);
+  assert.match(main, /function buildCareerMatchRoster\(club\)/);
+  assert.match(main, /id:'career-player'/);
+  assert.match(main, /homeSelect\.disabled = Boolean\(career\.contract\?\.status === 'active' && career\.clubId\)/);
   assert.match(main, /data-squad-action="bench"/);
   assert.match(main, /data-squad-action="start"/);
   assert.match(main, /selectedHomeStarterIds = selectedHomeStarterIds\.map/);
