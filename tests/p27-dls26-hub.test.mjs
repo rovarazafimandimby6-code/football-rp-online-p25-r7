@@ -157,3 +157,11 @@ test('P27 archives résultats : pagination et entrées serveur sont normalisées
   assert.ok(main.includes("Feuille de match indisponible"));
   assert.ok(main.includes("date.toLocaleString('fr-FR'"));
 });
+
+ 
+test('P27 effectif de club : le compteur suit la recherche et le filtre par poste', () => {
+  assert.ok(main.includes('id="roster-filter-count"'));
+  assert.ok(main.includes('role="status" aria-live="polite"'));
+  assert.ok(main.includes("count.textContent = visible + ' / ' + rows.length + ' joueurs affichés'"));
+  assert.ok(main.includes("document.getElementById('roster-empty')?.classList.toggle('hidden', visible > 0)"));
+});
