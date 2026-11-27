@@ -52,3 +52,57 @@ test('P27 récompenses : le registre de profil survit au rechargement et bloque 
   assert.equal(restored.profile.progression.experience, 75);
   assert.equal(restored.profile.progression.coins, 270);
 });
+
+
+test('P27 récompenses : une panne de sauvegarde ne crédite pas le profil et autorise une reprise', () => {
+  const values = new Map();
+  let failPrimaryWrite = false;
+  const failingStorage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => {
+      if (failPrimaryWrite && key === 'reward-write-failure') throw new Error('storage unavailable');
+      values.set(key, String(value));
+    }
+  };
+  const profile = new PlayerProfileStore(failingStorage, 'reward-write-failure');
+  const before = structuredClone(profile.profile.progression);
+  failPrimaryWrite = true;
+
+  const failed = profile.grantMatchRewards({ matchId:'match-save-retry', experience:120, coins:35 });
+  assert.equal(failed.ok, false);
+  assert.equal(failed.reason, 'persistence-failed');
+  assert.deepEqual(profile.profile.progression, before);
+  assert.equal(profile.profile.appliedMatchIds.includes('match-save-retry'), false);
+
+  failPrimaryWrite = false;
+  const recovered = profile.grantMatchRewards({ matchId:'match-save-retry', experience:120, coins:35 });
+  assert.equal(recovered.ok, true);
+  assert.equal(recovered.duplicate, false);
+  assert.equal(profile.profile.progression.experience, 20);
+  assert.equal(profile.profile.progression.coins, 335);
+
+  const duplicate = profile.grantMatchRewards({ matchId:'match-save-retry', experience:999, coins:999 });
+  assert.equal(duplicate.duplicate, true);
+  assert.equal(profile.profile.progression.experience, 20);
+  assert.equal(profile.profile.progression.coins, 335);
+});
+
+test('P27 entraînement : une panne de sauvegarde ne confirme pas une dépense', () => {
+  const values = new Map();
+  let failPrimaryWrite = false;
+  const failingStorage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => {
+      if (failPrimaryWrite && key === 'training-write-failure') throw new Error('storage unavailable');
+      values.set(key, String(value));
+    }
+  };
+  const profile = new PlayerProfileStore(failingStorage, 'training-write-failure');
+  const before = structuredClone(profile.profile.progression);
+  failPrimaryWrite = true;
+
+  const result = profile.train('pace', 1);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'persistence-failed');
+  assert.deepEqual(profile.profile.progression, before);
+});
