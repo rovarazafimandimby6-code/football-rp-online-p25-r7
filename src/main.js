@@ -1002,15 +1002,26 @@ async function renderResultsPage(offset = 0, selectedRoomId = null) {
     if (!response.ok) throw new Error(response.status === 404 ? 'Le serveur ne propose pas encore l’historique des résultats.' : `Serveur indisponible (${response.status}).`);
     const payload = await response.json();
     if (requestId !== resultsRequestSequence || !document.getElementById('menu-content')) return;
-    const rows = Array.isArray(payload.results) ? payload.results : [];
-    const page = payload.pagination || { limit: 10, offset, total: rows.length, hasMore: false, nextOffset: null };
-    const dateLabel = value => Number.isFinite(Number(value)) ? new Date(Number(value)).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : 'Date inconnue';
+    const rows = Array.isArray(payload.results) ? payload.results.filter(result => result && typeof result === 'object') : [];
+    const rawPage = payload.pagination && typeof payload.pagination === 'object' ? payload.pagination : {};
+    const pageLimit = Math.max(1, Math.min(100, resultNumber(rawPage.limit) || 10));
+    const pageOffset = Math.max(0, Math.min(5000, resultNumber(rawPage.offset ?? offset)));
+    const pageTotal = Math.max(rows.length, resultNumber(rawPage.total));
+    const nextOffset = rawPage.nextOffset == null ? null : Math.max(0, Math.min(5000, resultNumber(rawPage.nextOffset)));
+    const page = { limit: pageLimit, offset: pageOffset, total: pageTotal, hasMore: rawPage.hasMore === true && nextOffset !== null && nextOffset > pageOffset, nextOffset };
+    const dateLabel = value => {
+      const timestamp = typeof value === 'string' && !/^\\d+(?:\\.\\d+)?$/.test(value) ? Date.parse(value) : Number(value);
+      if (!Number.isFinite(timestamp) || timestamp <= 0) return 'Date inconnue';
+      const date = new Date(timestamp);
+      return Number.isNaN(date.getTime()) ? 'Date inconnue' : date.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+    };
     const cards = rows.map(result => {
       const blue = result.score?.blue ?? 0, red = result.score?.red ?? 0;
       const outcome = result.outcome === 'draw' ? 'MATCH NUL' : result.outcome === 'blue' ? 'VICTOIRE BLEUE' : result.outcome === 'red' ? 'VICTOIRE ROUGE' : 'TERMINÉ';
-      return `<article class="result-card"><div class="result-card-top"><span>${dateLabel(result.finalizedAt)}</span><small>${escapeHTML(result.roomId || 'Rencontre')}</small></div><div class="result-scoreline"><div><b>ÉQUIPE BLEUE</b><strong>${resultNumber(blue)}</strong></div><i>–</i><div><b>ÉQUIPE ROUGE</b><strong>${resultNumber(red)}</strong></div></div><div class="result-card-bottom"><span>${outcome}</span><button class="small-action" data-action="show-result" data-room="${escapeHTML(result.roomId)}">VOIR LA FEUILLE DE MATCH</button></div></article>`;
+      const roomId = typeof result.roomId === 'string' ? result.roomId.trim() : '';
+      return `<article class="result-card"><div class="result-card-top"><span>${dateLabel(result.finalizedAt)}</span><small>${escapeHTML(roomId || 'Rencontre')}</small></div><div class="result-scoreline"><div><b>ÉQUIPE BLEUE</b><strong>${resultNumber(blue)}</strong></div><i>–</i><div><b>ÉQUIPE ROUGE</b><strong>${resultNumber(red)}</strong></div></div><div class="result-card-bottom"><span>${outcome}</span>${roomId ? `<button class="small-action" data-action="show-result" data-room="${escapeHTML(roomId)}">VOIR LA FEUILLE DE MATCH</button>` : '<span class="notice">Feuille de match indisponible</span>'}</div></article>`;
     }).join('');
-    content.innerHTML = `<section class="competition-panel results-panel"><div class="panel-heading"><div><span class="eyebrow">ARCHIVES SERVEUR</span><h2>${resultNumber(page.total)} rencontre(s) enregistrée(s)</h2></div><span class="local-tag">RÉSULTATS VALIDÉS</span></div>${rows.length ? `<div class="results-list">${cards}</div>` : '<div class="empty-fixtures"><b>Aucun résultat disponible</b><p>Les matchs terminés et sauvegardés sur le serveur apparaîtront ici. Les matchs locaux ne sont pas ajoutés à cet historique.</p></div>'}<div class="results-pagination"><span>Page ${Math.floor((page.offset || 0) / Math.max(1, page.limit || 10)) + 1} · ${resultNumber(page.total)} résultat(s)</span><div><button class="small-action" data-action="results-page" data-offset="${Math.max(0, (page.offset || 0) - (page.limit || 10))}" ${!page.offset ? 'disabled' : ''}>← PRÉCÉDENTS</button><button class="small-action" data-action="results-page" data-offset="${page.nextOffset ?? 0}" ${!page.hasMore ? 'disabled' : ''}>SUIVANTS →</button></div></div><p class="notice">Les archives sont partagées par le serveur. Leur conservation après redéploiement dépend du volume persistant configuré côté hébergement.</p><div id="result-detail"></div></section>`;
+    content.innerHTML = `<section class="competition-panel results-panel"><div class="panel-heading"><div><span class="eyebrow">ARCHIVES SERVEUR</span><h2>${resultNumber(page.total)} rencontre(s) enregistrée(s)</h2></div><span class="local-tag">RÉSULTATS VALIDÉS</span></div>${rows.length ? `<div class="results-list">${cards}</div>` : '<div class="empty-fixtures"><b>Aucun résultat disponible</b><p>Les matchs terminés et sauvegardés sur le serveur apparaîtront ici. Les matchs locaux ne sont pas ajoutés à cet historique.</p></div>'}<div class="results-pagination"><span>Page ${Math.floor(page.offset / page.limit) + 1} · ${resultNumber(page.total)} résultat(s)</span><div><button class="small-action" data-action="results-page" data-offset="${Math.max(0, page.offset - page.limit)}" ${page.offset === 0 ? 'disabled' : ''}>← PRÉCÉDENTS</button><button class="small-action" data-action="results-page" data-offset="${page.nextOffset ?? page.offset + page.limit}" ${!page.hasMore ? 'disabled' : ''}>SUIVANTS →</button></div></div><p class="notice">Les archives sont partagées par le serveur. Leur conservation après redéploiement dépend du volume persistant configuré côté hébergement.</p><div id="result-detail"></div></section>`;
     if (selectedRoomId) await renderResultDetail(selectedRoomId, requestId);
   } catch (error) {
     if (requestId !== resultsRequestSequence) return;
