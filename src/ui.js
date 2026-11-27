@@ -178,9 +178,9 @@ export class UIManager {
       this.benchRotationBox.hidden = true;
       return;
     }
-    this.benchStatusMessageEl.textContent = `VOTRE ÉQUIPE · ${starters.length}/5 SUR LE TERRAIN · ${reserves.length} RÉSERVISTE(S)`;
+    this.benchStatusMessageEl.textContent = `VOTRE ÉQUIPE · ${starters.length}/5 SUR LE TERRAIN · ${reserves.length} RÉSERVISTE(S) · VOUS POUVEZ DEMANDER À SORTIR`;
     this.benchRequestButton.hidden = true;
-    const outgoing = starters.filter(player => player.isBot === true);
+    const outgoing = starters.filter(player => player.isBot === true || player.id === localPlayerId);
     const incoming = reserves.filter(player => player.isBot === true);
     const canRotate = rotationAvailable && outgoing.length > 0 && incoming.length > 0;
     this.benchRotationBox.hidden = !canRotate;
