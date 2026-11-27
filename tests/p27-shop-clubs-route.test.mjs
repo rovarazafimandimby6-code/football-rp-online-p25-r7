@@ -45,6 +45,38 @@ test('P27 boutique club : liste uniquement les clubs réellement dirigés par le
     assert.equal(shop.shop,'club');
     assert.equal(shop.currency,'club-coins');
     assert.equal(shop.catalog.length,17);
+
+    const deniedPurchase = await fetch(base+'/api/shop/purchase',{
+      method:'POST',headers:{authorization:`Bearer ${outsider.token}`,'content-type':'application/json'},
+      body:JSON.stringify({shop:'club',clubId:club.id,itemId:'club-supporter-tifo',purchaseId:'outsider-club-purchase'})
+    });
+    assert.equal(deniedPurchase.status,403);
+    assert.equal((await deniedPurchase.json()).reason,'club-owner-required');
+
+    const deniedResale = await fetch(base+'/api/shop/resale',{
+      method:'POST',headers:{authorization:`Bearer ${outsider.token}`,'content-type':'application/json'},
+      body:JSON.stringify({shop:'club',clubId:club.id,itemId:'club-supporter-tifo',resaleId:'outsider-club-resale'})
+    });
+    assert.equal(deniedResale.status,403);
+    assert.equal((await deniedResale.json()).reason,'club-owner-required');
+
+    const deniedEquip = await fetch(base+'/api/shop/equip',{
+      method:'POST',headers:{authorization:`Bearer ${outsider.token}`,'content-type':'application/json'},
+      body:JSON.stringify({shop:'club',clubId:club.id,itemId:'club-supporter-tifo',equipped:true})
+    });
+    assert.equal(deniedEquip.status,403);
+    assert.equal((await deniedEquip.json()).reason,'club-owner-required');
+
+    // When club ownership changes, the former owner loses shop access immediately.
+    club.managerId = outsider.identity.accountId;
+    const formerOwnerSnapshot = await fetch(base+`/api/shop?shop=club&clubId=${encodeURIComponent(club.id)}`,{
+      headers:{authorization:`Bearer ${owner.token}`}
+    });
+    assert.equal(formerOwnerSnapshot.status,403);
+    const newOwnerSnapshot = await fetch(base+`/api/shop?shop=club&clubId=${encodeURIComponent(club.id)}`,{
+      headers:{authorization:`Bearer ${outsider.token}`}
+    });
+    assert.equal(newOwnerSnapshot.status,200);
   } finally {
     club.managerId = previousManagerId;
     await new Promise(resolve => server.close(resolve));
