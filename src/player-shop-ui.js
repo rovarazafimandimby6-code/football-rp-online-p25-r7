@@ -19,11 +19,11 @@ const messages = {
   'item-not-resellable':'Cet article ne peut pas être revendu.',
   'resale-value-zero':'La valeur de revente est trop faible.'
 };
-function syncEquippedCosmetics(inventory, catalog = []) {
+export function syncEquippedCosmetics(inventory, catalog = []) {
   const equipped = {};
   for (const entry of inventory.filter(item => item.status === 'owned' && item.equipped)) {
     const category = entry.category || catalog.find(item => item.id === entry.itemId)?.category;
-    if (['hair', 'beard', 'crampons', 'accessories'].includes(category)) equipped[category] = entry.itemId;
+    if (['hair', 'beard', 'crampons', 'accessories', 'celebrations', 'profile-frames', 'profile-backgrounds'].includes(category)) equipped[category] = entry.itemId;
   }
   try { globalThis.localStorage?.setItem('fpro.player-shop-equipped.v1', JSON.stringify(equipped)); } catch {}
 }
