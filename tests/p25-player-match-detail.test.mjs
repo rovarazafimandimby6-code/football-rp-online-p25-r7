@@ -25,5 +25,5 @@ test('P25 joueurs match : mains détaillées et gants de gardien conservés', ()
 
 test('P25 joueurs match : delta de frame borné avant interpolation des articulations', () => {
   assert.match(source, /dt = Number\.isFinite\(dt\) \? THREE\.MathUtils\.clamp\(dt, 0, 0\.05\) : 0/);
-  assert.match(source, /typeof performance !== 'undefined'/);
+  assert.match(source, /this\.visualAnimationTime \+= dt \* 1000/);\n  assert.match(source, /const now = this\.visualAnimationTime/);
 });
