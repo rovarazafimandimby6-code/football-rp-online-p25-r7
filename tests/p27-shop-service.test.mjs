@@ -286,7 +286,7 @@ test('P27 boutique club : le snapshot public ne divulgue que les cosmétiques é
   assert.equal(snapshot.stadiumCapacity,10000);
   assert.equal(Object.hasOwn(snapshot,'balance'),false);
   assert.equal(JSON.stringify(snapshot).includes('paidPrice'),false);
-  assert.deepEqual(f.service.publicAppearance('unknown-club'),{equippedItemIds:[],stadiumExpansionLevel:0});
+  assert.deepEqual(f.service.publicAppearance('unknown-club'),{equippedItemIds:[],stadiumExpansionLevel:0,stadiumCapacity:5000});
  }finally{f.cleanup();}
 });
 
