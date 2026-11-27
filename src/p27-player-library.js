@@ -1,3 +1,4 @@
+import { applyP27ClubKit } from './p27-club-kit.js';
 const clean = (value, max = 80) => String(value ?? '').trim().slice(0, max);
 const normalize = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const clampInt = (value, fallback, min, max) => Number.isSafeInteger(Number(value)) ? Math.max(min, Math.min(max, Number(value))) : fallback;
@@ -13,7 +14,7 @@ export function listP27Players({ clubs = [], filters = {} } = {}) {
   for (const club of clubList) {
     for (const player of Array.isArray(club.roster) ? club.roster : []) {
       if (!player || typeof player.id !== 'string' || !player.id) continue;
-      current.set(player.id, { ...player, clubId:club.id, clubName:club.name, division:club.division, status:player.contract?.loan?.status === 'active' ? 'loaned' : 'active', lastClubId:null });
+      current.set(player.id, { ...applyP27ClubKit(player, club), clubId:club.id, clubName:club.name, division:club.division, status:player.contract?.loan?.status === 'active' ? 'loaned' : 'active', lastClubId:null });
     }
   }
   const released = new Map();
