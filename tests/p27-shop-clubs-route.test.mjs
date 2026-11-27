@@ -47,5 +47,6 @@ test('P27 boutique club : liste uniquement les clubs réellement dirigés par le
     assert.equal(shop.catalog.length,17);
   } finally {
     club.managerId = previousManagerId;
+    await new Promise(resolve => server.close(resolve));
   }
 });
