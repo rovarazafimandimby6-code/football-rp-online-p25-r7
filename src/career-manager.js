@@ -244,15 +244,23 @@ export class CareerManager {
     const now = timestamp(at);
     if (now === null) return { ok: false, reason: 'invalid-date' };
     if (offer.expiresAt && timestamp(offer.expiresAt) <= now) {
+      const before = this.captureState();
       offer.status = 'expired';
-      this.persist();
+      if (!this.persist()) {
+        this.restoreState(before);
+        return { ok:false, reason:'persistence-failed' };
+      }
       return { ok: false, reason: 'offer-expired' };
     }
     if (salary !== undefined && !Number.isFinite(Number(salary))) return { ok: false, reason: 'invalid-salary' };
     if (fee !== undefined && !Number.isFinite(Number(fee))) return { ok: false, reason: 'invalid-fee' };
+    const before = this.captureState();
     if (salary !== undefined) offer.salary = nonNegativeInt(salary);
     if (fee !== undefined) offer.fee = nonNegativeInt(fee);
-    this.persist();
+    if (!this.persist()) {
+      this.restoreState(before);
+      return { ok:false, reason:'persistence-failed' };
+    }
     return { ok: true, offer: { ...offer } };
   }
 
@@ -314,8 +322,12 @@ export class CareerManager {
   rejectOffer(offerId) {
     const offer = this.offers.get(idOf(offerId));
     if (!offer || offer.status !== 'pending') return false;
+    const before = this.captureState();
     offer.status = 'rejected';
-    this.persist();
+    if (!this.persist()) {
+      this.restoreState(before);
+      return false;
+    }
     return true;
   }
 
