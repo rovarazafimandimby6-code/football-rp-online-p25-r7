@@ -85,3 +85,12 @@ test('P27 : le remplacement des extensions et décorations du club libère leurs
   assert.match(fieldSource, /material\.dispose\(\)/);
   assert.match(fieldSource, /geometry\.dispose\(\)/);
 });
+
+
+test('P27 : la foule du stade adapte sa densité et sa géométrie au profil mobile', () => {
+  assert.match(sceneSource, /this\.scene\.userData\.renderQuality = profile\.quality/);
+  assert.match(fieldSource, /const lowEndCrowd = this\.scene\.userData\?\.renderQuality === 'low'/);
+  assert.match(fieldSource, /const count = lowEndCrowd \? 240 : 420/);
+  assert.match(fieldSource, /lowEndCrowd \? 8 : 10/);
+  assert.match(fieldSource, /lowEndCrowd \? 6 : 8/);
+});
