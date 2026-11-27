@@ -447,3 +447,16 @@ test('P27 réconciliation : signale les événements financiers source ignorés 
   assert.equal(audit.issues.some(issue=>issue.type==='source-finance-event-duplicate-or-missing-id'),true);
  } finally {f.cleanup();}
 });
+
+
+test('P27 finance : refuse un checkpoint de paie invalide pour un club existant',()=>{
+ const f=setup();
+ try {
+  writeFileSync(path.join(f.directory,'system-payroll-schedule.json'),JSON.stringify({
+   version:1,clubs:{[DEFAULT_CLUBS[0].id]:'not-a-timestamp'}
+  }));
+  assert.throws(()=>new JsonClubFinanceService(f.directory,{
+   clubs:DEFAULT_CLUBS,transferStore:f.transferStore
+  }),/PAYROLL_SCHEDULE_CORRUPT/);
+ } finally { rmSync(f.directory,{recursive:true,force:true}); }
+});
