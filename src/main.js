@@ -1083,9 +1083,14 @@ async function startMatch(online = null) {
     const onlineTeams = online?.joinResult?.state?.teams || null;
     const homeClub = onlineTeams?.blue?.id ? clubs.getClub(onlineTeams.blue.id) : clubs.getClub(selectedMatchup.home);
     const awayClub = onlineTeams?.red?.id ? clubs.getClub(onlineTeams.red.id) : clubs.getClub(selectedMatchup.away);
-    const loadClubKits = async (club, kitType) => {
-      if (!club) return { outfield:null, goalkeeper:null };
-      let inventory = [];
+    const loadClubKits = async (club, kitType, teamKey) => {
+      if (!club) return { outfield:null, goalkeeper:null, appearance:getP27ClubShopAppearance(club, []) };
+      const publicTeamAppearance = onlineTeams?.[teamKey]?.shopAppearance || null;
+      let inventory = Array.isArray(publicTeamAppearance?.equippedItemIds)
+        ? publicTeamAppearance.equippedItemIds.map(itemId => ({ itemId, status:'owned', equipped:true })) : [];
+      if (Number.isInteger(publicTeamAppearance?.stadiumExpansionLevel) && publicTeamAppearance.stadiumExpansionLevel > 0) {
+        inventory.push({ itemId:'club-capacity-level-'+publicTeamAppearance.stadiumExpansionLevel, category:'capacity', upgradeLevel:publicTeamAppearance.stadiumExpansionLevel, status:'owned', equipped:false });
+      }
       if (accountClient.hasSession) {
         try {
           const snapshot = await accountClient.getShopSnapshot('club', club.id);
@@ -1101,8 +1106,8 @@ async function startMatch(online = null) {
       };
     };
     const [homeKits, awayKits] = await Promise.all([
-      loadClubKits(homeClub, 'home'),
-      loadClubKits(awayClub, 'away')
+      loadClubKits(homeClub, 'home', 'blue'),
+      loadClubKits(awayClub, 'away', 'red')
     ]);
     const homeKitAppearance = homeKits.outfield;
     const awayKitAppearance = awayKits.outfield;
@@ -1124,7 +1129,7 @@ async function startMatch(online = null) {
       awayKitAppearance,
       homeGoalkeeperKitAppearance:homeKits.goalkeeper,
       awayGoalkeeperKitAppearance:awayKits.goalkeeper,
-      homeClubAppearance:{ ...homeKits.appearance, colors:homeClub?.colors || null },
+      homeClubAppearance:{ ...homeKits.appearance, colors:homeKits.appearance?.crestColors || homeClub?.colors || null },
       cameraMode: preferences.cameraMode,
       cameraZoom: preferences.cameraZoom,
       onCameraMode: (mode) => { preferences.cameraMode = mode; try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {} },
