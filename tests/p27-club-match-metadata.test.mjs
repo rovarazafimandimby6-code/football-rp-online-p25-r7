@@ -190,3 +190,13 @@ test('P27 match : les apparences publiques des clubs sont jointes au salon sans 
  assert.equal(JSON.stringify(created.teams).includes('must-not-leak'),false);
  assert.equal(JSON.stringify(created.teams).includes('999999'),false);
 });
+
+
+test('P27 match : les extensions du club pilotent des niveaux de tribunes supplémentaires',async()=>{
+ const field=await readFile(new URL('../src/field.js',import.meta.url),'utf8');
+ const main=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
+ assert.match(main,/stadiumExpansionLevel/);
+ assert.match(field,/expansionLevel/);
+ assert.match(field,/clubExpansionGroup/);
+ assert.match(field,/PITCH\.HALF_W - 12\.0 - offset/);
+});
