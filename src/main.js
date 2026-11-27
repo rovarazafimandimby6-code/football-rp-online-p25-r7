@@ -1601,7 +1601,8 @@ menu.addEventListener('click', event => {
 });
 menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
-  if (pageButton) { renderPage(pageButton.dataset.view || pageButton.dataset.page); return; }
+  const isLibraryPagination = pageButton && ['players-page', 'club-page'].includes(pageButton.dataset.action);
+  if (pageButton && !isLibraryPagination) { renderPage(pageButton.dataset.view || pageButton.dataset.page); return; }
   const careerButton = event.target.closest('.player-card-more');
   if (careerButton) { const index = Number(careerButton.dataset.playerIndex); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = careerButton.closest('[data-profile-origin]')?.dataset.profileOrigin === 'clubs' ? 'clubs' : 'players'; if(selectedPlayerProfile) renderPage('player-detail'); return; }
   const playerCard = event.target.closest('[data-player-profile]');
