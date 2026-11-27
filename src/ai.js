@@ -133,8 +133,8 @@ export function getSpacedSupportTarget(player, target, teammates, minDistance = 
     if (!mate || mate === player || mate.team !== player.team || !mate.pos) continue;
     let dx = x - mate.pos.x;
     let dz = z - mate.pos.z;
-    let distance = Math.hypot(dx, dz);
-    if (distance >= minDistance) continue;
+    const overlap = minDistance - distance;
+    if (overlap <= 0) continue;
     if (distance < 0.001) {
       dx = (player.homePos?.x ?? player.pos?.x ?? 0) - (mate.homePos?.x ?? mate.pos.x);
       dz = (player.homePos?.z ?? player.pos?.z ?? 0) - (mate.homePos?.z ?? mate.pos.z);
@@ -146,7 +146,7 @@ export function getSpacedSupportTarget(player, target, teammates, minDistance = 
         distance = 1;
       }
     }
-    const strength = (minDistance - Math.min(distance, minDistance)) * 0.42;
+    const strength = overlap * 0.42;
     x += dx / distance * strength;
     z += dz / distance * strength;
   }
