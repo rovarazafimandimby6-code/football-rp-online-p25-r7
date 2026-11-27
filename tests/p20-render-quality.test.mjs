@@ -95,3 +95,13 @@ test('P27 : la foule du stade adapte sa densité et sa géométrie au profil mob
   assert.match(fieldSource, /lowEndCrowd \? 8 : 10/);
   assert.match(fieldSource, /lowEndCrowd \? 6 : 8/);
 });
+
+
+test('P27 stade : les deux cages partagent les géométries statiques sans partager les filets déformables', () => {
+  const goalBuilder = fieldSource.slice(fieldSource.indexOf('  buildGoal(side) {'), fieldSource.indexOf('  buildStadium() {'));
+  for (const key of ['goal-front-post','goal-crossbar','goal-back-post','goal-top-support','goal-top-net','goal-side-net']) {
+    assert.ok(goalBuilder.includes(`getSharedGeometry('${key}'`), `géométrie partagée attendue : ${key}`);
+  }
+  assert.match(goalBuilder, /const backNetGeo = new THREE\\.PlaneGeometry/);
+  assert.match(goalBuilder, /this\\.netPanels\\.push\\(\\{ mesh: backNet, base:/);
+});
