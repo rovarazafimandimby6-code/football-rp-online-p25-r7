@@ -200,3 +200,16 @@ test('P27: les rôles de pressing restent stables lorsque deux joueurs sont à �
   assert.ok(second.vel.x > first.vel.x,
     'le slot prioritaire doit devenir le poursuivant même si l’ordre du tableau change');
 });
+
+
+test('P27: un défenseur privilégie une menace de son couloir plutôt que de traverser le bloc', () => {
+  const defender = player('lane-defender', 'blue', -10, -8, 'balanced');
+  defender.homePos = { x: -10, z: -8 };
+  const ball = { pos: { x: 8, z: 0 } };
+  const acrossLane = player('across-lane', 'red', -8, -4);
+  const sameLane = player('same-lane', 'red', -4, -7);
+  const target = getDefensiveShapeTarget(defender, ball, [acrossLane, sameLane], 1, 'balanced');
+  assert.ok(target.x > -8.5,
+    'le défenseur doit prioriser la menace dans son couloir malgré la proximité de l’autre menace');
+  assert.ok(target.z < 0, 'le défenseur conserve son côté du terrain');
+});
