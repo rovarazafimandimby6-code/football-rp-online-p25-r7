@@ -3,6 +3,14 @@ const cleanId = value => String(value ?? '').trim().slice(0,80);
 const safeMoney = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
 const clone = value => JSON.parse(JSON.stringify(value));
 
+export const P27_STADIUM_BASE_CAPACITY = 5000;
+export const P27_STADIUM_CAPACITY_PER_LEVEL = 2500;
+export const P27_STADIUM_MAX_UPGRADE_LEVEL = 4;
+export function getP27StadiumCapacity(level = 0) {
+  const safeLevel = Number.isInteger(level) ? Math.max(0, Math.min(P27_STADIUM_MAX_UPGRADE_LEVEL, level)) : 0;
+  return P27_STADIUM_BASE_CAPACITY + safeLevel * P27_STADIUM_CAPACITY_PER_LEVEL;
+}
+
 const PLAYER_ITEMS = [
   ['boots-standard','crampons','Crampons standard',500,'standard'],
   ['boots-rare','crampons','Crampons rares',1500,'rare'],
