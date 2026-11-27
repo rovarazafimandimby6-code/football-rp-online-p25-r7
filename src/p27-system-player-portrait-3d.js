@@ -26,11 +26,14 @@ function getRenderer() {
   renderer.toneMappingExposure = 1.05;
   return renderer;
 }
-function loadHair(style) {
-  const file = ({ shaved:'Hair_Buzzed', fade:'Hair_Buzzed', short:'Hair_SimpleParted', curly:'Hair_SimpleParted', wavy:'Hair_SimpleParted', long:'Hair_Long', braids:'Hair_Long', twists:'Hair_Long', afro:'Hair_Buzzed' })[style];
+function loadHairAsset(file) {
   if (!file) return Promise.resolve(null);
   if (!hairCache.has(file)) hairCache.set(file, loader.loadAsync(`./assets/players/hairstyles/${file}.gltf`));
   return hairCache.get(file);
+}
+function loadHair(style) {
+  const file = ({ shaved:'Hair_Buzzed', fade:'Hair_Buzzed', short:'Hair_SimpleParted', curly:'Hair_SimpleParted', wavy:'Hair_SimpleParted', long:'Hair_Long', braids:'Hair_Long', twists:'Hair_Long', afro:'Hair_Buzzed' })[style];
+  return loadHairAsset(file);
 }
 function attachHair(model, sourceScene) {
   if (!sourceScene) return;
@@ -54,7 +57,7 @@ function attachHair(model, sourceScene) {
 function safeColor(value, fallback) { return /^#[0-9a-f]{6}$/i.test(String(value||'')) ? value : fallback; }
 function signature(player) {
   const a = player.appearance || {};
-  return JSON.stringify([player.id, a.skinTone, a.bodyBuild, a.hairStyle, a.hairColor, a.faceShape, a.kitColors, a.kitDesign, a.kitVariant]);
+  return JSON.stringify([player.id, a.skinTone, a.bodyBuild, a.hairStyle, a.hairColor, a.faceShape, a.kitColors, a.kitDesign, a.kitVariant, a.facialHair]);
 }
 function remember(key, value) {
   portraitCache.delete(key);
@@ -71,9 +74,10 @@ export async function renderSystemPlayerPortrait3D(player) {
   if (pending.has(key)) return pending.get(key);
   const task = (async () => {
     const activeRenderer = getRenderer();
-    const [base, hairSource] = await Promise.all([
+    const [base, hairSource, beardSource] = await Promise.all([
       basePromise,
-      loadHair(player?.appearance?.hairStyle).catch(() => null)
+      loadHair(player?.appearance?.hairStyle).catch(() => null),
+      player?.appearance?.facialHair === 'beard' ? loadHairAsset('Hair_Beard').catch(() => null) : Promise.resolve(null)
     ]);
     const model = cloneSkeleton(base.scene);
     model.traverse(node => {
@@ -90,6 +94,7 @@ export async function renderSystemPlayerPortrait3D(player) {
       node.material = Array.isArray(node.material) ? node.material.map(recolor) : recolor(node.material);
     });
     attachHair(model, hairSource);
+    attachHair(model, beardSource);
     const faceShape = player?.appearance?.faceShape || 'oval';
     const faceScale = {
       oval: [0.98, 1.04, 1], round: [1.08, 0.98, 1],
