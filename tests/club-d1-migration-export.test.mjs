@@ -96,3 +96,29 @@ test('migration exporter rejects duplicate legacy account IDs hidden by set norm
   const report=JSON.parse(result.stdout);
   assert.ok(report.issues.some(item=>item.code==='duplicate-account-id'));
 });
+
+
+test('migration exporter rejects duplicate transfer-fee checkpoint IDs',async t=>{
+  const root=await fixture(t);
+  const read=async file=>JSON.parse(await readFile(path.join(root,file),'utf8'));
+  const write=async(file,value)=>writeFile(path.join(root,file),JSON.stringify(value));
+  const roster=await read('club-rosters/club-rosters.json');
+  roster.clubs.push({id:'club-two',managerId:null});
+  await write('club-rosters/club-rosters.json',roster);
+  const finance=await read('finances/club-finance.json');
+  finance.accounts.push({clubId:'club-two',openingBalance:1000,entries:[],sponsors:[],loans:[]});
+  await write('finances/club-finance.json',finance);
+  const payroll=await read('finances/system-payroll-schedule.json');
+  payroll.clubs['club-two']=2000;
+  await write('finances/system-payroll-schedule.json',payroll);
+  const journal=await read('finances/transfer-finance-journal.json');
+  journal.transfers=[
+    {id:'transfer-fee-1',fromClubId:'club-one',toClubId:'club-two',fee:100,createdAt:1000,debitPosted:true,creditPosted:false},
+    {id:'transfer-fee-1',fromClubId:'club-one',toClubId:'club-two',fee:100,createdAt:1000,debitPosted:true,creditPosted:false}
+  ];
+  await write('finances/transfer-finance-journal.json',journal);
+  const result=spawnSync(process.execPath,[script,'--data-root',root,'--expected-clubs','2'],{encoding:'utf8'});
+  assert.equal(result.status,1);
+  const report=JSON.parse(result.stdout);
+  assert.ok(report.issues.some(item=>item.code==='duplicate-transfer-checkpoint'));
+});
