@@ -63,6 +63,9 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(renderer, /braids:'Hair_Buns', twists:'Hair_Buns'/);
   assert.match(renderer, /facialHair === 'beard'/);
   assert.match(renderer, /powerPreference: 'low-power'/);
+  assert.match(renderer, /PerspectiveCamera\(32, WIDTH \/ HEIGHT/);
+  assert.match(renderer, /camera\.position\.set\(0, 1\.5, 2\.75\)/);
+  assert.match(renderer, /camera\.lookAt\(0, 1\.4, 0\)/);
   assert.match(renderer, /MAX_CACHE = 180/);
   assert.match(renderer, /p27PortraitOwnedGeometry/);
   assert.match(renderer, /if \(node\.userData\?\.p27PortraitOwnedGeometry\) node\.geometry/);
