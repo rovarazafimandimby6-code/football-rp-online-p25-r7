@@ -10,15 +10,28 @@ function createGrassTexture() {
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
 
-  const stripes = 20;
+  // Bandes de tonte plus fines, avec une variation lumineuse douce pour
+  // donner de la profondeur sans ajouter de géométrie ni de coût par frame.
+  const stripes = 24;
   const sw = canvas.width / stripes;
   for (let i = 0; i < stripes; i++) {
-    ctx.fillStyle = i % 2 === 0 ? '#267a3d' : '#318b45';
+    const light = i % 2 === 0;
+    const gradient = ctx.createLinearGradient(i * sw, 0, (i + 1) * sw, canvas.height);
+    gradient.addColorStop(0, light ? '#2b8242' : '#246f38');
+    gradient.addColorStop(0.48, light ? '#318b46' : '#2a7b3e');
+    gradient.addColorStop(1, light ? '#287b3d' : '#226b36');
+    ctx.fillStyle = gradient;
     ctx.fillRect(i * sw, 0, sw + 1, canvas.height);
   }
 
+  // Fines traces de tonte transversales, volontairement peu contrastées.
+  for (let row = 0; row < 8; row++) {
+    const y = row * (canvas.height / 8);
+    ctx.fillStyle = row % 2 ? 'rgba(255,255,255,0.012)' : 'rgba(0,0,0,0.018)';
+    ctx.fillRect(0, y, canvas.width, 2);
+  }
+
   // Micro-texture naturelle légère
-  ctx.fillStyle = 'rgba(255,255,255,0.03)';
   for (let i = 0; i < 5200; i++) {
     const x = (i * 193) % 1024;
     const y = (i * 317) % 512;
@@ -34,7 +47,7 @@ function createGrassTexture() {
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = 4;
   return tex;
 }
 
@@ -174,7 +187,7 @@ export class FieldBuilder {
   }
 
   addLineRect(x, z, w, d, thickness = 0.14) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0xf6fff7 });
+    const mat = this.lineMaterial || (this.lineMaterial = new THREE.MeshBasicMaterial({ color: 0xf6fff7 }));
     const y = 0.015;
     const top = new THREE.Mesh(new THREE.PlaneGeometry(w, thickness), mat);
     top.rotation.x = -Math.PI / 2;
@@ -196,7 +209,7 @@ export class FieldBuilder {
   }
 
   buildLines() {
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xf6fff7 });
+    const lineMat = this.lineMaterial || (this.lineMaterial = new THREE.MeshBasicMaterial({ color: 0xf6fff7 }));
     const y = 0.016;
 
     // Lignes extérieures
