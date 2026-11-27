@@ -514,6 +514,41 @@ function setRpClubStatus(message, isError = false) {
   if (status) { status.textContent = message; status.classList.toggle('is-error', isError); }
 }
 let rpClubPageRequestSequence = 0;
+let rpClubChatRefreshTimer = null;
+function stopRpClubChatPolling() {
+  if (rpClubChatRefreshTimer !== null) clearInterval(rpClubChatRefreshTimer);
+  rpClubChatRefreshTimer = null;
+}
+function renderRpClubChatMessages(messages) {
+  return (Array.isArray(messages) ? messages : []).map(message =>
+    '<article class="rp-club-chat-message"><div><b>' + escapeHTML(message.displayName) + '</b><small>' +
+    new Date(message.createdAt).toLocaleString('fr-FR', { dateStyle:'short', timeStyle:'short' }) +
+    '</small></div><p>' + escapeHTML(message.text) + '</p></article>'
+  ).join('') || '<p class="notice">La discussion est vide. Lancez la conversation avec les membres du club.</p>';
+}
+async function refreshRpClubChat(clubId) {
+  const history = document.getElementById('rp-club-chat-history');
+  if (!history) return;
+  try {
+    const payload = await rpClubApi('/' + encodeURIComponent(clubId) + '/messages');
+    const current = document.getElementById('rp-club-chat-history');
+    if (!current || current !== history) return;
+    const wasAtBottom = current.scrollHeight - current.scrollTop - current.clientHeight < 36;
+    const messages = Array.isArray(payload.messages) ? payload.messages : [];
+    current.innerHTML = renderRpClubChatMessages(messages);
+    const count = document.getElementById('rp-club-chat-count');
+    if (count) count.textContent = messages.length + ' MESSAGES';
+    if (wasAtBottom) current.scrollTop = current.scrollHeight;
+  } catch (error) {
+    if (error?.message === 'SESSION_EXPIRED' || error?.message === 'RP_CLUB_MEMBERSHIP_REQUIRED') stopRpClubChatPolling();
+  }
+}
+function startRpClubChatPolling(clubId) {
+  stopRpClubChatPolling();
+  const history = document.getElementById('rp-club-chat-history');
+  if (history) history.scrollTop = history.scrollHeight;
+  rpClubChatRefreshTimer = setInterval(() => { if (!document.hidden) void refreshRpClubChat(clubId); }, 10000);
+}
 async function loadRpClubPage(selectedSeasonId = null) {
   const host = document.getElementById('rp-club-root');
   if (!host) return;
@@ -576,8 +611,8 @@ async function loadRpClubPage(selectedSeasonId = null) {
       '<small class="rp-club-activity-note">Classement établi exclusivement à partir des résultats officiels des défis inter-Club RP.</small></section>';
     const governanceEvents = (membership.governanceLog || []).map(event => '<article class="rp-club-governance-event"><div><b>' + escapeHTML(event.actorDisplayName) + '</b><small>' + new Date(event.createdAt).toLocaleString('fr-FR', { dateStyle:'short', timeStyle:'short' }) + '</small></div><p>' + escapeHTML(event.details) + (event.targetDisplayName ? ' · ' + escapeHTML(event.targetDisplayName) : '') + '</p></article>').join('');
     const governancePanel = '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">TRANSPARENCE DU GROUPE</span><h3>Journal des décisions</h3></div><b>' + (membership.governanceLog || []).length + ' ÉVÉNEMENTS</b></div><div class="rp-club-governance-list">' + (governanceEvents || '<p class="notice">Aucune décision enregistrée pour le moment.</p>') + '</div><small class="rp-club-activity-note">Les changements de rôle, décisions de recrutement, transferts de présidence et exclusions sont historisés.</small></section>';
-    const chatMessages = (membership.messages || []).map(message => '<article class="rp-club-chat-message"><div><b>' + escapeHTML(message.displayName) + '</b><small>' + new Date(message.createdAt).toLocaleString('fr-FR', { dateStyle:'short', timeStyle:'short' }) + '</small></div><p>' + escapeHTML(message.text) + '</p></article>').join('');
-    const chatPanel = '<section class="rp-club-panel rp-club-chat-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">ESPACE COMMUNAUTAIRE</span><h3>Discussion du Club RP</h3></div><b>' + (membership.messages || []).length + ' MESSAGES</b></div><div class="rp-club-chat-history">' + (chatMessages || '<p class="notice">La discussion est vide. Lancez la conversation avec les membres du club.</p>') + '</div><div class="rp-club-chat-compose"><input id="rp-club-chat-input" maxlength="300" placeholder="Écrire un message au Club RP…" autocomplete="off"><button type="button" data-action="rp-club-message" data-club="' + escapeHTML(club.id) + '">ENVOYER</button></div><small class="rp-club-activity-note">Discussion privée : seuls les membres actuels peuvent lire et envoyer des messages. 300 caractères maximum, délai anti-spam de 2 secondes.</small></section>';
+    const chatMessages = renderRpClubChatMessages(membership.messages || []);
+    const chatPanel = '<section class="rp-club-panel rp-club-chat-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">ESPACE COMMUNAUTAIRE</span><h3>Discussion du Club RP</h3></div><b id="rp-club-chat-count">' + (membership.messages || []).length + ' MESSAGES</b></div><div id="rp-club-chat-history" class="rp-club-chat-history">' + chatMessages + '</div><div class="rp-club-chat-compose">
     const activityMembers = activity?.members || [];
     const objectiveCards = (activity?.objectives || []).map(objective => '<div class="rp-club-objective' + (objective.completed ? ' is-complete' : '') + '"><div><b>' + escapeHTML(objective.label) + '</b><strong>' + objective.value + ' / ' + objective.target + '</strong></div><div class="rp-club-objective-track"><span style="width:' + Math.max(0, Math.min(100, Number(objective.progressPercent) || 0)) + '%"></span></div><small>' + (objective.completed ? 'OBJECTIF ATTEINT' : 'PROGRESSION COLLECTIVE') + '</small></div>').join('');
     const activityPanel = activity ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">ACTIVITÉ RÉELLE · SEMAINE UTC</span><h3>Contribution des membres</h3></div><b>' + activity.totals.matches + ' MATCHS</b></div><div class="rp-club-activity-stats"><span><b>' + activity.totals.wins + '</b><small>VICTOIRES</small></span><span><b>' + activity.totals.goals + '</b><small>BUTS</small></span><span><b>' + activity.totals.assists + '</b><small>PASSES D.</small></span></div><div class="rp-club-objectives"><div class="rp-club-objectives-heading"><span class="eyebrow">DÉFIS HEBDOMADAIRES</span><small>PROGRESSION DU CLUB</small></div>' + objectiveCards + '</div><div class="rp-club-contribution-heading"><b>CLASSEMENT DES MEMBRES</b><small>PARTICIPATION · VICTOIRES · PERFORMANCE</small></div><div class="rp-club-contributors">' + activityMembers.map((member,index) => '<div class="rp-club-contributor"><b>' + (index+1) + '</b><span>' + escapeHTML(member.displayName) + '<small>' + member.matches + ' matchs · ' + member.wins + ' V · ' + member.goals + ' buts · ' + member.assists + ' PD</small></span><strong>' + (member.role === 'founder' ? 'FONDATEUR' : member.role === 'president' ? 'PRÉSIDENT' : member.role === 'vice_president' ? 'VICE-PRÉS.' : member.role === 'recruiter' ? 'RECRUTEUR' : 'MEMBRE') + '</strong></div>').join('') + '</div><small class="rp-club-activity-note">Classement hebdomadaire fondé sur les matchs de carrière confirmés : participation, victoires, buts puis passes décisives. Aucun crédit ni XP n’est attribué par ce tableau.</small></section>' : '';
@@ -585,6 +620,7 @@ async function loadRpClubPage(selectedSeasonId = null) {
       chatPanel + '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMMUNAUTÉ</span><h3>Effectif du Club RP</h3></div><span class="rp-club-role">' + (membership.membership.isPresident ? 'PRÉSIDENT EN EXERCICE' : (roleNames[membership.membership.role] || 'MEMBRE')) + '</span></div><div class="rp-club-member-list">' + members + '</div>' + inviteControls + '</section>' + governancePanel + challengesPanel + standingsPanel + seasonPanel + activityPanel +
       (pending.length ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">RECRUTEMENT</span><h3>Demandes en attente</h3></div><b>' + pending.length + '</b></div><div class="rp-club-request-list">' + requests + '</div></section>' : '') +
       '<div class="rp-club-actions"><button type="button" class="rp-club-refresh" data-action="rp-club-reload">ACTUALISER</button><button type="button" class="rp-club-leave" data-action="rp-club-leave" data-club="' + escapeHTML(club.id) + '">QUITTER LE CLUB</button></div><p id="rp-club-status" class="rp-club-status" role="status" aria-live="polite"></p>';
+    startRpClubChatPolling(club.id);
     return;
   }
   const canCreate = accountClient.hasSession && (!authError || authError.message !== 'SESSION_EXPIRED');
@@ -644,6 +680,7 @@ async function performRpClubAction(action, button) {
 }
 
 function renderPage(page = 'home') {
+  stopRpClubChatPolling();
   syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
   if (page !== 'results') resultsRequestSequence++;
   disposeAvatarPreview();
