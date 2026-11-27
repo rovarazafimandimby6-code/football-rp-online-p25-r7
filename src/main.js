@@ -741,7 +741,10 @@ function renderPage(page = 'home') {
     const attributeValues = Object.values(profile.progression.attributes || {}).map(value => Number(value) || 0);
     const overall = attributeValues.length ? Math.round(attributeValues.reduce((sum,value)=>sum+value,0)/attributeValues.length) : 0;
     const pendingOffers = [...career.offers.values()].filter(offer => offer.status === 'pending').length;
-    const latestMatch = seasonStats.snapshot().matches.slice(-1)[0] || null;
+    const seasonSnapshot = seasonStats.snapshot();
+    const seasonTotals = seasonSnapshot.totals || {};
+    const latestMatch = seasonSnapshot.matches.slice(-1)[0] || null;
+    const recentForm = Array.isArray(seasonSnapshot.currentForm) ? seasonSnapshot.currentForm.slice(-5) : [];
     content.innerHTML = page === 'career-hub' ? `
       <section class="p27-dls-career">
         <div class="p27-dls-career-banner">
@@ -749,8 +752,9 @@ function renderPage(page = 'home') {
             <span class="p27-game-kicker">CARRIÈRE · SAISON EN COURS</span>
             <h2>VOTRE PROCHAINE SAISON COMMENCE ICI</h2>
             <p>${escapeHTML(profile.identity.displayName)} · NIVEAU ${level} · ${escapeHTML(clubLabel)}</p>
+            <div class="p27-dls-career-form"><span>FORME RÉCENTE</span><div>${recentForm.length ? recentForm.map(match => '<i class="p27-form-chip ' + escapeHTML(match.result) + '">' + (match.result === 'win' ? 'V' : match.result === 'draw' ? 'N' : 'D') + '</i>').join('') : '<small>Aucun match validé</small>'}</div><small>${Number(seasonTotals.matches || 0)} MATCHS · ${Number(seasonTotals.goals || 0)} BUTS · ${Number(seasonTotals.assists || 0)} PASSES D.</small></div>
           </div>
-          <div class="p27-career-rating"><small>NIVEAU</small><strong>${level}</strong><span>JOUEUR</span></div>
+          <div class="p27-career-rating"><small>NOTE GLOBALE</small><strong>${overall}</strong><span>JOUEUR</span></div>
         </div>
         <div class="p27-dls-career-grid" aria-label="Gestion de carrière">
           <button class="p27-dls-mode p27-dls-next" data-action="choose-match"><span class="p27-dls-mode-kicker">PROCHAIN MATCH</span><span class="p27-dls-mode-art"><b>VS</b><i>⚽</i></span><strong>JOUER</strong><small>Préparer une rencontre amicale</small><em>›</em></button>
@@ -759,8 +763,10 @@ function renderPage(page = 'home') {
           <button class="p27-dls-mode p27-dls-club" data-page="clubs"><span class="p27-dls-mode-kicker">ÉQUIPE DE CHAMPIONNAT</span><span class="p27-dls-mode-art"><b>XI</b><i>♜</i></span><strong>MON ÉQUIPE</strong><small>${escapeHTML(clubLabel)}</small><em>›</em></button>
         </div>
         <div class="p27-dls-career-footer">
-          <div><small>CRÉDITS DISPONIBLES</small><strong>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</strong></div>
+          <div><small>PIÈCES DISPONIBLES</small><strong>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</strong></div>
           <div><small>POINTS D'ENTRAÎNEMENT</small><strong>${Number(profile.progression.trainingPoints||0).toLocaleString('fr-FR')}</strong></div>
+          <div><small>NOTE MOYENNE</small><strong>${seasonSnapshot.averageRating === null ? '—' : Number(seasonSnapshot.averageRating).toFixed(1) + '/10'}</strong></div>
+          <button data-page="results">DERNIERS MATCHS <b>›</b></button>
           <button data-page="player">FICHE JOUEUR <b>›</b></button>
         </div>
       </section>` : `<section class="p27-dls-home" aria-label="Accueil du jeu">
