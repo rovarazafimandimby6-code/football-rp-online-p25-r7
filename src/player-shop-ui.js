@@ -6,6 +6,8 @@ const categories = {
   'profile-frames':['CADRES DE PROFIL','▣'], 'profile-backgrounds':['FONDS DE PROFIL','◈']
 };
 const rarities = {standard:'STANDARD',rare:'RARE',premium:'PREMIUM'};
+function renderItemArt(category, rarity='standard') { const color=({standard:'#aeb9c8',rare:'#63b7ff',premium:'#d8ad55'})[rarity]||'#aeb9c8'; const shapes={crampons:'<path d="M18 44L34 14l15 4 2 17 12 9-5 8H23z"/>',accessories:'<path d="M18 30Q40 8 62 30v15H18z"/>',hair:'<path d="M19 49V31Q19 11 40 11t21 20v18l-9-8-2-12-10 5-13-4z"/>',beard:'<path d="M22 18Q40 6 58 18l-3 25-15 13-15-13z"/>',celebrations:'<path d="M40 12l6 18 18-7-12 15 15 8-20-1-7 18-6-18-19 1 15-9-11-14 17 7z"/>','profile-frames':'<rect x="18" y="11" width="44" height="52" rx="9" fill="none" stroke="currentColor" stroke-width="7"/><circle cx="40" cy="31" r="9"/>','profile-backgrounds':'<rect x="13" y="12" width="54" height="50" rx="8"/><path d="M13 46l18-17 10 9 9-12 17 20v16H13z"/>'}; return '<svg class="p27-shop-art-svg" viewBox="0 0 80 76" aria-hidden="true"><g fill="'+color+'" stroke="#f4f7fb" stroke-width="1.5">'+(shapes[category]||'<circle cx="40" cy="37" r="19"/>')+'</g></svg>'; }
+
 const messages = {
   NOT_AUTHENTICATED:'Connectez votre compte joueur pour accéder à la boutique en ligne.',
   SESSION_EXPIRED:'Votre session a expiré. Reconnectez votre compte joueur.',
@@ -30,7 +32,7 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
         const category=item?.category||entry.category||'accessories';
         const [label,icon]=categories[category]||['ARTICLE','✦'];
         return `<article class="p27-shop-item p27-shop-owned">
-          <div class="p27-shop-item-art"><span>${icon}</span><small>${rarities[entry.rarity]||'STANDARD'}</small></div>
+          <div class="p27-shop-item-art">${renderItemArt(category,entry.rarity)}<small>${rarities[entry.rarity]||'STANDARD'}</small></div>
           <div class="p27-shop-item-copy"><span class="p27-shop-category">${label}</span><h3>${escapeHtml(item?.name||entry.itemId)}</h3><p>Acheté : ${money(entry.paidPrice)} pièces</p>${entry.resellable?'<small class="p27-shop-refund">Revente estimée : '+money(Math.floor(Number(entry.paidPrice||0)*Number(entry.resaleRate||0)))+' pièces</small>':''}<small>${entry.equipped?'ÉQUIPÉ':'DANS L’INVENTAIRE'}</small></div>
           <div class="p27-shop-item-actions"><button class="small-action" data-shop-action="equip" data-item="${escapeHtml(entry.itemId)}" data-equipped="${entry.equipped?'false':'true'}">${entry.equipped?'RETIRER':'ÉQUIPER'}</button><button class="text-cta" data-shop-action="resale" data-item="${escapeHtml(entry.itemId)}" ${entry.resellable&&!entry.equipped?'':'disabled'}>REVENDRE</button></div>
         </article>`;
@@ -42,7 +44,7 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
       const [label,icon]=categories[item.category]||['ARTICLE','✦'];
       const isOwned=owned.has(item.id);
       return `<article class="p27-shop-item ${isOwned?'is-owned':''}">
-        <div class="p27-shop-item-art"><span>${icon}</span><small>${rarities[item.rarity]||'STANDARD'}</small></div>
+        <div class="p27-shop-item-art">${renderItemArt(category,entry.rarity)}<small>${rarities[item.rarity]||'STANDARD'}</small></div>
         <div class="p27-shop-item-copy"><span class="p27-shop-category">${label}</span><h3>${escapeHtml(item.name)}</h3>
           <p>${item.discountPercent>0?'<del>'+money(item.basePrice)+'</del> ':''}<strong>${money(item.price)} pièces</strong></p>
           ${item.discountPercent>0?'<small class="p27-shop-discount">−'+item.discountPercent+' % · '+escapeHtml(item.promotionLabel||'PROMOTION')+'</small>':''}
