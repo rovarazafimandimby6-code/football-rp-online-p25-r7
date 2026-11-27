@@ -511,3 +511,12 @@ Le calcul des salaires échus est désormais partagé par le versement hebdomada
 ### Mercato — cycle de vie des offres
 
 La limite de cinq offres en attente est maintenant appliquée dans CareerManager, et pas uniquement dans l'interface. Une offre expirée libère sa place ; les négociations, refus, expirations et annulations sont ajoutés à l'historique de carrière. L'acceptation d'une offre annule les autres offres ouvertes. Les destinations proposées et acceptées sont filtrées selon l'admission des joueurs humains, la capacité totale et la limite de sept joueurs humains. Les offres restent des simulations locales du prototype : aucune négociation réseau entre clubs n'est prétendue.
+
+
+### Clôture des trois axes — périmètre fonctionnel du prototype
+
+- **Carrière : 100 % du parcours local** — contrat, échéance, salaire hebdomadaire, renouvellement, résiliation, progression de match, historique et synchronisation avec l'effectif.
+- **Gestion d'équipe : 100 % du parcours fonctionnel** — choix et mémorisation de la formation, sélection manuelle des titulaires, banc de 3 à 7 joueurs, rotations illimitées, consentement pour sortir un humain et retour après dix minutes, limite de sept humains par club.
+- **Mercato : 100 % du parcours local** — génération limitée d'offres, négociation, refus, expiration, acceptation, budget, fenêtre, capacité/admission du club, annulation des autres offres et synchronisation du contrat dans l'effectif.
+
+Cette clôture concerne le fonctionnement du prototype sur la branche P27 et les parcours couverts par les tests automatisés. Les offres du Mercato restent explicitement simulées localement ; la négociation réseau entre clubs, la migration/déploiement du backend et la livraison APK restent hors de ce lot et ne sont pas déclarées terminées ici.
