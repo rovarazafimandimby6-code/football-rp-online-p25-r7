@@ -11,5 +11,5 @@ test('P27 remplacements IA : bancs réels distincts, deux équipes et contrôle 
   assert.match(game, /processAISubstitutions\(dt\)/);
   assert.match(game, /outgoing\.isControlled/);
   assert.match(game, /this\.substitutionsUsed\[team\] \+= 1/);
-  assert.match(game, /onlineBridge \|\| this\.match\.phase !== 'playing'/);
+  assert.match(game, /onlineBridge \|\| this\.match\.phase !== 'goal'/);
 });
