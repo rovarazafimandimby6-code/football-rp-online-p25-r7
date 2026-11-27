@@ -1083,8 +1083,8 @@ async function startMatch(online = null) {
     const onlineTeams = online?.joinResult?.state?.teams || null;
     const homeClub = onlineTeams?.blue?.id ? clubs.getClub(onlineTeams.blue.id) : clubs.getClub(selectedMatchup.home);
     const awayClub = onlineTeams?.red?.id ? clubs.getClub(onlineTeams.red.id) : clubs.getClub(selectedMatchup.away);
-    const loadClubKit = async (club, kitType) => {
-      if (!club) return null;
+    const loadClubKits = async (club, kitType) => {
+      if (!club) return { outfield:null, goalkeeper:null };
       let inventory = [];
       if (accountClient.hasSession) {
         try {
@@ -1094,12 +1094,17 @@ async function startMatch(online = null) {
           // Les articles privés d'un autre club ne sont jamais supposés accessibles.
         }
       }
-      return getP27ClubShopKit(club, inventory, kitType, 'MID');
+      return {
+        outfield:getP27ClubShopKit(club, inventory, kitType, 'MID'),
+        goalkeeper:getP27ClubShopKit(club, inventory, kitType, 'GK')
+      };
     };
-    const [homeKitAppearance, awayKitAppearance] = await Promise.all([
-      loadClubKit(homeClub, 'home'),
-      loadClubKit(awayClub, 'away')
+    const [homeKits, awayKits] = await Promise.all([
+      loadClubKits(homeClub, 'home'),
+      loadClubKits(awayClub, 'away')
     ]);
+    const homeKitAppearance = homeKits.outfield;
+    const awayKitAppearance = awayKits.outfield;
     game = new Game(container, {
       careerPlayerId: 'career-player',
       playerRole: profileStore.profile.identity.role,
@@ -1116,6 +1121,8 @@ async function startMatch(online = null) {
       awayKitColors: awayKitAppearance?.kitColors || null,
       homeKitAppearance,
       awayKitAppearance,
+      homeGoalkeeperKitAppearance:homeKits.goalkeeper,
+      awayGoalkeeperKitAppearance:awayKits.goalkeeper,
       cameraMode: preferences.cameraMode,
       cameraZoom: preferences.cameraZoom,
       onCameraMode: (mode) => { preferences.cameraMode = mode; try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {} },
