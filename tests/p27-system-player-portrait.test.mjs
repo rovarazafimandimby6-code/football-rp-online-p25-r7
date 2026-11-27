@@ -60,6 +60,7 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(renderer, /Superhero_Male_FullBody\.gltf/);
   assert.match(renderer, /Hair_SimpleParted|Hair_Buzzed/);
   assert.match(renderer, /Hair_Beard/);
+  assert.match(renderer, /braids:'Hair_Buns', twists:'Hair_Buns'/);
   assert.match(renderer, /facialHair === 'beard'/);
   assert.match(renderer, /powerPreference: 'low-power'/);
   assert.match(renderer, /MAX_CACHE = 180/);
