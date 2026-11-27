@@ -56,3 +56,25 @@ test('P27 bibliothèque joueurs : le maillot suit le club actuel sans écraser l
   assert.equal(found.appearance.kitColors.accent, '#eeeeee');
   assert.equal(found.appearance.kitDesign, 'sash');
 });
+
+test('P27 bibliothèque joueurs : les fiches retournées ne permettent pas de modifier le maillot du roster', () => {
+  const original = player('p-readonly','Fiche isolée', {
+    number:14,
+    appearance:{ skinTone:'dark', kitColors:{ primary:'#aa1122', secondary:'#1122aa', accent:'#eeeeee' }, kitDesign:'sash' }
+  });
+  const club = { id:'readonly-club', name:'Readonly FC', division:'D1', colors:['#aa1122','#1122aa','#eeeeee'], kitDesign:'sash', roster:[original] };
+  const result = listP27Players({ clubs:[club], filters:{ limit:10 } });
+  result.players[0].appearance.kitColors.primary = '#000000';
+  result.players[0].appearance.kitDesign = 'central';
+  assert.equal(original.appearance.kitColors.primary, '#aa1122');
+  assert.equal(original.appearance.kitDesign, 'sash');
+});
+
+test('P27 bibliothèque joueurs : le gardien reçoit le kit secondaire du club', () => {
+  const keeper = player('p-gk','Gardien', { role:'GK', number:1 });
+  const club = { id:'keeper-library', name:'Keeper FC', division:'D2', colors:['#123456','#102030','#eeeeee'], kitDesign:'hoops', roster:[keeper] };
+  const result = listP27Players({ clubs:[club], filters:{ limit:10 } });
+  assert.deepEqual(result.players[0].appearance.kitColors, { primary:'#eeeeee', secondary:'#123456', accent:'#102030' });
+  assert.equal(result.players[0].appearance.kitVariant, 'goalkeeper');
+  assert.equal(result.players[0].number, 1);
+});
