@@ -441,3 +441,8 @@ Les lignes de l’effectif sont désormais des points d’entrée fonctionnels v
 ### Fiche joueur — retour contextuel
 
 Le bouton de retour de la fiche joueur adapte désormais son libellé à la provenance : « Retour à l’effectif » depuis un club, « Retour à la bibliothèque » depuis le catalogue. La destination était déjà conservée ; ce correctif rend le parcours immédiatement compréhensible. Un test vérifie le libellé et le retour vers la page mémorisée.
+
+
+### Catalogue des clubs — état vide des filtres
+
+La recherche et les filtres du catalogue affichent maintenant un message explicite lorsqu’aucun club ne correspond. L’état vide est recalculé à chaque saisie, changement de filtre, tri et pagination, y compris après synchronisation du catalogue serveur. Un test vérifie sa présence et sa condition d’affichage.
