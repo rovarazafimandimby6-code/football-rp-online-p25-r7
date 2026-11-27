@@ -509,3 +509,21 @@ test('P27 mercato : une panne de sauvegarde annule la négociation et le rejet d
   assert.equal(career.offers.get(offer.offer.id).status,'pending');
   assert.equal(values.get('career-offer-edit-atomic-p27'),saved);
 });
+
+test('P27 effectifs : un échec de sauvegarde annule le transfert sans perdre le joueur source',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+  const clubs=new ClubManager([
+    {id:'atomic-source',name:'Atomic Source',control:'open',capacity:5},
+    {id:'atomic-target',name:'Atomic Target',control:'open',capacity:5}
+  ],storage,'club-transfer-atomic-p27');
+  assert.equal(clubs.addPlayer('atomic-source',{id:'atomic-moving-player',playerType:'system',number:8}).ok,true);
+  const before=values.get('club-transfer-atomic-p27');
+  failWrites=true;
+  const result=clubs.transferPlayer('atomic-source','atomic-target','atomic-moving-player');
+  assert.deepEqual(result,{ok:false,reason:'roster-persistence-failed'});
+  assert.equal(clubs.getClub('atomic-source').roster.some(player=>player.id==='atomic-moving-player'),true);
+  assert.equal(clubs.getClub('atomic-target').roster.some(player=>player.id==='atomic-moving-player'),false);
+  assert.equal(values.get('club-transfer-atomic-p27'),before);
+});
