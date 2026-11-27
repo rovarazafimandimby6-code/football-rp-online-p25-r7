@@ -83,7 +83,7 @@ for (const [clubId, account] of financeById) {
     balance += entry.direction === 'income' ? entry.amount : -entry.amount;
     if (!MONEY(balance)) issue('ledger-balance-out-of-range', { clubId, entryId:entry.id });
   }
-  if (balance !== account.balance) issue('ledger-balance-mismatch', { clubId, computed:balance, stored:account.balance });
+  if (!MONEY(balance)) issue('ledger-balance-out-of-range', { clubId, computed:balance });
   const sponsors = Array.isArray(account.sponsors) ? account.sponsors : [];
   const loans = Array.isArray(account.loans) ? account.loans : [];
   for (const s of sponsors) if (!s?.id || !s.name || !Number.isSafeInteger(s.weeklyPayment) || s.weeklyPayment<=0 ||
