@@ -444,3 +444,45 @@ test('P27 audit: détecte les dépassements humains, les identifiants dupliqués
   assert.ok(result.errors.some(issue=>issue.code==='duplicate-player-id'));
   assert.ok(result.errors.some(issue=>issue.code==='invalid-player-type'));
 });
+
+test('P27 carrière : une panne de sauvegarde annule la signature et restaure le profil',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={
+    getItem:key=>values.get(key)??null,
+    setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}
+  };
+  const career=new CareerManager({storage,storageKey:'career-sign-atomic-p27',initialCoins:900});
+  failWrites=true;
+  const result=career.signContract({clubId:'club-a',salary:40,durationDays:180,signedAt:'2032-01-01T00:00:00Z'});
+  assert.deepEqual(result,{ok:false,reason:'persistence-failed'});
+  assert.equal(career.clubId,null);
+  assert.equal(career.contract,null);
+  assert.equal(career.history.length,0);
+  assert.equal(values.has('career-sign-atomic-p27'),false);
+});
+
+test('P27 carrière : une panne de sauvegarde annule le transfert et conserve l’offre',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={
+    getItem:key=>values.get(key)??null,
+    setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}
+  };
+  const career=new CareerManager({
+    storage,storageKey:'career-transfer-atomic-p27',initialCoins:1000,
+    transferWindows:[{start:'2032-01-01T00:00:00Z',end:'2032-02-01T00:00:00Z'}]
+  });
+  assert.equal(career.signContract({clubId:'club-a',salary:50,durationDays:365,signedAt:'2032-01-01T00:00:00Z'}).ok,true);
+  const offer=career.makeOffer({fromClubId:'club-b',salary:70,fee:250});
+  assert.equal(offer.ok,true);
+  const saved=values.get('career-transfer-atomic-p27');
+  failWrites=true;
+  const result=career.acceptOffer(offer.offer.id,'2032-01-15T00:00:00Z');
+  assert.deepEqual(result,{ok:false,reason:'persistence-failed'});
+  assert.equal(career.clubId,'club-a');
+  assert.equal(career.wallet,1000);
+  assert.equal(career.offers.get(offer.offer.id).status,'pending');
+  assert.equal(career.history.at(-1).type,'signing');
+  assert.equal(values.get('career-transfer-atomic-p27'),saved);
+});
