@@ -9,7 +9,7 @@ const input=option('--bundle'), output=option('--output');
 if(!input||!output){process.stderr.write('Usage: node scripts/build-club-d1-import-sql.mjs --bundle <validated-bundle.json> --output <import.sql>\n');process.exit(2);}
 const fail=message=>{throw new Error(message);};
 const q=value=>value===null?'NULL':typeof value==='number'?String(value):typeof value==='boolean'?(value?'1':'0'):"'"+String(value).replace(/'/g,"''")+"'";
-const safeInt=(n,min=0,max=1_000_000_000_000)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
+const safeInt=(n,min=0,max=1_000_000_000_000)=>Number.isSafeInteger(n)&&n>=min&&n<=max;\nconst ledgerCategories=new Set(['sponsorship','ticketing','matchday','merchandise','transfer-income','transfer-expense','wages','staff','stadium-maintenance','medical','training','travel','competition-prize','loan','other','shop-purchase','shop-resale']);
 const bundle=JSON.parse(await readFile(path.resolve(input),'utf8'));
 if(bundle?.format!=='p27-club-d1-migration'||bundle.version!==1||!Array.isArray(bundle.clubs)||bundle.clubs.length!==156)
   fail('INVALID_OR_INCOMPLETE_MIGRATION_BUNDLE');
@@ -70,7 +70,7 @@ const transferIds=new Set();
 for(const t of bundle.transferCheckpoints||[]){
   if(!t||typeof t.id!=='string'||t.id.length<1||t.id.length>128||transferIds.has(t.id)||
     !clubIds.has(t.fromClubId)||!clubIds.has(t.toClubId)||t.fromClubId===t.toClubId||
-    !safeInt(t.fee,1)||!safeInt(t.createdAt)||typeof t.debitPosted!=='boolean'||typeof t.creditPosted!=='boolean')fail('INVALID_OR_DUPLICATE_TRANSFER_CHECKPOINT');
+    !safeInt(t.fee,1)||!safeInt(t.createdAt)||typeof t.debitPosted!=='boolean'||typeof t.creditPosted!=='boolean'||\n    (t.status==='completed'&&(!t.debitPosted||!t.creditPosted))||(t.status==='pending'&&t.debitPosted&&t.creditPosted))fail('INVALID_OR_DUPLICATE_TRANSFER_CHECKPOINT');
   transferIds.add(t.id);
   const status=t.status|| (t.debitPosted&&t.creditPosted?'completed':'pending');
   if(!['pending','completed'].includes(status))fail('INVALID_TRANSFER_STATUS');
