@@ -150,7 +150,7 @@ test('P27 boutique club : les articles non équipés ou revendus ne changent auc
     {itemId:'club-supporter-tifo',status:'owned',equipped:false}
   ]);
   assert.deepEqual(appearance,{
-    crestStyle:'classic',crestColors:null,stadiumSkin:'default',grassSkin:'default',stadiumExpansionLevel:0,
+    crestStyle:'classic',crestColors:null,stadiumSkin:'default',grassSkin:'default',stadiumExpansionLevel:0,stadiumCapacity:5000,
     supporters:{flags:false,banners:false,tifo:false}
   });
 });
