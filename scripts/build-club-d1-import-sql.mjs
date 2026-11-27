@@ -38,27 +38,49 @@ for(const row of bundle.clubs){
   statements.push(`INSERT OR IGNORE INTO p27_club_finance_accounts (club_id,opening_balance,balance,revision,created_at,updated_at) VALUES (${q(id)},${f.openingBalance},${f.balance},${ledger.length},${q(now)},${q(now)});`);
   if(owner!==null)statements.push(`INSERT OR IGNORE INTO p27_club_ownership_events (club_id,event_id,event_type,previous_owner_account_id,new_owner_account_id,ownership_revision,created_at) VALUES (${q(id)},'legacy-import','imported',NULL,${q(owner)},0,${q(now)});`);
   for(const e of ledger)statements.push(`INSERT OR IGNORE INTO p27_club_finance_entries (club_id,entry_id,category,amount,direction,description,reference_id,balance_after,created_at) VALUES (${q(id)},${q(e.id)},${q(e.category)},${e.amount},${q(e.direction)},${q(e.description)},${q(e.referenceId??null)},${e.balanceAfter},${e.createdAt});`);
+  const sponsorIds=new Set();
   for(const s of f.sponsors){
-    if(!s?.id||!s.name||!safeInt(s.weeklyPayment,1)||!Number.isInteger(s.durationWeeks)||s.durationWeeks<1||s.durationWeeks>104||!safeInt(s.signedAt)||!Number.isInteger(s.paidWeeks)||s.paidWeeks<0||s.paidWeeks>s.durationWeeks||!['active','completed'].includes(s.status))fail('INVALID_SPONSOR_CONTRACT');
+    if(!s||typeof s.id!=='string'||s.id.length<1||s.id.length>80||sponsorIds.has(s.id)||
+      typeof s.name!=='string'||s.name.length<1||s.name.length>80||!safeInt(s.weeklyPayment,1)||
+      !Number.isInteger(s.durationWeeks)||s.durationWeeks<1||s.durationWeeks>104||!safeInt(s.signedAt)||
+      !Number.isInteger(s.paidWeeks)||s.paidWeeks<0||s.paidWeeks>s.durationWeeks||
+      !['active','completed'].includes(s.status))fail('INVALID_OR_DUPLICATE_SPONSOR_CONTRACT');
+    sponsorIds.add(s.id);
     statements.push(`INSERT OR IGNORE INTO p27_club_sponsor_contracts (club_id,sponsor_id,name,weekly_payment,duration_weeks,signed_at,paid_weeks,status) VALUES (${q(id)},${q(s.id)},${q(s.name)},${s.weeklyPayment},${s.durationWeeks},${s.signedAt},${s.paidWeeks},${q(s.status)});`);
   }
+  const loanIds=new Set();
   for(const l of f.loans){
-    if(!l?.id||!l.lender||!safeInt(l.principal,1)||!safeInt(l.totalRepayment,l.principal)||!Number.isInteger(l.durationWeeks)||l.durationWeeks<1||l.durationWeeks>260||!safeInt(l.issuedAt)||!Number.isInteger(l.paidInstallments)||l.paidInstallments<0||l.paidInstallments>l.durationWeeks||!['active','repaid'].includes(l.status))fail('INVALID_LOAN');
+    if(!l||typeof l.id!=='string'||l.id.length<1||l.id.length>80||loanIds.has(l.id)||
+      typeof l.lender!=='string'||l.lender.length<1||l.lender.length>80||
+      !safeInt(l.principal,1)||!safeInt(l.totalRepayment,l.principal)||
+      !Number.isInteger(l.durationWeeks)||l.durationWeeks<1||l.durationWeeks>260||
+      !safeInt(l.issuedAt)||!Number.isInteger(l.paidInstallments)||l.paidInstallments<0||
+      l.paidInstallments>l.durationWeeks||!['active','repaid'].includes(l.status))fail('INVALID_OR_DUPLICATE_LOAN');
+    loanIds.add(l.id);
     statements.push(`INSERT OR IGNORE INTO p27_club_loans (club_id,loan_id,lender,principal,total_repayment,duration_weeks,issued_at,paid_installments,status) VALUES (${q(id)},${q(l.id)},${q(l.lender)},${l.principal},${l.totalRepayment},${l.durationWeeks},${l.issuedAt},${l.paidInstallments},${q(l.status)});`);
   }
 }
+const payrollClubIds=new Set();
 for(const p of bundle.payroll||[]){
-  if(!clubIds.has(p.clubId)||!safeInt(p.nextDueAt))fail('INVALID_PAYROLL_CHECKPOINT');
+  if(!p||!clubIds.has(p.clubId)||payrollClubIds.has(p.clubId)||!safeInt(p.nextDueAt))fail('INVALID_OR_DUPLICATE_PAYROLL_CHECKPOINT');
+  payrollClubIds.add(p.clubId);
   statements.push(`INSERT OR IGNORE INTO p27_club_payroll_checkpoints (club_id,next_due_at,updated_at) VALUES (${q(p.clubId)},${p.nextDueAt},${q(new Date(p.nextDueAt).toISOString())});`);
 }
+const transferIds=new Set();
 for(const t of bundle.transferCheckpoints||[]){
-  if(!t?.id||!clubIds.has(t.fromClubId)||!clubIds.has(t.toClubId)||t.fromClubId===t.toClubId||!safeInt(t.fee,1)||!safeInt(t.createdAt)||typeof t.debitPosted!=='boolean'||typeof t.creditPosted!=='boolean')fail('INVALID_TRANSFER_CHECKPOINT');
+  if(!t||typeof t.id!=='string'||t.id.length<1||t.id.length>128||transferIds.has(t.id)||
+    !clubIds.has(t.fromClubId)||!clubIds.has(t.toClubId)||t.fromClubId===t.toClubId||
+    !safeInt(t.fee,1)||!safeInt(t.createdAt)||typeof t.debitPosted!=='boolean'||typeof t.creditPosted!=='boolean')fail('INVALID_OR_DUPLICATE_TRANSFER_CHECKPOINT');
+  transferIds.add(t.id);
   const status=t.status|| (t.debitPosted&&t.creditPosted?'completed':'pending');
   if(!['pending','completed'].includes(status))fail('INVALID_TRANSFER_STATUS');
   statements.push(`INSERT OR IGNORE INTO p27_club_transfer_finance_checkpoints (transfer_id,from_club_id,to_club_id,fee,created_at,debit_posted,credit_posted,status) VALUES (${q(t.id)},${q(t.fromClubId)},${q(t.toClubId)},${t.fee},${t.createdAt},${q(t.debitPosted)},${q(t.creditPosted)},${q(status)});`);
 }
+const wageEventIds=new Set();
 for(const w of bundle.playerWageCheckpoints||[]){
-  if(!w?.id||!clubIds.has(w.clubId)||!safeInt(w.amount,1)||!safeInt(w.createdAt)||typeof w.posted!=='boolean')fail('INVALID_PLAYER_WAGE_CHECKPOINT');
+  if(!w||typeof w.id!=='string'||w.id.length<1||w.id.length>128||wageEventIds.has(w.id)||
+    !clubIds.has(w.clubId)||!safeInt(w.amount,1)||!safeInt(w.createdAt)||typeof w.posted!=='boolean')fail('INVALID_OR_DUPLICATE_PLAYER_WAGE_CHECKPOINT');
+  wageEventIds.add(w.id);
   statements.push(`INSERT OR IGNORE INTO p27_club_player_wage_checkpoints (event_id,club_id,amount,created_at,posted) VALUES (${q(w.id)},${q(w.clubId)},${w.amount},${w.createdAt},${q(w.posted)});`);
 }
 statements.push('COMMIT;');
