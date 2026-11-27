@@ -377,3 +377,15 @@ Le modèle de gouvernance distingue maintenant le **fondateur historique** du **
 Routes ajoutées : `POST /api/rp-clubs/:clubId/presidency/transfer` avec `playerId`, et `POST /api/rp-clubs/:clubId/members/:playerId/remove`. Les contrôles API couvrent le transfert, la perte des permissions de l'ancien président, l'acceptation par le nouveau président, l'exclusion et la lecture du journal.
 
 Aucun portefeuille, crédit, XP ou récompense collective n'est ajouté dans ce lot. Les résultats sportifs et le moteur de match restent inchangés.
+
+## 11. Lot d'alignement UI — 27 novembre 2026
+
+Le hub principal est maintenant organisé selon la direction P27 validée :
+- grille paysage de trois colonnes et trois rangées, sans barre de navigation persistante ;
+- carrière sur deux colonnes et match amical comme deux accès prioritaires ;
+- six accès secondaires : Mon joueur, Compétitions, Mercato, Classements, Clubs (Club RP) et Résultats ;
+- les bibliothèques des joueurs et des clubs restent accessibles depuis le Mercato, sans multiplier les tuiles ;
+- en-tête réduit à Paramètres, progression/niveau et pièces ; le raccourci profil et le titre de page ont été retirés de la barre visible ;
+- hauteur de référence de l'en-tête : 25 px sur le profil paysage compact, avec retour uniquement dans les sous-écrans.
+
+Cette intégration réutilise les routes et les données déjà présentes. Elle ne crée pas de faux modes, d'événements, de transferts entre clubs ou de classements fictifs. Le Club RP reste distinct des clubs de championnat. Le contrôle visuel et tactile sur appareil Android demeure une étape séparée ; l'APK est volontairement en pause et n'est pas déclaré validé.
