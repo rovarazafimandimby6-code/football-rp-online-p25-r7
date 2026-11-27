@@ -389,3 +389,8 @@ Le hub principal est maintenant organisé selon la direction P27 validée :
 - hauteur de référence de l'en-tête : 25 px sur le profil paysage compact, avec retour uniquement dans les sous-écrans.
 
 Cette intégration réutilise les routes et les données déjà présentes. Elle ne crée pas de faux modes, d'événements, de transferts entre clubs ou de classements fictifs. Le Club RP reste distinct des clubs de championnat. Le contrôle visuel et tactile sur appareil Android demeure une étape séparée ; l'APK est volontairement en pause et n'est pas déclaré validé.
+### Discussion Club RP — actualisation automatique
+
+La discussion privée du Club RP dispose maintenant d'une route de lecture dédiée `GET /api/rp-clubs/:clubId/messages`. Le serveur vérifie la session et l'appartenance actuelle avant de retourner les 60 derniers messages ; les identifiants de compte privés ne sont jamais exposés. Le panneau actualise son historique toutes les 10 secondes, suspend les requêtes lorsque l'onglet est masqué et arrête le polling lorsqu'on quitte la page ou lorsque l'accès est révoqué. La position de lecture est conservée si le membre consulte d'anciens messages. L'envoi fonctionne également avec la touche Entrée ; le champ n'est vidé qu'après confirmation du serveur.
+
+Tests ajoutés : lecture autorisée pour un membre, refus HTTP 403 pour un non-membre, protection du stockage contre la lecture hors club, actualisation automatique, arrêt du polling et envoi au clavier. Cela ne remplace pas encore une messagerie temps réel WebSocket : la synchronisation actuelle est un polling léger de 10 secondes.
