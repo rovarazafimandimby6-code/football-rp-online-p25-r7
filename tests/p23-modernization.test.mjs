@@ -28,7 +28,9 @@ test('P23 : les variations de morphologie, de peau et de coiffure sont détermin
 
 test('P23 : les spectateurs utilisent des silhouettes instanciées avec têtes séparées', () => {
   assert.match(field, /crowdHeads/);
-  assert.match(field, /new THREE\.SphereGeometry\(0\.5, lowEndCrowd \? 8 : 10, lowEndCrowd \? 6 : 8\)/);\n  assert.match(field, /new THREE\.SphereGeometry\(0\.5, lowEndCrowd \? 6 : 8, lowEndCrowd \? 5 : 6\)/);\n  assert.match(field, /new THREE\.InstancedMesh\(torsoGeo, torsoMat, count\)/);
+  assert.match(field, /new THREE\.SphereGeometry\(0\.5, lowEndCrowd \? 8 : 10, lowEndCrowd \? 6 : 8\)/);
+  assert.match(field, /new THREE\.SphereGeometry\(0\.5, lowEndCrowd \? 6 : 8, lowEndCrowd \? 5 : 6\)/);
+  assert.match(field, /new THREE\.InstancedMesh\(torsoGeo, torsoMat, count\)/);
   assert.match(field, /addSpectator/);
   assert.match(field, /crowd\.count = idx/);
 });
