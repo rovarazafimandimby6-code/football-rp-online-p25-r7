@@ -78,3 +78,25 @@ test('P27 carrière : les vues retournées ne permettent pas de modifier les con
   assert.equal(current.history[0].type,'signing');
  }finally{f.cleanup();}
 });
+
+test('P27 effectifs : le snapshot de synchronisation du prêt reste intact après le retour',()=>{
+ const f=setup('2027-01-15T12:00:00.000Z');
+ try{
+  f.store.signContract('account-loan-outbox',{clubId:'antananarivo-fc',salary:1400,durationDays:180});
+  const offer=f.store.requestLoanOffer('account-loan-outbox',{toClubId:'toamasina-united',durationDays:30});
+  assert.equal(offer.ok,true);
+  assert.equal(f.store.acceptLoanOffer('account-loan-outbox',offer.offer.id).ok,true);
+  const loanStart=f.store.pendingRosterSync().find(item=>item.reason==='loan-start');
+  assert.ok(loanStart);
+  assert.equal(loanStart.contract.loan.status,'active');
+  f.setNow('2027-02-15T12:00:00.000Z');
+  const returned=f.store.getCareer('account-loan-outbox');
+  assert.equal(returned.clubId,'antananarivo-fc');
+  const loanReturn=f.store.pendingRosterSync().find(item=>item.reason==='loan-return');
+  assert.ok(loanReturn);
+  assert.equal(loanReturn.contract.loan,undefined);
+  const originalStart=f.store.pendingRosterSync().find(item=>item.id===loanStart.id);
+  assert.equal(originalStart.contract.loan.status,'active');
+  assert.equal(originalStart.contract.loan.parentContract.salary,1400);
+ }finally{f.cleanup();}
+});
