@@ -87,7 +87,7 @@ test('P27 récompenses : une panne de sauvegarde ne crédite pas le profil et au
   assert.equal(profile.profile.progression.coins, 335);
 });
 
-test('P27 entraînement : une panne de sauvegarde ne confirme pas une dépense', () => {
+test('P27 progression : une panne de sauvegarde ne confirme pas une dépense', () => {
   const values = new Map();
   let failPrimaryWrite = false;
   const failingStorage = {
@@ -101,7 +101,7 @@ test('P27 entraînement : une panne de sauvegarde ne confirme pas une dépense',
   const before = structuredClone(profile.profile.progression);
   failPrimaryWrite = true;
 
-  const result = profile.train('pace', 1);
+  const result = profile.practice('pace', 1);
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'persistence-failed');
   assert.deepEqual(profile.profile.progression, before);
