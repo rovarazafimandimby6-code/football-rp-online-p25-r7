@@ -271,8 +271,18 @@ test('P27: la défense anticipe une course adverse vers son but', () => {
   assert.ok(predicted.z > runner.pos.z, 'la dérive latérale modérée de la course est anticipée');
   const retreating = player('retreating', 'red', -3, 2);
   retreating.vel = { x: 5, z: 0 };
-  assert.deepEqual(predictDefensiveThreatPosition(retreating, 1), retreating.pos,
+  const unchanged = predictDefensiveThreatPosition(retreating, 1);
+  assert.equal(unchanged.x, retreating.pos.x,
     'un adversaire qui s’éloigne de notre but ne déclenche pas d’anticipation vers l’avant');
+  assert.equal(unchanged.z, retreating.pos.z);
+
+  const oppositeRunner = player('opposite-runner', 'blue', 3, -2, 'runner');
+  oppositeRunner.vel = { x: 6, z: -1.5 };
+  const oppositePredicted = predictDefensiveThreatPosition(oppositeRunner, -1, 0.7);
+  assert.ok(oppositePredicted.x > oppositeRunner.pos.x + 3,
+    'l’anticipation fonctionne aussi lorsque l’équipe défend vers +X');
+  assert.ok(oppositePredicted.z < oppositeRunner.pos.z,
+    'la dérive latérale est conservée dans l’autre sens d’attaque');
 });
 
 test('P27: le bloc se place plus tôt côté but face à un appel en profondeur', () => {
