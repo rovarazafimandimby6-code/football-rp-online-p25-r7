@@ -515,8 +515,12 @@ export class ClubManager {
     if (player.playerType !== 'system') return { ok:false, reason:'not-system-player' };
     const result = setSystemPlayerContractTerm(player.contract, { signedAt, durationWeeks });
     if (!result.ok) return result;
+    const previousContract = clonePlayer(player).contract;
     player.contract = result.contract;
-    this.saveSeason();
+    if (!this.saveSeason()) {
+      player.contract = previousContract;
+      return { ok:false, reason:'roster-persistence-failed' };
+    }
     return { ok:true, contract:{ ...player.contract } };
   }
 
@@ -528,8 +532,12 @@ export class ClubManager {
     const result = renewSystemPlayerContract(player.contract, { now, durationWeeks, weeklyWage });
     if (!result.ok) return result;
     const { renewalDecision, renewalDeclinedAt, renewalDeclineReason, ...renewedContract } = result.contract;
+    const previousContract = clonePlayer(player).contract;
     player.contract = renewedContract;
-    this.saveSeason();
+    if (!this.saveSeason()) {
+      player.contract = previousContract;
+      return { ok:false, reason:'roster-persistence-failed' };
+    }
     return { ok:true, contract:{ ...player.contract, termHistory:player.contract.termHistory.map(entry => ({ ...entry })) } };
   }
 
@@ -579,6 +587,10 @@ export class ClubManager {
   expireSystemPlayerContracts({ now = Date.now() } = {}) {
     if (!Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-time', expired:[] };
     const expired = [];
+    const before = new Map([...this.clubs.values()].map(club => [club.id, {
+      roster:club.roster.map(clonePlayer),
+      releasedPlayers:(club.releasedPlayers || []).map(entry => ({ ...entry, player:clonePlayer(entry.player) }))
+    }]));
     for (const club of this.clubs.values()) {
       const remaining = [];
       for (const player of club.roster) {
@@ -594,7 +606,14 @@ export class ClubManager {
         club.releasedPlayers = club.releasedPlayers.slice(-100);
       }
     }
-    if (expired.length) this.saveSeason();
+    if (expired.length && !this.saveSeason()) {
+      for (const club of this.clubs.values()) {
+        const previous = before.get(club.id);
+        club.roster = previous.roster;
+        club.releasedPlayers = previous.releasedPlayers;
+      }
+      return { ok:false, reason:'roster-persistence-failed', expired:[] };
+    }
     return { ok:true, expired };
   }
 
