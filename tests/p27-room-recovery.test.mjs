@@ -245,7 +245,7 @@ test('P27 simulation : plusieurs dizaines de salons avancent ensemble sans perte
   for (const entry of rooms) {
     const room = manager.rooms.get(entry.id);
     assert.ok(room.sequence > entry.sequence);
-    assert.equal(room.players.size, 14);
+    assert.equal(room.players.size, 24);
     assert.ok(Number.isFinite(room.ball.x) && Number.isFinite(room.ball.z));
     for (const player of room.players.values()) {
       assert.ok(Number.isFinite(player.x) && Number.isFinite(player.z));
