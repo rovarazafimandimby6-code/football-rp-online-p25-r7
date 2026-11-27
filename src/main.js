@@ -2,6 +2,7 @@ import { ClubManager } from './club-manager.js';
 import { PlayerProfileStore } from './player-profile.js';
 import { LocalPlayerProfile } from './local-player-profile.js';
 import { CareerManager } from './career-manager.js';
+import { applyCareerMatchReward, reconcileCareerProfileRewards } from './career-reward-reconciliation.js';
 import { syncCareerPlayerRoster } from './career-roster-sync.js';
 import { PlayerSeasonStats } from './player-season-stats.js';
 import { resolveOnlinePlayerPerformance } from './online-career-sync.js';
@@ -126,6 +127,8 @@ function buildTransferWindows() {
   return windows;
 }
 const career = new CareerManager({ initialCoins: 2500, transferWindows: buildTransferWindows() });
+const careerRewardRecovery = reconcileCareerProfileRewards({ career, profileStore });
+if (!careerRewardRecovery.ok) console.warn('[Football RP Online] Récompenses en attente de récupération :', careerRewardRecovery.reason);
 syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
 let game = null;
 let pendingOnlineMatch = null;
@@ -1279,8 +1282,8 @@ async function startMatch(online = null) {
                 assists: performance.stats.assists,
                 cleanSheet: performance.cleanSheet
               });
-              reward.matchId = matchId;
-              profileStore.grantMatchRewards(reward);
+              const appliedReward = applyCareerMatchReward({ careerReward:reward, profileStore, matchId });
+              if (!appliedReward.ok) console.warn('[Football RP Online] Récompense joueur en attente de récupération :', appliedReward.reason);
               syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
               seasonStats.recordMatch({ matchId, result: performance.result, stats: { ...performance.stats, cleanSheet: performance.cleanSheet }, minutesPlayedMs: performance.minutesPlayedMs, role: performance.role, rating: performance.rating, playerOfMatch: performance.playerOfMatch, opponent: performance.opponent });
             } catch (error) {
@@ -1293,8 +1296,8 @@ async function startMatch(online = null) {
         const cleanSheet = outcome === 'win' && (result.winner === 'blue' ? result.redScore === 0 : result.blueScore === 0);
         const matchId = result.matchId || game.match.matchId;
         const reward = career.recordMatch({ matchId, result: outcome, goals: result.playerStats?.goals, assists: result.playerStats?.assists, cleanSheet });
-        reward.matchId = matchId;
-              profileStore.grantMatchRewards(reward);
+        const appliedReward = applyCareerMatchReward({ careerReward:reward, profileStore, matchId });
+        if (!appliedReward.ok) console.warn('[Football RP Online] Récompense joueur en attente de récupération :', appliedReward.reason);
         syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
         seasonStats.recordMatch({ matchId, result: outcome, stats: { ...result.playerStats, cleanSheet }, minutesPlayedMs: result.playerStats?.minutesPlayedMs, role: profileStore.profile.identity.role });
       }
