@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { JsonProgressionStore } from '../server/progression-store.js';
@@ -188,5 +188,30 @@ test('P27 boutique : refuse une revente dont l’identifiant est réutilisé pou
   assert.equal(conflict.ok,false);
   assert.equal(conflict.reason,'resale-id-conflict');
   assert.equal(f.service.inventory('player','player-resale-id').filter(item=>item.status==='resold').length,1);
+ }finally{f.cleanup();}
+});
+
+
+test('P27 boutique : inventaire et journal de revente restent cohérents après redémarrage',()=>{
+ const f=fixture();try{
+  fund(f.progressionStore,'player-sale-restart');
+  const bought=f.service.purchase({shop:'player',itemId:'boots-premium',actorId:'player-sale-restart',purchaseId:'sale-restart-buy'});
+  assert.equal(bought.ok,true);
+  const sold=f.service.resale({shop:'player',actorId:'player-sale-restart',itemId:'boots-premium',resaleId:'sale-restart-resale'});
+  assert.equal(sold.ok,true);
+  const restarted=new JsonShopService(path.join(f.directory,'shop'),{progressionStore:f.progressionStore,clubFinanceService:f.clubFinanceService,resolveClubOwner:()=> 'owner-one'});
+  assert.equal(restarted.inventory('player','player-sale-restart')[0].status,'resold');
+  assert.equal(restarted.getHistory({shop:'player',ownerId:'player-sale-restart'}).resales[0].purchaseId,'sale-restart-buy');
+ }finally{f.cleanup();}
+});
+
+test('P27 boutique : rejette un inventaire persistant dont le prix payé dépasse le catalogue',()=>{
+ const f=fixture();try{
+  fund(f.progressionStore,'player-tampered-shop');
+  f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-tampered-shop',purchaseId:'tampered-shop-buy'});
+  const state=JSON.parse(readFileSync(f.service.file,'utf8'));
+  state.players[0].items[0].paidPrice=9000;
+  writeFileSync(f.service.file,JSON.stringify(state));
+  assert.throws(()=>new JsonShopService(path.join(f.directory,'shop'),{progressionStore:f.progressionStore,clubFinanceService:f.clubFinanceService}),/SHOP_STORE_CORRUPT/);
  }finally{f.cleanup();}
 });
