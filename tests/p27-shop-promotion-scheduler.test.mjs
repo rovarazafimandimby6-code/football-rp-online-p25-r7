@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getScheduledShopPromotion } from '../server/shop-promotion-scheduler.js';
+import { getShopCatalog } from '../src/p27-shop-catalog.js';
 
 test('P27 promotions : crée des offres déterministes selon l’horloge serveur',()=>{
  const first=getScheduledShopPromotion('player','boots-standard',Date.UTC(2027,0,1,12));
@@ -36,5 +37,22 @@ test('P27 promotions : les soldes expirent à la durée prévue et se renouvelle
   const offers=ids.map(id=>getScheduledShopPromotion(shop,id,now)).filter(Boolean);
   assert.ok(offers.length>0);
   assert.ok(offers.every(offer=>offer.endsAt>now));
+ }
+});
+
+
+test('P27 promotions : les deux emplacements hebdomadaires ne ciblent jamais le même article',()=>{
+ const weekStart=Date.UTC(2027,0,4);
+ for(const shop of ['player','club']){
+  const ids=getShopCatalog(shop).map(item=>item.id);
+  const weeklyIds=new Set();
+  for(let offset=0;offset<7*24;offset+=6){
+   const now=weekStart+offset*60*60*1000;
+   for(const id of ids){
+    const offer=getScheduledShopPromotion(shop,id,now);
+    if(offer?.type==='weekly')weeklyIds.add(id);
+   }
+  }
+  assert.ok(weeklyIds.size>=2,shop+' doit proposer deux articles hebdomadaires distincts');
  }
 });
