@@ -151,3 +151,10 @@ test('P27 rendu : la réinitialisation du limiteur autorise la première frame',
   pacer.reset();
   assert.equal(pacer.shouldRender(1011), true);
 });
+
+test('P27 rendu : les événements de redimensionnement identiques ne relancent pas le sizing WebGL', () => {
+  const resizeMethod = sceneSource.slice(sceneSource.indexOf('  resize() {'), sceneSource.indexOf('  render(nowMs'));
+  assert.match(resizeMethod, /this\.lastSize\?\.width === w && this\.lastSize\?\.height === h/);
+  assert.match(resizeMethod, /this\.lastSize = \{ width: w, height: h \}/);
+  assert.match(sceneSource, /this\.lastSize = null;\s*this\.resize\(\)/);
+});
