@@ -140,3 +140,20 @@ test("D1 player shop rejects tampering with purchase and resale journals", async
     );
   } finally { db.close(); }
 });
+
+test("D1 player shop refuses resale that would exceed the wallet cap without changing inventory", async () => {
+  const db = new SqliteD1();
+  try {
+    const shop = new D1PlayerShopRepository(db,{now});
+    await shop.purchase(accountId,{itemId:"boots-standard",purchaseId:"purchase-wallet-cap"});
+    db.db.prepare("UPDATE p27_player_progression SET coins=999999900 WHERE account_id=?").run(accountId);
+    const result = await shop.resale(accountId,{itemId:"boots-standard",resaleId:"resale-wallet-cap"});
+    assert.deepEqual(result,{ok:false,reason:"coin-balance-limit"});
+    const wallet = db.db.prepare("SELECT coins FROM p27_player_progression WHERE account_id=?").get(accountId);
+    assert.equal(wallet.coins,999999900);
+    const inventory = await shop.inventory(accountId);
+    assert.equal(inventory[0].status,"owned");
+    const journal = db.db.prepare("SELECT COUNT(*) AS count FROM p27_player_shop_resales WHERE account_id=?").get(accountId);
+    assert.equal(journal.count,0);
+  } finally { db.close(); }
+});
