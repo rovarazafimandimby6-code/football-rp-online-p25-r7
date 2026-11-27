@@ -268,3 +268,22 @@ test('P27 boutique : rejette un inventaire persistant avec deux équipements act
   }),/SHOP_STORE_CORRUPT/);
  }finally{f.cleanup();}
 });
+
+
+test('P27 boutique club : le snapshot public ne divulgue que les cosmétiques équipés et le niveau de tribune',()=>{
+ const f=fixture();try{
+  for(const [itemId,purchaseId] of [['club-crest-custom','public-crest'],['club-supporter-flags','public-flags'],['club-capacity-level-1','public-capacity-1'],['club-capacity-level-2','public-capacity-2']]){
+   const bought=f.service.purchase({shop:'club',itemId,actorId:'owner-one',clubId:'club-one',purchaseId});
+   assert.equal(bought.ok,true);
+   if(itemId!=='club-capacity-level-1'&&itemId!=='club-capacity-level-2'){
+    assert.equal(f.service.setEquipped({shop:'club',actorId:'owner-one',clubId:'club-one',itemId,equipped:true}).ok,true);
+   }
+  }
+  const snapshot=f.service.publicAppearance('club-one');
+  assert.deepEqual(snapshot.equippedItemIds.sort(),['club-crest-custom','club-supporter-flags'].sort());
+  assert.equal(snapshot.stadiumExpansionLevel,2);
+  assert.equal(Object.hasOwn(snapshot,'balance'),false);
+  assert.equal(JSON.stringify(snapshot).includes('paidPrice'),false);
+  assert.deepEqual(f.service.publicAppearance('unknown-club'),{equippedItemIds:[],stadiumExpansionLevel:0});
+ }finally{f.cleanup();}
+});
