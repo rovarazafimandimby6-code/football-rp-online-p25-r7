@@ -14,6 +14,10 @@ function withEquippedShopAppearance(appearance) {
   try { equipped = JSON.parse(globalThis.localStorage?.getItem(SHOP_COSMETICS_KEY) || '{}') || {}; } catch {}
   const result = { ...(appearance || {}) };
   const hair = equipped.hair;
+  const beard = equipped.beard;
+  result.shopBeardStyle = beard ? beard : null;
+  result.shopBootStyle = equipped.crampons || null;
+  result.shopAccessoryStyle = equipped.accessories || null;
   if (hair === 'hair-standard') result.shopHairStyle = 'short';
   else if (hair === 'hair-rare') result.shopHairStyle = 'long';
   else if (hair === 'hair-premium') result.shopHairStyle = 'buns';
