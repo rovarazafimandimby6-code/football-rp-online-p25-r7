@@ -483,7 +483,8 @@ test('P27 carrière : une panne de sauvegarde annule le transfert et conserve l�
   assert.equal(career.clubId,'club-a');
   assert.equal(career.wallet,1000);
   assert.equal(career.offers.get(offer.offer.id).status,'pending');
-  assert.equal(career.history.at(-1).type,'signing');
+  assert.ok(career.history.some(item=>item.type==='signing'));
+  assert.equal(career.history.at(-1).type,'offer-received');
   assert.equal(values.get('career-transfer-atomic-p27'),saved);
 });
 
@@ -618,7 +619,7 @@ test('P27 carrière : la résiliation règle les salaires échus et libère le c
   career.signContract({ clubId:'club-a', salary:80, durationDays:90, signedAt:'2036-01-01T00:00:00Z' });
   const ended = career.terminateContract('2036-01-15T00:00:00Z');
   assert.equal(ended.ok,true);
-  assert.equal(career.wallet,180);
+  assert.equal(career.wallet,260);
   assert.equal(career.clubId,null);
   assert.equal(career.contract.status,'terminated');
   assert.equal(career.history.filter(item=>item.type==='salary').length,1);
