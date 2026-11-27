@@ -315,6 +315,55 @@ export class OnlineAccountClient {
     return this.request('/api/progression/me', { method: 'POST', auth: true, body: { action: 'practice', attribute, amount } });
   }
 
+  async getPlayerShopCatalog() {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    const result = await this.request('/api/shop/player/catalog', { auth: true });
+    if (!Array.isArray(result?.catalog) || !result.catalog.every(item =>
+      item && typeof item.id === 'string' && item.shop === 'player'
+      && Number.isSafeInteger(item.price) && item.price > 0
+      && Number.isSafeInteger(item.basePrice) && item.basePrice > 0
+      && Number.isInteger(item.discountPercent) && item.discountPercent >= 0 && item.discountPercent <= 50
+      && ['standard','rare','premium'].includes(item.rarity)
+      && item.currency === 'player-coins')) throw new Error('INVALID_PLAYER_SHOP_CATALOG');
+    return result.catalog;
+  }
+
+  async getPlayerShopInventory() {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    const result = await this.request('/api/shop/player/inventory', { auth: true });
+    if (!Array.isArray(result?.inventory) || !result.inventory.every(item =>
+      item && typeof item.itemId === 'string' && typeof item.purchaseId === 'string'
+      && ['owned','resold'].includes(item.status) && typeof item.equipped === 'boolean'
+      && typeof item.resellable === 'boolean')) throw new Error('INVALID_PLAYER_SHOP_INVENTORY');
+    return result.inventory;
+  }
+
+  async purchasePlayerShopItem(itemId, purchaseId) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (typeof itemId !== 'string' || !itemId.trim()
+      || typeof purchaseId !== 'string' || !purchaseId.trim() || purchaseId.length > 64) throw new Error('INVALID_SHOP_PURCHASE');
+    return this.request('/api/shop/player/purchase', {
+      method: 'POST', auth: true, body: { itemId: itemId.trim(), purchaseId: purchaseId.trim() }
+    });
+  }
+
+  async resellPlayerShopItem(itemId, resaleId) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (typeof itemId !== 'string' || !itemId.trim()
+      || typeof resaleId !== 'string' || !resaleId.trim() || resaleId.length > 64) throw new Error('INVALID_SHOP_RESALE');
+    return this.request('/api/shop/player/resale', {
+      method: 'POST', auth: true, body: { itemId: itemId.trim(), resaleId: resaleId.trim() }
+    });
+  }
+
+  async equipPlayerShopItem(itemId, equipped = true) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (typeof itemId !== 'string' || !itemId.trim() || typeof equipped !== 'boolean') throw new Error('INVALID_SHOP_EQUIPMENT');
+    return this.request('/api/shop/player/equip', {
+      method: 'POST', auth: true, body: { itemId: itemId.trim(), equipped }
+    });
+  }
+
   async logout() {
     if (!this.hasSession) return false;
     try { await this.request('/api/accounts/logout', { method: 'POST', auth: true }); }
