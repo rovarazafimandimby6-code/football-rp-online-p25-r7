@@ -451,3 +451,8 @@ La recherche et les filtres du catalogue affichent maintenant un message explici
 ### Bibliothèque des joueurs — état vide des filtres
 
 La bibliothèque affiche désormais un message dédié lorsqu’aucun joueur ne correspond aux critères combinés (nom, club, rôle, statut, origine et note minimale). L’état est recalculé avec les filtres et la pagination. Un test de non-régression couvre la présence du message et sa condition d’affichage.
+
+
+### Bibliothèques joueurs et clubs — tri déterministe
+
+Les tris numériques ignorent désormais les valeurs non numériques pour le classement principal : les fiches avec une métrique valide passent avant celles dont la donnée manque. Les égalités sont départagées par nom, dans les deux catalogues, afin de conserver un ordre stable. Un test vérifie les deux comparateurs.
