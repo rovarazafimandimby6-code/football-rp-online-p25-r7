@@ -140,7 +140,7 @@ export class JsonShopService {
   }
   publicAppearance(clubId){
     const id=cleanId(clubId);
-    if(!id)return {equippedItemIds:[],stadiumExpansionLevel:0};
+    if(!id)return {equippedItemIds:[],stadiumExpansionLevel:0,stadiumCapacity:getP27StadiumCapacity(0)};
     const items=this.inventory('club',id).filter(entry=>entry.status==='owned');
     const equippedItemIds=items
       .filter(entry=>entry.equipped===true && ['identity','kits','stadium','supporters'].includes(entry.category))
