@@ -693,6 +693,8 @@ export class ClubManager {
   removePlayer(clubId, playerId) {
     const club = this.clubs.get(safeId(clubId)); if (!club) return false;
     const index = club.roster.findIndex(player => player.id === safeId(playerId)); if (index < 0) return false;
+    const previousRoster = club.roster.slice();
+    const previousReleased = (club.releasedPlayers || []).map(item => ({ ...item, player:clonePlayer(item.player) }));
     const [player] = club.roster.splice(index, 1);
     if (player.playerType === 'system' && player.contract?.type === 'system-roster') {
       club.releasedPlayers = Array.isArray(club.releasedPlayers) ? club.releasedPlayers : [];
@@ -703,7 +705,12 @@ export class ClubManager {
       });
       club.releasedPlayers = club.releasedPlayers.slice(-100);
     }
-    this.saveSeason(); return true;
+    if (!this.saveSeason()) {
+      club.roster = previousRoster;
+      club.releasedPlayers = previousReleased;
+      return false;
+    }
+    return true;
   }
 
   createFixture({ id, homeClubId, awayClubId, scheduledAt } = {}) {
