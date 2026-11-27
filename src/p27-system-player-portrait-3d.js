@@ -79,14 +79,14 @@ function applyClubKitShader(material, appearance = {}) {
     shader.uniforms.p27KitDesign = { value:design };
     shader.vertexShader = shader.vertexShader.replace(
       '#include <common>',
-      '#include <common>\\nvarying vec3 p27LocalPosition;'
+      '#include <common>\nvarying vec3 p27LocalPosition;'
     ).replace(
       '#include <skinning_vertex>',
-      '#include <skinning_vertex>\\np27LocalPosition = transformed;'
+      '#include <skinning_vertex>\np27LocalPosition = transformed;'
     );
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
-      '#include <common>\\nuniform vec3 p27KitPrimary;\\nuniform vec3 p27KitSecondary;\\nuniform vec3 p27KitAccent;\\nuniform float p27KitDesign;\\nvarying vec3 p27LocalPosition;'
+      '#include <common>\nuniform vec3 p27KitPrimary;\nuniform vec3 p27KitSecondary;\nuniform vec3 p27KitAccent;\nuniform float p27KitDesign;\nvarying vec3 p27LocalPosition;'
     ).replace(
       '#include <color_fragment>',
       `#include <color_fragment>
