@@ -301,7 +301,8 @@ export class ClubManager {
     normalized.number = availableShirtNumber(club, normalized.number);
     if (!normalized.number) return { ok: false, reason: 'shirt-numbers-full' };
     club.roster.push(normalized);
-    this.saveSeason(); return { ok: true, rosterSize: club.roster.length, number: normalized.number };
+    if (!this.saveSeason()) { club.roster.pop(); return { ok:false, reason:'roster-persistence-failed' }; }
+    return { ok: true, rosterSize: club.roster.length, number: normalized.number };
   }
 
   signFreeAgent(clubId, playerId, { now = Date.now() } = {}) {
@@ -443,8 +444,12 @@ export class ClubManager {
     const requestedNumber = Number(updated.number);
     if (club.roster.some(existing => existing.id !== id && existing.number === requestedNumber)) return { ok: false, reason: 'shirt-number-taken' };
     if (JSON.stringify(club.roster[index]) !== JSON.stringify(updated)) {
+      const previous = club.roster[index];
       club.roster[index] = updated;
-      this.saveSeason();
+      if (!this.saveSeason()) {
+        club.roster[index] = previous;
+        return { ok:false, reason:'roster-persistence-failed' };
+      }
     }
     return { ok: true, player: clonePlayer(updated) };
   }
