@@ -256,6 +256,8 @@ export class CareerManager {
     const now = timestamp(at);
     if (now === null) return { ok:false, reason:'invalid-date' };
     if (!from || !this.contract || this.getContractStatus(now).expired) return { ok: false, reason: 'no-current-contract' };
+    if (!Number.isFinite(Number(salary))) return { ok:false, reason:'invalid-salary' };
+    if (!Number.isFinite(Number(fee))) return { ok:false, reason:'invalid-fee' };
     if (from === this.clubId) return { ok: false, reason: 'same-club' };
     const expiry = expiresAt == null ? null : timestamp(expiresAt);
     if (expiresAt != null && expiry === null) return { ok: false, reason: 'invalid-expiry' };
