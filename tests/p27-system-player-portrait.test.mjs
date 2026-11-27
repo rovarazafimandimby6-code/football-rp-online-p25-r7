@@ -115,7 +115,7 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(renderer, /p27ShirtMask/);
   assert.match(renderer, /diffuseColor\.rgb = mix\(diffuseColor\.rgb, p27PatternColor/);
   assert.match(renderer, /else p27Pattern = smoothstep\(0\.14, 0\.20, abs\(p27X\)\)/);
-  assert.match(renderer, /mat\.color\?\.set\('#ffffff'\)/);
+  assert.match(renderer, /material\.color\?\.set\('#ffffff'\)/);
   assert.match(renderer, /applyClubKitShader\(mat, player\?\.appearance\)/);
   assert.match(renderer, /function addShirtNumber\(model, value\)/);
   assert.match(renderer, /P27_SystemPortrait_ShirtNumber/);
