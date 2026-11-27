@@ -16,6 +16,29 @@ export function roleForDls19Position(position) {
   return null;
 }
 
+
+// DLS19 includes crossing and heading as separate fields. Keep both in the
+// generated player's attribute object instead of silently dropping them from
+// the six-stat legacy gameplay contract.
+export function mapDls19StatsToGameplay(stats) {
+  if (!stats || typeof stats !== 'object') throw new TypeError('DLS19 stats required');
+  for (const key of DLS19_ATTRIBUTE_KEYS) {
+    if (!Number.isInteger(stats[key]) || stats[key] < 1 || stats[key] > 100) {
+      throw new RangeError(`Invalid DLS19 gameplay attribute: ${key}`);
+    }
+  }
+  return Object.freeze({
+    pace: Math.round((stats.SPE + stats.ACC) / 2),
+    shooting: stats.SHO,
+    passing: stats.PAS,
+    defense: stats.TAC,
+    stamina: stats.STA,
+    control: stats.CON,
+    crossing: stats.CRO,
+    heading: stats.HEA
+  });
+}
+
 // Empty until archived DLS 19 card records with source/version evidence are
 // individually validated. The adapter is ready for accurate imports.
 export const DLS19_REFERENCE_PROFILES = Object.freeze([]);
