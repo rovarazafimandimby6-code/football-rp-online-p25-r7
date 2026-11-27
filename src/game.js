@@ -30,6 +30,8 @@ export class Game {
     this.cam = new BroadcastCamera(this.sceneMgr.camera, callbacks.cameraMode || 'player');
     this.cam.setZoom(callbacks.cameraZoom ?? 55);
     this.ai = new TeamAI();
+    const formation = ['2-2','1-2-1','2-1-1'].includes(callbacks.formation) ? callbacks.formation : '2-2';
+    this.ai.formation = formation;
     this.controls = new ControlsManager();
     this.match = new MatchState();
     this.matchResultReported = false;
@@ -41,8 +43,8 @@ export class Game {
     this.onExitMatch = callbacks.onExitMatch || null;
 
     const rosterConfigs = [
-      ...createTeamRoster('blue', '2-2', callbacks.homeRoster, callbacks.careerPlayerId),
-      ...createTeamRoster('red', '2-2', callbacks.awayRoster)
+      ...createTeamRoster('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId),
+      ...createTeamRoster('red', formation, callbacks.awayRoster)
     ];
     const requestedRole = ['GK', 'DEF', 'MID', 'FWD'].includes(callbacks.playerRole) ? callbacks.playerRole : 'FWD';
     const controlledConfig = rosterConfigs.find((cfg) => cfg.team === 'blue' && cfg.id === callbacks.careerPlayerId)
@@ -71,9 +73,9 @@ export class Game {
     });
     const startingIds = new Set(this.players.filter(player => player.team === 'blue').map(player => player.id));
     this.benchPlayers = {
-      blue: createMatchSquad('blue', '2-2', callbacks.homeRoster, callbacks.careerPlayerId).substitutes
+      blue: createMatchSquad('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId).substitutes
         .filter(player => player.id !== null && player.id !== undefined && !startingIds.has(player.id)),
-      red: createMatchSquad('red', '2-2', callbacks.awayRoster).substitutes
+      red: createMatchSquad('red', formation, callbacks.awayRoster).substitutes
         .filter(player => player.id !== null && player.id !== undefined && !this.players.some(starter => starter.team === 'red' && starter.id === player.id))
     };
     this.substitutionsUsed = { blue: 0, red: 0 };
