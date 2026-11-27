@@ -10,6 +10,11 @@ SQL migrations are applied in CI against Wrangler's local SQLite-backed D1 emula
 - `0004_player_profiles.sql`: versioned player profile snapshots.
 - `0005_player_progression.sql`: persistent player attributes and progression spending.
 - `0006_player_career.sql`: append-only finalized-match history, private and public aggregate totals, indexes and atomic aggregate-maintenance triggers.
+- `0007_player_season_stats.sql`: player season aggregates.
+- `0008_player_contracts.sql`: player contract persistence.
+- `0009_season_calendar.sql`: season calendar state.
+- `0010_player_shop.sql`: player-owned shop purchases, inventory and resale journal.
+- `0011_club_ownership_finance.sql`: canonical club owner references, ownership audit events, collective treasury balances and immutable finance entries. Schema foundation only; not yet the production source of truth.
 
 ## Career write boundary
 
@@ -25,3 +30,13 @@ The Worker exposes authenticated private career reads at `GET /api/career` and p
 - Never store a whole domain store in one JSON row or exceed D1's 2 MB row limit.
 - Keep canonical match history separate from temporary logs and cache retention.
 - Do not create a production D1 database, add secrets, or apply migrations remotely without the owner's explicit action.
+
+## Club ownership and treasury migration boundary
+
+Migration `0011` and `D1ClubRepository` establish the D1 data model and repository primitives for club ownership and collective finance. Automated SQLite tests cover idempotent import, one-club-per-account ownership, optimistic ownership transfer with audit history, treasury preservation, atomic ledger posting, duplicate transaction handling and overdraft prevention.
+
+The repository is deliberately not wired into the Cloudflare Worker or the live Node server yet. The current server remains authoritative: `managerId` is persisted in the club season/roster JSON store, while opening balances, finance ledger entries, sponsor contracts, loans, payroll schedule and transfer-finance checkpoints are persisted by the JSON finance service. A production cutover must import and reconcile all of these records before switching reads or writes.
+
+Do not seed a club's D1 balance from its configured default budget when a legacy finance account already exists. The import operation accepts an explicit opening balance and refuses to overwrite an existing account whose owner or opening/current balance differs. The current finance account's opening balance and every ledger entry must be exported from the legacy finance store, and the final D1 balance must match the legacy balance before enabling D1 writes.
+
+The next required phase is a deterministic export/import and reconciliation command for all 156 clubs, including owner references resolved against D1 account IDs, complete finance ledger history, sponsors, loans and payroll checkpoints. It must produce a dry-run report and stop on unknown owners, duplicate owners, missing finance accounts, invalid ledger rows or any balance mismatch. Only after a clean reconciliation should the Worker become the single writer for club ownership and treasury. Do not enable dual writes.
