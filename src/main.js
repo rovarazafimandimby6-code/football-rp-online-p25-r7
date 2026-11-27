@@ -998,7 +998,7 @@ ${renderGoogleProtectionCard({ compact: true })}
       if (item.type === 'offer-negotiated') return `Négociation avec ${clubName(item.clubId)} · ${Number(item.salary||0).toLocaleString('fr-FR')} crédits / semaine · indemnité ${Number(item.fee||0).toLocaleString('fr-FR')}`;
       if (item.type === 'offer-rejected') return `Offre refusée de ${clubName(item.clubId)}`;
       if (item.type === 'offer-expired') return `Offre expirée de ${clubName(item.clubId)}`;
-      if (item.type === 'offer-cancelled') return `Offre annulée après un transfert · ${clubName(item.clubId)}`;
+      if (item.type === 'offer-cancelled') return `${item.reason === 'contract-expired' ? 'Offre annulée à échéance du contrat' : item.reason === 'contract-terminated' ? 'Offre annulée après résiliation' : 'Offre annulée après un transfert'} · ${clubName(item.clubId)}`;
       return `${item.result==='win'?'Victoire':item.result==='draw'?'Match nul':'Défaite'} · ${item.goals||0} but(s)`;
     };
     const salaryStatus = career.getSalaryStatus();
