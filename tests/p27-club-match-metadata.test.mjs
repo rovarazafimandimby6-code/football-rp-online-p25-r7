@@ -137,6 +137,9 @@ test('P27: les kits 3D des deux équipes utilisent les palettes des clubs sélec
   assert.match(game, /cfg\.team === 'blue' \? callbacks\.homeKitColors : callbacks\.awayKitColors/);
   assert.match(game, /callbacks\.homeKitAppearance/);
   assert.match(game, /callbacks\.awayKitAppearance/);
+  assert.match(game, /cfg\.role === 'GK'/);
+  assert.match(game, /homeGoalkeeperKitAppearance/);
+  assert.match(game, /awayGoalkeeperKitAppearance/);
   assert.match(game, /kitAppearance && typeof kitAppearance === 'object'/);
   assert.match(main, /getP27ClubShopKit/);
   assert.match(main, /getShopSnapshot\('club', club\.id\)/);
