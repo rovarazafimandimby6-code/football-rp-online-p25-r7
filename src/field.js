@@ -82,9 +82,14 @@ export class FieldBuilder {
 
     const stadium = appearance.stadiumSkin || 'default';
     const stadiumTint = stadium === 'premium' ? 0x8aa0b7 : stadium === 'standard' ? 0x687f91 : 0xffffff;
-    for (const material of this.stadiumMaterials) material.color.setHex(
-      material.userData.p27BaseColor ?? material.color.getHex()
-    ), material.color.multiply(new THREE.Color(stadiumTint));
+    for (const material of this.stadiumMaterials) {
+      // Capture the source color once: repeated club switches must not compound tints.
+      if (!Number.isInteger(material.userData.p27BaseColor)) {
+        material.userData.p27BaseColor = material.color.getHex();
+      }
+      material.color.setHex(material.userData.p27BaseColor);
+      material.color.multiply(new THREE.Color(stadiumTint));
+    }
 
     this.clubExpansionGroup?.parent?.remove(this.clubExpansionGroup);
     this.clubExpansionGroup = null;
@@ -452,8 +457,14 @@ export class FieldBuilder {
     const headGeo = new THREE.SphereGeometry(0.5, 8, 6);
     const headMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     const crowdHeads = new THREE.InstancedMesh(headGeo, headMat, count);
+    // A single instanced arm mesh adds a readable human silhouette without
+    // creating hundreds of individual meshes or draw calls.
+    const armGeo = new THREE.CylinderGeometry(0.075, 0.09, 0.62, 6);
+    const armMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const crowdArms = new THREE.InstancedMesh(armGeo, armMat, count * 2);
     const dummy = new THREE.Object3D();
     const headDummy = new THREE.Object3D();
+    const armDummy = new THREE.Object3D();
     const palette = [
       new THREE.Color(0x398bff), new THREE.Color(0xff524a),
       new THREE.Color(0xf6d55c), new THREE.Color(0xeaf4f4),
@@ -471,7 +482,20 @@ export class FieldBuilder {
       dummy.scale.set(0.72, 1.05 + (idx % 3) * 0.08, 0.62);
       dummy.updateMatrix();
       crowd.setMatrixAt(idx, dummy.matrix);
-      crowd.setColorAt(idx, palette[idx % palette.length]);
+      const shirtColor = palette[idx % palette.length];
+      crowd.setColorAt(idx, shirtColor);
+
+      // Arms hang naturally beside the torso; slight deterministic variation
+      // keeps the crowd from looking like a row of identical rigid figures.
+      for (const side of [-1, 1]) {
+        armDummy.position.set(x + side * 0.39, y - 0.035, z);
+        armDummy.rotation.set(0, rotation, side * (0.10 + (idx % 4) * 0.025));
+        armDummy.scale.set(0.92, 0.88 + (idx % 3) * 0.08, 0.92);
+        armDummy.updateMatrix();
+        const armIndex = idx * 2 + (side > 0 ? 1 : 0);
+        crowdArms.setMatrixAt(armIndex, armDummy.matrix);
+        crowdArms.setColorAt(armIndex, shirtColor);
+      }
 
       headDummy.position.set(x, y + 0.59 + (idx % 3) * 0.035, z);
       headDummy.rotation.set(0, rotation, 0);
@@ -512,9 +536,13 @@ export class FieldBuilder {
     crowdHeads.instanceMatrix.needsUpdate = true;
     if (crowd.instanceColor) crowd.instanceColor.needsUpdate = true;
     if (crowdHeads.instanceColor) crowdHeads.instanceColor.needsUpdate = true;
+    crowdArms.count = idx * 2;
+    crowdArms.instanceMatrix.needsUpdate = true;
+    if (crowdArms.instanceColor) crowdArms.instanceColor.needsUpdate = true;
     this.crowdMesh = crowd;
     this.crowdHeads = crowdHeads;
-    this.group.add(crowd, crowdHeads);
+    this.crowdArms = crowdArms;
+    this.group.add(crowd, crowdHeads, crowdArms);
 
     // Liserés de gradins et bandeaux supérieurs pour donner une lecture architecturale au stade.
     const rimMat = new THREE.MeshLambertMaterial({ color: 0x182632 });
