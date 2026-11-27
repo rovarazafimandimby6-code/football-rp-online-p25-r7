@@ -1,3 +1,4 @@
+import { getP27StadiumCapacity } from './p27-shop-catalog.js';
 const KIT_DESIGNS = new Set(['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels']);
 const CLUB_KIT_PROFILES = Object.freeze({
   'antananarivo-fc': { design:'vertical', inspiration:'maillot à bandes verticales, identité originale' },
@@ -93,6 +94,7 @@ export function getP27ClubShopAppearance(club = {}, inventory = []) {
     crestColors:has('club-official-colors') && validColors ? club.colors.slice(0,3) : null,
     stadiumSkin:has('club-stadium-premium') ? 'premium' : has('club-stadium-standard') ? 'standard' : 'default',
     stadiumExpansionLevel,
+    stadiumCapacity:getP27StadiumCapacity(stadiumExpansionLevel),
     grassSkin:has('club-grass-premium') ? 'premium' : has('club-grass-standard') ? 'standard' : 'default',
     supporters:{ flags:has('club-supporter-flags'), banners:has('club-supporter-banners'), tifo:has('club-supporter-tifo') }
   };
