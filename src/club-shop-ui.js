@@ -1,3 +1,4 @@
+import { getP27StadiumCapacity } from './p27-shop-catalog.js';
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const money = value => Number(value || 0).toLocaleString('fr-FR');
 const categories = {
@@ -29,6 +30,10 @@ export function mountClubShop(root, accountClient, onNavigate) {
   const state = {clubs:[],clubId:'',catalog:[],inventory:[],history:{purchases:[],resales:[]},balance:0,view:'catalog',category:'all',busy:false};
   const status = message => { const node=root.querySelector('#club-shop-status'); if(node) node.textContent=message; };
   const currentClub = () => state.clubs.find(club=>club.id===state.clubId) || null;
+  const currentStadiumCapacity = () => {
+    const level=Math.max(0,...state.inventory.filter(item=>item.status==='owned'&&item.category==='capacity').map(item=>Number(item.upgradeLevel)||0));
+    return getP27StadiumCapacity(level);
+  };
   const renderItems = () => {
     const host=root.querySelector('#club-shop-items');
     if(!host)return;
@@ -65,6 +70,7 @@ export function mountClubShop(root, accountClient, onNavigate) {
           '<div class="p27-shop-item-copy"><span class="p27-shop-category">'+(categories[category]||'ARTICLE CLUB')+'</span>'+
           '<h3>'+escapeHtml(item?.name||entry.itemId)+'</h3><p>Acheté : '+money(entry.paidPrice)+' pièces club</p>'+
           (refund>0?'<small class="p27-shop-refund">Revente estimée : '+money(refund)+' pièces</small>':'')+
+          (category==='capacity'?'<small>Capacité du stade : '+money(item?.capacityAfterUpgrade||getP27StadiumCapacity(entry.upgradeLevel||0))+' places</small>':'')+
           '<small>'+(equipSlot?(entry.equipped?'ACTIF':'DANS L’INVENTAIRE'):'AMÉLIORATION PERMANENTE')+'</small></div>'+
           '<div class="p27-shop-item-actions">'+(equipSlot?'<button class="small-action" data-shop-action="equip" data-item="'+escapeHtml(entry.itemId)+'" data-equipped="'+(entry.equipped?'false':'true')+'">'+(entry.equipped?'RETIRER':'APPLIQUER')+'</button>':'')+
           '<button class="text-cta" data-shop-action="resale" data-item="'+escapeHtml(entry.itemId)+'" '+(entry.resellable&&!entry.equipped?'':'disabled')+'>REVENDRE</button></div></article>';
@@ -79,6 +85,7 @@ export function mountClubShop(root, accountClient, onNavigate) {
         '<h3>'+escapeHtml(item.name)+'</h3><p>'+(item.discountPercent>0?'<del>'+money(item.basePrice)+'</del> ':'')+
         '<strong>'+money(item.price)+' pièces club</strong></p>'+
         (item.discountPercent>0?'<small class="p27-shop-discount">−'+item.discountPercent+' % · '+escapeHtml(item.promotionLabel||'PROMOTION')+'</small>':'')+
+        (item.category==='capacity'?'<small>+'+money(item.capacityIncrease||2500)+' places · total après achat : '+money(item.capacityAfterUpgrade||getP27StadiumCapacity(item.upgradeLevel||0))+'</small>':'')+
         (isOwned?'<small>DÉJÀ POSSÉDÉ</small>':'')+'</div>'+
         '<div class="p27-shop-item-actions"><button class="small-action" data-shop-action="purchase" data-item="'+escapeHtml(item.id)+'" '+(isOwned?'disabled':'')+'>'+(isOwned?'POSSÉDÉ':'ACHETER')+'</button></div></article>';
     }).join('')||'<div class="p27-shop-empty">Aucun article dans cette catégorie.</div>';
@@ -89,6 +96,8 @@ export function mountClubShop(root, accountClient, onNavigate) {
     if(typeof accountClient.getShopHistory==='function') state.history=await accountClient.getShopHistory('club',state.clubId);
     root.querySelector('#club-shop-balance').textContent=money(state.balance);
     root.querySelector('#club-shop-count').textContent=state.catalog.length+' articles';
+    const capacityNode=root.querySelector('#club-shop-stadium-capacity');
+    if(capacityNode)capacityNode.textContent='STADE · '+money(currentStadiumCapacity())+' PLACES';
     renderItems();
   };
   const refresh = async () => {
@@ -128,6 +137,7 @@ export function mountClubShop(root, accountClient, onNavigate) {
     '<div class="p27-shop-views"><button class="active" data-shop-view="catalog">BOUTIQUE</button><button data-shop-view="inventory">INVENTAIRE</button><button data-shop-view="history">HISTORIQUE</button></div><span id="club-shop-count">Chargement…</span></div>'+
     '<nav class="p27-shop-categories" aria-label="Catégories de la boutique du club"><button class="active" data-shop-category="all">TOUT</button>'+
     Object.entries(categories).map(([key,label])=>'<button data-shop-category="'+key+'">'+label+'</button>').join('')+'</nav>'+
+    '<div id="club-shop-stadium-capacity" class="p27-shop-status">STADE · 5 000 PLACES</div>'+
     '<div id="club-shop-items" class="p27-shop-grid"><div class="p27-shop-empty">Chargement…</div></div>'+
     '<p class="p27-shop-status" id="club-shop-status" role="status" aria-live="polite">Connexion à la boutique du club…</p>'+
     '<p class="notice">Les achats et reventes débitent ou créditent uniquement la trésorerie du club. Les extensions de tribunes sont permanentes et non revendables. Aucun échange entre joueurs ou entre clubs.</p></section>';
