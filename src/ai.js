@@ -5,6 +5,11 @@ import { specialtyForSlot } from './player-specialties.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+/** Décalage collectif du bloc vers le couloir du ballon, sans basculer tout le bloc. */
+export function getDefensiveBlockShift(ballZ) {
+  return clamp((Number(ballZ) || 0) * 0.24, -3.4, 3.4);
+}
+
 /** Tirage déterministe par joueur et action : le même état produit la même décision. */
 export function aiDecisionRoll(player, action = 'decision') {
   const sequence = Math.max(0, Math.floor(Number(player?.aiDecisionSequence) || 0));
@@ -73,20 +78,24 @@ export function getDefensiveShapeTarget(player, ball, opponents, attackDir = 1, 
     if (score < threatScore) { threat = opponent; threatScore = score; }
   }
   const tacticalPush = mentality === 'defensive' ? -2.4 : mentality === 'attacking' ? 1.8 : 0;
+  const homeZ = player.homePos?.z ?? player.pos.z;
   const ballShiftX = (ball.pos.x - player.homePos.x) * 0.12;
-  const ballShiftZ = (ball.pos.z - player.homePos.z) * 0.3;
+  // Tout le bloc coulisse vers le nouveau couloir, avec un ajustement local plus faible.
+  // La limite relative au poste garde un joueur en couverture côté faible.
+  const ballShiftZ = getDefensiveBlockShift(ball.pos.z) + (ball.pos.z - homeZ) * 0.14;
   // Quand le ballon entre dans notre moitié, toute la ligne recule progressivement.
   // Le repli est collectif et plafonné pour éviter que le bloc ne s'écrase sur le gardien.
   const ownHalfDanger = clamp((-ball.pos.x * attackDir - 2) / 18, 0, 1);
   const collectiveRetreat = ownHalfDanger * (mentality === 'defensive' ? 4.1 : mentality === 'attacking' ? 2.2 : 3.2);
   let targetX = player.homePos.x + ballShiftX + attackDir * (tacticalPush - collectiveRetreat);
-  let targetZ = player.homePos.z + ballShiftZ;
+  let targetZ = homeZ + ballShiftZ;
   if (threat) {
     const goalSideX = threat.pos.x + (ownGoalX - threat.pos.x) * 0.16;
     const goalSideZ = threat.pos.z + (player.homePos.z - threat.pos.z) * 0.28;
     targetX = targetX * 0.58 + goalSideX * 0.42;
     targetZ = targetZ * 0.62 + goalSideZ * 0.38;
   }
+  targetZ = clamp(targetZ, homeZ - 5.5, homeZ + 5.5);
   return {
     x: clamp(targetX, -PITCH.HALF_L + 1.5, PITCH.HALF_L - 1.5),
     z: clamp(targetZ, -PITCH.HALF_W + 1.5, PITCH.HALF_W - 1.5)
@@ -116,18 +125,21 @@ export function getDefensiveCoverTarget(player, ball, opponents, attackDir = 1) 
   }
 
   const homeZ = player.homePos?.z ?? player.pos?.z ?? 0;
+  const blockShiftZ = getDefensiveBlockShift(carrier.z) * 0.25;
   if (!receiver) {
+    const fallbackZ = clamp(carrier.z * 0.55 + homeZ * 0.45 + blockShiftZ, homeZ - 5.5, homeZ + 5.5);
     return {
       x: clamp(carrier.x - attackDir * (player.specialty === 'cover' ? 3.2 : 4.5), -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
-      z: clamp(carrier.z * 0.55 + homeZ * 0.45, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
+      z: clamp(fallbackZ, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
     };
   }
 
   const targetX = carrier.x + (receiver.pos.x - carrier.x) * 0.55 - attackDir * 1.2;
   const targetZ = carrier.z + (receiver.pos.z - carrier.z) * 0.55;
+  const coveredLaneZ = clamp(targetZ * 0.78 + homeZ * 0.22 + blockShiftZ, homeZ - 5.5, homeZ + 5.5);
   return {
     x: clamp(targetX, -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
-    z: clamp(targetZ * 0.78 + homeZ * 0.22, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
+    z: clamp(coveredLaneZ, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
   };
 }
 
