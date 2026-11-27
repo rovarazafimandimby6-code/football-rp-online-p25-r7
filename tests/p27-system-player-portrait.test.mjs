@@ -46,6 +46,17 @@ test('system portrait uses club kit design and accent colors without trusting ra
   assert.notEqual(vertical, sash);
 });
 
+test('all generated club kit designs have a dedicated portrait pattern', () => {
+  const designs = ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'];
+  for (const kitDesign of designs) {
+    const svg = decodeURIComponent(systemPlayerPortraitDataUri({
+      ...player, appearance: { ...player.appearance, kitDesign }
+    }).split(',')[1]);
+    assert.match(svg, /clipPath id="shirtClip"/, kitDesign);
+    assert.match(svg, /<g clip-path="url\(#shirtClip\)">/, kitDesign);
+  }
+});
+
 test('portrait generation safely falls back when appearance and kit colors are absent', () => {
   const fallback = systemPlayerPortraitDataUri({ id: 'free-agent-01', name: 'A. Joueur' });
   const svg = decodeURIComponent(fallback.split(',')[1]);
@@ -94,6 +105,9 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(renderer, /camera\.position\.set\(0, 1\.53, 2\.45\)/);
   assert.match(renderer, /camera\.lookAt\(0, 1\.43, 0\)/);
   assert.match(renderer, /Tight chest-up framing/);
+  assert.match(renderer, /const clubAccent = new THREE\.Color\(safeColor\(player\?\.appearance\?\.kitColors\?\.accent/);
+  assert.match(renderer, /lerp\(clubAccent, 0\.16\)/);
+  assert.match(renderer, /DirectionalLight\(clubAccent, 0\.8\)/);
   assert.match(renderer, /MAX_CACHE = 180/);
   assert.match(renderer, /p27PortraitOwnedGeometry/);
   assert.match(renderer, /if \(node\.userData\?\.p27PortraitOwnedGeometry\) node\.geometry/);
