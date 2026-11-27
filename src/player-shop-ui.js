@@ -70,11 +70,10 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
     }
     status('Chargement du catalogue et du portefeuille…');
     try{
-      const [catalog,inventory,progression]=await Promise.all([
-        accountClient.getPlayerShopCatalog(),accountClient.getPlayerShopInventory(),accountClient.getProgression()
-      ]);
+      const snapshot=await accountClient.getShopSnapshot('player');
       if(!root.isConnected)return;
-      state.catalog=catalog;state.inventory=inventory;syncEquippedCosmetics(inventory,catalog);state.balance=progression.progression.coins;
+      state.catalog=snapshot.catalog;state.inventory=snapshot.inventory;
+      syncEquippedCosmetics(snapshot.inventory,snapshot.catalog);state.balance=snapshot.balance;
       root.querySelector('#player-shop-balance').textContent=money(state.balance);
       root.querySelector('#player-shop-count').textContent=catalog.length+' articles';
       renderItems();status('Catalogue, inventaire et solde synchronisés avec le serveur.');
@@ -85,6 +84,7 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
   };
   root.innerHTML=`<section class="p27-shop-screen">
     <div class="p27-shop-hero"><div><span class="p27-shop-eyebrow">BOUTIQUE PERSONNELLE</span><h2>ÉQUIPEZ VOTRE JOUEUR</h2><p>Articles permanents · achats sécurisés · revente au jeu uniquement</p></div><div class="p27-shop-wallet"><small>VOS PIÈCES</small><strong id="player-shop-balance">—</strong><span>Solde serveur</span></div></div>
+    <div class="p27-shop-switch"><span>BOUTIQUE PERSONNELLE</span><button class="text-cta" data-page="boutique-club">BOUTIQUE DU CLUB →</button></div>
     <div class="p27-shop-toolbar"><div class="p27-shop-views"><button class="active" data-shop-view="catalog">BOUTIQUE</button><button data-shop-view="inventory">MON INVENTAIRE</button></div><span id="player-shop-count">Chargement…</span></div>
     <nav class="p27-shop-categories" aria-label="Catégories de la boutique"><button class="active" data-shop-category="all">TOUT</button>${Object.entries(categories).map(([key,value])=>'<button data-shop-category="'+key+'">'+value[0]+'</button>').join('')}</nav>
     <div id="player-shop-items" class="p27-shop-grid"><div class="p27-shop-empty">Chargement…</div></div>
@@ -108,11 +108,11 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
     if(action==='resale'){const owned=state.inventory.find(entry=>entry.itemId===itemId&&entry.status==='owned');const estimate=owned?Math.floor(Number(owned.paidPrice||0)*Number(owned.resaleRate||0)):0;if(!owned||!owned.resellable||estimate<1||!window.confirm('Revendre cet article au jeu pour '+money(estimate)+' pièces ?\nLe montant définitif est recalculé par le serveur sur le prix réellement payé.'))return;}
     state.busy=true;button.disabled=true;status('Transaction sécurisée en cours…');
     try{
-      if(action==='purchase')await accountClient.purchasePlayerShopItem(itemId,'p27-buy-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12));
-      else if(action==='resale')await accountClient.resellPlayerShopItem(itemId,'p27-sell-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12));
-      else if(action==='equip')await accountClient.equipPlayerShopItem(itemId,button.dataset.equipped==='true');
-      const [inventory,progression]=await Promise.all([accountClient.getPlayerShopInventory(),accountClient.getProgression()]);
-      state.inventory=inventory;syncEquippedCosmetics(inventory,state.catalog);state.balance=progression.progression.coins;
+      if(action==='purchase')await accountClient.purchaseShopItem('player',itemId,'p27-buy-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12));
+      else if(action==='resale')await accountClient.resellShopItem('player',itemId,'p27-sell-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12));
+      else if(action==='equip')await accountClient.equipShopItem('player',itemId,button.dataset.equipped==='true');
+      const snapshot=await accountClient.getShopSnapshot('player');
+      state.inventory=snapshot.inventory;syncEquippedCosmetics(snapshot.inventory,state.catalog);state.balance=snapshot.balance;
       root.querySelector('#player-shop-balance').textContent=money(state.balance);
       renderItems();
       status(action==='purchase'?'Achat confirmé. Article ajouté à votre inventaire.':action==='resale'?'Revente confirmée. Pièces créditées sur votre compte.':'Équipement mis à jour.');
