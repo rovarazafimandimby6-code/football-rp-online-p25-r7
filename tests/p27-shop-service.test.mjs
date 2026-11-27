@@ -74,6 +74,7 @@ test('P27 boutique : respecte les promotions serveur et calcule la revente sur l
 
 test('P27 boutique : refuse la revente des extensions et conserve les achats du club après redémarrage',()=>{
  const f=fixture();try{
+  assert.equal(f.service.purchase({shop:'club',itemId:'club-capacity-level-2',actorId:'owner-one',clubId:'club-one',purchaseId:'upgrade-out-of-order'}).reason,'stadium-upgrade-order');
   const first=f.service.purchase({shop:'club',itemId:'club-capacity-level-1',actorId:'owner-one',clubId:'club-one',purchaseId:'upgrade-1'});
   assert.equal(first.ok,true);
   const second=f.service.purchase({shop:'club',itemId:'club-capacity-level-2',actorId:'owner-one',clubId:'club-one',purchaseId:'upgrade-2'});
