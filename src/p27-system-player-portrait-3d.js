@@ -63,7 +63,38 @@ function attachHair(model, sourceScene, color) {
 function safeColor(value, fallback) { return /^#[0-9a-f]{6}$/i.test(String(value||'')) ? value : fallback; }
 function signature(player) {
   const a = player.appearance || {};
-  return JSON.stringify([player.id, a.skinTone, a.bodyBuild, a.hairStyle, a.hairColor, a.faceShape, a.eyeShape, a.kitColors, a.kitDesign, a.kitVariant, a.facialHair]);
+  return JSON.stringify([player.id, player.clubId, player.number, a.skinTone, a.bodyBuild, a.hairStyle, a.hairColor, a.faceShape, a.eyeShape, a.kitColors, a.kitDesign, a.kitVariant, a.facialHair]);
+}
+function addShirtNumber(model, value) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 1 || number > 99) return null;
+  const decal = document.createElement('canvas');
+  decal.width = 128;
+  decal.height = 128;
+  const context = decal.getContext('2d');
+  if (!context) return null;
+  context.clearRect(0, 0, decal.width, decal.height);
+  context.font = '900 88px Arial, sans-serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.lineJoin = 'round';
+  context.lineWidth = 12;
+  context.strokeStyle = 'rgba(8,16,28,.88)';
+  context.strokeText(String(number), 64, 67);
+  context.fillStyle = '#ffffff';
+  context.fillText(String(number), 64, 67);
+  const texture = new THREE.CanvasTexture(decal);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearFilter;
+  const material = new THREE.SpriteMaterial({ map:texture, transparent:true, depthTest:false, depthWrite:false, toneMapped:false });
+  const sprite = new THREE.Sprite(material);
+  sprite.name = 'P27_SystemPortrait_ShirtNumber';
+  sprite.position.set(0, 1.075, 0.17);
+  sprite.scale.set(0.19, 0.19, 1);
+  sprite.renderOrder = 4;
+  sprite.userData.p27PortraitOwnedDecal = true;
+  model.add(sprite);
+  return sprite;
 }
 function remember(key, value) {
   portraitCache.delete(key);
@@ -102,6 +133,7 @@ export async function renderSystemPlayerPortrait3D(player) {
     const hairTint = hairColorHex(player?.appearance?.hairColor);
     attachHair(model, hairSource, hairTint);
     attachHair(model, beardSource, hairTint);
+    const shirtNumberDecal = addShirtNumber(model, player?.number);
     const faceShape = player?.appearance?.faceShape || 'oval';
     const faceScale = {
       oval: [0.98, 1.04, 1], round: [1.08, 0.98, 1],
@@ -148,6 +180,10 @@ export async function renderSystemPlayerPortrait3D(player) {
     catch { uri = canvas.toDataURL('image/png'); }
     scene.remove(model);
     model.traverse(node => {
+      if (node.userData?.p27PortraitOwnedDecal) {
+        node.material?.map?.dispose?.();
+        node.material?.dispose?.();
+      }
       if (node.isSkinnedMesh) {
         if (node.userData?.p27PortraitOwnedGeometry) node.geometry?.dispose?.();
         const mats = Array.isArray(node.material) ? node.material : [node.material];
