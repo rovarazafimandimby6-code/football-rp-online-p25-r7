@@ -125,6 +125,38 @@ export function getSupportTarget(player, owner, players, attackDir = 1, opponent
 }
 
 
+/** Écarte légèrement une cible de soutien des coéquipiers déjà proches. */
+export function getSpacedSupportTarget(player, target, teammates, minDistance = 4.2) {
+  let x = target.x;
+  let z = target.z;
+  for (const mate of teammates || []) {
+    if (!mate || mate === player || mate.team !== player.team || !mate.pos) continue;
+    let dx = x - mate.pos.x;
+    let dz = z - mate.pos.z;
+    let distance = Math.hypot(dx, dz);
+    if (distance >= minDistance) continue;
+    if (distance < 0.001) {
+      dx = (player.homePos?.x ?? player.pos?.x ?? 0) - (mate.homePos?.x ?? mate.pos.x);
+      dz = (player.homePos?.z ?? player.pos?.z ?? 0) - (mate.homePos?.z ?? mate.pos.z);
+      distance = Math.hypot(dx, dz);
+      if (distance < 0.001) {
+        const side = (Number(player.slotIndex) || 0) % 2 === 0 ? 1 : -1;
+        dx = 0;
+        dz = side;
+        distance = 1;
+      }
+    }
+    const strength = (minDistance - Math.min(distance, minDistance)) * 0.42;
+    x += dx / distance * strength;
+    z += dz / distance * strength;
+  }
+  return {
+    x: clamp(x, -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
+    z: clamp(z, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
+  };
+}
+
+
 /** Une demande humaine ne valorise que les lignes déjà jugées acceptables. */
 export function scorePassOptionWithRequest(passer, mate, opponents, attackDir = 1, requestedReceiver = null) {
   const baseScore = scorePassOption(passer, mate, opponents, attackDir);
@@ -366,9 +398,10 @@ export class TeamAI {
       // Soutien sans ballon, y compris lorsque le porteur est un joueur humain.
       const owner = ball.owner;
       const support = getSupportTarget(p, owner, players, attackDir, context?.opponents);
+      const spaced = getSpacedSupportTarget(p, support, context?.teammates);
       const ownerDir = owner ? Math.sign((owner.pos.x - p.pos.x) * attackDir) : 0;
-      const tx = clamp(support.x + ownerDir * attackDir * 0.45, -PITCH.HALF_L + 2, PITCH.HALF_L - 2);
-      const tz = support.z;
+      const tx = clamp(spaced.x + ownerDir * attackDir * 0.45, -PITCH.HALF_L + 2, PITCH.HALF_L - 2);
+      const tz = spaced.z;
       this.steerPlayer(p, tx, tz, 6.9 * staminaFactor * paceFactor, dt);
     } else {
       // Les joueurs éloignés du ballon protègent l'axe et les menaces proches,
