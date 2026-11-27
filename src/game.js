@@ -347,7 +347,7 @@ export class Game {
     const incomingIndex = bench.findIndex(player => player.id === incoming.id);
     const playerIndex = this.players.indexOf(outgoing);
     if (incomingIndex < 0 || playerIndex < 0 || outgoing.isControlled || outgoing.team !== team) return false;
-    const validation = validateRotation({ phase:'stoppage', elapsedMatchSeconds:this.match.elapsedMatchTime, outgoing, incoming, teamPlayers:[...this.players.filter(player=>player.team===team), ...bench] });
+    const validation = validateRotation({ phase:'stoppage', elapsedMatchSeconds:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration), outgoing, incoming, teamPlayers:[...this.players.filter(player=>player.team===team), ...bench] });
     if (!validation.ok) return false;
     const replacement = new Player({
       id: incoming.id, team, number: incoming.number, name: incoming.name, role: outgoing.role,
@@ -372,7 +372,7 @@ export class Game {
     const attributes = { ...outgoing.attributes };
     const values = Object.values(attributes);
     const averageRating = Math.round(values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length));
-    bench.push({ id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number, attributes, rating: averageRating, specialty: outgoing.specialty, preferredFoot: outgoing.preferredFoot, team, lastSubstitutedOutAt:this.match.elapsedMatchTime });
+    bench.push({ id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number, attributes, rating: averageRating, specialty: outgoing.specialty, preferredFoot: outgoing.preferredFoot, team, lastSubstitutedOutAt:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration) });
     this.substitutionsUsed[team] += 1;
     this.match.recordEvent('substitution', team, `${outgoing.name} → ${replacement.name} (système)`);
     return true;
@@ -389,7 +389,7 @@ export class Game {
       const pair = selectAISubstitution({
         team, players: this.players, bench: this.benchPlayers[team],
         used: this.substitutionsUsed[team], limit: Infinity,
-        elapsedMatchSeconds:this.match.elapsedMatchTime, elapsedRatio
+        elapsedMatchSeconds:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration), elapsedRatio
       });
       if (pair && this.applyAISubstitution(team, pair)) {
         this.ui.setStatus(`REMPLACEMENT DU SYSTÈME · ${team === 'blue' ? 'BLEUS' : 'ROUGES'} : ${pair.outgoing.name} → ${pair.incoming.name}`);
