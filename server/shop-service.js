@@ -57,7 +57,7 @@ function validPersistedState(value){
       purchase.shop!==inventory.shop||purchase.itemId!==inventory.entry.itemId)return false;
   }
   for(const resale of value.resales){
-    const item=getShopItem(resale?.itemId), inventory=inventoryByPurchase.get(resale?.purchaseId);
+    const item=getShopItem(resale?.itemId), inventory=inventoryByPurchase.get(resale?.purchaseId)||[...inventoryByPurchase.values()].find(record=>record.shop===resale?.shop&&record.ownerId===cleanId(resale?.ownerId)&&record.entry.itemId===resale?.itemId&&(resale?.status==='completed'?record.entry.resaleId===resale?.id:record.entry.status==='owned'));
     if(!cleanTransactionId(resale?.id)||resaleById.has(resale.id)||!item||
       resale.shop!==item.shop||!cleanId(resale.ownerId)||!cleanId(resale.actorId)||
       !['pending','completed'].includes(resale.status)||!Number.isSafeInteger(resale.amount)||
@@ -221,7 +221,7 @@ export class JsonShopService {
     if(value<=0)return {ok:false,reason:'resale-value-zero'};
     let journal=prior;
     if(!journal){
-      journal={id,shop,ownerId:target,actorId:actor,itemId,amount:value,currency:owned.currency,status:'pending',createdAt:this.now()};
+      journal={id,shop,ownerId:target,actorId:actor,itemId,purchaseId:owned.purchaseId,amount:value,currency:owned.currency,status:'pending',createdAt:this.now()};
       this.transaction(()=>{this.state.resales.push(journal);return true;});
     }
     const credit=this.credit(journal);
