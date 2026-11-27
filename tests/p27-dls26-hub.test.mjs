@@ -165,3 +165,8 @@ test('P27 effectif de club : le compteur suit la recherche et le filtre par post
   assert.ok(main.includes("count.textContent = visible + ' / ' + rows.length + ' joueurs affichés'"));
   assert.ok(main.includes("document.getElementById('roster-empty')?.classList.toggle('hidden', visible > 0)"));
 });
+
+
+test('P27 Mercato : les dates de contrat et d’historique restent lisibles si une donnée est invalide', () => {
+  assert.ok(main.includes("Number.isNaN(date.getTime()) ? 'Date inconnue' : date.toLocaleDateString('fr-FR')"));
+});
