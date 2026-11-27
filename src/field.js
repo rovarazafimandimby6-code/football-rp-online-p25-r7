@@ -248,18 +248,18 @@ export class FieldBuilder {
     this.addLineRect(0, 0, PITCH.L, PITCH.W, 0.16);
 
     // Ligne médiane
-    const mid = new THREE.Mesh(new THREE.PlaneGeometry(0.16, PITCH.W), lineMat);
+    const mid = new THREE.Mesh(this.getSharedGeometry('pitch-midline', () => new THREE.PlaneGeometry(0.16, PITCH.W)), lineMat);
     mid.rotation.x = -Math.PI / 2;
     mid.position.set(0, y, 0);
     this.group.add(mid);
 
     // Cercle central et point d'engagement
-    const ring = new THREE.Mesh(new THREE.RingGeometry(4.75, 4.92, 40), lineMat);
+    const ring = new THREE.Mesh(this.getSharedGeometry('pitch-center-ring', () => new THREE.RingGeometry(4.75, 4.92, 40)), lineMat);
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(0, y, 0);
     this.group.add(ring);
 
-    const spot = new THREE.Mesh(new THREE.CircleGeometry(0.24, 16), lineMat);
+    const spot = new THREE.Mesh(this.getSharedGeometry('pitch-center-spot', () => new THREE.CircleGeometry(0.24, 16)), lineMat);
     spot.rotation.x = -Math.PI / 2;
     spot.position.set(0, y + 0.002, 0);
     this.group.add(spot);
@@ -274,7 +274,7 @@ export class FieldBuilder {
       const sixD = 9.6;
       this.addLineRect(dir * (PITCH.HALF_L - sixW / 2), 0, sixW, sixD);
 
-      const penSpot = new THREE.Mesh(new THREE.CircleGeometry(0.2, 14), lineMat);
+      const penSpot = new THREE.Mesh(this.getSharedGeometry('pitch-penalty-spot', () => new THREE.CircleGeometry(0.2, 14)), lineMat);
       penSpot.rotation.x = -Math.PI / 2;
       penSpot.position.set(dir * (PITCH.HALF_L - 6.6), y + 0.002, 0);
       this.group.add(penSpot);
@@ -282,7 +282,7 @@ export class FieldBuilder {
 
     // Arcs de penalty (9,15 m) orientés vers le centre du terrain.
     for (const dir of [-1, 1]) {
-      const arc = new THREE.Mesh(new THREE.RingGeometry(9.05, 9.18, 48, 1, dir < 0 ? -Math.PI / 2 : Math.PI / 2, Math.PI), lineMat);
+      const arc = new THREE.Mesh(this.getSharedGeometry('pitch-penalty-arc', () => new THREE.RingGeometry(9.05, 9.18, 48, 1, -Math.PI / 2, Math.PI)), lineMat);
       arc.rotation.x = -Math.PI / 2;
       arc.position.set(dir * (PITCH.HALF_L - 6.6), y, 0);
       this.group.add(arc);
@@ -296,7 +296,7 @@ export class FieldBuilder {
       [-PITCH.HALF_L, PITCH.HALF_W, Math.PI / 2]
     ];
     for (const [cx, cz, rot] of corners) {
-      const arc = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.1, 12, 1, 0, Math.PI / 2), lineMat);
+      const arc = new THREE.Mesh(this.getSharedGeometry('pitch-corner-arc', () => new THREE.RingGeometry(0.95, 1.1, 12, 1, 0, Math.PI / 2)), lineMat);
       arc.rotation.x = -Math.PI / 2;
       arc.rotation.z = rot;
       arc.position.set(cx, y, cz);
@@ -309,9 +309,10 @@ export class FieldBuilder {
     const flagMats = [new THREE.MeshLambertMaterial({ color: 0x2878f0 }), new THREE.MeshLambertMaterial({ color: 0xe4473d })];
     const shape = new THREE.Shape();
     shape.moveTo(0, 0); shape.lineTo(0.62, -0.16); shape.lineTo(0, -0.42); shape.closePath();
-    const flagGeo = new THREE.ShapeGeometry(shape);
+    const flagGeo = this.getSharedGeometry('corner-flag', () => new THREE.ShapeGeometry(shape));
+    const poleGeo = this.getSharedGeometry('corner-flag-pole', () => new THREE.CylinderGeometry(0.035, 0.045, 1.35, 6));
     for (const [x, z, colorIndex] of [[-PITCH.HALF_L,-PITCH.HALF_W,0],[-PITCH.HALF_L,PITCH.HALF_W,1],[PITCH.HALF_L,-PITCH.HALF_W,1],[PITCH.HALF_L,PITCH.HALF_W,0]]) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.35, 6), poleMat);
+      const pole = new THREE.Mesh(poleGeo, poleMat);
       pole.position.set(x, 0.675, z);
       const flagPivot = new THREE.Group();
       flagPivot.position.set(x, 1.27, z);
