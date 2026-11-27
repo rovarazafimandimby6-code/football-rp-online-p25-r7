@@ -55,6 +55,14 @@ test('P27 transfert : le numéro reste disponible et le maillot suit le club act
   assert.equal(library.players[0].appearance.kitColors.primary, '#b02030');
 });
 
+test('P27 clubs : les 156 clubs reçoivent un motif stable et les 16 motifs sont utilisés', () => {
+  const first = DEFAULT_CLUBS.map(club => getP27ClubKit(club).kitDesign);
+  const second = DEFAULT_CLUBS.map(club => getP27ClubKit(club).kitDesign);
+  assert.deepEqual(first, second);
+  assert.equal(new Set(first).size, 16);
+  assert.ok(first.every(design => ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'].includes(design)));
+});
+
 test('P27 gardiens : la tenue secondaire du club est appliquée sans perdre le numéro', () => {
   const kit = getP27ClubKit(customClub('keeper-club',['#123456','#102030','#eeeeee'],'hoops'),'GK');
   assert.deepEqual(kit.kitColors, { primary:'#eeeeee', secondary:'#123456', accent:'#102030' });
