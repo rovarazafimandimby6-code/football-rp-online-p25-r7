@@ -74,3 +74,14 @@ test('P27 : les géométries statiques du stade sont mutualisées entre meshes i
   assert.match(fieldSource, /getSharedGeometry\('floodlight-head'/);
   assert.match(fieldSource, /endStandGeometries = \[0, 1\]\.map/);
 });
+
+
+test('P27 : le remplacement des extensions et décorations du club libère leurs ressources GPU', () => {
+  assert.match(fieldSource, /function disposeGroupResources\(group\)/);
+  assert.match(fieldSource, /disposeGroupResources\(this\.clubExpansionGroup\)/);
+  assert.match(fieldSource, /disposeGroupResources\(this\.clubBannerGroup\)/);
+  assert.match(fieldSource, /const geometries = new Set\(\)/);
+  assert.match(fieldSource, /const materials = new Set\(\)/);
+  assert.match(fieldSource, /material\.dispose\(\)/);
+  assert.match(fieldSource, /geometry\.dispose\(\)/);
+});
