@@ -8,6 +8,25 @@ import { mountHumanoidPlayer } from './player-models.js';
  * Orientation locale : l'avant du joueur pointe vers +Z.
  */
 
+function disposeFallbackVisualResources(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+  root.traverse((node) => {
+    if (node.geometry) geometries.add(node.geometry);
+    const list = Array.isArray(node.material) ? node.material : (node.material ? [node.material] : []);
+    for (const material of list) {
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value?.isTexture) textures.add(value);
+      }
+    }
+  });
+  for (const texture of textures) texture.dispose();
+  for (const material of materials) material.dispose();
+  for (const geometry of geometries) geometry.dispose();
+}
+
 const SHOP_COSMETICS_KEY = 'fpro.player-shop-equipped.v1';
 function withEquippedShopAppearance(appearance) {
   const result = { ...(appearance || {}) };
@@ -389,7 +408,9 @@ export function createPlayerVisual({ team, isGK, number, appearance = null }) {
       this.disposed = true;
       root.userData.disposed = true;
       this.model?.dispose?.();
-      numberTexture.dispose();
+      // The procedural fallback remains allocated while the GLTF model is active;
+      // release its per-player GPU resources when the visual is finally removed.
+      disposeFallbackVisualResources(root);
     }
   };
   // Chargement asynchrone : le joueur procédural reste visible tant que le GLTF
