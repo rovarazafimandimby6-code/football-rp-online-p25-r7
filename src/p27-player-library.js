@@ -68,7 +68,7 @@ export function listP27Players({ clubs = [], filters = {} } = {}) {
   const offset = clampInt(filters.offset, 0, 0, 1000000);
   return {
     total, limit, offset,
-    players:players.slice(offset, offset + limit).map(player => ({ ...player, attributes:player.attributes ? { ...player.attributes } : null, contract:player.contract ? { ...player.contract } : null })),
+    players:players.slice(offset, offset + limit).map(player => ({ ...player, appearance:player.appearance ? { ...player.appearance, kitColors:player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null, attributes:player.attributes ? { ...player.attributes } : null, contract:player.contract ? { ...player.contract } : null })),
     facets:{
       divisions:[...new Set(all.map(player => player.division).filter(Boolean))].sort(),
       clubs:[...byId.values()].map(club => ({ id:club.id, name:club.name, division:club.division })).sort((a,b) => a.name.localeCompare(b.name)),
