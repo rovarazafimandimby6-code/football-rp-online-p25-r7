@@ -320,8 +320,7 @@ export class TeamAI {
         actions.aiShoot(p);
         return;
       }
-      // Passer si pressé par un adversaire
-      const opponents = context?.opponents || players.filter((other) => other.team !== p.team && other.role !== 'GK');
+      // Passer si pressé par un adversaire (même contexte d'équipe que le choix de passe).
       const pressed = opponents.some(
         (other) => Math.hypot(other.pos.x - p.pos.x, other.pos.z - p.pos.z) < 3.4
       );
