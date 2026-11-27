@@ -87,6 +87,8 @@ export function findDls26Reference(role, archetype, random = Math.random, exclud
   const eligible = [...ids, ...dls19Ids].map(id => PROFILE_BY_ID.get(id)).filter(Boolean);
   const preferred = eligible.filter(profile => {
     if (profile.sourceGame === 'DLS23') return profile.archetype === archetype;
+    // DLS19 has archived position/stat fields but no P27 archetype label;
+    // let its validated card enter the position-compatible fallback pool.
     if (role === 'GK') return true;
     if (role === 'DEF') {
       const isFullback = profile.position === 'RB' || profile.position === 'LWB';
