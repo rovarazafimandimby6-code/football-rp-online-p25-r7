@@ -67,6 +67,10 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(renderer, /a\.eyeShape/);
   assert.match(renderer, /node\.name === 'Eyes'/);
   assert.match(renderer, /'deep-set':\[0\.96,0\.92,1\]/);
+  assert.match(renderer, /strong: \{ torso:1\.07, shoulders:1\.055, neck:0\.96 \}/);
+  assert.match(renderer, /lean: \{ torso:0\.95, shoulders:0\.965, neck:1\.035 \}/);
+  assert.match(renderer, /node\.name === 'spine_03'.*bodyShape\.shoulders/);
+  assert.match(renderer, /node\.name === 'neck_01'.*bodyShape\.neck/);
   assert.match(renderer, /attachHair\(model, beardSource, hairTint\)/);
   assert.match(integration, /auburn:'#8b3f26', grey:'#777b82'/);
   assert.match(renderer, /braids:'Hair_Buns', twists:'Hair_Buns'/);
