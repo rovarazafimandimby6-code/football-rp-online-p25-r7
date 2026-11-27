@@ -63,3 +63,20 @@ test('SQL builder refuses duplicate contract and checkpoint identities before em
     assert.equal(result.status,1,result.stdout);
   }
 });
+
+
+test('SQL builder rejects unsupported ledger categories and inconsistent completed transfers',async t=>{
+  const dir=await mkdtemp(path.join(os.tmpdir(),'p27-d1-sql-contracts-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+  const bundle=path.join(dir,'bundle.json'),output=path.join(dir,'import.sql');
+  const badCategory=makeBundle();badCategory.clubs[0].finance.entries[0].category='unapproved-category';
+  await writeFile(bundle,JSON.stringify(badCategory));
+  let result=spawnSync(process.execPath,[script,'--bundle',bundle,'--output',output],{encoding:'utf8'});
+  assert.equal(result.status,1);
+  const badTransfer=makeBundle();badTransfer.transferCheckpoints=[{
+    id:'transfer-1',fromClubId:'club-001',toClubId:'club-002',fee:10,createdAt:1000,
+    debitPosted:true,creditPosted:false,status:'completed'
+  }];
+  await writeFile(bundle,JSON.stringify(badTransfer));
+  result=spawnSync(process.execPath,[script,'--bundle',bundle,'--output',output],{encoding:'utf8'});
+  assert.equal(result.status,1);
+});
