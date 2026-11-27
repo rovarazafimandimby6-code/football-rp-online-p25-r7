@@ -63,3 +63,14 @@ test('P27 : les rectangles de lignes réutilisent leurs géométries et les file
   assert.match(fieldSource, /this\.netMaterial \|\| \(this\.netMaterial = new THREE\.MeshBasicMaterial/);
   assert.match(fieldSource, /map: createNetTexture\(\)/);
 });
+
+
+test('P27 : les géométries statiques du stade sont mutualisées entre meshes identiques', () => {
+  assert.match(fieldSource, /this\.sharedGeometryCache = new Map\(\)/);
+  assert.match(fieldSource, /getSharedGeometry\(key, create\)/);
+  assert.match(fieldSource, /getSharedGeometry\('technical-seat'/);
+  assert.match(fieldSource, /getSharedGeometry\('stand-tier-side'/);
+  assert.match(fieldSource, /getSharedGeometry\('floodlight-pole'/);
+  assert.match(fieldSource, /getSharedGeometry\('floodlight-head'/);
+  assert.match(fieldSource, /endStandGeometries = \[0, 1\]\.map/);
+});
