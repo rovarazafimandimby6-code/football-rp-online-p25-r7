@@ -112,7 +112,7 @@ test('P27 rotations : changement aux arrêts de jeu, sans quota, avec dix minute
   const incoming = [...internal.players.values()].find(p => p.team === outgoing.team && p.isOnPitch === false);
   assert.ok(incoming);
   assert.throws(() => manager.rotate(room.id, joined.token, { outgoingId: outgoing.id, incomingId: incoming.id }), /NOT_A_STOPPAGE/);
-  internal.elapsedMs = 600_000;
+  internal.elapsedMs = 40_000;
   internal.goalPauseMs = 1_500;
   const first = manager.rotate(room.id, joined.token, { outgoingId: outgoing.id, incomingId: incoming.id });
   assert.equal(first.rotated, true);
@@ -121,7 +121,7 @@ test('P27 rotations : changement aux arrêts de jeu, sans quota, avec dix minute
   assert.equal(first.state.counts.blue, 5);
   assert.equal(first.state.benchCounts.blue, 7);
   assert.throws(() => manager.rotate(room.id, joined.token, { outgoingId: incoming.id, incomingId: outgoing.id }), /RETURN_COOLDOWN/);
-  internal.elapsedMs = 1_200_000;
+  internal.elapsedMs = 73_334;
   const second = manager.rotate(room.id, joined.token, { outgoingId: incoming.id, incomingId: outgoing.id });
   assert.equal(second.rotated, true);
   assert.equal(outgoing.isOnPitch, true);
