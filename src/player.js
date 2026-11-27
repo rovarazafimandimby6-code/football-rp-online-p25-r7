@@ -10,14 +10,21 @@ import { mountHumanoidPlayer } from './player-models.js';
 
 const SHOP_COSMETICS_KEY = 'fpro.player-shop-equipped.v1';
 function withEquippedShopAppearance(appearance) {
+  const result = { ...(appearance || {}) };
+  // Personal cosmetics belong only to the account-controlled career player,
+  // never to every system player or the opposing team.
+  if (result.shopCosmeticsEnabled !== true) return result;
   let equipped = {};
   try { equipped = JSON.parse(globalThis.localStorage?.getItem(SHOP_COSMETICS_KEY) || '{}') || {}; } catch {}
-  const result = { ...(appearance || {}) };
   const hair = equipped.hair;
-  const beard = equipped.beard;
-  result.shopBeardStyle = beard ? beard : null;
+  result.shopBeardStyle = equipped.beard || null;
   result.shopBootStyle = equipped.crampons || null;
   result.shopAccessoryStyle = equipped.accessories || null;
+  result.shopCelebrationStyle = ({
+    'celebration-standard':'standard',
+    'celebration-rare':'rare',
+    'celebration-premium':'premium'
+  })[equipped.celebrations] || 'standard';
   if (hair === 'hair-standard') result.shopHairStyle = 'short';
   else if (hair === 'hair-rare') result.shopHairStyle = 'long';
   else if (hair === 'hair-premium') result.shopHairStyle = 'buns';
@@ -427,11 +434,13 @@ export class Player {
     this.stridePhase = Math.random() * Math.PI * 2;
     this.previousVisualSpeed = 0;
 
+    const playerAppearance = withEquippedShopAppearance(appearance);
+    this.shopCelebrationStyle = playerAppearance.shopCelebrationStyle || 'standard';
     this.visual = createPlayerVisual({
       team,
       isGK: role === 'GK',
       number,
-      appearance
+      appearance:playerAppearance
     });
   }
 
@@ -587,7 +596,8 @@ export class Player {
       progress: this.animTimer > 0 ? 1 - this.animTimer / 0.32 : 0.5,
       diveDir: this.diveDir,
       preferredFoot: this.preferredFoot,
-      phase: this.dribblePhase
+      phase: this.dribblePhase,
+      celebrationStyle:this.shopCelebrationStyle
     });
   }
 }
