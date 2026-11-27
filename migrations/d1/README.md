@@ -21,7 +21,7 @@ SQL migrations are applied in CI against Wrangler's local SQLite-backed D1 emula
 
 The Worker exposes authenticated private career reads at `GET /api/career` and public career reads at `GET /api/players/{FRP-ID}/career`. Client writes to `/api/career` are rejected.
 
-`D1PlayerCareerRepository.recordFinalizedMatch()` is an internal trusted-authority operation. It validates the account/player identity pair and inserts each match idempotently. The repository and schema are a persistence foundation only: the current Node `RoomManager` finalizer has not yet been connected to a Cloudflare Durable Object match authority or to this D1 write operation. Consequently, live online match results are not yet automatically persisted into Cloudflare career history.
+`D1PlayerCareerRepository.recordFinalizedMatch()` is an internal trusted-authority operation. The current Node `RoomManager` finalizer writes finalized events into the local career store and its durable cloud-sync outbox. `CareerSyncService` sends those events to the Worker route `POST /internal/matches/career`, authenticated with an HMAC signature; the Worker validates the account/player identity pair and inserts each match idempotently into D1. This relay starts only when the Node server starts and only sends when `P27_CAREER_SYNC_URL` and `P27_MATCH_INGEST_SECRET` are configured. The Worker also requires the same secret in its `P27_MATCH_INGEST_SECRET` binding and a valid `P27_DB` binding. Without all production bindings, the local career store remains the active durable source and queued events stay pending for retry. This is a server-to-server relay, not a direct client write and not a Durable Object match authority.
 
 ## Rules
 
