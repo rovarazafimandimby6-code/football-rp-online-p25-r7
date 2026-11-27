@@ -620,6 +620,7 @@ export class ClubManager {
   replenishSystemRosterVacancies({ clubIds = null, now = Date.now() } = {}) {
     if (!Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-time', recruited:[], clubsUpdated:[] };
     const selected = Array.isArray(clubIds) ? new Set(clubIds.map(safeId)) : null;
+    const beforeRosters = new Map([...this.clubs.values()].map(club => [club.id, club.roster.map(clonePlayer)]));
     const worldPlayers = [...this.clubs.values()].flatMap(item => item.roster);
     const usedNames = new Set(worldPlayers.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase()));
     const usedIds = new Set(worldPlayers.map(player => player.id));
@@ -658,7 +659,10 @@ export class ClubManager {
         recruited.push({ clubId:club.id, playerId:id, role:candidate.role, rating:candidate.rating });
       }
     }
-    if (recruited.length) this.saveSeason();
+    if (recruited.length && !this.saveSeason()) {
+      for (const club of this.clubs.values()) club.roster = beforeRosters.get(club.id);
+      return { ok:false, reason:'roster-persistence-failed', recruited:[], clubsUpdated:[] };
+    }
     return { ok:true, recruited, clubsUpdated:[...new Set(recruited.map(item=>item.clubId))] };
   }
 
