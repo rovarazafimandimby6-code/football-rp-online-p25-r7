@@ -561,3 +561,42 @@ test('P27 mercato : une panne de sauvegarde conserve les offres et contrats non 
   assert.equal(career.contract.status,'active');
   assert.equal(values.get('career-expiry-atomic-p27'),saved);
 });
+
+function failingCareerStorage(key){
+  const values=new Map();let failWrites=false;
+  return {
+    values,
+    storage:{getItem:name=>values.get(name)??null,setItem:(name,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(name,String(value));}},
+    fail(){failWrites=true;}
+  };
+}
+
+test('P27 contrat : une panne de sauvegarde annule le renouvellement sans modifier salaire ni échéance',()=>{
+  const fixture=failingCareerStorage();
+  const career=new CareerManager({storage:fixture.storage,storageKey:'career-renew-atomic-p27',initialCoins:700});
+  assert.equal(career.signContract({clubId:'club-renew',salary:80,durationDays:90,signedAt:'2034-01-01T00:00:00Z'}).ok,true);
+  const before=JSON.stringify(career.snapshot());
+  fixture.fail();
+  assert.deepEqual(career.renewContract({salary:120,durationDays:240,renewedAt:'2034-01-15T00:00:00Z'}),{ok:false,reason:'persistence-failed'});
+  assert.equal(JSON.stringify(career.snapshot()),before);
+});
+
+test('P27 contrat : une panne de sauvegarde annule la résiliation et conserve le club',()=>{
+  const fixture=failingCareerStorage();
+  const career=new CareerManager({storage:fixture.storage,storageKey:'career-terminate-atomic-p27'});
+  assert.equal(career.signContract({clubId:'club-terminate',salary:50,durationDays:90,signedAt:'2034-01-01T00:00:00Z'}).ok,true);
+  const before=JSON.stringify(career.snapshot());
+  fixture.fail();
+  assert.deepEqual(career.terminateContract('2034-01-15T00:00:00Z'),{ok:false,reason:'persistence-failed'});
+  assert.equal(JSON.stringify(career.snapshot()),before);
+});
+
+test('P27 récompenses : une panne de sauvegarde annule pièces, expérience et identifiant de match',()=>{
+  const fixture=failingCareerStorage();
+  const career=new CareerManager({storage:fixture.storage,storageKey:'career-match-reward-atomic-p27',initialCoins:300});
+  const before=JSON.stringify(career.snapshot());
+  fixture.fail();
+  assert.deepEqual(career.recordMatch({result:'win',goals:2,assists:1,matchId:'match-atomic-reward'}),{ok:false,reason:'persistence-failed'});
+  assert.equal(JSON.stringify(career.snapshot()),before);
+  assert.equal(career.recordMatch({result:'win',matchId:'match-atomic-reward'}).ok,false);
+});
