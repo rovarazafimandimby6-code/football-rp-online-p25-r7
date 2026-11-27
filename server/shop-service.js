@@ -4,6 +4,7 @@ import path from 'node:path';
 import { calculateResaleValue, getShopItem, getShopPrice, validateShopPurchase } from '../src/p27-shop-catalog.js';
 
 const cleanId=value=>String(value??'').trim().slice(0,80);
+const cleanTransactionId=value=>{const id=String(value??'').trim();return id.length>0&&id.length<=64?id:'';};
 const clone=value=>JSON.parse(JSON.stringify(value));
 const emptyState=()=>({version:1,players:[],clubs:[],purchases:[],resales:[]});
 
@@ -61,8 +62,8 @@ export class JsonShopService {
     if(!row&&create){row={ownerId,items:[]};rows.push(row);}
     return row||null;
   }
-  purchase({shop,itemId,actorId,clubId=null,purchaseId,promotion=null}={}){
-    const id=cleanId(purchaseId),actor=cleanId(actorId),club=cleanId(clubId);
+  purchase({shop,itemId,actorId,clubId=null,purchaseId}={}){
+    const id=cleanTransactionId(purchaseId),actor=cleanId(actorId),club=cleanId(clubId);
     if(!id||!actor)return {ok:false,reason:'invalid-purchase'};
     const target=shop==='player'?actor:club;
     if(!target)return {ok:false,reason:'invalid-club'};
@@ -84,7 +85,7 @@ export class JsonShopService {
       const current=Math.max(0,...levels);
       if(item.upgradeLevel!==current+1)return {ok:false,reason:'stadium-upgrade-order'};
     }
-    const offer=promotion||this.promotionProvider(shop,item.id)||null;
+    const offer=this.promotionProvider(shop,item.id)||null;
     const price=getShopPrice(item,{promotion:offer,now:this.now()});
     if(!price)return {ok:false,reason:'invalid-price'};
     let journal=prior;
@@ -125,7 +126,7 @@ export class JsonShopService {
     return {ok:result.ok,reason:result.reason||null};
   }
   resale({shop,actorId,clubId=null,itemId,resaleId}={}){
-    const id=cleanId(resaleId),actor=cleanId(actorId),club=cleanId(clubId);
+    const id=cleanTransactionId(resaleId),actor=cleanId(actorId),club=cleanId(clubId);
     if(!id||!actor)return {ok:false,reason:'invalid-resale'};
     const owner=shop==='player'?actor:this.ownerOf(club);
     const target=shop==='player'?actor:club;
