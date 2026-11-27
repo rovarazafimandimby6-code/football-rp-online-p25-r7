@@ -45,6 +45,7 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   const renderer = await readFile(resolve(root, 'src/p27-system-player-portrait-3d.js'), 'utf8');
   const integration = await readFile(resolve(root, 'src/p27-system-player-portrait.js'), 'utf8');
+  const main = await readFile(resolve(root, 'src/main.js'), 'utf8');
   assert.match(renderer, /Superhero_Male_FullBody\.gltf/);
   assert.match(renderer, /Hair_SimpleParted|Hair_Buzzed/);
   assert.match(renderer, /powerPreference: 'low-power'/);
@@ -52,4 +53,6 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(integration, /IntersectionObserver/);
   assert.match(integration, /systemPlayerPortraitDataUri\(p\)/);
   assert.match(integration, /module\.renderSystemPlayerPortrait3D\(player\)/);
+  assert.match(main, /renderSystemPlayerPortrait\(player,'roster'\)/);
+  assert.match(main, /player\.isHuman!==true&&player\.ownerType!=='human'/);
 });
