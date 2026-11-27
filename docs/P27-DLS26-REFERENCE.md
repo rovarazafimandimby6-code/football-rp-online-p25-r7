@@ -15,7 +15,7 @@ Les 21 profils DLS 26 conservent une URL de fiche individuelle et le statut `ind
 
 ## Compatibilité DLS 19
 
-Le format de carte DLS 19 possède dix attributs de terrain : les huit statistiques communes, plus CRO (centres) et HEA (jeu de tête). Le badge de poste WF est normalisé en SS pour le moteur de rôle P27, tandis que la source d'origine reste tracée. Un adaptateur strict a été ajouté dans `src/p27-dls19-reference.js` : il refuse les données manquantes, les notes/tailles invalides et les références sans URL, version ou identifiant source.
+Le format de carte DLS 19 possède dix attributs de terrain : les huit statistiques communes, plus CRO (centres) et HEA (jeu de tête). Le badge de poste WF est normalisé en SS pour le moteur de rôle P27, tandis que la source d'origine reste tracée. Un adaptateur strict a été ajouté dans `src/p27-dls19-reference.js` : il refuse les données manquantes, les notes/tailles invalides, les postes inconnus et les références sans URL, version ou identifiant source. Une fois un profil DLS 19 validé ajouté à `DLS19_REFERENCE_PROFILES`, il rejoint automatiquement le catalogue multi-éditions et le sélecteur le classe selon son poste (GK, DEF, MID ou FWD), sans modification manuelle de la liste DLS 26.
 
 **Aucun profil DLS 19 n'est encore intégré au pool actif.** La recherche a confirmé l'existence du format DLS 19, mais la base accessible via le créateur de cartes indique que ses données joueurs proviennent du dernier jeu de données DLS 23 ; ce n'est donc pas une archive exacte des notes DLS 19. Nous ne convertirons pas ces données en « DLS 19 » ni n'inventerons CRO/HEA. Le catalogue DLS 19 sera alimenté lorsque des fiches historiques/versionnées seront vérifiables.
 
