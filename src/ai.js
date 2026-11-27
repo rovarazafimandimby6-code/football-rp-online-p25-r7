@@ -75,7 +75,11 @@ export function getDefensiveShapeTarget(player, ball, opponents, attackDir = 1, 
   const tacticalPush = mentality === 'defensive' ? -2.4 : mentality === 'attacking' ? 1.8 : 0;
   const ballShiftX = (ball.pos.x - player.homePos.x) * 0.12;
   const ballShiftZ = (ball.pos.z - player.homePos.z) * 0.3;
-  let targetX = player.homePos.x + ballShiftX + attackDir * tacticalPush;
+  // Quand le ballon entre dans notre moitié, toute la ligne recule progressivement.
+  // Le repli est collectif et plafonné pour éviter que le bloc ne s'écrase sur le gardien.
+  const ownHalfDanger = clamp((-ball.pos.x * attackDir - 2) / 18, 0, 1);
+  const collectiveRetreat = ownHalfDanger * (mentality === 'defensive' ? 4.1 : mentality === 'attacking' ? 2.2 : 3.2);
+  let targetX = player.homePos.x + ballShiftX + attackDir * (tacticalPush - collectiveRetreat);
   let targetZ = player.homePos.z + ballShiftZ;
   if (threat) {
     const goalSideX = threat.pos.x + (ownGoalX - threat.pos.x) * 0.16;
