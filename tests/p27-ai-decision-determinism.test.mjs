@@ -30,9 +30,9 @@ test('P27 gameplay: décisions de terrain sans Math.random non reproductible', a
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/ai.js', import.meta.url), 'utf8');
   assert.equal(source.includes('Math.random('), false);
-  assert.match(source, /aiDecisionRoll\\(p, 'shoot-trigger'\\)/);
-  assert.match(source, /aiDecisionRoll\\(p, 'pressed-pass'\\)/);
-  assert.match(source, /aiDecisionRoll\\(p, 'tackle-trigger'\\)/);
+  assert.match(source, /aiDecisionRoll\(p, 'shoot-trigger'\)/);
+  assert.match(source, /aiDecisionRoll\(p, 'pressed-pass'\)/);
+  assert.match(source, /aiDecisionRoll\(p, 'tackle-trigger'\)/);
 });
 
 test('P27 gameplay: contexte tactique partagé sépare équipes et gardiens', () => {
