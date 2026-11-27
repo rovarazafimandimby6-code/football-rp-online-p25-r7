@@ -16,7 +16,7 @@ const normalizeLoan = loan => {
   const principal=money(loan.principal),totalRepayment=money(loan.totalRepayment),durationWeeks=loan.durationWeeks;
   const issuedAt=Number(loan.issuedAt),paidInstallments=Number(loan.paidInstallments||0);
   if(!id||!lender||principal===null||principal===0||totalRepayment===null||totalRepayment<principal||
-     !Number.isInteger(durationWeeks)||durationWeeks<1||durationWeeks>260||
+     !Number.isInteger(durationWeeks)||durationWeeks<1||durationWeeks>260||totalRepayment<durationWeeks||
      !Number.isSafeInteger(issuedAt)||issuedAt<0||!Number.isInteger(paidInstallments)||paidInstallments<0||paidInstallments>durationWeeks)return null;
   return {id,lender,principal,totalRepayment,durationWeeks,issuedAt,paidInstallments,
     installmentAmount:Math.ceil(totalRepayment/durationWeeks),
@@ -138,6 +138,7 @@ export class ClubFinanceStore {
     if(account.loans.some(item=>item.id===loan.id))return {ok:false,reason:'loan-id-exists'};
     const entry=normalizeEntry({id:'loan-'+loan.id,category:'loan',amount:loan.principal,direction:'income',
       description:'Décaissement du prêt : '+loan.lender,createdAt:loan.issuedAt,referenceId:loan.id});
+    if(account.entries.some(item=>item.id===entry?.id))return {ok:false,reason:'loan-transaction-id-conflict'};
     const next=this.balance(id)+loan.principal;
     if(!entry||!Number.isSafeInteger(next)||next>MAX_MONEY)return {ok:false,reason:'balance-limit'};
     account.entries.push(entry);account.loans.push(loan);
