@@ -2104,3 +2104,7 @@
  #main-menu .p27-hub-career{grid-column:span 2;grid-row:auto}
  #main-menu .p27-hub-match,#main-menu .p27-hub-team,#main-menu .p27-hub-competitions,#main-menu .p27-hub-shop,#main-menu .p27-hub-market,#main-menu .p27-hub-club,#main-menu .p27-hub-results{grid-column:span 1;grid-row:auto}
 }
+
+
+/* P27 shop: transparent server-calculated resale estimate */
+.p27-shop-refund{display:block;color:#e4bd6b;font-weight:700;margin-top:5px;letter-spacing:.02em}
