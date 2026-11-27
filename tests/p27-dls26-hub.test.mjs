@@ -96,3 +96,14 @@ test('P27 bibliothèque et mercato : cartes joueurs et raccourcis suivent la hi�
   assert.ok(main.includes('Mercato & contrats'));
   assert.ok(main.includes('Les statuts proviennent des effectifs'));
 });
+
+
+test("P27 Mercato : le centre de négociation est distinct des catalogues joueurs et clubs", () => {
+  assert.match(main, /Catalogues de recrutement/);
+  assert.match(main, /Le Mercato gère les contrats et les offres/);
+  assert.match(main, /CATALOGUE JOUEURS/);
+  assert.match(main, /CATALOGUE CLUBS/);
+  assert.match(main, /propositions simulées sont calculées localement/);
+  assert.match(css, /p27-market-shortcuts-intro/);
+  assert.match(css, /player-card-portrait::after\{content:none\}/);
+});
