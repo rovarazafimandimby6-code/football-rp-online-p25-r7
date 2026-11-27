@@ -303,6 +303,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
         kitDesign: CLUB_KIT_DESIGNS[club.id] || club.kitDesign || 'central', kitVariant: role === 'GK' ? 'goalkeeper' : 'outfield',
         hairStyle: pick((['JP','MA','DZ','TN'].includes(code) ? ['short','short','fade','wavy','curly','shaved'] : ['short','short','curly','afro','fade','shaved','braids','twists','wavy']), random),
         hairColor: pick(['dark','dark','brown','black','brown','blond'], random),
+        facialHair: age >= 20 && hashSeed(`${club.id}:${index}:facial-hair`) % 100 < 28 ? 'beard' : 'none',
         faceShape: pick(['oval','round','angular','long','square'], random),
         eyeShape: pick(['almond','round','deep-set','hooded'], random)
       }
