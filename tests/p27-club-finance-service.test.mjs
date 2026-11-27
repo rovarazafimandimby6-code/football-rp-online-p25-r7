@@ -401,3 +401,31 @@ test('P27 réconciliation : détecte un checkpoint de transfert sans écriture c
   assert.equal(audit.issues.some(issue=>issue.type==='transfer-debit-checkpoint-without-entry'),true);
  } finally {f.cleanup();}
 });
+
+
+test('P27 réconciliation : détecte les doublons et états incohérents des journaux financiers',()=>{
+ const f=setup();
+ try {
+  const from=DEFAULT_CLUBS[0],to=DEFAULT_CLUBS[1];
+  f.service.transferJournal.transfers.push({
+   id:'duplicate-transfer',fromClubId:from.id,toClubId:to.id,fee:100,
+   debitPosted:true,creditPosted:true,status:'pending'
+  });
+  f.service.transferJournal.transfers.push({
+   id:'duplicate-transfer',fromClubId:'unknown-club',toClubId:to.id,fee:0,
+   debitPosted:false,creditPosted:false,status:'unknown'
+  });
+  f.service.transferJournal.playerWages.push(
+   {id:'duplicate-wage',clubId:from.id,amount:50,posted:false},
+   {id:'duplicate-wage',clubId:'missing-club',amount:-1,posted:'yes'}
+  );
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-journal-duplicate-or-missing-id'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-journal-invalid-club-reference'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-journal-invalid-state'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-journal-status-checkpoint-mismatch'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='player-wage-journal-duplicate-or-missing-id'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='player-wage-journal-invalid-state'),true);
+ } finally {f.cleanup();}
+});
