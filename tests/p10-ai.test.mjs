@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, getSpacedDefensiveTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
+import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, getDefensiveBlockShift, getSpacedDefensiveTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
 
 const player = (id, team, x, z, specialty = 'balanced') => ({
   id, team, role: 'FWD', specialty,
@@ -239,4 +239,25 @@ test('P27: un défenseur privilégie une menace de son couloir plutôt que de tr
   assert.ok(target.x > -8.5,
     'le défenseur doit prioriser la menace dans son couloir malgré la proximité de l’autre menace');
   assert.ok(target.z < 0, 'le défenseur conserve son côté du terrain');
+});
+
+
+test('P27: après un renversement, le bloc coulisse ensemble vers le nouveau couloir', () => {
+  const weakSide = player('weak-side', 'blue', -8, -8);
+  weakSide.homePos = { x: -8, z: -8 };
+  const strongSide = player('strong-side', 'blue', -8, 8);
+  strongSide.homePos = { x: -8, z: 8 };
+  const switchedBall = { pos: { x: 8, z: 12 } };
+  const weakTarget = getDefensiveShapeTarget(weakSide, switchedBall, [], 1, 'balanced');
+  const strongTarget = getDefensiveShapeTarget(strongSide, switchedBall, [], 1, 'balanced');
+  assert.ok(weakTarget.z > weakSide.homePos.z + 3, 'le défenseur côté faible accompagne le coulissement collectif');
+  assert.ok(strongTarget.z > strongSide.homePos.z, 'le défenseur côté ballon accompagne aussi le bloc');
+  assert.ok(weakTarget.z < 0, 'le défenseur côté faible reste dans son demi-couloir et ne traverse pas l’axe');
+  assert.ok(Math.abs(weakTarget.z - weakSide.homePos.z) <= 5.5, 'le déplacement latéral reste plafonné');
+});
+
+test('P27: le décalage collectif latéral est borné et symétrique', () => {
+  assert.equal(getDefensiveBlockShift(20), 3.4);
+  assert.equal(getDefensiveBlockShift(-20), -3.4);
+  assert.equal(getDefensiveBlockShift(0), 0);
 });
