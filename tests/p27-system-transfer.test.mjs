@@ -33,28 +33,31 @@ function setup() {
   return {directory,manager,financeService,journal,setFailFinance(value){failFinance=value;},cleanup(){rmSync(directory,{recursive:true,force:true});}};
 }
 
-test('P27 transfert : clone profondément le joueur avant de remplacer son maillot et son contrat',()=>{
+test('P27 transfert local : prépare une copie profonde avant de déplacer le joueur',()=>{
  const f=setup();
  try {
   f.manager.addPlayer('club-a',{
-   id:'system-player-deep-kit',name:'Deep Kit Player',playerType:'system',rating:66,number:10,
-   appearance:{kitColors:{primary:'#aa0000'},details:{accessories:['captain-band']}},
-   attributes:{pace:70,technical:{control:77}},
-   contract:{status:'active',clubId:'club-a',expiresAt:new Date(Date.now()+30*86400000).toISOString(),metadata:{clauses:['bonus']}}
+   id:'system-player-deep-kit',name:'Deep Kit Player',playerType:'system',rating:66,number:10
   });
-  const original=f.manager.getClub('club-a').roster.find(p=>p.id==='system-player-deep-kit');
-  const originalAppearance=original.appearance;
-  const originalMetadata=original.contract.metadata;
-  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService});
-  const result=service.transfer({id:'deep-kit-transfer-001',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-deep-kit',fee:1800});
+  const source=f.manager.clubs.get('club-a').roster.find(p=>p.id==='system-player-deep-kit');
+  source.appearance={kitColors:{primary:'#aa0000'},details:{accessories:['captain-band']}};
+  source.attributes={pace:70,technical:{control:77}};
+  source.contract.metadata={clauses:['bonus']};
+  const originalAppearance=source.appearance;
+  const originalAccessories=source.appearance.details.accessories;
+  const originalMetadata=source.contract.metadata;
+  const result=f.manager.transferPlayer('club-a','club-b','system-player-deep-kit');
   assert.equal(result.ok,true);
-  const moved=f.manager.getClub('club-b').roster.find(p=>p.id==='system-player-deep-kit');
+  const moved=f.manager.clubs.get('club-b').roster.find(p=>p.id==='system-player-deep-kit');
   assert.notEqual(moved.appearance,originalAppearance);
-  assert.notEqual(moved.contract.metadata,originalMetadata);
-  assert.deepEqual(originalAppearance.details.accessories,['captain-band']);
+  assert.notEqual(moved.appearance.details,source.appearance.details);
+  assert.notEqual(moved.attributes,source.attributes);
+  assert.deepEqual(originalAccessories,['captain-band']);
   assert.deepEqual(originalMetadata.clauses,['bonus']);
   assert.equal(moved.contract.clubId,'club-b');
+  assert.equal(moved.contract.previousClubId,'club-a');
   assert.ok(Number.isInteger(moved.number) && moved.number >= 1 && moved.number <= 99);
+  assert.equal(f.manager.clubs.get('club-a').roster.some(p=>p.id==='system-player-deep-kit'),false);
  } finally {f.cleanup();}
 });
 
