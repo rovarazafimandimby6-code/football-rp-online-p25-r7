@@ -518,6 +518,17 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         } catch (error) { return json(res, 400, { error: String(error?.message || 'INVALID_PROGRESSION_ACTION') }); }
       }
     }
+    if (req.method === 'GET' && url.pathname === '/api/shop/clubs') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const clubs = [...serverClubManager.clubs.values()]
+        .filter(club => club.managerId === account.id)
+        .map(club => ({
+          id:club.id, name:club.name, city:club.city, country:club.country,
+          division:club.division, balance:clubFinance.store.balance(club.id)
+        }));
+      return json(res, 200, { clubs });
+    }
     if (req.method === 'GET' && (url.pathname === '/api/shop' || url.pathname === '/api/shop/history')) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
