@@ -190,10 +190,28 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
           rotate('upperarm_r', -1.25 * pulse, 0, 0.5 * pulse);
           rotate('thigh_l', -0.5 * pulse, 0, 0); rotate('thigh_r', 0.45 * pulse, 0, 0);
         } else if (state === 'celebrate') {
-          rotate('spine_02', -0.12, 0, 0);
-          rotate('upperarm_l', -2.1, 0, -0.25);
-          rotate('upperarm_r', -2.1, 0, 0.25);
-          rotate('thigh_l', -0.12 * pulse, 0, 0); rotate('thigh_r', 0.12 * pulse, 0, 0);
+          const style = ['standard','rare','premium'].includes(action.celebrationStyle) ? action.celebrationStyle : 'standard';
+          if (style === 'standard') {
+            // Victoire classique : les deux bras levés, geste lisible à distance.
+            rotate('spine_02', -0.12, 0, 0);
+            rotate('upperarm_l', -2.1, 0, -0.25);
+            rotate('upperarm_r', -2.1, 0, 0.25);
+          } else if (style === 'rare') {
+            // Célébration rare : bras ouverts et buste légèrement tourné.
+            rotate('spine_02', -0.08, 0, -0.16 * pulse);
+            rotate('upperarm_l', -1.05, 0, -0.95);
+            rotate('upperarm_r', -1.05, 0, 0.95);
+            rotate('lowerarm_l', -0.45 * pulse, 0, -0.12);
+            rotate('lowerarm_r', -0.45 * pulse, 0, 0.12);
+          } else {
+            // Célébration premium : un bras haut, l'autre vers le public.
+            rotate('spine_02', -0.18, 0, 0.12 * pulse);
+            rotate('upperarm_l', -2.35, 0, -0.12);
+            rotate('upperarm_r', -0.55, 0, 0.95);
+            rotate('lowerarm_r', -0.65 * pulse, 0, 0.15);
+          }
+          rotate('thigh_l', -0.12 * pulse, 0, 0);
+          rotate('thigh_r', 0.12 * pulse, 0, 0);
         }
       }
       lastState = state;
