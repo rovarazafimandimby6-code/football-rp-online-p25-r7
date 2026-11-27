@@ -72,6 +72,7 @@ export class Game {
       });
     });
     const startingIds = new Set(this.players.filter(player => player.team === 'blue').map(player => player.id));
+    this.benchSize = Number.isInteger(callbacks.benchSize) ? Math.max(3, Math.min(7, callbacks.benchSize)) : 5;
     this.benchPlayers = {
       blue: createMatchSquad('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId, this.benchSize).substitutes.map(player => ({ ...player, team:'blue' }))
         .filter(player => player.id !== null && player.id !== undefined && !startingIds.has(player.id)),
@@ -80,7 +81,6 @@ export class Game {
     };
     this.substitutionsUsed = { blue: 0, red: 0 };
     this.substitutionLimit = Infinity;
-    this.benchSize = Number.isInteger(callbacks.benchSize) ? Math.max(3, Math.min(7, callbacks.benchSize)) : 5;
     this.aiSubstitutionCheckTimer = 0;
 
     for (const p of this.players) {
