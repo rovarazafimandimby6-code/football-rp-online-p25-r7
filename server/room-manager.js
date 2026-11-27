@@ -7,6 +7,7 @@ import { buildMatchPerformance } from './player-rating.js';
 import { getP27StadiumCapacity } from '../src/p27-shop-catalog.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const virtualMatchSeconds = room => Math.min(90 * 60, Math.max(0, Number(room.elapsedMs) || 0) / (Math.max(1, Number(room.durationMinutes) || 5) * 60_000) * 90 * 60);
 
 /** Authoritative in-memory 5v5 room manager. One input stream controls one avatar. */
 export class RoomManager {
