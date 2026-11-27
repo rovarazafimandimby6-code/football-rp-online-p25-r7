@@ -1,5 +1,6 @@
 import { chooseRenderProfile, resolveRenderProfile } from './performance-tuning.js';
 import * as THREE from 'three';
+import { RenderFramePacer } from './render-frame-pacer.js';
 
 export class SceneManager {
   constructor(container) {
@@ -67,6 +68,7 @@ export class SceneManager {
 
     this.quality = 'auto';
     this.targetFps = initialProfile.targetFps || 30;
+    this.framePacer = new RenderFramePacer(this.targetFps);
     this.setQuality('auto');
 
     this._onResize = () => this.resize();
@@ -89,6 +91,7 @@ export class SceneManager {
     this.quality = profile.quality;
     this.requestedQuality = level;
     this.targetFps = profile.targetFps || 30;
+    this.framePacer?.setTargetFps(this.targetFps);
     this.renderer.setPixelRatio(profile.pixelRatio);
     this.renderer.shadowMap.enabled = profile.shadows;
     this.sunLight.castShadow = profile.shadows;
@@ -109,9 +112,12 @@ export class SceneManager {
     this.renderer.setSize(w, h, false);
   }
 
-  render() {
-    if (!this.renderer || this.contextLost || this.renderer.getContext().isContextLost()) return;
+  render(nowMs = performance.now()) {
+    if (!this.renderer || this.contextLost || this.renderer.getContext().isContextLost()) return false;
+    // Cap GPU work to the selected device profile while simulation/input remain RAF-driven.
+    if (this.framePacer && !this.framePacer.shouldRender(nowMs)) return false;
     this.renderer.render(this.scene, this.camera);
+    return true;
   }
 
   dispose() {
