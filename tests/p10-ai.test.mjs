@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
+import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
 
 const player = (id, team, x, z, specialty = 'balanced') => ({
   id, team, role: 'FWD', specialty,
@@ -122,6 +122,27 @@ test('P27: la qualité de décision offensive reste bornée pour les attributs e
   assert.ok(decisionAttributeFactor(weak, 'shooting', 'composure') >= 0.78);
   assert.ok(decisionAttributeFactor(elite, 'shooting', 'composure') <= 1.28);
   assert.ok(decisionAttributeFactor(elite, 'shooting', 'composure') > decisionAttributeFactor(weak, 'shooting', 'composure'));
+});
+
+test('P27: le défenseur de couverture ferme la ligne vers le receveur adverse dangereux', () => {
+  const cover = player('cover', 'blue', 3, -5, 'cover');
+  cover.homePos = { x: 3, z: -5 };
+  const carrier = player('carrier', 'red', 12, 0, 'runner');
+  const receiver = player('receiver', 'red', 6, 9, 'finisher');
+  const distant = player('distant', 'red', -8, -12, 'balanced');
+  const target = getDefensiveCoverTarget(cover, { pos: carrier.pos, owner: carrier }, [carrier, receiver, distant], 1);
+  assert.ok(target.x < carrier.pos.x, 'la couverture se place entre le porteur et le receveur');
+  assert.ok(target.z > carrier.pos.z && target.z < receiver.pos.z, 'la couverture ferme le couloir de passe');
+  assert.ok(target.x >= -26 && target.x <= 26 && target.z >= -15 && target.z <= 15);
+});
+
+test('P27: sans receveur adverse exploitable, la couverture protège l’axe du ballon', () => {
+  const cover = player('cover', 'blue', 4, 0, 'cover');
+  cover.homePos = { x: 4, z: 0 };
+  const carrier = player('carrier', 'red', 2, 0, 'runner');
+  const target = getDefensiveCoverTarget(cover, { pos: carrier.pos, owner: carrier }, [carrier], 1);
+  assert.ok(target.x < carrier.pos.x, 'la couverture reste côté but');
+  assert.equal(target.z, 0);
 });
 
 test('P27: le bloc défensif protège la profondeur côté but et conserve les couloirs', () => {
