@@ -26,6 +26,20 @@ function loadHair(style) {
   return hairPromises.get(file);
 }
 
+function disposePlayerModelResources(model) {
+  if (!model) return;
+  const ownedGeometries = new Set();
+  const materials = new Set();
+  model.traverse((node) => {
+    if (!node.isMesh) return;
+    if (node.userData?.p27OwnedGeometry && node.geometry) ownedGeometries.add(node.geometry);
+    const list = Array.isArray(node.material) ? node.material : (node.material ? [node.material] : []);
+    for (const material of list) materials.add(material);
+  });
+  for (const material of materials) material.dispose();
+  for (const geometry of ownedGeometries) geometry.dispose();
+}
+
 function setKitMaterials(model, team, isGK, appearance) {
   const palette = appearance?.kitColors;
   const primary = palette?.primary || (team === 'blue' ? '#2676f2' : '#e03d35');
@@ -67,7 +81,7 @@ function attachHair(model, hairGltf) {
 export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appearance, onReady }) {
   try {
     const [base, animationSource] = await Promise.all([loadBase(), loadAnimations()]);
-    if (!root?.parent && root?.userData?.disposed) return null;
+    if (root?.userData?.disposed) return null;
     const model = cloneSkeleton(base.scene);
     model.name = 'P25_Male_Humanoid';
     // SkeletonUtils clones the rig but shares source materials; isolate them before applying club colors.
@@ -89,6 +103,12 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
     if (appearance?.shopBeardStyle) {
       const beard = await loadHair('beard').catch(() => null);
       attachHair(model, beard);
+    }
+    // The visual may have been removed while optional hair assets were loading.
+    // Release cloned materials and owned cosmetic geometry before abandoning it.
+    if (root?.userData?.disposed) {
+      disposePlayerModelResources(model);
+      return null;
     }
     const bonesForCosmetics = new Map();
     model.traverse((node) => { if (node.isBone && node.name) bonesForCosmetics.set(node.name, node); });
@@ -249,16 +269,7 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
     return { model, mixer, update, dispose() {
       mixer.stopAllAction();
       root.remove(model);
-      const ownedGeometries = new Set();
-      const materials = new Set();
-      model.traverse((node) => {
-        if (!node.isMesh) return;
-        if (node.userData?.p27OwnedGeometry && node.geometry) ownedGeometries.add(node.geometry);
-        const list = Array.isArray(node.material) ? node.material : (node.material ? [node.material] : []);
-        for (const material of list) materials.add(material);
-      });
-      for (const material of materials) material.dispose();
-      for (const geometry of ownedGeometries) geometry.dispose();
+      disposePlayerModelResources(model);
       mixer.uncacheRoot(model);
       fallbackBody.visible = true;
     } };
