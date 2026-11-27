@@ -29,7 +29,7 @@ test('Google protection stays on the player/account path while Settings remains 
   assert.match(source, /renderGoogleProtectionCard\(\{ compact: true \}\)/);
   assert.match(source, /page === 'settings'/);
   assert.match(source, /Les options détaillées seront ajoutées après la finalisation des écrans principaux/);
-  assert.match(source, /data-page="account"/);
+  assert.match(source, /page === 'account'/);
 });
 
 test('first launch creates a password-free player profile before opening the dashboard', () => {
