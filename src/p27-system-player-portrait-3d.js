@@ -93,7 +93,7 @@ export async function renderSystemPlayerPortrait3D(player) {
       const recolor = source => {
         const mat = source.clone();
         const name = String(mat.name || '').toLowerCase();
-        if (/hair/.test(name)) mat.color?.set(player?.appearance?.hairColor === 'blond' ? '#b58a4d' : player?.appearance?.hairColor === 'brown' ? '#493027' : '#211b1a');
+        if (/hair/.test(name)) mat.color?.set(hairColorHex(player?.appearance?.hairColor));
         if (/superhero|shirt|jersey|cloth/.test(name)) mat.color?.set(safeColor(player?.appearance?.kitColors?.primary, '#2865a8'));
         return mat;
       };
