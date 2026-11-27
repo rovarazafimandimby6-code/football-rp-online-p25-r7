@@ -114,6 +114,33 @@ test('P27 boutique : une interruption après débit reprend sans double prélèv
  }finally{f.cleanup();}
 });
 
+
+test('P27 boutique : une interruption après crédit de revente reprend sans double paiement',()=>{
+ const f=fixture();try{
+  fund(f.progressionStore,'player-resale-recovery');
+  const bought=f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-resale-recovery',purchaseId:'resale-recovery-buy'});
+  assert.equal(bought.ok,true);
+  const before=f.progressionStore.get('player-resale-recovery').coins;
+  const original=f.progressionStore.creditCoins.bind(f.progressionStore);
+  let interrupted=false;
+  f.progressionStore.creditCoins=(accountId,args)=>{
+   const result=original(accountId,args);
+   if(!interrupted){interrupted=true;throw new Error('SIMULATED_PROCESS_INTERRUPTION');}
+   return result;
+  };
+  assert.throws(()=>f.service.resale({shop:'player',actorId:'player-resale-recovery',itemId:'boots-standard',resaleId:'resale-recovery-sale'}),/SIMULATED_PROCESS_INTERRUPTION/);
+  const afterFirstCredit=f.progressionStore.get('player-resale-recovery').coins;
+  assert.equal(afterFirstCredit,before+250);
+  assert.equal(f.service.inventory('player','player-resale-recovery')[0].status,'owned');
+  f.progressionStore.creditCoins=original;
+  const resumed=f.service.resale({shop:'player',actorId:'player-resale-recovery',itemId:'boots-standard',resaleId:'resale-recovery-sale'});
+  assert.equal(resumed.ok,true);
+  assert.equal(f.progressionStore.get('player-resale-recovery').coins,afterFirstCredit);
+  assert.equal(f.service.inventory('player','player-resale-recovery')[0].status,'resold');
+  assert.equal(f.service.getHistory({shop:'player',ownerId:'player-resale-recovery'}).resales.length,1);
+ }finally{f.cleanup();}
+});
+
 test('P27 boutique : une promotion fournie par le client est ignorée',()=>{
  const f=fixture();try{
   fund(f.progressionStore,'player-client-promo');
