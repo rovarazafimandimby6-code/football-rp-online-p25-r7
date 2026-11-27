@@ -467,3 +467,19 @@ test('P27 carrière humaine : changement de club met à jour le maillot, le num�
  assert.equal(target[0].number,moved.number);
  assert.notDeepEqual(target[0].appearance.kitColors,sourceBefore.appearance.kitColors);
 });
+
+test('P27 carrière humaine : un transfert non sauvegardé restaure les deux effectifs',()=>{
+ let failWrites=false;
+ const storage={value:null,getItem(){return this.value;},setItem(key,value){if(failWrites)throw new Error('DISK_FULL');this.value=value;}};
+ const manager=new ClubManager(clubs,storage,'human-career-transfer-rollback');
+ const playerId='human-career-rollback-p27';
+ assert.equal(manager.syncHumanCareer({playerId,clubId:'club-a',name:'Rollback Human',contract:{status:'active',clubId:'club-a',salary:1000,expiresAt:'2037-06-01T00:00:00.000Z'}}).ok,true);
+ const saved=storage.value;
+ failWrites=true;
+ const result=manager.syncHumanCareer({playerId,clubId:'club-b',previousClubId:'club-a',name:'Rollback Human',contract:{status:'active',clubId:'club-b',salary:1100,expiresAt:'2037-08-01T00:00:00.000Z'}});
+ assert.deepEqual(result,{ok:false,reason:'roster-persistence-failed'});
+ assert.equal(manager.getClub('club-a').roster.filter(player=>player.id===playerId).length,1);
+ assert.equal(manager.getClub('club-b').roster.some(player=>player.id===playerId),false);
+ assert.equal(manager.getClub('club-a').releasedPlayers.some(entry=>entry.player.id===playerId),false);
+ assert.equal(storage.value,saved);
+});
