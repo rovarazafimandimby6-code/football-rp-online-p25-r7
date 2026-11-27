@@ -450,7 +450,8 @@ test('P27 effectifs : ajout et modification sont annulés si la sauvegarde écho
 
 test('P27 carrière humaine : changement de club met à jour le maillot, le numéro et le contrat sans doublon',()=>{
  const storage={value:null,getItem(){return this.value;},setItem(key,value){this.value=value;}};
- const manager=new ClubManager(clubs,storage,'human-career-roster-sync');
+ const testClubs=clubs.map(item=>({...item,colors:item.id==='club-b'?['#aa0000','#ffffff','#000000']:item.colors}));
+ const manager=new ClubManager(testClubs,storage,'human-career-roster-sync');
  const playerId='human-career-sync-p27';
  const first=manager.syncHumanCareer({playerId,clubId:'club-a',name:'Human Career',contract:{status:'active',clubId:'club-a',salary:1500,expiresAt:'2037-06-01T00:00:00.000Z'}});
  assert.equal(first.ok,true);
@@ -465,7 +466,7 @@ test('P27 carrière humaine : changement de club met à jour le maillot, le num�
  assert.equal(target[0].contract.clubId,'club-b');
  assert.equal(target[0].contract.salary,1700);
  assert.equal(target[0].number,moved.number);
- assert.notDeepEqual(target[0].appearance.kitColors,sourceBefore.appearance.kitColors);
+ assert.deepEqual(target[0].appearance.kitColors,{primary:'#aa0000',secondary:'#ffffff',accent:'#000000'});
 });
 
 test('P27 carrière humaine : un transfert non sauvegardé restaure les deux effectifs',()=>{
