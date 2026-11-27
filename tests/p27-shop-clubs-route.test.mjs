@@ -123,10 +123,10 @@ test('P27 boutique club : liste uniquement les clubs réellement dirigés par le
       headers:{authorization:`Bearer ${owner.token}`}
     });
     assert.equal(formerOwnerSnapshot.status,403);
-    const newOwnerSnapshot = await fetch(base+`/api/shop?shop=club&clubId=${encodeURIComponent(club.id)}`,{
+    const finalOwnerSnapshot = await fetch(base+`/api/shop?shop=club&clubId=${encodeURIComponent(club.id)}`,{
       headers:{authorization:`Bearer ${outsider.token}`}
     });
-    assert.equal(newOwnerSnapshot.status,200);
+    assert.equal(finalOwnerSnapshot.status,200);
   } finally {
     club.managerId = previousManagerId;
     await new Promise(resolve => server.close(resolve));
