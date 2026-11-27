@@ -149,3 +149,21 @@ test('P27 finance : un lot contenant un identifiant rejoué avec un autre montan
  assert.equal(f.balance('club'),900);
  assert.equal(f.getAccount('club').entries.length,1);
 });
+
+test('P27 finance : un prêt ne peut pas réutiliser un identifiant déjà présent dans le journal',()=>{
+ const f=new ClubFinanceStore(null,'loan-ledger-collision');f.openAccount('club',1000);
+ f.post('club',{id:'loan-collision',category:'other',amount:200,direction:'income'});
+ const result=f.issueLoan('club',{id:'collision',lender:'Banque',principal:500,totalRepayment:600,durationWeeks:3,issuedAt:100});
+ assert.deepEqual(result,{ok:false,reason:'loan-transaction-id-conflict'});
+ assert.equal(f.balance('club'),1200);
+ assert.equal(f.getAccount('club').loans.length,0);
+ assert.equal(f.getAccount('club').entries.length,1);
+});
+
+test('P27 finance : un prêt refuse des échéances qui ne peuvent pas toutes être positives',()=>{
+ const f=new ClubFinanceStore(null,'loan-installment-minimum');f.openAccount('club',0);
+ const result=f.issueLoan('club',{id:'tiny-loan',lender:'Caisse',principal:1,totalRepayment:2,durationWeeks:3,issuedAt:100});
+ assert.deepEqual(result,{ok:false,reason:'invalid-loan'});
+ assert.equal(f.balance('club'),0);
+ assert.equal(f.getAccount('club').loans.length,0);
+});
