@@ -113,3 +113,30 @@ test("D1 player shop inventory has one equipped cosmetic per equipment slot", as
     assert.equal(inventory.find(item=>item.itemId==="boots-rare").equipped,true);
   } finally { db.close(); }
 });
+
+
+test("D1 player shop rejects tampering with purchase and resale journals", async () => {
+  const db = new SqliteD1();
+  try {
+    const shop = new D1PlayerShopRepository(db,{now});
+    await shop.purchase(accountId,{itemId:"boots-standard",purchaseId:"purchase-immutable"});
+    assert.throws(
+      () => db.db.prepare("UPDATE p27_player_shop_purchases SET paid_price=1 WHERE account_id=?").run(accountId),
+      /SHOP_PURCHASE_IMMUTABLE/
+    );
+    assert.throws(
+      () => db.db.prepare("UPDATE p27_player_shop_inventory SET paid_price=1 WHERE account_id=?").run(accountId),
+      /SHOP_INVENTORY_IDENTITY_IMMUTABLE/
+    );
+    await shop.setEquipped(accountId,{itemId:"boots-standard",equipped:false});
+    await shop.resale(accountId,{itemId:"boots-standard",resaleId:"resale-immutable"});
+    assert.throws(
+      () => db.db.prepare("UPDATE p27_player_shop_resales SET amount=1 WHERE account_id=?").run(accountId),
+      /SHOP_RESALE_IMMUTABLE/
+    );
+    assert.throws(
+      () => db.db.prepare("UPDATE p27_player_shop_inventory SET status='owned' WHERE account_id=?").run(accountId),
+      /SHOP_INVENTORY_RESOLD/
+    );
+  } finally { db.close(); }
+});
