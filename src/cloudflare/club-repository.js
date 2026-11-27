@@ -53,18 +53,28 @@ export class D1ClubRepository {
       return { ok:false, reason:"invalid-import" };
     }
     const at = new Date(now).toISOString();
+    const existing = await this.getClub(clubId);
+    if (existing) {
+      if (existing.ownerAccountId !== ownerAccountId ||
+          existing.openingBalance !== openingBalance || existing.balance !== openingBalance) {
+        return { ok:false, reason:"import-conflict", current:existing };
+      }
+      return { ok:true, duplicate:true, club:existing };
+    }
     try {
       await this.db.batch([
         this.db.prepare(
-          "INSERT OR IGNORE INTO p27_clubs (club_id,owner_account_id,ownership_revision,created_at,updated_at) VALUES (?,?,0,?,?)"
+          "INSERT INTO p27_clubs (club_id,owner_account_id,ownership_revision,created_at,updated_at) VALUES (?,?,0,?,?)"
         ).bind(clubId,ownerAccountId,at,at),
         this.db.prepare(
-          "INSERT OR IGNORE INTO p27_club_finance_accounts (club_id,opening_balance,balance,revision,created_at,updated_at) VALUES (?,?,?,0,?,?)"
+          "INSERT INTO p27_club_finance_accounts (club_id,opening_balance,balance,revision,created_at,updated_at) VALUES (?,?,?,0,?,?)"
         ).bind(clubId,openingBalance,openingBalance,at,at),
       ]);
     } catch (error) {
       const message = String(error?.message || "");
-      if (message.includes("p27_one_club_per_owner")) return { ok:false, reason:"owner-already-has-club" };
+      if (message.includes("p27_one_club_per_owner") || message.includes("UNIQUE constraint failed: p27_clubs.owner_account_id")) {
+        return { ok:false, reason:"owner-already-has-club" };
+      }
       throw error;
     }
     const current = await this.getClub(clubId);
@@ -72,7 +82,7 @@ export class D1ClubRepository {
         current.openingBalance !== openingBalance || current.balance !== openingBalance) {
       return { ok:false, reason:"import-conflict", current };
     }
-    return { ok:true, duplicate:current.ownershipRevision > 0 || current.financeRevision > 0, club:current };
+    return { ok:true, duplicate:false, club:current };
   }
 
   async transferOwnership(clubId, {
