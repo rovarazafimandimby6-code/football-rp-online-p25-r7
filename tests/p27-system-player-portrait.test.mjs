@@ -32,6 +32,20 @@ test('library and profile variants render portrait images with role labels', () 
   assert.match(detail, /alt="Portrait du joueur Mika Rakoto"/);
 });
 
+test('system portrait uses club kit design and accent colors without trusting raw color input', () => {
+  const vertical = decodeURIComponent(systemPlayerPortraitDataUri({
+    ...player, appearance: { ...player.appearance, kitDesign:'vertical', kitColors:{ primary:'#123456', secondary:'#ffffff', accent:'#f0b429' } }
+  }).split(',')[1]);
+  const sash = decodeURIComponent(systemPlayerPortraitDataUri({
+    ...player, appearance: { ...player.appearance, kitDesign:'sash', kitColors:{ primary:'#123456', secondary:'#ffffff', accent:'url(javascript:alert(1))' } }
+  }).split(',')[1]);
+  assert.match(vertical, /M108 158 L116 158/);
+  assert.match(vertical, /#f0b429/);
+  assert.match(sash, /M65 178 L78 166/);
+  assert.doesNotMatch(sash, /javascript:/);
+  assert.notEqual(vertical, sash);
+});
+
 test('portrait generation safely falls back when appearance and kit colors are absent', () => {
   const fallback = systemPlayerPortraitDataUri({ id: 'free-agent-01', name: 'A. Joueur' });
   const svg = decodeURIComponent(fallback.split(',')[1]);
