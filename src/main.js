@@ -1509,7 +1509,7 @@ menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
   if (pageButton) { renderPage(pageButton.dataset.view || pageButton.dataset.page); return; }
   const careerButton = event.target.closest('.player-card-more');
-  if (careerButton) { const index = Number(careerButton.dataset.playerIndex); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = 'players'; if(selectedPlayerProfile) renderPage('player-detail'); return; }
+  if (careerButton) { const index = Number(careerButton.dataset.playerIndex); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = careerButton.closest('[data-profile-origin]')?.dataset.profileOrigin === 'clubs' ? 'clubs' : 'players'; if(selectedPlayerProfile) renderPage('player-detail'); return; }
   const playerCard = event.target.closest('[data-player-profile]');
   if (playerCard && event.target.closest('.player-card-details')) return;
   if (playerCard) {
@@ -1541,7 +1541,7 @@ menu.addEventListener('click', event => {
     return;
   }
   if (action === 'players-page') { playerLibraryPage=Math.max(0,playerLibraryPage+Number(event.target.closest('[data-page]')?.dataset.page||0)); filterPlayerLibrary(); }
-  else if (action === 'open-player-profile') { const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); }
+  else if (action === 'open-player-profile') { const origin = event.target.closest('[data-profile-origin]')?.dataset.profileOrigin; const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = origin === 'clubs' ? 'clubs' : 'players'; renderPage('player-detail'); }
   else if (action === 'back-player-library') { selectedPlayerProfile = null; renderPage(playerProfileReturnPage); }
   else if (action === 'view-roster') { selectedClubId = event.target.closest('[data-club]')?.dataset.club || null; renderPage('clubs'); }
   else if (action?.startsWith('rp-club-')) { void performRpClubAction(action, event.target.closest('[data-action]')); }
