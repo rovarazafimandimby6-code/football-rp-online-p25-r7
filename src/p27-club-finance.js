@@ -76,8 +76,16 @@ export class ClubFinanceStore {
       if(ids.has(entry.id))return {ok:false,reason:'duplicate-batch-id'};
       ids.add(entry.id);
     }
-    const existing=new Set(account.entries.map(x=>x.id));
-    const fresh=entries.filter(x=>!existing.has(x.id));
+    const existing=new Map(account.entries.map(entry=>[entry.id,entry]));
+    for(const entry of entries){
+      const prior=existing.get(entry.id);
+      if(prior && (prior.category!==entry.category || prior.amount!==entry.amount ||
+          prior.direction!==entry.direction || prior.description!==entry.description ||
+          prior.createdAt!==entry.createdAt || prior.referenceId!==entry.referenceId)){
+        return {ok:false,reason:'transaction-id-conflict'};
+      }
+    }
+    const fresh=entries.filter(entry=>!existing.has(entry.id));
     if(!fresh.length)return {ok:true,duplicate:true,account:this.getAccount(id)};
     let next=this.balance(id);
     for(const entry of fresh){
