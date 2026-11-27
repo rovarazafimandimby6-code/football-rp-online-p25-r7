@@ -136,7 +136,9 @@ test('P27 effectifs carrière : une panne de sauvegarde ne libère pas le joueur
 
 test('P27 carrière : les changements de profil après un match sont répercutés dans l’effectif avant la rencontre suivante', async () => {
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
-  assert.match(main, /applyCareerMatchReward\(\{ careerReward:reward, profileStore, matchId \}\);[\\s\\S]{0,400}syncCareerPlayerRoster\(\{ clubs, career, profile: profileStore\.profile \}\);/);
+  const rewardCall = main.indexOf('applyCareerMatchReward({ careerReward:reward, profileStore, matchId });');
+  const rosterSync = main.indexOf('syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });', rewardCall);
+  assert.ok(rewardCall >= 0 && rosterSync > rewardCall, 'les gains doivent être traités avant la synchronisation du joueur');
 });
 
 test('P27 carrière / Mercato : les actions de contrat annulent la mutation si la synchronisation de roster échoue', async () => {
