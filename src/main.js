@@ -724,9 +724,9 @@ function renderPage(page = 'home') {
         <article class="p27-hub-career">
           <div class="p27-hub-career-copy">
             <span class="p27-hub-kicker">MODE CARRIÈRE · SAISON PERSONNELLE</span>
-            <h2>${escapeHTML(profile.identity.displayName || 'Votre joueur')}</h2>
+            <h2>${escapeHTML(profile.identity.displayName || 'Votre joueur')} </h2>
             <p>${escapeHTML(clubLabel)} · NIVEAU ${level}</p>
-            <div class="p27-hub-xp"><span>PROGRESSION</span><div><i style="width:${xpProgress}%"></i></div><b>${xpProgress}%</b></div>
+            <div class="p27-hub-xp"><span>PROGRESSION</span><div><i style="width:${xpProgress}%"></i></div><b>${xpProgress}% </b></div>
             <button data-page="career-hub">ACCÉDER À LA CARRIÈRE <span>›</span></button>
           </div>
           <div class="p27-hub-rating"><small>NOTE GLOBALE</small><strong>${overall}</strong><span>JOUEUR</span></div>
@@ -735,17 +735,21 @@ function renderPage(page = 'home') {
         <button class="p27-hub-panel p27-hub-match" data-action="choose-match">
           <span class="p27-hub-kicker">JOUER</span><strong>MATCH AMICAL</strong><small>5 contre 5 · Local</small><i>›</i>
         </button>
-        <button class="p27-hub-panel p27-hub-team" data-page="players">
-          <span class="p27-hub-kicker">RECRUTEMENT</span><strong>JOUEURS</strong><small>${clubs.listClubs().reduce((n,c)=>n+c.roster.length,0)} profils</small><i>›</i>
+        <button class="p27-hub-panel p27-hub-player" data-page="player">
+          <span class="p27-hub-kicker">PERSONNALISATION</span><strong>MON JOUEUR</strong><small>Niveau ${level} · Profil et apparence</small><i>›</i>
         </button>
         <button class="p27-hub-panel p27-hub-competitions" data-page="competitions">
           <span class="p27-hub-kicker">SAISON</span><strong>COMPÉTITIONS</strong><small>${clubs.listDivisions().length} divisions</small><i>›</i>
         </button>
-        <button class="p27-hub-panel p27-hub-shop" data-page="boutique"><span class="p27-hub-kicker">PERSONNALISATION</span><strong>BOUTIQUE</strong><small>Boutique joueur & club</small><i>›</i></button>
         <button class="p27-hub-panel p27-hub-market" data-page="mercato">
-          <span class="p27-hub-kicker">MARCHÉ</span><strong>MERCATO</strong><small>${pendingOffers} offre(s) en attente</small><i>›</i>
+          <span class="p27-hub-kicker">TRANSFERTS</span><strong>MERCATO</strong><small>${pendingOffers} offre(s) en attente · Bibliothèques</small><i>›</i>
         </button>
-        <button class="p27-hub-panel p27-hub-club" data-page="rp-club"><span class="p27-hub-kicker">COMMUNAUTÉ · GROUPEMENT DE JOUEURS</span><strong>CLUB RP</strong><small>Créer ou rejoindre un club</small><i>›</i></button>
+        <button class="p27-hub-panel p27-hub-rankings" data-page="rankings">
+          <span class="p27-hub-kicker">MONDE COMPÉTITIF</span><strong>CLASSEMENTS</strong><small>Positions officielles</small><i>›</i>
+        </button>
+        <button class="p27-hub-panel p27-hub-club" data-page="rp-club">
+          <span class="p27-hub-kicker">COMMUNAUTÉ</span><strong>CLUBS</strong><small>Créer ou rejoindre un Club RP</small><i>›</i>
+        </button>
         <button class="p27-hub-panel p27-hub-results" data-page="results">
           <span class="p27-hub-kicker">HISTORIQUE</span><strong>RÉSULTATS</strong><small>${latestMatch ? `${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · ${latestMatch.rating.toFixed(1)}/10` : 'Aucun match enregistré'}</small><i>›</i>
         </button>
