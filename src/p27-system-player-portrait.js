@@ -27,7 +27,7 @@ export function systemPlayerPortraitDataUri(player) { return `data:image/svg+xml
 export function renderSystemPlayerPortrait(player, variant='card') {
   const p=player||{}, role=String(p.position||p.role||'').toUpperCase();
   const label=String(p.name||'Joueur du système').replace(/[<>&"']/g,'');
-  const cls=variant==='detail'?'player-career-avatar player-career-avatar-portrait':'player-card-portrait player-card-portrait-system';
+  const cls=variant==='detail'?'player-career-avatar player-career-avatar-portrait':variant==='roster'?'player-roster-portrait':'player-card-portrait player-card-portrait-system';
   const config=encodeURIComponent(JSON.stringify({id:p.id||'',role:p.role||'',position:p.position||'',number:p.number||0,appearance:p.appearance||{}}));
   return `<span class="${cls}" aria-label="Portrait 3D du joueur ${label}"><img loading="lazy" decoding="async" data-p27-system-portrait data-p27-portrait-config="${config}" src="${systemPlayerPortraitDataUri(p)}" alt="Portrait du joueur ${label}"/><small>${role}</small></span>`;
 }
