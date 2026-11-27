@@ -883,7 +883,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     const initials = player.name.split(/\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase();
     const playerStatusLabel = player.status==='free'?'JOUEUR LIBRE':player.status==='loaned'?'EN PRÊT':'SOUS CONTRAT';
     const playerClubLabel = player.clubName || (player.lastClubName ? `Dernier club : ${player.lastClubName}` : 'Sans club');
-    content.innerHTML = `<button class="text-cta" data-action="back-player-library">← RETOUR À LA BIBLIOTHÈQUE</button>
+    content.innerHTML = `<button class="text-cta" data-action="back-player-library">← ${playerProfileReturnPage === 'clubs' ? 'RETOUR À L’EFFECTIF' : 'RETOUR À LA BIBLIOTHÈQUE'}</button>
       <section class="player-career-hero">
         ${(player.playerType==='system'||player.controlStatus==='system')&&player.isHuman!==true&&player.ownerType!=='human'&&player.source!=='human'&&player.createdBy!=='user'?renderSystemPlayerPortrait(player,'detail'):`<div class="player-career-avatar"><span>#${player.number}</span><b>${escapeHTML(initials)}</b></div>`}
         <div class="player-career-identity"><span class="eyebrow">${escapeHTML(player.clubDivision||player.division||playerStatusLabel)} · ${escapeHTML(roleNames[player.role]||player.role)}</span><h2>${escapeHTML(player.name)}</h2><p>${escapeHTML(playerClubLabel)} · <span class="player-nationality"><b aria-hidden="true">${countryFlag(player.nationality)}</b>  ${escapeHTML(countryName(player.nationality))}</span> · ${player.age} ans</p><div class="player-career-tags"><span>NOTE ${player.rating}</span><span>POTENTIEL ${player.potential}</span><span>${playerStatusLabel}</span><span>PIED ${player.preferredFoot==='left'?'GAUCHE':player.preferredFoot==='both'?'AMBIDEXTRE':'DROIT'}</span></div></div>
