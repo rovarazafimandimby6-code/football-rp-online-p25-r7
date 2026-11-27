@@ -114,3 +114,11 @@ test("P27 fiche joueur : le retour conserve le catalogue d’origine", () => {
   assert.ok(main.includes("playerProfileReturnPage = origin === 'clubs' ? 'clubs' : 'players'"));
   assert.ok(main.includes("renderPage(playerProfileReturnPage)"));
 });
+
+
+test("P27 effectif de club : clic et clavier ouvrent la fiche joueur", () => {
+  assert.ok(main.includes("playerCard.matches('tr[data-player-row]')"));
+  assert.ok(main.includes("playerProfileReturnPage = playerCard.dataset.profileOrigin === 'clubs' ? 'clubs' : 'players'"));
+  assert.ok(main.includes("rosterRow && (event.key === 'Enter' || event.key === ' ')"));
+  assert.ok(main.includes("renderPage('player-detail')"));
+});
