@@ -1828,7 +1828,11 @@ const filterPlayerLibrary = () => {
   cards.sort((a,b)=>{
     if(sort==='name') return a.dataset.name.localeCompare(b.dataset.name,'fr');
     const key=sort==='potential'?'potential':sort==='age'?'age':'rating';
-    return sort==='age'?Number(a.dataset.age)-Number(b.dataset.age):Number(b.dataset[key])-Number(a.dataset[key]);
+    const av=Number(a.dataset[key]),bv=Number(b.dataset[key]);
+    const aValid=Number.isFinite(av),bValid=Number.isFinite(bv);
+    if(aValid!==bValid) return aValid?-1:1;
+    if(aValid&&av!==bv) return sort==='age'?av-bv:bv-av;
+    return a.dataset.name.localeCompare(b.dataset.name,'fr');
   });
   const matchedCards=cards.filter(card=>(card.dataset.name.includes(query)||card.dataset.archetype.includes(query)||card.dataset.clubName.includes(query)||card.dataset.lastClub.includes(query))
     &&(club==='all'||card.dataset.club===club)&&(role==='all'||card.dataset.role===role)
@@ -1875,7 +1879,11 @@ const filterClubDiscovery = event => {
     cards.sort((a,b)=>{
       if(sort==='name') return a.dataset.name.localeCompare(b.dataset.name,'fr');
       const key=sort==='roster'?'roster':sort==='reputation'?'reputation':'rating';
-      return Number(b.dataset[key])-Number(a.dataset[key]);
+      const av=Number(a.dataset[key]),bv=Number(b.dataset[key]);
+      const aValid=Number.isFinite(av),bValid=Number.isFinite(bv);
+      if(aValid!==bValid) return aValid?-1:1;
+      if(aValid&&av!==bv) return bv-av;
+      return a.dataset.name.localeCompare(b.dataset.name,'fr');
     });
     const matches=cards.filter(card=>(card.dataset.name.includes(query)||card.dataset.location.includes(query))
       && (division==='all'||card.dataset.division===division)
