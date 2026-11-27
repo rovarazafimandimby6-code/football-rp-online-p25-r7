@@ -456,6 +456,7 @@ export class Player {
     this.tackleTimer = 0;
     this.stridePhase = Math.random() * Math.PI * 2;
     this.previousVisualSpeed = 0;
+    this.visualAnimationTime = 0;
     // Réutilise les paramètres d'animation transmis au modèle 3D à chaque image.
     this.visualGaitCache = {};
     this.visualModelAction = { progress: 0.5, time: 0, diveDir: 0, preferredFoot: this.preferredFoot, phase: this.dribblePhase, celebrationStyle: this.shopCelebrationStyle };
@@ -488,7 +489,9 @@ export class Player {
   updateVisual(dt) {
     dt = Number.isFinite(dt) ? THREE.MathUtils.clamp(dt, 0, 0.05) : 0;
     const v = this.visual;
-    const now = (typeof performance !== 'undefined' && Number.isFinite(performance.now?.())) ? performance.now() : Date.now();
+    // Horloge locale déterministe : évite un appel d'horloge système par joueur et par frame.
+    this.visualAnimationTime += dt * 1000;
+    const now = this.visualAnimationTime;
     // Cache les nœuds et les tampons de pose : aucune création de tableau/vecteur par image.
     if (!this.visualPoseCache) {
       const nodes = [v.body, v.headGroup, v.leftArm.shoulder, v.leftArm.elbow, v.rightArm.shoulder, v.rightArm.elbow, v.leftLeg.hip, v.leftLeg.knee, v.rightLeg.hip, v.rightLeg.knee];
