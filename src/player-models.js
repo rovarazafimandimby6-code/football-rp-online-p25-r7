@@ -96,10 +96,10 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
         if (!foot) continue;
         const shoe = new THREE.Group();
         shoe.name = `ShopBoot_${side}`;
-        const upper = new THREE.Mesh(new THREE.BoxGeometry(0.58,0.28,0.92), new THREE.MeshStandardMaterial({color,roughness:0.72,metalness:0.08}));
-        upper.position.set(0,-0.08,0.16);
-        const sole = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.075,0.94), new THREE.MeshStandardMaterial({color:'#111820',roughness:0.9}));
-        sole.position.set(0,-0.23,0.16);
+        const upper = new THREE.Mesh(new THREE.BoxGeometry(0.13,0.065,0.24), new THREE.MeshStandardMaterial({color,roughness:0.72,metalness:0.08}));
+        upper.position.set(0,-0.012,0.025);
+        const sole = new THREE.Mesh(new THREE.BoxGeometry(0.135,0.018,0.245), new THREE.MeshStandardMaterial({color:'#111820',roughness:0.9}));
+        sole.position.set(0,-0.047,0.025);
         shoe.add(upper,sole); shoe.traverse((node)=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
         foot.add(shoe);
       }
@@ -109,10 +109,10 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
       for (const side of ['l','r']) {
         const arm = bonesForCosmetics.get(`lowerarm_${side}`);
         if (!arm) continue;
-        const band = new THREE.Mesh(new THREE.TorusGeometry(0.105,0.025,8,20), new THREE.MeshStandardMaterial({color,metalness:0.18,roughness:0.55}));
+        const band = new THREE.Mesh(new THREE.TorusGeometry(0.035,0.008,8,20), new THREE.MeshStandardMaterial({color,metalness:0.18,roughness:0.55}));
         band.name = `ShopWristBand_${side}`;
         band.rotation.x = Math.PI/2;
-        band.position.y = 0.20;
+        band.position.y = 0.19;
         arm.add(band);
       }
     }
