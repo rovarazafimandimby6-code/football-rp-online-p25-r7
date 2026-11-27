@@ -137,6 +137,19 @@ export class JsonShopService {
       return {...item,...getShopPrice(item,{promotion,now:this.now()}),promotionType:promotion?.type||null,promotionLabel:promotion?.label||null};
     });
   }
+  publicAppearance(clubId){
+    const id=cleanId(clubId);
+    if(!id)return {equippedItemIds:[],stadiumExpansionLevel:0};
+    const items=this.inventory('club',id).filter(entry=>entry.status==='owned');
+    const equippedItemIds=items
+      .filter(entry=>entry.equipped===true && ['identity','kits','stadium','supporters'].includes(entry.category))
+      .map(entry=>entry.itemId)
+      .filter(itemId=>getShopItem(itemId)?.shop==='club');
+    const stadiumExpansionLevel=Math.max(0,...items
+      .filter(entry=>entry.category==='capacity' && Number.isInteger(entry.upgradeLevel) && entry.upgradeLevel>=1 && entry.upgradeLevel<=4)
+      .map(entry=>entry.upgradeLevel));
+    return {equippedItemIds,stadiumExpansionLevel};
+  }
   inventory(shop,ownerId){
     const rows=shop==='player'?this.state.players:this.state.clubs;
     const row=rows.find(item=>item.ownerId===ownerId);
