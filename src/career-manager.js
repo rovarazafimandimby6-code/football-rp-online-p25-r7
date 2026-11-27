@@ -44,6 +44,8 @@ export class CareerManager {
 
   persist() { return writeJsonWithBackup(this.storage, this.storageKey, this.snapshot(), normalizeCareerState); }
 
+  saveState() { return !this.storage?.setItem || this.persist(); }
+
   captureState() { return JSON.parse(JSON.stringify(this.snapshot())); }
 
   restoreState(state) {
@@ -206,7 +208,7 @@ export class CareerManager {
     this.clubId = club;
     this.contract = { clubId: club, salary: wage, signedAt: start.toISOString(), lastSalaryPaidAt: start.toISOString(), expiresAt: expires.toISOString(), status: 'active' };
     this.history.push({ type: 'signing', clubId: club, date: start.toISOString(), salary: wage });
-    if (!this.persist()) {
+    if (!this.saveState()) {
       this.restoreState(before);
       return { ok:false, reason:'persistence-failed' };
     }
