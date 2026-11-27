@@ -20,7 +20,8 @@ function validPersistedState(value){
       const activeItems=new Set();
       for(const entry of row.items){
         const item=getShopItem(entry?.itemId);
-        if(!item||item.shop!==shop||!['owned','resold'].includes(entry.status)||
+        if(!item||item.shop!==shop||entry.category!==item.category||entry.rarity!==item.rarity||
+          entry.upgradeLevel!==(item.upgradeLevel||null)||!['owned','resold'].includes(entry.status)||
           !Number.isSafeInteger(entry.paidPrice)||entry.paidPrice<1||entry.paidPrice>item.price||
           entry.currency!==item.currency||entry.resellable!==item.resellable||
           entry.resaleRate!==item.resaleRate||typeof entry.equipped!=='boolean'||
@@ -38,6 +39,8 @@ function validPersistedState(value){
     const item=getShopItem(purchase?.itemId);
     if(!cleanTransactionId(purchase?.id)||purchaseById.has(purchase.id)||!item||
       purchase.shop!==item.shop||!cleanId(purchase.ownerId)||!cleanId(purchase.actorId)||
+      (purchase.shop==='player'&&purchase.actorId!==purchase.ownerId)||
+      purchase.category!==item.category||purchase.rarity!==item.rarity||
       !['pending','completed','failed'].includes(purchase.status)||
       !Number.isSafeInteger(purchase.paidPrice)||purchase.paidPrice<1||purchase.paidPrice>item.price||
       purchase.basePrice!==item.price||!Number.isInteger(purchase.discountPercent)||
@@ -47,7 +50,7 @@ function validPersistedState(value){
     const inventory=inventoryByPurchase.get(purchase.id);
     if(purchase.status==='completed'){
       if(!inventory||inventory.shop!==purchase.shop||inventory.ownerId!==purchase.ownerId||
-        inventory.entry.itemId!==purchase.itemId)return false;
+        inventory.entry.itemId!==purchase.itemId||inventory.entry.purchasedAt!==purchase.createdAt)return false;
     }else if(inventory)return false;
     purchaseById.set(purchase.id,purchase);
   }
@@ -60,6 +63,7 @@ function validPersistedState(value){
     const item=getShopItem(resale?.itemId), inventory=inventoryByPurchase.get(resale?.purchaseId)||[...inventoryByPurchase.values()].find(record=>record.shop===resale?.shop&&record.ownerId===cleanId(resale?.ownerId)&&record.entry.itemId===resale?.itemId&&(resale?.status==='completed'?record.entry.resaleId===resale?.id:record.entry.status==='owned'));
     if(!cleanTransactionId(resale?.id)||resaleById.has(resale.id)||!item||
       resale.shop!==item.shop||!cleanId(resale.ownerId)||!cleanId(resale.actorId)||
+      (resale.shop==='player'&&resale.actorId!==resale.ownerId)||
       !['pending','completed'].includes(resale.status)||!Number.isSafeInteger(resale.amount)||
       resale.amount<1||resale.currency!==item.currency||!Number.isSafeInteger(resale.createdAt)||
       resale.createdAt<0||!inventory||inventory.shop!==resale.shop||
