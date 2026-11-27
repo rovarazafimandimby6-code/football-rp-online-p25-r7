@@ -81,6 +81,20 @@ export function getP27ClubShopKit(club = {}, inventory = [], kitType = 'home', r
   };
 }
 
+
+export function getP27ClubShopAppearance(club = {}, inventory = []) {
+  const owned = Array.isArray(inventory) ? inventory.filter(item => item && item.status === 'owned' && item.equipped === true) : [];
+  const has = id => owned.some(item => item.itemId === id);
+  const validColors = Array.isArray(club.colors) && club.colors.length >= 3 && club.colors.slice(0,3).every(validColor);
+  return {
+    crestStyle:has('club-crest-custom') ? 'custom' : 'classic',
+    crestColors:has('club-official-colors') && validColors ? club.colors.slice(0,3) : null,
+    stadiumSkin:has('club-stadium-premium') ? 'premium' : has('club-stadium-standard') ? 'standard' : 'default',
+    grassSkin:has('club-grass-premium') ? 'premium' : has('club-grass-standard') ? 'standard' : 'default',
+    supporters:{ flags:has('club-supporter-flags'), banners:has('club-supporter-banners'), tifo:has('club-supporter-tifo') }
+  };
+}
+
 export function applyP27ClubKit(player = {}, club = {}) {
   const appearance = player.appearance && typeof player.appearance === 'object' ? player.appearance : {};
   return { ...player, appearance:{ ...appearance, ...getP27ClubKit(club, player.role) } };
