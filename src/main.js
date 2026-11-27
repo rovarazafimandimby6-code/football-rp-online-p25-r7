@@ -1225,6 +1225,7 @@ async function startMatch(online = null) {
               });
               reward.matchId = matchId;
               profileStore.grantMatchRewards(reward);
+              syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
               seasonStats.recordMatch({ matchId, result: performance.result, stats: { ...performance.stats, cleanSheet: performance.cleanSheet }, minutesPlayedMs: performance.minutesPlayedMs, role: performance.role, rating: performance.rating, playerOfMatch: performance.playerOfMatch, opponent: performance.opponent });
             } catch (error) {
               console.warn('[Football RP Online] Statistiques de carrière en ligne non synchronisées :', error);
@@ -1238,6 +1239,7 @@ async function startMatch(online = null) {
         const reward = career.recordMatch({ matchId, result: outcome, goals: result.playerStats?.goals, assists: result.playerStats?.assists, cleanSheet });
         reward.matchId = matchId;
               profileStore.grantMatchRewards(reward);
+        syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
         seasonStats.recordMatch({ matchId, result: outcome, stats: { ...result.playerStats, cleanSheet }, minutesPlayedMs: result.playerStats?.minutesPlayedMs, role: profileStore.profile.identity.role });
       }
     });
@@ -1757,23 +1759,39 @@ menu.addEventListener('click', event => {
   } else if (action === 'sign-contract') {
     const clubId = document.getElementById('contract-club')?.value;
     const targetClub = clubs.getClub(clubId);
-    const alreadyRegistered = clubs.listClubs().some(club => club.roster.some(player => player.id === 'career-player'));
+    const alreadyRegistered = Boolean(targetClub?.roster.some(player => player.id === 'career-player'));
     const canRegister = targetClub && (alreadyRegistered || targetClub.roster.length < targetClub.capacity);
-    const result = canRegister
+    const before = career.captureState();
+    let result = canRegister
       ? career.signContract({ clubId, salary: Number(document.getElementById('contract-salary')?.value || 0), durationDays: 180 })
       : { ok: false, reason: targetClub ? 'roster-full' : 'invalid-club' };
-    if (result.ok) syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+    if (result.ok) {
+      const synced = syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      if (!synced.ok) {
+        career.restoreState(before);
+        career.saveState();
+        result = { ok:false, reason:'roster-sync-failed' };
+      }
+    }
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'active-contract' ? 'Vous avez déjà un contrat actif.' : result.reason === 'roster-full' ? 'Effectif complet : ce club ne peut pas inscrire votre footballeur.' : 'Impossible de signer ce contrat.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'active-contract' ? 'Vous avez déjà un contrat actif.' : result.reason === 'roster-full' ? 'Effectif complet : ce club ne peut pas inscrire votre footballeur.' : result.reason === 'roster-sync-failed' ? 'Inscription impossible : le contrat a été annulé car l’effectif n’a pas pu être enregistré.' : 'Impossible de signer ce contrat.';
   } else if (action === 'renew-contract') {
     const result = career.renewContract({ salary: Number(document.getElementById('renew-contract-salary')?.value), durationDays: 180 });
     renderPage('mercato');
     if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'contract-expired' ? 'Contrat expiré : signez un nouveau contrat.' : 'Renouvellement impossible : vérifiez le salaire.';
   } else if (action === 'terminate-contract') {
-    const result = career.terminateContract();
-    if (result.ok) syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+    const before = career.captureState();
+    let result = career.terminateContract();
+    if (result.ok) {
+      const synced = syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      if (!synced.ok) {
+        career.restoreState(before);
+        career.saveState();
+        result = { ok:false, reason:'roster-sync-failed' };
+      }
+    }
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = 'Aucun contrat actif à résilier.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'roster-sync-failed' ? 'Résiliation annulée : impossible de libérer la place dans l’effectif.' : 'Aucun contrat actif à résilier.';
   } else if (action === 'generate-offers') {
     if (career.contract && !career.getContractStatus()?.expired) {
       const pendingOffers = [...career.offers.values()].filter(offer => offer.status === 'pending');
@@ -1799,12 +1817,20 @@ menu.addEventListener('click', event => {
     const targetClub = clubs.getClub(offer?.fromClubId);
     const alreadyRegistered = targetClub?.roster.some(player => player.id === 'career-player');
     const canRegister = targetClub && (alreadyRegistered || targetClub.roster.length < targetClub.capacity);
-    const result = canRegister
+    const before = career.captureState();
+    let result = canRegister
       ? career.acceptOffer(id)
       : { ok: false, reason: targetClub ? 'roster-full' : 'invalid-club' };
-    if (result.ok) syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+    if (result.ok) {
+      const synced = syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      if (!synced.ok) {
+        career.restoreState(before);
+        career.saveState();
+        result = { ok:false, reason:'roster-sync-failed' };
+      }
+    }
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'window-closed' ? 'Transfert impossible : la fenêtre officielle est fermée.' : result.reason === 'insufficient-funds' ? 'Budget de transfert insuffisant.' : result.reason === 'roster-full' ? 'Transfert refusé : l’effectif du club cible est complet.' : 'Cette offre ne peut pas être acceptée.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'window-closed' ? 'Transfert impossible : la fenêtre officielle est fermée.' : result.reason === 'insufficient-funds' ? 'Budget de transfert insuffisant.' : result.reason === 'roster-full' ? 'Transfert refusé : l’effectif du club cible est complet.' : result.reason === 'roster-sync-failed' ? 'Transfert annulé : l’effectif n’a pas pu être mis à jour.' : 'Cette offre ne peut pas être acceptée.';
   } else if (action === 'reject-offer') {
     career.rejectOffer(event.target.closest('[data-offer]')?.dataset.offer);
     renderPage('mercato');
