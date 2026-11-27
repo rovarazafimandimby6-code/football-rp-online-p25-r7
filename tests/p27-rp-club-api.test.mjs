@@ -102,6 +102,15 @@ test('P27 API Club RP : création, annuaire public, demande, validation et dépa
     assert.equal((await memberMessage.json()).message.text, 'Salut le club !');
     const founderChat = await fetch(base + '/api/rp-clubs/me', { headers:{ authorization:'Bearer ' + founder.token } });
     assert.equal((await founderChat.json()).membership.messages[0].text, 'Salut le club !');
+    const liveChat = await fetch(base + '/api/rp-clubs/' + created.club.id + '/messages', {
+      headers:{ authorization:'Bearer ' + founder.token }
+    });
+    assert.equal(liveChat.status, 200);
+    assert.equal((await liveChat.json()).messages[0].text, 'Salut le club !');
+    const outsiderChat = await fetch(base + '/api/rp-clubs/' + created.club.id + '/messages', {
+      headers:{ authorization:'Bearer ' + outsider.token }
+    });
+    assert.equal(outsiderChat.status, 403);
     const memberSpam = await fetch(base + '/api/rp-clubs/' + created.club.id + '/messages', {
       method:'POST', headers:{ authorization:'Bearer ' + member.token, 'content-type':'application/json' },
       body:JSON.stringify({ text:'Spam immédiat' })
