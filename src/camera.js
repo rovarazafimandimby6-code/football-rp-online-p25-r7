@@ -22,6 +22,7 @@ export class BroadcastCamera {
     this.desiredCamPos = new THREE.Vector3();
     this.desiredLookTarget = new THREE.Vector3();
     this.zoom = 55; // P27 : zoom partagé entre les vues TV et personnelle
+    this.transition = null;
   }
 
   setZoom(value) {
@@ -32,6 +33,13 @@ export class BroadcastCamera {
 
   setMode(mode) {
     if (mode !== 'player' && mode !== 'bench' && mode !== 'spectator' && !CAMERA_PRESETS[mode]) return false;
+    if (mode === this.mode) return true;
+    this.transition = {
+      fromPosition: this.camera.position.clone(),
+      fromTarget: this.lookTarget.clone(),
+      elapsed: 0,
+      duration: 0.32
+    };
     this.mode = mode;
     this.camera.fov = CAMERA_PRESETS[mode]?.fov ?? (mode === 'spectator' ? 46 : 65);
     this.camera.updateProjectionMatrix();
@@ -41,14 +49,17 @@ export class BroadcastCamera {
   update(ball, activePlayer, dt) {
     if (this.mode === 'bench') {
       this.updateBenchCamera(ball, activePlayer, dt);
+      this.applyTransition(dt);
       return;
     }
     if (this.mode === 'player') {
       this.updatePlayerCamera(ball, activePlayer, dt);
+      this.applyTransition(dt);
       return;
     }
     if (this.mode === 'spectator') {
       this.updateSpectatorCamera(ball, dt);
+      this.applyTransition(dt);
       return;
     }
     const preset = CAMERA_PRESETS[this.mode];
@@ -88,6 +99,20 @@ export class BroadcastCamera {
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.lookTarget);
     this.initialized = true;
+    this.applyTransition(dt);
+  }
+
+  /** Smoothly blend camera mode changes instead of snapping between viewpoints. */
+  applyTransition(dt) {
+    if (!this.transition) return;
+    const frameDelta = Number.isFinite(dt) ? THREE.MathUtils.clamp(dt, 0, 0.05) : 0;
+    this.transition.elapsed = Math.min(this.transition.duration, this.transition.elapsed + frameDelta);
+    const linear = this.transition.elapsed / this.transition.duration;
+    const blend = linear * linear * (3 - 2 * linear);
+    this.camera.position.lerpVectors(this.transition.fromPosition, this.camPos, blend);
+    const blendedTarget = new THREE.Vector3().lerpVectors(this.transition.fromTarget, this.lookTarget, blend);
+    this.camera.lookAt(blendedTarget);
+    if (linear >= 1) this.transition = null;
   }
 
 
@@ -155,5 +180,6 @@ export class BroadcastCamera {
     }
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.lookTarget);
+    this.applyTransition(dt);
   }
 }
