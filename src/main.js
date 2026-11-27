@@ -18,7 +18,7 @@ import { createAccountRecoveryAdapters, hasAccountRecoveryData } from './account
 import { restoreAccountSnapshot } from './account-recovery.js';
 import { mountPlayerShop, syncEquippedCosmetics } from './player-shop-ui.js';
 import { mountClubShop } from './club-shop-ui.js';
-import { getP27ClubShopKit } from './p27-club-kit.js';
+import { getP27ClubShopKit, getP27ClubShopAppearance } from './p27-club-kit.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
 
@@ -1096,7 +1096,8 @@ async function startMatch(online = null) {
       }
       return {
         outfield:getP27ClubShopKit(club, inventory, kitType, 'MID'),
-        goalkeeper:getP27ClubShopKit(club, inventory, kitType, 'GK')
+        goalkeeper:getP27ClubShopKit(club, inventory, kitType, 'GK'),
+        appearance:getP27ClubShopAppearance(club, inventory)
       };
     };
     const [homeKits, awayKits] = await Promise.all([
@@ -1123,6 +1124,7 @@ async function startMatch(online = null) {
       awayKitAppearance,
       homeGoalkeeperKitAppearance:homeKits.goalkeeper,
       awayGoalkeeperKitAppearance:awayKits.goalkeeper,
+      homeClubAppearance:{ ...homeKits.appearance, colors:homeClub?.colors || null },
       cameraMode: preferences.cameraMode,
       cameraZoom: preferences.cameraZoom,
       onCameraMode: (mode) => { preferences.cameraMode = mode; try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {} },
@@ -1167,8 +1169,8 @@ async function startMatch(online = null) {
     document.getElementById('red-name').textContent = awayClub?.name || 'ÉQUIPE EXTÉRIEURE';
     const blueCrest = document.querySelector('#board .team.blue .crest');
     const redCrest = document.querySelector('#board .team.red .crest');
-    if (blueCrest && homeClub) blueCrest.outerHTML = renderClubCrest({ id: homeClub.id, name: homeClub.name, size: 27, compact: true, colors: homeClub.colors });
-    if (redCrest && awayClub) redCrest.outerHTML = renderClubCrest({ id: awayClub.id, name: awayClub.name, size: 27, compact: true, colors: awayClub.colors });
+    if (blueCrest && homeClub) blueCrest.outerHTML = renderClubCrest({ id: homeClub.id, name: homeClub.name, size: 27, compact: true, colors:homeKits.appearance?.crestColors || null, crestStyle:homeKits.appearance?.crestStyle });
+    if (redCrest && awayClub) redCrest.outerHTML = renderClubCrest({ id: awayClub.id, name: awayClub.name, size: 27, compact: true, colors:awayKits.appearance?.crestColors || null, crestStyle:awayKits.appearance?.crestStyle });
     const qualityControl = document.getElementById('quality');
     if (qualityControl) qualityControl.value = preferences.quality;
     game.match.setDurationMinutes(preferences.duration);
