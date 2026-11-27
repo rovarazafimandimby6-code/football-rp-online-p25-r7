@@ -188,3 +188,12 @@ test('P27 Mercato : la génération locale reste limitée à cinq offres en atte
   assert.ok(main.includes("Math.abs(Number(a.rating || 0) - Number(clubs.getClub(career.clubId)?.rating || 0))"));
   assert.ok(main.includes("String(a.name).localeCompare(String(b.name), 'fr')"));
 });
+
+
+test('P27 Mercato : les offres et contrats ne ciblent que les clubs capables d’inscrire un joueur humain', () => {
+  assert.ok(main.includes("club.humanAdmission !== 'system-only'"));
+  assert.ok(main.includes("club.roster.length < club.capacity"));
+  assert.ok(main.includes("club.roster.filter(player => player.playerType === 'human').length < 7"));
+  assert.ok(main.includes("availableClubs.length ? availableClubs.map"));
+  assert.ok(main.includes("availableClubs.length ? '' : 'disabled'"));
+});
