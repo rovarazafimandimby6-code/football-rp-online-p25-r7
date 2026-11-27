@@ -33,3 +33,28 @@ test('P27 outbox : les échecs, tentatives et clôtures idempotentes survivent a
   assert.equal(restored.completeRosterSync(command.id).alreadyCompleted,true);
  } finally { f.cleanup(); }
 });
+
+test('P27 prêts : les offres en attente sont annulées si le contrat parent expire',()=>{
+ const f=setup('2027-01-15T12:00:00.000Z');
+ try{
+  f.store.signContract('account-loan-expiry-cleanup',{clubId:'antananarivo-fc',salary:900,durationDays:10});
+  const offer=f.store.requestLoanOffer('account-loan-expiry-cleanup',{toClubId:'toamasina-united',durationDays:30});
+  assert.equal(offer.ok,true);
+  f.setNow('2027-01-26T12:00:00.000Z');
+  const career=f.store.getCareer('account-loan-expiry-cleanup');
+  assert.equal(career.contract.status,'expired');
+  assert.equal(career.loanOffers.find(item=>item.id===offer.offer.id).status,'cancelled');
+ }finally{f.cleanup();}
+});
+
+test('P27 prêts : la résiliation du contrat annule les offres de prêt encore ouvertes',()=>{
+ const f=setup('2027-01-15T12:00:00.000Z');
+ try{
+  f.store.signContract('account-loan-termination-cleanup',{clubId:'antananarivo-fc',salary:900,durationDays:90});
+  const offer=f.store.requestLoanOffer('account-loan-termination-cleanup',{toClubId:'toamasina-united',durationDays:30});
+  assert.equal(offer.ok,true);
+  const ended=f.store.terminateContract('account-loan-termination-cleanup');
+  assert.equal(ended.ok,true);
+  assert.equal(ended.career.loanOffers.find(item=>item.id===offer.offer.id).status,'cancelled');
+ }finally{f.cleanup();}
+});
