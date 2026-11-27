@@ -73,8 +73,8 @@ Sources :
 
 | Domaine | État P27 constaté | Adaptation retenue |
 |---|---|---|
-| Hub | Ancien accueil à huit tuiles ; seconde version carrière déjà présente | Hub modulaire à hiérarchie visuelle inégale |
-| En-tête | Trop haut et affiche encore des libellés de page/profil | Barre compacte : paramètres, progression XP, crédits, avatar/niveau |
+| Hub | Hub paysage 3 × 3 intégré ; carrière et match amical prioritaires | Carrière sur deux colonnes, six accès secondaires, navigation interne dédiée |
+| En-tête | Barre compacte intégrée ; titre de page et raccourci profil masqués | Paramètres, progression/niveau et pièces ; hauteur cible 25 px en paysage compact |
 | Carrière joueur | Profil local, niveau, XP, crédits et points d'entraînement | Utiliser les données réelles pour la progression |
 | Clubs | Catalogue, notes, stades, réputation et effectifs | Conserver les fiches et renforcer l'espace club |
 | Monde compétitif | Périmètre serveur audité : cinq divisions, neuf groupes, 156 clubs, calendriers, classements, coupes et résultats | Placer la saison et ses rendez-vous au centre du hub |
@@ -83,7 +83,7 @@ Sources :
 | Développement | Entraînement par crédits/points, attributs et XP | Centre de progression lisible |
 | Personnalisation | Identité, apparence, pied préféré, couleurs et écussons de clubs | Regrouper les réglages existants sans inventer d'éditeur |
 | Match local | Moteur 3D, match 5 contre 5, commandes, IA, caméra et HUD | Préserver le moteur et harmoniser avant/après-match |
-| Multijoueur | Client et salons en ligne présents ; mode APK de test local pouvant les désactiver | N'afficher que les fonctions disponibles dans la build courante |
+| Multijoueur | Salons en ligne, Club RP, défis inter-clubs, discussion privée, saisons et classements communautaires | Garder les fonctions collectives séparées du club de championnat ; synchroniser les discussions et protéger les accès |
 | Résultats | Statistiques locales et archives serveur selon le mode | Afficher uniquement les résultats enregistrés |
 | Installations | Stade et données de club existent ; améliorations d'infrastructures non confirmées | Ne pas afficher de niveaux d'infrastructure factices |
 | Agents/recruteurs | Système DLS équivalent non confirmé dans le marché actuel | À concevoir, pas à simuler |
@@ -95,17 +95,17 @@ Sources :
 2. **Carrière** : progression, niveau, XP, club, contrat, historique et action de reprise.
 3. **Équipe / joueurs** : bibliothèque compacte, fiches, notes globales, attributs, postes et effectifs. La gestion tactique/formation doit être un vrai système si elle est ajoutée.
 4. **Mercato** : offres, contrats, fenêtres et accès aux bibliothèques. Les contrats du footballeur humain restent distincts des transferts de joueurs entre clubs.
-5. **Mon club** : identité, écusson, stade, effectif, réputation et données de saison ; infrastructures uniquement avec coûts et effets réels.
+5. **Mon club** : identité, écusson, stade, effectif, réputation et données de saison ; distinguer le club de championnat du Club RP communautaire.
 6. **Compétitions** : divisions, groupes, calendriers, coupes, classements et résultats reliés dans des vues internes.
 7. **Progression** : entraînement, attributs, points, XP et récompenses sans double comptabilisation.
-8. **Multijoueur** : salons et matchs en ligne réellement pris en charge ; classements et événements seulement avec données serveur.
+8. **Multijoueur** : salons et matchs en ligne réellement pris en charge ; Club RP avec recrutement, gouvernance, discussion privée, défis et saisons ; événements seulement avec données serveur.
 9. **Match** : continuité visuelle avec les menus, sans altérer commandes, caméra, HUD ou moteur.
 10. **Paramètres** : options de jeu et caméra accessibles depuis l'en-tête compact.
 
 ## 5. Principes UI à appliquer partout
 
 - Paysage prioritaire ; aucune navigation web persistante.
-- En-tête très compact : paramètres, barre XP fine, crédits, avatar et niveau.
+- En-tête très compact : paramètres, barre XP fine, niveau et pièces ; aucun raccourci profil dans la barre.
 - Arrière-plans profonds, éclairage, textures et motifs inspirés de DLS, avec identité P27.
 - Panneaux de tailles hiérarchisées, compositions asymétriques et visuels sportifs.
 - Cartes joueurs horizontales, compactes, note globale et informations essentielles.
