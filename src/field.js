@@ -397,14 +397,14 @@ export class FieldBuilder {
     const h = PITCH.GOAL_H;
 
     const postMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    const postGeo = new THREE.CylinderGeometry(0.085, 0.085, h, 10);
+    const postGeo = this.getSharedGeometry('goal-front-post', () => new THREE.CylinderGeometry(0.085, 0.085, h, 10));
 
     const leftPost = new THREE.Mesh(postGeo, postMat);
     leftPost.position.set(xLine, h / 2, -hw);
     const rightPost = new THREE.Mesh(postGeo, postMat);
     rightPost.position.set(xLine, h / 2, hw);
 
-    const barGeo = new THREE.CylinderGeometry(0.085, 0.085, PITCH.GOAL_W + 0.16, 10);
+    const barGeo = this.getSharedGeometry('goal-crossbar', () => new THREE.CylinderGeometry(0.085, 0.085, PITCH.GOAL_W + 0.16, 10));
     const crossbar = new THREE.Mesh(barGeo, postMat);
     crossbar.rotation.x = Math.PI / 2;
     crossbar.position.set(xLine, h, 0);
@@ -412,9 +412,9 @@ export class FieldBuilder {
     // Cadre arrière léger
     const supportMat = new THREE.MeshLambertMaterial({ color: side < 0 ? 0x2a76f0 : 0xe0483f });
     for (const sz of [-hw, hw]) {
-      const backPost = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, h, 8), supportMat);
+      const backPost = new THREE.Mesh(this.getSharedGeometry('goal-back-post', () => new THREE.CylinderGeometry(0.055, 0.055, h, 8)), supportMat);
       backPost.position.set(xBack, h / 2, sz);
-      const topSide = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, PITCH.GOAL_D, 8), supportMat);
+      const topSide = new THREE.Mesh(this.getSharedGeometry('goal-top-support', () => new THREE.CylinderGeometry(0.055, 0.055, PITCH.GOAL_D, 8)), supportMat);
       topSide.rotation.z = Math.PI / 2;
       topSide.position.set((xLine + xBack) / 2, h, sz);
       g.add(backPost, topSide);
@@ -441,13 +441,14 @@ export class FieldBuilder {
     backNet.rotation.y = Math.PI / 2;
     this.netPanels.push({ mesh: backNet, base: backNetGeo.attributes.position.array.slice(), side });
 
-    const topNet = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.GOAL_D, PITCH.GOAL_W), netMat);
+    const topNet = new THREE.Mesh(this.getSharedGeometry('goal-top-net', () => new THREE.PlaneGeometry(PITCH.GOAL_D, PITCH.GOAL_W)), netMat);
     topNet.position.set((xLine + xBack) / 2, h, 0);
     topNet.rotation.x = Math.PI / 2;
 
-    const sideNetL = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.GOAL_D, h), netMat);
+    const sideNetGeometry = this.getSharedGeometry('goal-side-net', () => new THREE.PlaneGeometry(PITCH.GOAL_D, h));
+    const sideNetL = new THREE.Mesh(sideNetGeometry, netMat);
     sideNetL.position.set((xLine + xBack) / 2, h / 2, -hw);
-    const sideNetR = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.GOAL_D, h), netMat);
+    const sideNetR = new THREE.Mesh(sideNetGeometry, netMat);
     sideNetR.position.set((xLine + xBack) / 2, h / 2, hw);
 
     g.add(leftPost, rightPost, crossbar, backNet, topNet, sideNetL, sideNetR);
