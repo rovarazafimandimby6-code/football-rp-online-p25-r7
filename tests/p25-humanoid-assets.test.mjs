@@ -139,3 +139,12 @@ test('P27 humanoïde : la libération d’un joueur ne détruit pas les géomét
   assert.match(loader, /for \(const material of materials\) material\.dispose\(\)/);
   assert.match(loader, /for \(const geometry of ownedGeometries\) geometry\.dispose\(\)/);
 });
+
+
+test('P27 humanoïde : un chargement tardif abandonne proprement un joueur déjà supprimé', async () => {
+  const loader = await readFile(path.join(root, 'src/player-models.js'), 'utf8');
+  assert.match(loader, /if \(root\?\.userData\?\.disposed\) return null/);
+  assert.match(loader, /if \(root\?\.userData\?\.disposed\) \{\s*disposePlayerModelResources\(model\);\s*return null;/);
+  assert.match(loader, /function disposePlayerModelResources\(model\)/);
+  assert.match(loader, /disposePlayerModelResources\(model\);/);
+});
