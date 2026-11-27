@@ -233,7 +233,7 @@ export class CareerManager {
       status: 'pending'
     };
     this.offers.set(offerId, offer);
-    if (!this.persist()) {
+    if (!this.saveState()) {
       this.restoreState(before);
       return { ok:false, reason:'persistence-failed' };
     }
@@ -248,7 +248,7 @@ export class CareerManager {
     if (offer.expiresAt && timestamp(offer.expiresAt) <= now) {
       const before = this.captureState();
       offer.status = 'expired';
-      if (!this.persist()) {
+      if (!this.saveState()) {
         this.restoreState(before);
         return { ok:false, reason:'persistence-failed' };
       }
@@ -259,7 +259,7 @@ export class CareerManager {
     const before = this.captureState();
     if (salary !== undefined) offer.salary = nonNegativeInt(salary);
     if (fee !== undefined) offer.fee = nonNegativeInt(fee);
-    if (!this.persist()) {
+    if (!this.saveState()) {
       this.restoreState(before);
       return { ok:false, reason:'persistence-failed' };
     }
@@ -276,7 +276,7 @@ export class CareerManager {
     if (offer.expiresAt && timestamp(offer.expiresAt) <= now) {
       const beforeExpiry = this.captureState();
       offer.status = 'expired';
-      if (!this.persist()) {
+      if (!this.saveState()) {
         this.restoreState(beforeExpiry);
         return { ok:false, reason:'persistence-failed' };
       }
@@ -314,7 +314,7 @@ export class CareerManager {
     };
     offer.status = 'accepted';
     this.history.push({ type: 'transfer', from: previousClub, to: this.clubId, fee: offer.fee, date: signedAt });
-    if (!this.persist()) {
+    if (!this.saveState()) {
       this.restoreState(before);
       return { ok:false, reason:'persistence-failed' };
     }
@@ -326,7 +326,7 @@ export class CareerManager {
     if (!offer || offer.status !== 'pending') return false;
     const before = this.captureState();
     offer.status = 'rejected';
-    if (!this.persist()) {
+    if (!this.saveState()) {
       this.restoreState(before);
       return false;
     }
