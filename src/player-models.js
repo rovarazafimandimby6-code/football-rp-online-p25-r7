@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { resolvePlayerAnimationClip, isLoopingPlayerAnimation } from './player-animation-map.js';
 
 const loader = new GLTFLoader();
 const BASE_URL = './assets/players/';
@@ -123,31 +124,49 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
     const restRotations = new Map([...bones].map(([name, bone]) => [name, bone.rotation.clone()]));
     const actions = new Map();
     for (const clip of animationSource.animations || []) actions.set(clip.name, mixer.clipAction(clip));
+    const clipNames = [...actions.keys()];
     let activeAction = null;
+    let activeActionMode = null;
     let lastState = null;
-    const play = (name) => {
-      const next = actions.get(name) || actions.get('Idle_Loop');
-      if (!next || next === activeAction) return;
-      next.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).fadeIn(0.18).play();
-      activeAction?.fadeOut(0.18);
+    const play = (name, state, speed = 0) => {
+      const next = actions.get(name);
+      if (!next) return false;
+      const looping = isLoopingPlayerAnimation(state);
+      const mode = `${state}:${looping ? 'loop' : 'once'}`;
+      if (next === activeAction && activeActionMode === mode) return true;
+      next.reset().setLoop(looping ? THREE.LoopRepeat : THREE.LoopOnce, looping ? Infinity : 1);
+      next.clampWhenFinished = !looping;
+      next.enabled = true;
+      next.setEffectiveWeight(1);
+      if (!looping) {
+        const expectedDuration = ({ pass:0.34, shoot:0.38, tackle:0.42, dive:0.58, celebrate:2.0 })[state] || 0.5;
+        next.setDuration(expectedDuration);
+      } else {
+        next.setEffectiveTimeScale(state === 'run' ? (speed > 7.5 ? 1.08 : 1) : 1);
+      }
+      next.fadeIn(0.18).play();
+      if (activeAction && activeAction !== next) activeAction.fadeOut(0.18);
       activeAction = next;
+      activeActionMode = mode;
+      return true;
     };
     root.add(model);
     fallbackBody.visible = true;
     const update = (dt, state, speed = 0, action = {}) => {
       const safeDt = Math.min(Math.max(dt || 0, 0), 0.05);
-      const locomotion = ['idle', 'walk', 'run'].includes(state);
       model.visible = true;
       fallbackBody.visible = false;
-      if (locomotion) {
-        const clip = state === 'run' ? (speed > 7.5 ? 'Sprint_Fwd_Loop' : 'Jog_Fwd_Loop') : state === 'walk' ? 'Walk_Loop' : 'Idle_Loop';
-        play(clip);
-        if (activeAction) activeAction.setEffectiveTimeScale(state === 'run' ? 1.08 : 1);
-        mixer.update(safeDt);
-      } else {
-        if (activeAction && lastState !== state) { activeAction.fadeOut(0.12); activeAction = null; }
-        mixer.update(safeDt);
-        // Revenir à la pose de repos avant d'appliquer le geste du frame.
+      const clipName = resolvePlayerAnimationClip(clipNames, state, speed);
+      const hasClip = clipName ? play(clipName, state, speed) : false;
+      mixer.update(safeDt);
+
+      if (!hasClip) {
+        if (activeAction) {
+          activeAction.fadeOut(0.12);
+          activeAction = null;
+          activeActionMode = null;
+        }
+        // Procedural fallback: restore the bind pose before layering this frame's gesture.
         for (const [name, bone] of bones) {
           const rest = restRotations.get(name);
           if (rest) bone.rotation.copy(rest);
@@ -161,16 +180,18 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
           if (bone) { bone.rotation.x += x; bone.rotation.y += y; bone.rotation.z += z; }
         };
         if (state === 'pass' || state === 'shoot') {
-          const power = state === 'shoot' ? 1.0 : 0.62;
-          rotate('pelvis', 0.12 * pulse, 0, 0);
-          rotate('spine_02', -0.16 * pulse, 0, -0.08 * pulse);
-          rotate(`thigh_${side}`, -power * pulse, 0, 0);
-          rotate(`calf_${side}`, 0.75 * pulse, 0, 0);
-          rotate(`thigh_${other}`, 0.22 * pulse, 0, 0);
-          rotate(`upperarm_${side}`, 0.2 * pulse, 0, -0.22 * pulse);
-          rotate(`upperarm_${other}`, -0.45 * pulse, 0, 0.2 * pulse);
+          const shooting = state === 'shoot';
+          const power = shooting ? 1.0 : 0.62;
+          const followThrough = Math.sin(Math.min(1, progress * 1.18) * Math.PI);
+          rotate('pelvis', (shooting ? 0.2 : 0.12) * pulse, 0, (shooting ? -0.14 : -0.08) * pulse);
+          rotate('spine_02', -0.2 * pulse, 0, -0.12 * pulse);
+          rotate(`thigh_${side}`, -power * (0.72 * pulse + 0.28 * followThrough), 0, 0);
+          rotate(`calf_${side}`, (shooting ? 0.95 : 0.68) * pulse, 0, 0);
+          rotate(`thigh_${other}`, 0.25 * pulse, 0, 0);
+          rotate(`calf_${other}`, -0.12 * pulse, 0, 0);
+          rotate(`upperarm_${side}`, 0.24 * pulse, 0, -0.3 * pulse);
+          rotate(`upperarm_${other}`, -0.55 * pulse, 0, 0.24 * pulse);
         } else if (state === 'control') {
-          // Conduite de balle procédurale : alternance des appuis et contre-mouvement des bras.
           const phase = Number.isFinite(action.phase) ? action.phase : 0;
           const stride = Math.sin(phase);
           const lift = Math.max(0, Math.cos(phase));
@@ -188,30 +209,31 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
           rotate('spine_02', -0.48 * pulse, 0, direction * 0.35 * pulse);
           rotate('upperarm_l', -1.25 * pulse, 0, -0.5 * pulse);
           rotate('upperarm_r', -1.25 * pulse, 0, 0.5 * pulse);
-          rotate('thigh_l', -0.5 * pulse, 0, 0); rotate('thigh_r', 0.45 * pulse, 0, 0);
+          rotate('thigh_l', -0.5 * pulse, 0, 0);
+          rotate('thigh_r', 0.45 * pulse, 0, 0);
         } else if (state === 'celebrate') {
           const style = ['standard','rare','premium'].includes(action.celebrationStyle) ? action.celebrationStyle : 'standard';
+          const phase = Number.isFinite(action.time) ? action.time : 0;
+          const bounce = Math.max(0, Math.sin(phase * 7.5)) * 0.12;
+          rotate('pelvis', -0.08 + bounce, 0, Math.sin(phase * 2.5) * 0.04);
           if (style === 'standard') {
-            // Victoire classique : les deux bras levés, geste lisible à distance.
-            rotate('spine_02', -0.12, 0, 0);
-            rotate('upperarm_l', -2.1, 0, -0.25);
-            rotate('upperarm_r', -2.1, 0, 0.25);
+            rotate('spine_02', -0.12 + bounce, 0, 0);
+            rotate('upperarm_l', -2.1 + Math.sin(phase * 5) * 0.08, 0, -0.25);
+            rotate('upperarm_r', -2.1 + Math.sin(phase * 5) * 0.08, 0, 0.25);
           } else if (style === 'rare') {
-            // Célébration rare : bras ouverts et buste légèrement tourné.
-            rotate('spine_02', -0.08, 0, -0.16 * pulse);
+            rotate('spine_02', -0.08, 0, -0.16 * Math.sin(phase * 2));
             rotate('upperarm_l', -1.05, 0, -0.95);
             rotate('upperarm_r', -1.05, 0, 0.95);
             rotate('lowerarm_l', -0.45 * pulse, 0, -0.12);
             rotate('lowerarm_r', -0.45 * pulse, 0, 0.12);
           } else {
-            // Célébration premium : un bras haut, l'autre vers le public.
             rotate('spine_02', -0.18, 0, 0.12 * pulse);
             rotate('upperarm_l', -2.35, 0, -0.12);
-            rotate('upperarm_r', -0.55, 0, 0.95);
+            rotate('upperarm_r', -0.55 + Math.sin(phase * 4) * 0.08, 0, 0.95);
             rotate('lowerarm_r', -0.65 * pulse, 0, 0.15);
           }
-          rotate('thigh_l', -0.12 * pulse, 0, 0);
-          rotate('thigh_r', 0.12 * pulse, 0, 0);
+          rotate('thigh_l', -0.12 * pulse + bounce, 0, 0);
+          rotate('thigh_r', 0.12 * pulse + bounce, 0, 0);
         }
       }
       lastState = state;
