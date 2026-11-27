@@ -1,6 +1,21 @@
 name: P27 Android test APK
 
 on:
+  push:
+    branches:
+      - p27-dls26-global-adaptation
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'vite.config.js'
+      - '.github/workflows/p27-android-apk.yml'
   workflow_dispatch:
 
 permissions:
