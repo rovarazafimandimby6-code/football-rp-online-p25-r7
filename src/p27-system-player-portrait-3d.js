@@ -35,6 +35,12 @@ function loadHair(style) {
   const file = ({ shaved:'Hair_Buzzed', fade:'Hair_Buzzed', short:'Hair_SimpleParted', curly:'Hair_SimpleParted', wavy:'Hair_SimpleParted', long:'Hair_Long', braids:'Hair_Buns', twists:'Hair_Buns', afro:'Hair_Buzzed' })[style];
   return loadHairAsset(file);
 }
+function skinToneHex(value) {
+  return ({
+    light:'#efc6a1', tan:'#d99d70', medium:'#b97850',
+    brown:'#8b543a', dark:'#623b2d', deep:'#45291f', olive:'#c69a70'
+  })[String(value || 'tan').toLowerCase()] || '#d99d70';
+}
 function hairColorHex(value) {
   return ({ black:'#171515', dark:'#211b1a', brown:'#493027', blond:'#b58a4d', auburn:'#8b3f26', grey:'#777b82' })[value] || '#211b1a';
 }
@@ -70,6 +76,7 @@ function applyClubKitShader(material, appearance = {}) {
   const primary = safeColor(colors.primary, '#2865a8');
   const secondary = safeColor(colors.secondary, '#17365d');
   const accent = safeColor(colors.accent, '#f4f6fb');
+  const skin = skinToneHex(appearance.skinTone);
   const design = KIT_PATTERN_INDEX[String(appearance.kitDesign || 'central')] ?? KIT_PATTERN_INDEX.central;
   material.color?.set('#ffffff');
   material.onBeforeCompile = shader => {
@@ -77,6 +84,7 @@ function applyClubKitShader(material, appearance = {}) {
     shader.uniforms.p27KitSecondary = { value:new THREE.Color(secondary) };
     shader.uniforms.p27KitAccent = { value:new THREE.Color(accent) };
     shader.uniforms.p27KitDesign = { value:design };
+    shader.uniforms.p27SkinColor = { value:new THREE.Color(skin) };
     shader.vertexShader = shader.vertexShader.replace(
       '#include <common>',
       '#include <common>\nvarying vec3 p27LocalPosition;'
@@ -86,7 +94,7 @@ function applyClubKitShader(material, appearance = {}) {
     );
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
-      '#include <common>\nuniform vec3 p27KitPrimary;\nuniform vec3 p27KitSecondary;\nuniform vec3 p27KitAccent;\nuniform float p27KitDesign;\nvarying vec3 p27LocalPosition;'
+      '#include <common>\nuniform vec3 p27KitPrimary;\nuniform vec3 p27KitSecondary;\nuniform vec3 p27KitAccent;\nuniform float p27KitDesign;\nuniform vec3 p27SkinColor;\nvarying vec3 p27LocalPosition;'
     ).replace(
       '#include <color_fragment>',
       `#include <color_fragment>
@@ -113,7 +121,12 @@ function applyClubKitShader(material, appearance = {}) {
       vec3 p27PatternColor = mix(p27KitPrimary, p27KitSecondary, p27Pattern);
       float p27AccentLine = 1.0 - smoothstep(0.012, 0.028, abs(fract((p27X + p27Y) * 18.0) - 0.5));
       p27PatternColor = mix(p27PatternColor, p27KitAccent, p27AccentLine * 0.18);
-      diffuseColor.rgb = mix(diffuseColor.rgb, p27PatternColor, p27ShirtMask * 0.94);`
+      diffuseColor.rgb = mix(diffuseColor.rgb, p27PatternColor, p27ShirtMask * 0.94);
+      // Restrict skin tint to the face and neck: the source body texture atlases skin and kit together.
+      float p27FaceMask = smoothstep(1.30, 1.38, p27Y) * (1.0 - smoothstep(1.72, 1.79, p27Y)) * (1.0 - smoothstep(0.13, 0.18, abs(p27X)));
+      float p27NeckMask = smoothstep(1.12, 1.20, p27Y) * (1.0 - smoothstep(1.38, 1.46, p27Y)) * (1.0 - smoothstep(0.09, 0.14, abs(p27X)));
+      float p27SkinMask = max(p27FaceMask, p27NeckMask);
+      diffuseColor.rgb = mix(diffuseColor.rgb, p27SkinColor, p27SkinMask * 0.72);`
     );
   };
   material.customProgramCacheKey = () => 'p27-club-kit-shader-v1';
