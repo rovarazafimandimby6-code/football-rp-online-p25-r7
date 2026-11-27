@@ -65,7 +65,7 @@ export function getP27ClubShopKit(club = {}, inventory = [], kitType = 'home', r
     home: { primary:colors.primary, secondary:colors.secondary, accent:colors.accent },
     away: { primary:colors.accent, secondary:colors.primary, accent:colors.secondary },
     third: { primary:colors.secondary, secondary:colors.accent, accent:colors.primary },
-    goalkeeper: { primary:colors.accent, secondary:colors.secondary, accent:colors.primary }
+    goalkeeper: { primary:colors.primary, secondary:colors.secondary, accent:colors.accent }
   };
   const designs = { home:base.kitDesign, away:'diagonal', third:'hoops', goalkeeper:'central' };
   return {
