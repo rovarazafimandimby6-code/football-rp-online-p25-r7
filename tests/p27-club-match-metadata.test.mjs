@@ -135,9 +135,13 @@ test('P27: les kits 3D des deux équipes utilisent les palettes des clubs sélec
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   const player = await readFile(new URL('../src/player.js', import.meta.url), 'utf8');
   assert.match(game, /cfg\.team === 'blue' \? callbacks\.homeKitColors : callbacks\.awayKitColors/);
-  assert.match(game, /kitColors \}/);
-  assert.match(main, /homeKitColors: kitPalette\(homeClub\)/);
-  assert.match(main, /awayKitColors: kitPalette\(awayClub\)/);
+  assert.match(game, /callbacks\.homeKitAppearance/);
+  assert.match(game, /callbacks\.awayKitAppearance/);
+  assert.match(game, /kitAppearance && typeof kitAppearance === 'object'/);
+  assert.match(main, /getP27ClubShopKit/);
+  assert.match(main, /getShopSnapshot\('club', club\.id\)/);
+  assert.match(main, /homeKitAppearance,/);
+  assert.match(main, /awayKitAppearance,/);
   assert.match(player, /kitColors/);
 });
 
