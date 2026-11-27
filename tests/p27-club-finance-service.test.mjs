@@ -358,3 +358,46 @@ test('P27 journal financier : reprend un salaire humain après panne du checkpoi
   assert.equal(f.service.store.getAccount(event.clubId).totalExpenses,450);
  } finally {f.cleanup();}
 });
+
+
+test('P27 réconciliation : audite les comptes, contrats et journaux sans modifier les soldes',()=>{
+ const f=setup();
+ try {
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,true);
+  assert.equal(audit.issueCount,0);
+  assert.equal(audit.clubs,DEFAULT_CLUBS.length);
+  assert.equal(audit.accounts,DEFAULT_CLUBS.length);
+  assert.equal(audit.totalBalance,audit.openingBalance+audit.totalIncome-audit.totalExpenses);
+  assert.equal(f.service.auditReconciliation().ok,true);
+ } finally {f.cleanup();}
+});
+
+test('P27 réconciliation : détecte un compte manquant et un compte orphelin',()=>{
+ const f=setup();
+ try {
+  const known=DEFAULT_CLUBS[0].id;
+  f.service.store.accounts.delete(known);
+  f.service.store.openAccount('orphan-finance-account',0);
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.deepEqual(audit.missingAccounts,[known]);
+  assert.deepEqual(audit.orphanAccounts,['orphan-finance-account']);
+  assert.equal(audit.issues.some(issue=>issue.type==='missing-account'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='orphan-account'),true);
+ } finally {f.cleanup();}
+});
+
+test('P27 réconciliation : détecte un checkpoint de transfert sans écriture correspondante',()=>{
+ const from=DEFAULT_CLUBS[0],to=DEFAULT_CLUBS[1];
+ const event={id:'audit-transfer-checkpoint',type:'transfer',fromClubId:from.id,toClubId:to.id,fee:500,at:Date.UTC(2027,0,1)};
+ const f=setup({events:[event]});
+ try {
+  assert.equal(f.service.syncRecordedTransferFees().ok,true);
+  const account=f.service.store.accounts.get(from.id);
+  account.entries=account.entries.filter(entry=>entry.id!=='transfer-fee-out-audit-transfer-checkpoint');
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-debit-checkpoint-without-entry'),true);
+ } finally {f.cleanup();}
+});
