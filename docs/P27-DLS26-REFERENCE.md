@@ -17,7 +17,7 @@ Les 21 profils DLS 26 conservent une URL de fiche individuelle et le statut `ind
 
 Le format de carte DLS 19 possède dix attributs de terrain : les huit statistiques communes, plus CRO (centres) et HEA (jeu de tête). Le badge de poste WF est normalisé en SS pour le moteur de rôle P27, tandis que la source d'origine reste tracée. Un adaptateur strict a été ajouté dans `src/p27-dls19-reference.js` : il refuse les données manquantes, les notes/tailles invalides, les postes inconnus et les références sans URL, version ou identifiant source. Une fois un profil DLS 19 validé ajouté à `DLS19_REFERENCE_PROFILES`, il rejoint automatiquement le catalogue multi-éditions et le sélecteur le classe selon son poste (GK, DEF, MID ou FWD), sans modification manuelle de la liste DLS 26.
 
-**Aucun profil DLS 19 n'est encore intégré au pool actif.** La recherche a confirmé l'existence du format DLS 19, mais la base accessible via le créateur de cartes indique que ses données joueurs proviennent du dernier jeu de données DLS 23 ; ce n'est donc pas une archive exacte des notes DLS 19. Nous ne convertirons pas ces données en « DLS 19 » ni n'inventerons CRO/HEA. Le catalogue DLS 19 sera alimenté lorsque des fiches historiques/versionnées seront vérifiables.
+**Un profil DLS 19 historique est désormais intégré comme référence communautaire, pas comme fiche officielle First Touch Games.** La page wiki historique de Raphaël Varane publie une ligne DLS 19 (OVR 83, CB, 191 cm, pied droit et dix attributs) ; cette provenance est marquée `community-historical-record`, distincte de `archived-card-record`. Les identités réelles ne sont pas reprises dans les joueurs P27 : seule la signature statistique et la provenance sont conservées. Le créateur de cartes DLS19 de SakibPro, lui, indique que son remplissage de joueurs utilise la base finale DLS23 ; il ne sert donc pas à certifier des données DLS19. Les nouveaux imports doivent garder ce niveau de preuve explicitement.
 
 ## Données conservées
 
@@ -43,7 +43,7 @@ Chaque joueur fictif reçoit donc une identité propre et une personnalisation i
 
 ## Limites et suite
 
-Les 36 profils actifs sont un catalogue de modèles diversifiés, pas un import exhaustif des bases DLS. L'adaptateur DLS 19 est préparé mais son pool reste vide tant que des cartes archivées authentiques ne sont pas vérifiées. La source DLS 23 est une base communautaire non officielle ; ses valeurs sont identifiées comme telles et ne remplacent jamais une fiche DLS 26 vérifiée. Les profils de gardiens restent actuellement issus de DLS 26, car la source DLS 23 consultée ne fournit pas toutes les valeurs nécessaires de manière cohérente. La suite consiste à élargir les profils par poste et archétype, puis à vérifier individuellement les nouvelles références DLS 26 ou à documenter clairement leur édition d'origine. Les profils provisoires précédemment utilisés avec des sources génériques d'équipes ont été retirés.
+Les 36 profils actifs sont un catalogue de modèles diversifiés, pas un import exhaustif des bases DLS. L'adaptateur DLS 19 est préparé mais son pool reste vide tant que des cartes archivées authentiques ne sont pas vérifiées. La source DLS 23 est une base communautaire non officielle ; ses valeurs sont identifiées comme telles et ne remplacent jamais une fiche DLS 26 vérifiée. Le pool DLS 19 commence par une seule référence communautaire historique de défenseur ; il ne constitue pas encore une couverture de tous les postes. Les profils de gardiens restent actuellement issus de DLS 26, car la source DLS 23 consultée ne fournit pas toutes les valeurs nécessaires de manière cohérente. La suite consiste à élargir les profils par poste et archétype, puis à vérifier individuellement les nouvelles références DLS 26 ou à documenter clairement leur édition d'origine. Les profils provisoires précédemment utilisés avec des sources génériques d'équipes ont été retirés.
 
 ## Sources de référence
 
@@ -74,6 +74,7 @@ SakibPro est une base indépendante et non une source officielle First Touch Gam
 
 - https://github.com/CodeModeYT/DLS-Player-search/blob/main/Data/json/players_23.json
 
+- DLS 19 historical player row (community wiki, not official game data): https://dls-wiki.fandom.com/wiki/Raphael_Varane
 - DLS 19 card structure and stats: https://sakibpro.com/dls-card-creator/dls19/
 - Historical player data source caveat: https://sakibpro.com/dls-card-creator/dls19/
 - Community DLS 23 dataset: https://github.com/CodeModeYT/DLS-Player-search/blob/main/Data/json/players_23.json
