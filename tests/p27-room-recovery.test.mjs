@@ -232,7 +232,7 @@ test('P27 simulation : plusieurs dizaines de salons avancent ensemble sans perte
     manager.join(created.id, { displayName: `Humain ${index + 1}` });
     const room = manager.rooms.get(created.id);
     assert.equal(room.phase, 'playing');
-    assert.equal(room.players.size, 14);
+    assert.equal(room.players.size, 24);
     rooms.push({ id: created.id, sequence: room.sequence });
   }
 
