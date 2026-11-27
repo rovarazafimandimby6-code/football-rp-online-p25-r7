@@ -85,7 +85,7 @@ test("player shop routes require configured D1 storage and an authenticated acco
   assert.equal((await anonymous.json()).error, "SESSION_EXPIRED");
 });
 
-test("player shop write routes reject cross-origin browser requests", async () => {
+test("player shop write routes require an authenticated account before processing commands", async () => {
   const response = await worker.fetch(request("/api/shop/player/purchase", {
     method: "POST",
     headers: { origin: "https://attacker.example", "content-type": "application/json" },
