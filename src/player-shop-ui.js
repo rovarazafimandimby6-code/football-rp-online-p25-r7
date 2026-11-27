@@ -18,7 +18,7 @@ const messages = {
   'item-not-resellable':'Cet article ne peut pas être revendu.',
   'resale-value-zero':'La valeur de revente est trop faible.'
 };
-function syncEquippedCosmetics(inventory) { const equipped={}; for (const entry of inventory.filter(item=>item.status==='owned'&&item.equipped)) { if (entry.category==='hair') equipped.hair=entry.itemId; } try { globalThis.localStorage?.setItem('fpro.player-shop-equipped.v1',JSON.stringify(equipped)); } catch {} }
+function syncEquippedCosmetics(inventory) { const equipped={}; for (const entry of inventory.filter(item=>item.status==='owned'&&item.equipped)) { if (['hair','beard','crampons','accessories'].includes(entry.category)) equipped[entry.category]=entry.itemId; } try { globalThis.localStorage?.setItem('fpro.player-shop-equipped.v1',JSON.stringify(equipped)); } catch {} }
 export function mountPlayerShop(root, accountClient, onNavigate) {
   const state = {catalog:[],inventory:[],balance:0,view:'catalog',category:'all',busy:false};
   const status = message => { const node=root.querySelector('#player-shop-status'); if(node) node.textContent=message; };
