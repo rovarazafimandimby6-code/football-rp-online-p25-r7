@@ -57,7 +57,7 @@ test('P27 DLS 26 : les joueurs fictifs reçoivent une référence sans identité
     assert.equal(player.attributes.shooting, player.dls26Stats.SHO ?? 25, 'le gameplay utilise le tir de la carte DLS');
     assert.equal(player.attributes.passing, player.dls26Stats.PAS ?? 25, 'le gameplay utilise la passe de la carte DLS');
     assert.ok(player.dls26Reference.baseOverall >= 75 && player.dls26Reference.baseOverall <= 86);
-    assert.equal(player.dls26Reference.verification, player.dls26Reference.sourceGame === 'DLS26' ? 'individual-player-card' : 'community-dataset-record');
+    assert.equal(player.dls26Reference.verification, player.dls26Reference.sourceGame === 'DLS26' ? 'individual-player-card' : player.dls26Reference.sourceGame === 'DLS19' ? 'community-historical-record' : 'community-dataset-record');
     assert.ok(['DLS26','DLS23'].includes(player.playerReference.sourceGame));
     assert.equal(player.playerReference.identityPersonalized, true);
     assert.deepEqual(player.playerReferenceStats, player.dls26Stats);
@@ -138,7 +138,7 @@ test('P27 : adaptateur DLS 19 conserve les dix attributs historiques et le badge
     stamina: 78, control: 80, crossing: 74, heading: 68
   });
   assert.throws(() => mapDls19StatsToGameplay({ ...record.stats, HEA: undefined }), /HEA/);
-  assert.equal(record.verification, 'archived-card-record');
+  assert.equal(record.verification, 'source-record');
   assert.equal(roleForDls19Position(record.position), 'FWD');
   assert.equal(roleForDls19Position('CB'), 'DEF');
   assert.equal(roleForDls19Position('DM'), 'MID');
