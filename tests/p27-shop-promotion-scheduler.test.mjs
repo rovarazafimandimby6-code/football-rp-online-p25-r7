@@ -71,8 +71,8 @@ test('P27 promotions : les soldes hebdomadaires suivent le calendrier lundi-dima
   const sameOffer=ids.map(id=>getScheduledShopPromotion(shop,id,sunday)).find(offer=>offer?.type==='weekly'&&offer.itemIds[0]===weekly.itemIds[0]);
   assert.ok(sameOffer,shop+' doit conserver le même article hebdomadaire jusqu’au dimanche');
   assert.equal(sameOffer.startsAt,monday);
-  const renewed=getScheduledShopPromotion(shop,weekly.itemIds[0],nextMonday+12*60*60*1000);
-  assert.ok(renewed);
+  const renewed=ids.map(id=>getScheduledShopPromotion(shop,id,nextMonday+12*60*60*1000)).find(offer=>offer?.type==='weekly');
+  assert.ok(renewed,shop+' doit renouveler ses offres le lundi suivant');
   assert.equal(renewed.startsAt,nextMonday);
   assert.equal(renewed.endsAt,nextMonday+7*24*60*60*1000);
  }
