@@ -486,3 +486,26 @@ test('P27 carrière : une panne de sauvegarde annule le transfert et conserve l�
   assert.equal(career.history.at(-1).type,'signing');
   assert.equal(values.get('career-transfer-atomic-p27'),saved);
 });
+
+test('P27 mercato : une panne de sauvegarde annule la négociation et le rejet d’offre',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={
+    getItem:key=>values.get(key)??null,
+    setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}
+  };
+  const career=new CareerManager({
+    storage,storageKey:'career-offer-edit-atomic-p27',
+    transferWindows:[{start:'2033-01-01T00:00:00Z',end:'2033-02-01T00:00:00Z'}]
+  });
+  assert.equal(career.signContract({clubId:'club-a',durationDays:365,signedAt:'2033-01-01T00:00:00Z'}).ok,true);
+  const offer=career.makeOffer({fromClubId:'club-b',salary:40,fee:100});
+  const saved=values.get('career-offer-edit-atomic-p27');
+  failWrites=true;
+  assert.deepEqual(career.negotiate(offer.offer.id,{salary:75,fee:250},'2033-01-02T00:00:00Z'),{ok:false,reason:'persistence-failed'});
+  assert.equal(career.offers.get(offer.offer.id).salary,40);
+  assert.equal(career.offers.get(offer.offer.id).fee,100);
+  assert.equal(career.rejectOffer(offer.offer.id),false);
+  assert.equal(career.offers.get(offer.offer.id).status,'pending');
+  assert.equal(values.get('career-offer-edit-atomic-p27'),saved);
+});
