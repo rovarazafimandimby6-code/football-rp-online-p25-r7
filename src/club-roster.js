@@ -302,7 +302,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
         kitColors: role === 'GK' ? { primary: club.colors?.[2] || '#eaf4ff', secondary: club.colors?.[0] || '#2676f2', accent: club.colors?.[1] || '#123269' } : { primary: club.colors?.[0] || '#2676f2', secondary: club.colors?.[1] || '#123269', accent: club.colors?.[2] || '#eaf4ff' },
         kitDesign: CLUB_KIT_DESIGNS[club.id] || club.kitDesign || 'central', kitVariant: role === 'GK' ? 'goalkeeper' : 'outfield',
         hairStyle: pick((['JP','MA','DZ','TN'].includes(code) ? ['short','short','fade','wavy','curly','shaved'] : ['short','short','curly','afro','fade','shaved','braids','twists','wavy']), random),
-        hairColor: pick(['dark','dark','brown','black','brown','blond'], random),
+        hairColor: pick(['dark','dark','brown','black','brown','blond','auburn','grey'], random),
         facialHair: age >= 20 && hashSeed(`${club.id}:${index}:facial-hair`) % 100 < 28 ? 'beard' : 'none',
         faceShape: pick(['oval','round','angular','long','square'], random),
         eyeShape: pick(['almond','round','deep-set','hooded'], random)
