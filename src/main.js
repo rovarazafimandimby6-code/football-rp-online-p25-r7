@@ -1715,7 +1715,11 @@ menu.addEventListener('click', event => {
     const formationSelect = `<label class="pre-match-formation">FORMATION DE L’ÉQUIPE <select id="pre-match-formation">${Object.entries(formationLabels).map(([value,label])=>`<option value="${value}" ${selectedFormation===value?'selected':''}>${label}</option>`).join('')}</select></label>`;
     const benchSizeSelect = `<label class="pre-match-formation">REMPLAÇANTS <select id="pre-match-bench-size">${[3,4,5,6,7].map(value=>`<option value="${value}" ${selectedBenchSize===value?'selected':''}>${value} remplaçants</option>`).join('')}</select></label>`;
     const isSystemPortraitEligible = player => (player?.playerType==='system'||player?.controlStatus==='system')&&player?.isHuman!==true&&player?.ownerType!=='human'&&player?.source!=='human'&&player?.createdBy!=='user';
-    if (selectedHomeStarterClubId !== home.id || !Array.isArray(selectedHomeStarterIds) || selectedHomeStarterIds.length !== 5) {
+    const validHomeStarterSelection = Array.isArray(selectedHomeStarterIds) && selectedHomeStarterIds.length === 5
+      && new Set(selectedHomeStarterIds).size === 5
+      && selectedHomeStarterIds.includes('career-player')
+      && selectedHomeStarterIds.every(id => home.roster.some(player => player.id === id));
+    if (selectedHomeStarterClubId !== home.id || !validHomeStarterSelection) {
       const defaults = createMatchSquad('blue',selectedFormation,home.roster,'career-player',selectedBenchSize);
       selectedHomeStarterIds = defaults.starters.map(player => player.id);
       selectedHomeStarterClubId = home.id;
