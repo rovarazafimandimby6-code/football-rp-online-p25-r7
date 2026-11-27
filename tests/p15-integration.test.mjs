@@ -16,5 +16,5 @@ test('P15 : la fin du match relie le résultat aux deux systèmes de carrière',
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /onMatchEnd:/);
   assert.match(main, /career\.recordMatch\(/);
-  assert.match(main, /profileStore\.grantMatchRewards\(reward\)/);
+  assert.match(main, /applyCareerMatchReward\(\{ careerReward:reward, profileStore, matchId \}\)/);
 });
