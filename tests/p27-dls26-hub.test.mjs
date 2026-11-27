@@ -11,8 +11,8 @@ test('P27 DLS26: l’en-tête est compact et ne réintroduit pas les anciens lib
   assert.match(html, /p27-game-topbar/);
   assert.match(html, /p27-career-progress-fill/);
   assert.match(html, /p27-top-player-coins/);
-  assert.match(html, /p27-top-player-avatar/);
-  assert.match(html, /p27-profile-level/);
+  assert.match(html, /menu-settings-icon/);
+  assert.doesNotMatch(html, /p27-profile-shortcut|p27-top-player-avatar|p27-profile-level/);
   assert.doesNotMatch(html, /p27-top-player-name|p27-top-player-club/);
   assert.match(css, /flex:0 0 25px/);
   assert.match(css, /p27-career-progress/);
@@ -27,7 +27,7 @@ test('P27 DLS26: le hub utilise des panneaux de tailles hiérarchisées', () => 
 });
 
 test('P27 DLS26: les panneaux sont reliés aux vraies fonctions existantes', () => {
-  for (const value of ['data-action="choose-match"','data-page="players"','data-page="competitions"','data-page="mercato"','data-page="clubs"','data-page="results"']) {
+  for (const value of ['data-action="choose-match"','data-page="player"','data-page="players"','data-page="competitions"','data-page="mercato"','data-page="clubs"','data-page="rankings"','data-page="rp-club"','data-page="results"']) {
     assert.ok(main.includes(value), `accès manquant : ${value}`);
   }
   assert.match(main, /pendingOffers/);
