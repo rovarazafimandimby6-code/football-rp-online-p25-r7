@@ -46,3 +46,12 @@ test('P27 animation : adapte la cadence de locomotion à la vitesse sans valeurs
  assert.equal(resolvePlayerAnimationTimeScale('idle',8),1);
  assert.equal(resolvePlayerAnimationTimeScale('run',Number.NaN),0.82);
 });
+
+
+test('P27 animation : résout les noms de clips GLTF sans normaliser ni modifier la liste source',()=>{
+ const source=[null,{}, {name:'Idle_Loop'}, {name:'Jog_Fwd_Loop'}, {name:'Sprint_Loop'}];
+ assert.equal(resolvePlayerAnimationClip(source,'idle'),'Idle_Loop');
+ assert.equal(resolvePlayerAnimationClip(source,'run',7.5),'Jog_Fwd_Loop');
+ assert.equal(resolvePlayerAnimationClip(source,'run',7.51),'Sprint_Loop');
+ assert.deepEqual(source,[null,{}, {name:'Idle_Loop'}, {name:'Jog_Fwd_Loop'}, {name:'Sprint_Loop'}]);
+});
