@@ -142,3 +142,9 @@ test('P27 bibliothèque joueurs : une recherche sans résultat affiche un état 
   assert.ok(main.includes('if(emptyState) emptyState.hidden=matchedCards.length>0'));
   assert.ok(main.includes('Aucun joueur ne correspond à ces critères.'));
 });
+
+
+test('P27 catalogues : les tris numériques placent les valeurs absentes à la fin et départagent par nom', () => {
+  assert.equal((main.match(/const aValid=Number\.isFinite\(av\),bValid=Number\.isFinite\(bv\);/g)||[]).length, 2);
+  assert.equal((main.match(/return a\.dataset\.name\.localeCompare\(b\.dataset\.name,'fr'\);/g)||[]).length >= 4, true);
+});
