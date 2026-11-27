@@ -128,7 +128,7 @@ export function applyDls26Reference(profile, { targetOverall, random = Math.rand
   const qualityAdjustment = Math.round(delta * 0.72);
   const stats = Object.fromEntries(Object.entries(profile.stats).map(([key, value]) => {
     const individualAdjustment = Math.round(random() * 4 - 2);
-    return [key, Math.max(15, Math.min(99, value + qualityAdjustment + individualAdjustment))];
+    return [key, Math.max(20, Math.min(99, value + qualityAdjustment + individualAdjustment))];
   }));
   const heightAdjustment = Math.round(random() * 4 - 2);
   return {
