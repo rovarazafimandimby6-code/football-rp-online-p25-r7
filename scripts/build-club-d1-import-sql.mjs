@@ -6,8 +6,7 @@ import process from 'node:process';
 const args=process.argv.slice(2);
 const option=name=>{const i=args.indexOf(name);return i<0?null:args[i+1]||null;};
 const input=option('--bundle'), output=option('--output');
-if(!input||!output){process.stderr.write('Usage: node scripts/build-club-d1-import-sql.mjs --bundle <validated-bundle.json> --output <import.sql>
-');process.exit(2);}
+if(!input||!output){process.stderr.write('Usage: node scripts/build-club-d1-import-sql.mjs --bundle <validated-bundle.json> --output <import.sql>\\n');process.exit(2);}
 const fail=message=>{throw new Error(message);};
 const q=value=>value===null?'NULL':typeof value==='number'?String(value):typeof value==='boolean'?(value?'1':'0'):"'"+String(value).replace(/'/g,"''")+"'";
 const safeInt=(n,min=0,max=1_000_000_000_000)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
