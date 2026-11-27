@@ -6,6 +6,7 @@ import { calculateResaleValue, getShopCatalog, getShopItem, getShopPrice, valida
 const cleanId=value=>String(value??'').trim().slice(0,80);
 const cleanTransactionId=value=>{const id=String(value??'').trim();return id.length>0&&id.length<=64?id:'';};
 const clone=value=>JSON.parse(JSON.stringify(value));
+const validShop=shop=>shop==='player'||shop==='club';
 const emptyState=()=>({version:1,players:[],clubs:[],purchases:[],resales:[]});
 
 function validPersistedState(value){
@@ -151,17 +152,20 @@ export class JsonShopService {
     return {equippedItemIds,stadiumExpansionLevel};
   }
   inventory(shop,ownerId){
+    if(!validShop(shop)||!cleanId(ownerId))return [];
     const rows=shop==='player'?this.state.players:this.state.clubs;
     const row=rows.find(item=>item.ownerId===ownerId);
     return clone(row?.items||[]);
   }
   findInventoryRow(shop,ownerId,create=false){
+    if(!validShop(shop)||!cleanId(ownerId))return null;
     const rows=shop==='player'?this.state.players:this.state.clubs;
     let row=rows.find(item=>item.ownerId===ownerId);
     if(!row&&create){row={ownerId,items:[]};rows.push(row);}
     return row||null;
   }
   purchase({shop,itemId,actorId,clubId=null,purchaseId}={}){
+    if(!validShop(shop))return {ok:false,reason:'invalid-shop'};
     const id=cleanTransactionId(purchaseId),actor=cleanId(actorId),club=cleanId(clubId);
     if(!id||!actor)return {ok:false,reason:'invalid-purchase'};
     const target=shop==='player'?actor:club;
@@ -225,6 +229,7 @@ export class JsonShopService {
     return {ok:result.ok,reason:result.reason||null};
   }
   resale({shop,actorId,clubId=null,itemId,resaleId}={}){
+    if(!validShop(shop))return {ok:false,reason:'invalid-shop'};
     const id=cleanTransactionId(resaleId),actor=cleanId(actorId),club=cleanId(clubId);
     if(!id||!actor)return {ok:false,reason:'invalid-resale'};
     const owner=shop==='player'?actor:this.ownerOf(club);
@@ -273,6 +278,7 @@ export class JsonShopService {
     return {ok:result.ok,reason:result.reason||null};
   }
   setEquipped({shop,actorId,clubId=null,itemId,equipped=true}={}){
+    if(!validShop(shop))return {ok:false,reason:'invalid-shop'};
     const actor=cleanId(actorId),club=cleanId(clubId),target=shop==='player'?actor:club;
     if(!actor||!target)return {ok:false,reason:'invalid-owner'};
     if(shop==='club'&&this.ownerOf(club)!==actor)return {ok:false,reason:'club-owner-required'};
@@ -296,6 +302,7 @@ export class JsonShopService {
     return {ok:true,item:clone(this.findInventoryRow(shop,target).items.find(entry=>entry.itemId===itemId))};
   }
   getHistory({shop,ownerId}={}){
+    if(!validShop(shop)||!cleanId(ownerId))return {purchases:[],resales:[]};
     const id=cleanId(ownerId);
     return {purchases:clone(this.state.purchases.filter(row=>row.shop===shop&&row.ownerId===id)),
       resales:clone(this.state.resales.filter(row=>row.shop===shop&&row.ownerId===id))};
