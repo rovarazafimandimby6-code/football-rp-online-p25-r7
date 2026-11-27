@@ -100,3 +100,22 @@ test('P27 effectifs : le snapshot de synchronisation du prêt reste intact aprè
   assert.equal(originalStart.contract.loan.parentContract.salary,1400);
  }finally{f.cleanup();}
 });
+
+test('P27 prêts : un prêt actif bloque les transferts définitifs et invalide les anciennes offres',()=>{
+ const f=setup('2027-01-15T12:00:00.000Z');
+ try{
+  f.store.signContract('account-loan-transfer-lock',{clubId:'antananarivo-fc',salary:1300,durationDays:180});
+  const permanent=f.store.requestOffer('account-loan-transfer-lock',{toClubId:'fianarantsoa-athletic'});
+  assert.equal(permanent.ok,true);
+  const loan=f.store.requestLoanOffer('account-loan-transfer-lock',{toClubId:'toamasina-united',durationDays:7});
+  assert.equal(loan.ok,true);
+  const accepted=f.store.acceptLoanOffer('account-loan-transfer-lock',loan.offer.id);
+  assert.equal(accepted.ok,true);
+  assert.equal(accepted.career.offers.find(item=>item.id===permanent.offer.id).status,'cancelled');
+  assert.equal(f.store.requestOffer('account-loan-transfer-lock',{toClubId:'fianarantsoa-athletic'}).reason,'player-on-loan');
+  const row=f.store.state.careers.find(item=>item.accountId==='account-loan-transfer-lock');
+  row.offers.push({...permanent.offer,status:'pending'});
+  assert.equal(f.store.acceptOffer('account-loan-transfer-lock',permanent.offer.id).reason,'player-on-loan');
+  assert.equal(f.store.getCareer('account-loan-transfer-lock').clubId,'toamasina-united');
+ }finally{f.cleanup();}
+});
