@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
-import { resolvePlayerAnimationClip, isLoopingPlayerAnimation } from './player-animation-map.js';
+import { resolvePlayerAnimationClip, isLoopingPlayerAnimation, resolvePlayerAnimationTimeScale } from './player-animation-map.js';
 import { clonePlayerMaterials } from './player-materials.js';
 
 const loader = new GLTFLoader();
@@ -160,7 +160,11 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
       if (!next) return false;
       const looping = isLoopingPlayerAnimation(state);
       const mode = `${state}:${looping ? 'loop' : 'once'}`;
-      if (next === activeAction && activeActionMode === mode) return true;
+      if (next === activeAction && activeActionMode === mode) {
+        // Movement speed changes continuously; update cadence without restarting the clip.
+        if (looping) next.setEffectiveTimeScale(resolvePlayerAnimationTimeScale(state, speed));
+        return true;
+      }
       next.reset().setLoop(looping ? THREE.LoopRepeat : THREE.LoopOnce, looping ? Infinity : 1);
       next.clampWhenFinished = !looping;
       next.enabled = true;
@@ -169,7 +173,7 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
         const expectedDuration = ({ pass:0.34, shoot:0.38, tackle:0.42, dive:0.58, celebrate:2.0 })[state] || 0.5;
         next.setDuration(expectedDuration);
       } else {
-        next.setEffectiveTimeScale(state === 'run' ? (speed > 7.5 ? 1.08 : 1) : 1);
+        next.setEffectiveTimeScale(resolvePlayerAnimationTimeScale(state, speed));
       }
       next.fadeIn(0.18).play();
       if (activeAction && activeAction !== next) activeAction.fadeOut(0.18);
