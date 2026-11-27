@@ -118,6 +118,14 @@ test('P27 stade : les marquages répétés et les fanions réutilisent leurs gé
 });
 
 
+test('P27 rendu : le rendu utilise le drapeau de perte de contexte sans interroger WebGL à chaque frame', () => {
+  const renderMethod = sceneSource.slice(sceneSource.indexOf('  render(nowMs = performance.now()) {'), sceneSource.indexOf('  dispose() {'));
+  assert.match(renderMethod, /if \(!this\.renderer \|\| this\.contextLost\) return false/);
+  assert.doesNotMatch(renderMethod, /getContext\(\)\.isContextLost\(\)/);
+  assert.match(sceneSource, /webglcontextlost/);
+  assert.match(sceneSource, /webglcontextrestored/);
+});
+
 test('P27 joueurs : les oscillations visuelles utilisent une horloge locale accumulée', () => {
   assert.match(playerSource, /this\.visualAnimationTime = 0/);
   assert.match(playerSource, /this\.visualAnimationTime \+= dt \* 1000/);
