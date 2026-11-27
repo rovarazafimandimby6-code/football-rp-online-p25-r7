@@ -337,6 +337,22 @@ export class OnlineAccountClient {
     return result;
   }
 
+  async getShopHistory(shop = 'player', clubId = null) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!['player','club'].includes(shop)) throw new Error('INVALID_SHOP');
+    if (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim())) throw new Error('INVALID_CLUB_ID');
+    const query = new URLSearchParams({ shop, ...(shop === 'club' ? { clubId:clubId.trim() } : {}) });
+    const result = await this.request('/api/shop/history?' + query.toString(), { auth:true });
+    if (!Array.isArray(result?.purchases) || !Array.isArray(result?.resales)
+      || !result.purchases.every(row => row && row.shop === shop && typeof row.id === 'string'
+        && typeof row.itemId === 'string' && Number.isSafeInteger(row.paidPrice) && row.paidPrice >= 0
+        && typeof row.status === 'string')
+      || !result.resales.every(row => row && row.shop === shop && typeof row.id === 'string'
+        && typeof row.itemId === 'string' && Number.isSafeInteger(row.amount) && row.amount >= 0
+        && typeof row.status === 'string')) throw new Error('INVALID_SHOP_HISTORY_RESPONSE');
+    return result;
+  }
+
   async getOwnedShopClubs() {
     if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
     const result = await this.request('/api/shop/clubs', { auth:true });
