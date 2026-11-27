@@ -1,8 +1,8 @@
 const RULES = {
-  idle: [/^idle/i, /stand/i],
-  walk: [/^walk/i],
-  jog: [/jog/i, /run.*loop/i, /^run/i],
-  sprint: [/sprint/i],
+  idle: [/^Idle_Loop$/i, /^idle/i, /stand/i],
+  walk: [/^Walk_Loop$/i, /^walk/i],
+  jog: [/^Jog_Fwd_Loop$/i, /jog/i, /run.*loop/i, /^run/i],
+  sprint: [/^Sprint_Loop$/i, /sprint/i],
   pass: [/pass/i, /kick.*short/i, /short.*kick/i],
   shoot: [/shoot/i, /shot/i, /strike/i, /volley/i, /kick/i],
   control: [/dribbl/i, /control.*ball/i],
