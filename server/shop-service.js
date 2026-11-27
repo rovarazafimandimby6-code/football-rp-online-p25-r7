@@ -55,7 +55,7 @@ export class JsonShopService {
     if(!['player','club'].includes(shop))return [];
     return getShopCatalog(shop).map(item=>{
       const promotion=this.promotionProvider(shop,item.id)||null;
-      return {...item,...getShopPrice(item,{promotion,now:this.now()})};
+      return {...item,...getShopPrice(item,{promotion,now:this.now()}),promotionType:promotion?.type||null,promotionLabel:promotion?.label||null};
     });
   }
   inventory(shop,ownerId){
@@ -98,7 +98,7 @@ export class JsonShopService {
     let journal=prior;
     if(!journal){
       journal={id,shop,ownerId:target,actorId:actor,itemId:item.id,category:item.category,rarity:item.rarity,
-        basePrice:price.basePrice,paidPrice:price.price,discountPercent:price.discountPercent,
+        basePrice:price.basePrice,paidPrice:price.price,discountPercent:price.discountPercent,promotionType:offer?.type||null,promotionEndsAt:price.endsAt||null,
         currency:item.currency,status:'pending',createdAt:this.now()};
       this.transaction(()=>{this.state.purchases.push(journal);return true;});
     }
