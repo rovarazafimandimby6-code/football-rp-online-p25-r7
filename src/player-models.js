@@ -55,6 +55,7 @@ function attachHair(model, hairGltf) {
     const bones = source.skeleton.bones.map((bone) => modelBones.get(bone.name));
     if (bones.some((bone) => !bone)) continue;
     const hair = new THREE.SkinnedMesh(source.geometry.clone(), source.material.clone());
+    hair.userData.p27OwnedGeometry = true;
     hair.name = `Custom_${source.name || 'Hair'}`;
     hair.position.copy(source.position); hair.quaternion.copy(source.quaternion); hair.scale.copy(source.scale);
     hair.bind(new THREE.Skeleton(bones, source.skeleton.boneInverses.map((matrix) => matrix.clone())), source.bindMatrix.clone());
@@ -101,8 +102,10 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
         const shoe = new THREE.Group();
         shoe.name = `ShopBoot_${side}`;
         const upper = new THREE.Mesh(new THREE.BoxGeometry(0.13,0.065,0.24), new THREE.MeshStandardMaterial({color,roughness:0.72,metalness:0.08}));
+        upper.userData.p27OwnedGeometry = true;
         upper.position.set(0,-0.012,0.025);
         const sole = new THREE.Mesh(new THREE.BoxGeometry(0.135,0.018,0.245), new THREE.MeshStandardMaterial({color:'#111820',roughness:0.9}));
+        sole.userData.p27OwnedGeometry = true;
         sole.position.set(0,-0.047,0.025);
         shoe.add(upper,sole); shoe.traverse((node)=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
         foot.add(shoe);
@@ -114,6 +117,7 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
         const arm = bonesForCosmetics.get(`lowerarm_${side}`);
         if (!arm) continue;
         const band = new THREE.Mesh(new THREE.TorusGeometry(0.035,0.008,8,20), new THREE.MeshStandardMaterial({color,metalness:0.18,roughness:0.55}));
+        band.userData.p27OwnedGeometry = true;
         band.name = `ShopWristBand_${side}`;
         band.rotation.x = Math.PI/2;
         band.position.y = 0.19;
@@ -242,7 +246,22 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
       lastState = state;
     };
     onReady?.({ model, mixer, actions });
-    return { model, mixer, update, dispose() { mixer.stopAllAction(); model.traverse((node) => { if (node.isSkinnedMesh) { node.geometry?.dispose?.(); const mats = Array.isArray(node.material) ? node.material : [node.material]; mats.forEach((mat) => mat?.dispose?.()); } }); } };
+    return { model, mixer, update, dispose() {
+      mixer.stopAllAction();
+      root.remove(model);
+      const ownedGeometries = new Set();
+      const materials = new Set();
+      model.traverse((node) => {
+        if (!node.isMesh) return;
+        if (node.userData?.p27OwnedGeometry && node.geometry) ownedGeometries.add(node.geometry);
+        const list = Array.isArray(node.material) ? node.material : (node.material ? [node.material] : []);
+        for (const material of list) materials.add(material);
+      });
+      for (const material of materials) material.dispose();
+      for (const geometry of ownedGeometries) geometry.dispose();
+      mixer.uncacheRoot(model);
+      fallbackBody.visible = true;
+    } };
   } catch (error) {
     console.warn('P25 humanoid model unavailable; procedural fallback retained.', error);
     return null;
