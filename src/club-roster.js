@@ -1,5 +1,6 @@
 import { createSystemPlayerContract } from './p27-player-contracts.js';
 import { applyPlayerReference, findPlayerReference } from './p27-dls26-reference.js';
+import { mapDls19StatsToGameplay } from './p27-dls19-reference.js';
 const NATIONAL_POOLS = Object.freeze({
   MG: { names: ['Toky','Hery','Mika','Tiana','Njaka','Kanto','Mamy','Faneva','Rado','Ando','Lova','Tahina','Faly','Niry','Hasina','Miora','Soa','Voary','Nantenaina','Fitia','Tsanta','Haja'], surnames: ['Rakoto','Randria','Andrian','Raveloson','Razafindrakoto','Rasolo','Ramanantsoa','Rakotomalala','Randrianarisoa','Andriamihaja','Razanakoto','Rajaonarison','Rafalimanana','Rakotondrabe','Ratsimbazafy','Rasoanaivo','Andriatsiferana','Rakotovao'] },
   FR: { names: ['Noah','Elias','Mathis','Yanis','Enzo','Sami','Lucas','Nolan','Theo','Mael','Bastien','Adrien','Ilyes','Remy'], surnames: ['Morel','Diallo','Laurent','Bernard','Camara','Leroy','Petit','Garnier','Fontaine','Chevalier','Roux','Marchand','Giraud','Perrin','Colin','Andre'] },
@@ -247,14 +248,18 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
       : null;
     const dlsStats = referenceData?.stats;
     // Keep the existing six-field gameplay contract, but derive it from the DLS card.
-    const attributes = dlsStats ? {
-      pace: Math.round(((dlsStats.SPE || 0) + (dlsStats.ACC || 0)) / 2),
-      shooting: dlsStats.SHO ?? 25,
-      passing: dlsStats.PAS ?? 25,
-      defense: role === 'GK' ? (dlsStats.GKR ?? dlsStats.TAC ?? 25) : (dlsStats.TAC ?? 25),
-      stamina: dlsStats.STA ?? 60,
-      control: dlsStats.CON ?? 50
-    } : generateAttributes(overall, role, archetype, random);
+    const attributes = dlsStats
+      ? referenceProfile.sourceGame === 'DLS19'
+        ? mapDls19StatsToGameplay(dlsStats)
+        : {
+            pace: Math.round(((dlsStats.SPE || 0) + (dlsStats.ACC || 0)) / 2),
+            shooting: dlsStats.SHO ?? 25,
+            passing: dlsStats.PAS ?? 25,
+            defense: role === 'GK' ? (dlsStats.GKR ?? dlsStats.TAC ?? 25) : (dlsStats.TAC ?? 25),
+            stamina: dlsStats.STA ?? 60,
+            control: dlsStats.CON ?? 50
+          }
+      : generateAttributes(overall, role, archetype, random);
     const skinTone = pick((({
       MG: ['light','tan','tan','medium','brown','dark','medium','brown'],
       SN: ['brown','dark','dark','deep','medium','brown'], NG: ['brown','dark','dark','deep','medium','brown'], KE: ['light','tan','medium','brown','dark','medium'],
