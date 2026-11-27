@@ -1470,6 +1470,15 @@ menu.addEventListener('input', event => {
 });
 menu.addEventListener('keydown', event => { if(event.target.closest('[data-club-card]')) { const action=event.target.closest('[data-action]')?.dataset.action; if(!action) { const card=event.target.closest('[data-club-card]'); if(card){event.preventDefault();const opening=!card.classList.contains('is-expanded');menu.querySelectorAll('.club-card.compact-club-card.is-expanded').forEach(item=>{if(item!==card){item.classList.remove('is-expanded');item.setAttribute('aria-expanded','false');}});card.classList.toggle('is-expanded',opening);card.setAttribute('aria-expanded',String(opening));}} } });
 menu.addEventListener('keydown', event => {
+  const rosterRow = event.target.closest('tr[data-player-profile][data-player-row]');
+  if (rosterRow && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    const index = Number(rosterRow.dataset.playerProfile);
+    selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null;
+    playerProfileReturnPage = 'clubs';
+    if (selectedPlayerProfile) renderPage('player-detail');
+    return;
+  }
   if (event.key !== 'Enter' || event.target?.id !== 'rp-club-chat-input') return;
   event.preventDefault();
   const button = menu.querySelector('[data-action="rp-club-message"]');
@@ -1512,6 +1521,13 @@ menu.addEventListener('click', event => {
   if (careerButton) { const index = Number(careerButton.dataset.playerIndex); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = careerButton.closest('[data-profile-origin]')?.dataset.profileOrigin === 'clubs' ? 'clubs' : 'players'; if(selectedPlayerProfile) renderPage('player-detail'); return; }
   const playerCard = event.target.closest('[data-player-profile]');
   if (playerCard && event.target.closest('.player-card-details')) return;
+  if (playerCard && playerCard.matches('tr[data-player-row]')) {
+    const index = Number(playerCard.dataset.playerProfile);
+    selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null;
+    playerProfileReturnPage = playerCard.dataset.profileOrigin === 'clubs' ? 'clubs' : 'players';
+    if (selectedPlayerProfile) renderPage('player-detail');
+    return;
+  }
   if (playerCard) {
     menu.querySelectorAll('.player-library-card.is-expanded').forEach(card=>{if(card!==playerCard){card.classList.remove('is-expanded');card.setAttribute('aria-expanded','false');card.querySelector('.player-card-expanded-details')?.setAttribute('aria-hidden','true');}});
     const expanded=playerCard.classList.toggle('is-expanded');
