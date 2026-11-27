@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
+import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, getSpacedDefensiveTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
 
 const player = (id, team, x, z, specialty = 'balanced') => ({
   id, team, role: 'FWD', specialty,
@@ -167,4 +167,36 @@ test('P27: le bloc défensif se replie davantage avec une mentalité prudente', 
   const balanced = getDefensiveShapeTarget(defender, ball, [carrier], 1, 'balanced');
   const defensive = getDefensiveShapeTarget(defender, ball, [carrier], 1, 'defensive');
   assert.ok(defensive.x < balanced.x, 'le bloc prudent doit reculer davantage');
+});
+
+
+test('P27: le bloc défensif conserve des intervalles entre coéquipiers', () => {
+  const defender = player('defender', 'blue', 0, 0);
+  const teammate = player('teammate', 'blue', 2, 0);
+  defender.homePos = { x: 0, z: 0 };
+  teammate.homePos = { x: 2, z: 0 };
+  const original = { x: 1, z: 0 };
+  const target = getSpacedDefensiveTarget(defender, original, [defender, teammate], 4.8);
+  assert.ok(target.x < original.x, 'le défenseur s’écarte du coéquipier situé à sa droite');
+  assert.ok(Math.hypot(target.x - teammate.pos.x, target.z - teammate.pos.z) > 1,
+    'la correction réduit le chevauchement');
+  assert.deepEqual(original, { x: 1, z: 0 }, 'la cible fournie reste inchangée');
+  assert.ok(target.x >= -26 && target.x <= 26 && target.z >= -15 && target.z <= 15);
+});
+
+test('P27: les rôles de pressing restent stables lorsque deux joueurs sont à égale distance', () => {
+  const first = player('slot-2', 'blue', 0, -2);
+  const second = player('slot-1', 'blue', 0, 2);
+  first.slotIndex = 2;
+  second.slotIndex = 1;
+  const carrier = player('carrier', 'red', 0, 0);
+  for (const p of [first, second, carrier]) {
+    p.attributes = { pace: 60, stamina: 60, defense: 60, control: 60, passing: 60, shooting: 60 };
+    p.homePos = { ...p.pos };
+  }
+  const ai = new TeamAI();
+  ai.update([first, second, carrier], { pos: { x: 0, z: 0 }, owner: carrier }, 0.05,
+    { aiPass() {}, aiShoot() {}, tryTackle() {} });
+  assert.ok(second.vel.x > first.vel.x,
+    'le slot prioritaire doit devenir le poursuivant même si l’ordre du tableau change');
 });
