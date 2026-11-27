@@ -164,12 +164,12 @@ export class RoomManager {
     if (!room) throw new Error('ROOM_NOT_FOUND');
     if (room.phase === 'fulltime') throw new Error('MATCH_ALREADY_FINISHED');
     const humans = { blue: 0, red: 0 };
-    for (const player of room.players.values()) if (!player.isBot && player.connected) humans[player.team]++;
+    for (const player of room.players.values()) if (!player.isBot) humans[player.team]++;
     let team = preferredTeam === 'blue' || preferredTeam === 'red' ? preferredTeam : (humans.blue <= humans.red ? 'blue' : 'red');
     if (humans[team] >= 7) team = team === 'blue' ? 'red' : 'blue';
     if (humans[team] >= 7) throw new Error('ROOM_FULL');
 
-    // Five players start on the pitch; up to two additional humans join as substitutes.
+    // Five players start on the pitch; up to two additional humans join as substitutes, within the seven-human club cap.
     const isStarter = humans[team] < 5;
     const reserve = [...room.players.values()].find(p => p.isBot && p.team === team && (isStarter ? p.isOnPitch !== false : p.isOnPitch === false));
     const usedSlots = new Set([...room.players.values()].filter(p => p.team === team && p !== reserve).map(p => p.slot));
