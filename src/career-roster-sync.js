@@ -14,50 +14,68 @@ const roleArchetype = role => ({
   FWD: 'Attaquant mobile'
 }[role] || 'Joueur polyvalent');
 
-/** Maintient le footballeur de carrière dans un seul effectif local. */
+const profilePlayer = (profile, target) => {
+  const attributes = profile.progression?.attributes || DEFAULT_ATTRIBUTES;
+  const role = ['GK','DEF','MID','FWD'].includes(profile.identity?.role) ? profile.identity.role : 'MID';
+  const rating = averageRating(attributes);
+  return {
+    id:CAREER_ROSTER_PLAYER_ID,
+    name:profile.identity?.displayName || 'Nouveau joueur',
+    number:profile.identity?.number,
+    role,
+    preferredFoot:profile.identity?.preferredFoot,
+    nationality:target.countryCode,
+    rating,
+    potential:Math.max(rating, Number(profile.progression?.level) || rating),
+    attributes,
+    archetype:roleArchetype(role),
+    appearance:profile.appearance && typeof profile.appearance === 'object' ? { ...profile.appearance } : null
+  };
+};
+
+/** Maintient le footballeur de carrière dans un seul effectif local, sans désynchroniser un contrat. */
 export function syncCareerPlayerRoster({ clubs, career, profile, playerId = CAREER_ROSTER_PLAYER_ID } = {}) {
-  if (!clubs || !career || !profile || typeof clubs.listClubs !== 'function') return { ok: false, reason: 'invalid-context' };
-  career.refreshContractStatus?.();
+  if (!clubs || !career || !profile || typeof clubs.listClubs !== 'function') return { ok:false, reason:'invalid-context' };
+  const refreshed = career.refreshContractStatus?.();
+  if (refreshed?.persistenceFailed) return { ok:false, reason:'career-persistence-failed' };
   const id = String(playerId || '').trim().slice(0, 48);
-  if (!id) return { ok: false, reason: 'invalid-player' };
+  if (!id) return { ok:false, reason:'invalid-player' };
 
   const targetId = career.contract?.status === 'active' && career.clubId && !career.getContractStatus?.()?.expired
     ? String(career.clubId)
     : null;
   const locations = clubs.listClubs().filter(club => club.roster.some(player => player.id === id));
   if (!targetId) {
-    for (const club of locations) clubs.removePlayer(club.id, id);
-    return { ok: true, registered: false, reason: 'free-agent' };
+    for (const club of locations) {
+      if (!clubs.removePlayer(club.id, id)) return { ok:false, reason:'roster-persistence-failed', clubId:club.id };
+    }
+    return { ok:true, registered:false, reason:'free-agent' };
   }
 
   const target = clubs.getClub(targetId);
-  if (!target) return { ok: false, reason: 'unknown-club', clubId: targetId };
+  if (!target) return { ok:false, reason:'unknown-club', clubId:targetId };
   const source = locations.find(club => club.id === targetId) || locations[0] || null;
-  for (const duplicate of locations) if (source && duplicate.id !== source.id) clubs.removePlayer(duplicate.id, id);
+  const player = profilePlayer(profile, target);
 
   if (source && source.id !== targetId) {
+    const updatedSource = clubs.updatePlayer(source.id, player);
+    if (!updatedSource.ok) return updatedSource;
+    for (const duplicate of locations) {
+      if (duplicate.id !== source.id && duplicate.id !== targetId && !clubs.removePlayer(duplicate.id, id)) {
+        return { ok:false, reason:'roster-persistence-failed', clubId:duplicate.id };
+      }
+    }
     const moved = clubs.transferPlayer(source.id, targetId, id);
     if (!moved.ok) return moved;
-  } else if (!source) {
-    const added = clubs.addPlayer(targetId, { id, name: profile.identity?.displayName });
-    if (!added.ok) return added;
+    return { ok:true, registered:true, clubId:targetId, player:clubs.getClub(targetId).roster.find(item=>item.id===id) };
   }
 
-  const attributes = profile.progression?.attributes || DEFAULT_ATTRIBUTES;
-  const role = ['GK','DEF','MID','FWD'].includes(profile.identity?.role) ? profile.identity.role : 'MID';
-  const rating = averageRating(attributes);
-  const updated = clubs.updatePlayer(targetId, {
-    id,
-    name: profile.identity?.displayName || 'Nouveau joueur',
-    number: profile.identity?.number,
-    role,
-    preferredFoot: profile.identity?.preferredFoot,
-    nationality: target.countryCode,
-    rating,
-    potential: Math.max(rating, Number(profile.progression?.level) || rating),
-    attributes,
-    archetype: roleArchetype(role),
-    appearance: profile.appearance && typeof profile.appearance === 'object' ? { ...profile.appearance } : null
-  });
-  return updated.ok ? { ok: true, registered: true, clubId: targetId, player: updated.player } : updated;
+  if (source) {
+    const updated = clubs.updatePlayer(targetId, player);
+    return updated.ok ? { ok:true, registered:true, clubId:targetId, player:updated.player } : updated;
+  }
+
+  const added = clubs.addPlayer(targetId, { ...player, playerType:'human' });
+  if (!added.ok) return added;
+  return { ok:true, registered:true, clubId:targetId, player:clubs.getClub(targetId).roster.find(item=>item.id===id) };
 }
