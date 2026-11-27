@@ -6,7 +6,7 @@ const game = await readFile(new URL('../src/game.js', import.meta.url), 'utf8');
 
 test('P27 remplacements IA : bancs réels distincts, deux équipes et contrôle humain protégé', () => {
   assert.match(game, /benchPlayers = \{/);
-  assert.match(game, /createMatchSquad\('red', '2-2', callbacks\.awayRoster\)/);
+  assert.match(game, /createMatchSquad\('red', formation, callbacks\.awayRoster\)/);
   assert.match(game, /selectAISubstitution\(/);
   assert.match(game, /processAISubstitutions\(dt\)/);
   assert.match(game, /outgoing\.isControlled/);
