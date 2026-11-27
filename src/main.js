@@ -1749,12 +1749,15 @@ menu.addEventListener('click', event => {
     if (!result.ok) document.getElementById('menu-page-subtitle').textContent = 'Aucun contrat actif à résilier.';
   } else if (action === 'generate-offers') {
     if (career.contract && !career.getContractStatus()?.expired) {
-      clubs.listClubs().filter(club => club.id !== career.clubId).forEach(club => {
-        const duplicate = [...career.offers.values()].some(offer => offer.fromClubId === club.id && offer.status === 'pending');
-        if (!duplicate) {
-          const nextWindow = career.transferWindows.find(window => window.end >= Date.now());
-          career.makeOffer({ fromClubId: club.id, salary: Math.max(40, club.rating * 4), fee: club.rating * 8, expiresAt: new Date(nextWindow?.end || Date.now() + 30 * 86400000).toISOString() });
-        }
+      const pendingOffers = [...career.offers.values()].filter(offer => offer.status === 'pending');
+      const availableSlots = Math.max(0, 5 - pendingOffers.length);
+      const candidates = clubs.listClubs()
+        .filter(club => club.id !== career.clubId && !pendingOffers.some(offer => offer.fromClubId === club.id))
+        .sort((a, b) => Math.abs(Number(a.rating || 0) - Number(clubs.getClub(career.clubId)?.rating || 0)) - Math.abs(Number(b.rating || 0) - Number(clubs.getClub(career.clubId)?.rating || 0)) || String(a.name).localeCompare(String(b.name), 'fr'))
+        .slice(0, availableSlots);
+      const nextWindow = career.transferWindows.find(window => window.end >= Date.now());
+      candidates.forEach(club => {
+        career.makeOffer({ fromClubId: club.id, salary: Math.max(40, club.rating * 4), fee: club.rating * 8, expiresAt: new Date(nextWindow?.end || Date.now() + 30 * 86400000).toISOString() });
       });
     }
     renderPage('mercato');
