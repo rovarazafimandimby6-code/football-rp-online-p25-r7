@@ -357,6 +357,28 @@ export class JsonClubFinanceService {
    */
   auditReconciliation() {
     const issues = [];
+    const sourceEvents = this.transferStore?.state?.events;
+    if (Array.isArray(sourceEvents)) {
+      const eventIds = new Set();
+      for (const event of sourceEvents) {
+        if (!event || !['transfer', 'salary-payment'].includes(event.type)) continue;
+        const eventId = String(event.id ?? '').trim();
+        if (!eventId || eventIds.has(`${event.type}:${eventId}`)) {
+          issues.push({ type: 'source-finance-event-duplicate-or-missing-id', eventType: event.type, eventId: eventId || null });
+        }
+        if (eventId) eventIds.add(`${event.type}:${eventId}`);
+        if (event.type === 'transfer') {
+          const fee = safeAmount(event.fee);
+          if (fee === null || fee === 0 || !this.clubs.has(event.fromClubId) ||
+              !this.clubs.has(event.toClubId) || event.fromClubId === event.toClubId) {
+            issues.push({ type: 'source-transfer-event-invalid', eventId: eventId || null });
+          }
+        } else if (!this.clubs.has(event.clubId) || safeAmount(event.amount) === null ||
+            event.amount === 0) {
+          issues.push({ type: 'source-player-wage-event-invalid', eventId: eventId || null });
+        }
+      }
+    }
     const clubIds = new Set(this.clubs.keys());
     const accountIds = new Set(this.store.accounts.keys());
     const missingAccounts = [...clubIds].filter(id => !accountIds.has(id)).sort();
