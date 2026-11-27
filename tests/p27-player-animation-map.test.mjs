@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolvePlayerAnimationClip, isLoopingPlayerAnimation, resolvePlayerAnimationTimeScale } from '../src/player-animation-map.js';
+import { resolvePlayerAnimationClip, createPlayerAnimationClipMap, resolveCachedPlayerAnimationClip, isLoopingPlayerAnimation, resolvePlayerAnimationTimeScale } from '../src/player-animation-map.js';
 
 const clips = [
   'Idle_Loop','Walk_Loop','Jog_Fwd_Loop','Sprint_Fwd_Loop',
@@ -54,4 +54,23 @@ test('P27 animation : résout les noms de clips GLTF sans normaliser ni modifier
  assert.equal(resolvePlayerAnimationClip(source,'run',7.5),'Jog_Fwd_Loop');
  assert.equal(resolvePlayerAnimationClip(source,'run',7.51),'Sprint_Loop');
  assert.deepEqual(source,[null,{}, {name:'Idle_Loop'}, {name:'Jog_Fwd_Loop'}, {name:'Sprint_Loop'}]);
+});
+
+
+test('P27 animation : prépare une table de clips réutilisable au montage du modèle',()=>{
+ const map=createPlayerAnimationClipMap(clips);
+ assert.equal(map.idle,'Idle_Loop');
+ assert.equal(map.walk,'Walk_Loop');
+ assert.equal(map.jog,'Jog_Fwd_Loop');
+ assert.equal(map.sprint,'Sprint_Fwd_Loop');
+ assert.equal(resolveCachedPlayerAnimationClip(map,'run',7.5),'Jog_Fwd_Loop');
+ assert.equal(resolveCachedPlayerAnimationClip(map,'run',7.51),'Sprint_Fwd_Loop');
+ assert.equal(resolveCachedPlayerAnimationClip(map,'shoot'),'Shot_Long');
+ assert.equal(resolveCachedPlayerAnimationClip(map,'unknown'),null);
+});
+
+test('P27 animation : conserve le clip de repli si une variante de course manque',()=>{
+ const map=createPlayerAnimationClipMap(['Jog_Fwd_Loop']);
+ assert.equal(resolveCachedPlayerAnimationClip(map,'run',9),'Jog_Fwd_Loop');
+ assert.equal(resolveCachedPlayerAnimationClip(null,'idle'),null);
 });
