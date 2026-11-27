@@ -7,11 +7,24 @@ import { mountHumanoidPlayer } from './player-models.js';
  * Fabrique de personnage humanoïde articulé 3D (prête pour remplacement GLB/GLTF futur).
  * Orientation locale : l'avant du joueur pointe vers +Z.
  */
+
+const SHOP_COSMETICS_KEY = 'fpro.player-shop-equipped.v1';
+function withEquippedShopAppearance(appearance) {
+  let equipped = {};
+  try { equipped = JSON.parse(globalThis.localStorage?.getItem(SHOP_COSMETICS_KEY) || '{}') || {}; } catch {}
+  const result = { ...(appearance || {}) };
+  const hair = equipped.hair;
+  if (hair === 'hair-standard') result.shopHairStyle = 'short';
+  else if (hair === 'hair-rare') result.shopHairStyle = 'long';
+  else if (hair === 'hair-premium') result.shopHairStyle = 'buns';
+  return result;
+}
 export function createPlayerVisual({ team, isGK, number, appearance = null }) {
   const root = new THREE.Group();
   // Lisibilité à distance : légère augmentation purement visuelle, sans toucher aux collisions.
   root.scale.setScalar(1.08);
 
+  appearance = withEquippedShopAppearance(appearance);
   const customKit = appearance?.kitColors && ['primary','secondary','accent'].every(key => /^#[0-9a-f]{6}$/i.test(appearance.kitColors[key] || '')) ? appearance.kitColors : null;
   const selectedKit = customKit || (appearance && Object.hasOwn(KIT_PALETTES, appearance.kit) ? KIT_PALETTES[appearance.kit] : null);
   const goalkeeperPalette = selectedKit && isGK ? { primary: selectedKit.accent, secondary: selectedKit.primary, accent: selectedKit.secondary } : selectedKit;
