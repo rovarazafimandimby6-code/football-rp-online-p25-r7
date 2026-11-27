@@ -426,3 +426,8 @@ Ce lot est une harmonisation CSS transversale : il ne prétend pas ajouter les f
 ### Clarification fonctionnelle Mercato / catalogues — lot UI
 
 Le centre Mercato est explicitement présenté comme l'espace des contrats, fenêtres, offres et négociations. Les catalogues joueurs et clubs sont des espaces de consultation séparés, accessibles par deux raccourcis descriptifs depuis le Mercato. Le texte de l'interface précise désormais que les offres du prototype sont simulées localement : il ne les présente pas comme des propositions provenant d'un serveur ou de clubs connectés. Le décor CSS superposé aux portraits a été retiré pour éviter de masquer les images/avatars existants. Aucun mécanisme de transfert ni aucune règle économique n'a été modifié.
+
+
+### Navigation contextuelle des fiches joueur — lot UI
+
+L’ouverture d’une fiche depuis la bibliothèque générale ou depuis l’effectif d’un club mémorise maintenant son origine. Le retour de la fiche restaure le catalogue correspondant, au lieu de renvoyer systématiquement à la bibliothèque joueurs. Cette correction est limitée à la navigation et ne change pas les données ni les actions de carrière.
