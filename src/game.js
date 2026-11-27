@@ -43,7 +43,7 @@ export class Game {
     this.onExitMatch = callbacks.onExitMatch || null;
 
     const rosterConfigs = [
-      ...createTeamRoster('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId),
+      ...createTeamRoster('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId, callbacks.homeStarterIds),
       ...createTeamRoster('red', formation, callbacks.awayRoster)
     ];
     const requestedRole = ['GK', 'DEF', 'MID', 'FWD'].includes(callbacks.playerRole) ? callbacks.playerRole : 'FWD';
@@ -74,7 +74,7 @@ export class Game {
     const startingIds = new Set(this.players.filter(player => player.team === 'blue').map(player => player.id));
     this.benchSize = Number.isInteger(callbacks.benchSize) ? Math.max(3, Math.min(7, callbacks.benchSize)) : 5;
     this.benchPlayers = {
-      blue: createMatchSquad('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId, this.benchSize).substitutes.map(player => ({ ...player, team:'blue' }))
+      blue: createMatchSquad('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId, this.benchSize, callbacks.homeStarterIds).substitutes.map(player => ({ ...player, team:'blue' }))
         .filter(player => player.id !== null && player.id !== undefined && !startingIds.has(player.id)),
       red: createMatchSquad('red', formation, callbacks.awayRoster, null, this.benchSize).substitutes.map(player => ({ ...player, team:'red' }))
         .filter(player => player.id !== null && player.id !== undefined && !this.players.some(starter => starter.team === 'red' && starter.id === player.id))
