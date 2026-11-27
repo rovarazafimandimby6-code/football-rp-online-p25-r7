@@ -21,6 +21,7 @@ import { JsonCareerSyncQueue, CareerStoreSyncQueue } from './career-sync-queue.j
 import { CareerSyncService } from './career-sync-service.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
 import { JsonProgressionStore } from './progression-store.js';
+import { JsonShopService } from './shop-service.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
@@ -74,6 +75,11 @@ function syncPendingHumanRosters() {
 const startupRosterSync = syncPendingHumanRosters();
 if (startupRosterSync.processed.length) process.stdout.write(`P27 human roster sync recovered: ${startupRosterSync.processed.length} operation(s)\\n`);
 const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs:[...serverClubManager.clubs.values()], transferStore });
+const shopDirectory = process.env.SHOP_INVENTORY_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'shop');
+const shopService = new JsonShopService(shopDirectory, {
+  progressionStore, clubFinanceService:clubFinance,
+  resolveClubOwner:clubId => serverClubManager.getClub(clubId)?.managerId || null
+});
 const systemTransferDirectory = process.env.SYSTEM_TRANSFERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'system-transfers');
 const systemTransfers = new P27SystemTransferService(systemTransferDirectory, { clubManager:serverClubManager, financeService:clubFinance });
 const recoveredSystemTransfers = systemTransfers.processPending();
@@ -501,6 +507,39 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
           return json(res, result.ok ? 200 : 409, result);
         } catch (error) { return json(res, 400, { error: String(error?.message || 'INVALID_PROGRESSION_ACTION') }); }
       }
+    }
+    if (url.pathname === '/api/shop' || url.pathname === '/api/shop/history') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const shop = url.searchParams.get('shop') || 'player';
+      if (!['player','club'].includes(shop)) return json(res, 400, { error:'INVALID_SHOP' });
+      const clubId = url.searchParams.get('clubId') || '';
+      if (shop === 'club' && (!clubId || serverClubManager.getClub(clubId)?.managerId !== account.id))
+        return json(res, 403, { error:'CLUB_OWNER_REQUIRED' });
+      const ownerId = shop === 'player' ? account.id : clubId;
+      if (url.pathname === '/api/shop/history') return json(res, 200, shopService.getHistory({shop,ownerId}));
+      const balance = shop === 'player' ? progressionStore.get(account.id).coins : clubFinance.store.balance(clubId);
+      return json(res, 200, {
+        shop, currency:shop === 'player' ? 'player-coins' : 'club-coins', balance,
+        catalog:shopService.catalog(shop), inventory:shopService.inventory(shop,ownerId)
+      });
+    }
+    if (req.method === 'POST' && ['/api/shop/purchase','/api/shop/resale','/api/shop/equip'].includes(url.pathname)) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      if (!body || typeof body !== 'object' || Array.isArray(body)) return json(res, 400, { error:'INVALID_SHOP_ACTION' });
+      const shop = body.shop;
+      if (!['player','club'].includes(shop)) return json(res, 400, { error:'INVALID_SHOP' });
+      const result = url.pathname === '/api/shop/purchase'
+        ? shopService.purchase({shop,itemId:body.itemId,actorId:account.id,clubId:body.clubId,purchaseId:body.purchaseId})
+        : url.pathname === '/api/shop/resale'
+          ? shopService.resale({shop,itemId:body.itemId,actorId:account.id,clubId:body.clubId,resaleId:body.resaleId})
+          : shopService.setEquipped({shop,itemId:body.itemId,actorId:account.id,clubId:body.clubId,equipped:body.equipped});
+      const status = result.ok ? 200
+        : result.reason === 'club-owner-required' ? 403
+        : result.reason === 'item-not-found' || result.reason === 'item-not-owned' ? 404 : 409;
+      return json(res, status, result);
     }
     if (url.pathname === '/api/profile') {
       const account = accountStore.resolve(accountSessionToken(req));
