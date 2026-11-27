@@ -446,3 +446,8 @@ Le bouton de retour de la fiche joueur adapte désormais son libellé à la prov
 ### Catalogue des clubs — état vide des filtres
 
 La recherche et les filtres du catalogue affichent maintenant un message explicite lorsqu’aucun club ne correspond. L’état vide est recalculé à chaque saisie, changement de filtre, tri et pagination, y compris après synchronisation du catalogue serveur. Un test vérifie sa présence et sa condition d’affichage.
+
+
+### Bibliothèque des joueurs — état vide des filtres
+
+La bibliothèque affiche désormais un message dédié lorsqu’aucun joueur ne correspond aux critères combinés (nom, club, rôle, statut, origine et note minimale). L’état est recalculé avec les filtres et la pagination. Un test de non-régression couvre la présence du message et sa condition d’affichage.
