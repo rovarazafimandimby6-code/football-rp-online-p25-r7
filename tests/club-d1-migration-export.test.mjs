@@ -59,3 +59,27 @@ test('migration exporter writes a deterministic normalized bundle only after cle
   assert.equal(bundle.clubs[0].finance.sponsors.length,1);
   assert.equal(bundle.clubs[0].finance.loans.length,1);
 });
+
+
+test('migration exporter rejects duplicate sponsor, loan and player-wage checkpoint IDs',async t=>{
+  const root=await fixture(t);
+  const read=async file=>JSON.parse(await readFile(path.join(root,file),'utf8'));
+  const write=async(file,value)=>writeFile(path.join(root,file),JSON.stringify(value));
+  const finance=await read('finances/club-finance.json');
+  finance.accounts[0].sponsors.push({...finance.accounts[0].sponsors[0]});
+  finance.accounts[0].loans.push({...finance.accounts[0].loans[0]});
+  await write('finances/club-finance.json',finance);
+  const journal=await read('finances/transfer-finance-journal.json');
+  journal.playerWages=[
+    {id:'salary-event-1',clubId:'club-one',amount:25,createdAt:1000,posted:true},
+    {id:'salary-event-1',clubId:'club-one',amount:25,createdAt:1000,posted:true}
+  ];
+  await write('finances/transfer-finance-journal.json',journal);
+  const result=spawnSync(process.execPath,[script,'--data-root',root,'--expected-clubs','1'],{encoding:'utf8'});
+  assert.equal(result.status,1);
+  const report=JSON.parse(result.stdout);
+  const codes=new Set(report.issues.map(item=>item.code));
+  assert.ok(codes.has('duplicate-sponsor-contract'));
+  assert.ok(codes.has('duplicate-loan'));
+  assert.ok(codes.has('duplicate-player-wage-checkpoint'));
+});
