@@ -83,13 +83,16 @@ export function getP27ClubShopKit(club = {}, inventory = [], kitType = 'home', r
 
 
 export function getP27ClubShopAppearance(club = {}, inventory = []) {
-  const owned = Array.isArray(inventory) ? inventory.filter(item => item && item.status === 'owned' && item.equipped === true) : [];
+  const rows = Array.isArray(inventory) ? inventory.filter(item => item && item.status === 'owned') : [];
+  const owned = rows.filter(item => item.equipped === true);
   const has = id => owned.some(item => item.itemId === id);
+  const stadiumExpansionLevel = Math.max(0, ...rows.filter(item => item.category === 'capacity' && Number.isInteger(item.upgradeLevel) && item.upgradeLevel >= 1 && item.upgradeLevel <= 4).map(item => item.upgradeLevel));
   const validColors = Array.isArray(club.colors) && club.colors.length >= 3 && club.colors.slice(0,3).every(validColor);
   return {
     crestStyle:has('club-crest-custom') ? 'custom' : 'classic',
     crestColors:has('club-official-colors') && validColors ? club.colors.slice(0,3) : null,
     stadiumSkin:has('club-stadium-premium') ? 'premium' : has('club-stadium-standard') ? 'standard' : 'default',
+    stadiumExpansionLevel,
     grassSkin:has('club-grass-premium') ? 'premium' : has('club-grass-standard') ? 'standard' : 'default',
     supporters:{ flags:has('club-supporter-flags'), banners:has('club-supporter-banners'), tifo:has('club-supporter-tifo') }
   };
