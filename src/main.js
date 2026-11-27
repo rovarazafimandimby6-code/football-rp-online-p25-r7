@@ -724,8 +724,8 @@ function renderPage(page = 'home') {
         <article class="p27-hub-career">
           <div class="p27-hub-career-copy">
             <span class="p27-hub-kicker">MODE CARRIÈRE · SAISON PERSONNELLE</span>
-            <h2>${escapeHTML(profile.identity.displayName || 'Votre joueur')} </h2>
-            <p>${escapeHTML(clubLabel)} · NIVEAU ${level}</p>
+            <h2>CARRIÈRE</h2>
+            <p>${escapeHTML(profile.identity.displayName || 'Votre joueur')} · ${escapeHTML(clubLabel)} · NIVEAU ${level}</p>
             <div class="p27-hub-xp"><span>PROGRESSION</span><div><i style="width:${xpProgress}%"></i></div><b>${xpProgress}% </b></div>
             <button data-page="career-hub">ACCÉDER À LA CARRIÈRE <span>›</span></button>
           </div>
