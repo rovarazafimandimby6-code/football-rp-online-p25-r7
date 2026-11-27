@@ -251,7 +251,7 @@ test('API HTTP : health check et création de salon répondent sans dépendance 
 });
 
 
-test('P24 : les arrivées humaines remplacent les bots sans dépasser cinq joueurs par équipe', () => {
+test('P24 : les arrivées humaines remplacent les bots sans dépasser sept humains par équipe', () => {
   const manager = new RoomManager();
   const room = manager.create();
   const first = manager.join(room.id, { displayName: 'Humain 1' });
@@ -259,7 +259,7 @@ test('P24 : les arrivées humaines remplacent les bots sans dépasser cinq joueu
   const state = manager.get(room.id);
   assert.equal(state.players.filter(p => !p.isBot).length, 8);
   assert.deepEqual(state.counts, { blue: 5, red: 5 });
-  assert.equal(state.players.filter(p => p.isBot).length, 6);
+  assert.equal(state.players.filter(p => p.isBot).length, 16);
   assert.ok(first.token);
 });
 
