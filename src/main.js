@@ -312,7 +312,11 @@ try {
   preferences.cameraMode = ['player','touchline','broadcast','close','tactical','spectator'].includes(saved.cameraMode) ? saved.cameraMode : 'player';
   preferences.cameraZoom = Number.isFinite(Number(saved.cameraZoom)) ? Math.max(0, Math.min(100, Number(saved.cameraZoom))) : 55;
   preferences.nameDisplay = 'standard';
+  preferences.formation = ['2-2','1-2-1','2-1-1'].includes(saved.formation) ? saved.formation : '2-2';
+  preferences.benchSize = Number.isInteger(saved.benchSize) ? Math.max(3, Math.min(7, saved.benchSize)) : 5;
 } catch (_) {}
+selectedFormation = preferences.formation || '2-2';
+selectedBenchSize = preferences.benchSize || 5;
 
 const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58, colors: club.colors });
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -1724,12 +1728,16 @@ menu.addEventListener('click', event => {
     content.querySelector('#pre-match-formation')?.addEventListener('change', event => {
       if (!Object.hasOwn(formationLabels,event.target.value)) return;
       selectedFormation = event.target.value;
+      preferences.formation = selectedFormation;
+      try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
       renderSquads();
     });
     content.querySelector('#pre-match-bench-size')?.addEventListener('change', event => {
       const size = Number(event.target.value);
       if (!Number.isInteger(size) || size < 3 || size > 7) return;
       selectedBenchSize = size;
+      preferences.benchSize = size;
+      try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
       renderSquads();
     });
     content.scrollTop = 0;
