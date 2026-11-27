@@ -14,10 +14,19 @@ const roleArchetype = role => ({
   FWD: 'Attaquant mobile'
 }[role] || 'Joueur polyvalent');
 
-const profilePlayer = (profile, target) => {
+const profilePlayer = (profile, target, career) => {
   const attributes = profile.progression?.attributes || DEFAULT_ATTRIBUTES;
   const role = ['GK','DEF','MID','FWD'].includes(profile.identity?.role) ? profile.identity.role : 'MID';
   const rating = averageRating(attributes);
+  const careerContract = career.contract?.status === 'active' ? {
+    clubId:career.clubId,
+    status:'active',
+    salary:Math.max(0, Math.floor(Number(career.contract.salary) || 0)),
+    weeklyWage:Math.max(0, Math.floor(Number(career.contract.salary) || 0)),
+    signedAt:career.contract.signedAt,
+    expiresAt:career.contract.expiresAt,
+    durationWeeks:Math.max(1, Math.ceil((Date.parse(career.contract.expiresAt) - Date.parse(career.contract.signedAt)) / (7 * 86400000)))
+  } : null;
   return {
     id:CAREER_ROSTER_PLAYER_ID,
     name:profile.identity?.displayName || 'Nouveau joueur',
@@ -29,6 +38,7 @@ const profilePlayer = (profile, target) => {
     potential:Math.max(rating, Number(profile.progression?.level) || rating),
     attributes,
     archetype:roleArchetype(role),
+    contract:careerContract,
     appearance:profile.appearance && typeof profile.appearance === 'object' ? { ...profile.appearance } : null
   };
 };
@@ -55,7 +65,7 @@ export function syncCareerPlayerRoster({ clubs, career, profile, playerId = CARE
   const target = clubs.getClub(targetId);
   if (!target) return { ok:false, reason:'unknown-club', clubId:targetId };
   const source = locations.find(club => club.id === targetId) || locations[0] || null;
-  const player = profilePlayer(profile, target);
+  const player = profilePlayer(profile, target, career);
 
   if (source && source.id !== targetId) {
     const updatedSource = clubs.updatePlayer(source.id, player);
