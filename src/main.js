@@ -207,7 +207,7 @@ function mountAvatarPreview(profile) {
     const rim = new THREE.DirectionalLight(0x70baff, 1.25); rim.position.set(3, 3, -3); scene.add(rim);
     const floor = new THREE.Mesh(new THREE.CircleGeometry(1.2, 32), new THREE.MeshStandardMaterial({ color: 0x172a3b, roughness: 0.95 }));
     floor.rotation.x = -Math.PI / 2; floor.position.y = 0.015; scene.add(floor);
-    const player = new Player({ id: 'avatar-preview', team: 'blue', number: profile.identity.number, name: profile.identity.displayName, role: profile.identity.role, slotIndex: 0, homePos: { x: 0, z: 0 }, appearance: profile.appearance, attributes: profile.progression.attributes, preferredFoot: profile.identity.preferredFoot });
+    const player = new Player({ id: 'avatar-preview', team: 'blue', number: profile.identity.number, name: profile.identity.displayName, role: profile.identity.role, slotIndex: 0, homePos: { x: 0, z: 0 }, appearance: { ...(profile.appearance || {}), shopCosmeticsEnabled:true }, attributes: profile.progression.attributes, preferredFoot: profile.identity.preferredFoot });
     player.isControlled = true; player.visual.ring.visible = false; player.visual.root.rotation.y = 0.12; scene.add(player.visual.root);
     let last = performance.now();
     const state = {
