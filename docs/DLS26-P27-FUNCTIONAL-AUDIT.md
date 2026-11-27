@@ -466,3 +466,8 @@ La page d’archives normalise désormais les métadonnées de pagination, borne
 ### Effectifs de clubs — compteur de recherche en direct
 
 Les filtres de l'effectif affichent maintenant le nombre de joueurs visibles par rapport au total de l'effectif. Le compteur est annoncé comme statut accessible et se met à jour à chaque recherche ou changement de poste. L'état vide reste synchronisé avec le même résultat filtré. Aucun joueur ni aucune donnée d'effectif n'est modifié.
+
+
+### Mercato — dates de carrière robustes
+
+Les dates affichées dans le contrat et le journal du Mercato vérifient maintenant la validité de la date avant formatage. Une ancienne sauvegarde ou une entrée endommagée ne fait plus apparaître « Invalid Date » dans l'interface : le libellé neutre « Date inconnue » est utilisé. Les données et les règles contractuelles ne sont pas modifiées.
