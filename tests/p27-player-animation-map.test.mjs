@@ -13,6 +13,7 @@ test('P27 animation : résout les clips de locomotion selon la vitesse',()=>{
  assert.equal(resolvePlayerAnimationClip(clips,'walk'),'Walk_Loop');
  assert.equal(resolvePlayerAnimationClip(clips,'run',6.5),'Jog_Fwd_Loop');
  assert.equal(resolvePlayerAnimationClip(clips,'run',8.2),'Sprint_Fwd_Loop');
+ assert.equal(resolvePlayerAnimationClip(['Jog_Fwd_Loop'],'run',9),'Jog_Fwd_Loop');
 });
 
 test('P27 animation : associe les gestes de match à leurs clips sémantiques',()=>{
