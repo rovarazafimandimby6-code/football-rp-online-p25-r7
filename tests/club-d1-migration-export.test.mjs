@@ -83,3 +83,16 @@ test('migration exporter rejects duplicate sponsor, loan and player-wage checkpo
   assert.ok(codes.has('duplicate-loan'));
   assert.ok(codes.has('duplicate-player-wage-checkpoint'));
 });
+
+
+test('migration exporter rejects duplicate legacy account IDs hidden by set normalization',async t=>{
+  const root=await fixture(t);
+  const file=path.join(root,'accounts/accounts.json');
+  const accounts=JSON.parse(await readFile(file,'utf8'));
+  accounts.accounts.push({...accounts.accounts[0]});
+  await writeFile(file,JSON.stringify(accounts));
+  const result=spawnSync(process.execPath,[script,'--data-root',root,'--expected-clubs','1'],{encoding:'utf8'});
+  assert.equal(result.status,1);
+  const report=JSON.parse(result.stdout);
+  assert.ok(report.issues.some(item=>item.code==='duplicate-account-id'));
+});
