@@ -23,6 +23,7 @@ export class Game {
   constructor(container, callbacks = {}) {
     this.sceneMgr = new SceneManager(container);
     this.field = new FieldBuilder(this.sceneMgr.scene);
+    this.field.applyClubAppearance(callbacks.homeClubAppearance || {});
     this.weather = new WeatherManager(this.sceneMgr);
     this.ball = new Ball(this.sceneMgr.scene);
     this.physics = new PhysicsEngine();
