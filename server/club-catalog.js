@@ -112,7 +112,7 @@ export function cloneMatchTeams(teams) {
   const publicTeam = team => {
     if (!team) return null;
     const { roster, ...identity } = team;
-    return { ...identity, colors: [...team.colors], location:team.location ? { ...team.location } : null };
+    return { ...identity, colors: [...team.colors], location:team.location ? { ...team.location } : null, shopAppearance:team.shopAppearance ? { equippedItemIds:[...(team.shopAppearance.equippedItemIds || [])], stadiumExpansionLevel:team.shopAppearance.stadiumExpansionLevel || 0 } : { equippedItemIds:[], stadiumExpansionLevel:0 } };
   };
   return { blue: publicTeam(teams?.blue), red: publicTeam(teams?.red) };
 }
