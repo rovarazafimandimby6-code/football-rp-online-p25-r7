@@ -83,3 +83,16 @@ test('P27 interface globale : les vues compétitions et carrière restent adapta
   assert.match(css, /\.competition-layout,\.player-career-columns/);
   assert.match(css, /max-width:520px/);
 });
+
+
+test('P27 bibliothèque et mercato : cartes joueurs et raccourcis suivent la hiérarchie DLS', () => {
+  assert.match(css, /DLS-style player-market polish/);
+  assert.match(css, /player-library-card:hover/);
+  assert.match(css, /player-card-name-line \.player-card-rating/);
+  assert.match(css, /p27-market-shortcut-actions button/);
+  assert.match(css, /career-summary>div:first-child/);
+  assert.match(css, /@media\(max-width:760px\) and \(orientation:landscape\)/);
+  assert.ok(main.includes('Bibliothèque des joueurs'));
+  assert.ok(main.includes('Mercato & contrats'));
+  assert.ok(main.includes('Les statuts proviennent des effectifs'));
+});
