@@ -86,17 +86,33 @@ for (const [clubId, account] of financeById) {
   if (!MONEY(balance)) issue('ledger-balance-out-of-range', { clubId, computed:balance });
   const sponsors = Array.isArray(account.sponsors) ? account.sponsors : [];
   const loans = Array.isArray(account.loans) ? account.loans : [];
-  for (const s of sponsors) if (!s?.id || !s.name || !Number.isSafeInteger(s.weeklyPayment) || s.weeklyPayment<=0 ||
-    !Number.isInteger(s.durationWeeks) || s.durationWeeks<1 || s.durationWeeks>104 ||
-    !Number.isSafeInteger(s.signedAt) || s.signedAt<0 || !Number.isInteger(s.paidWeeks) ||
-    s.paidWeeks<0 || s.paidWeeks>s.durationWeeks || !['active','completed'].includes(s.status))
-    issue('invalid-sponsor-contract', { clubId, sponsorId:s?.id || null });
-  for (const l of loans) if (!l?.id || !l.lender || !Number.isSafeInteger(l.principal) || l.principal<=0 ||
-    !Number.isSafeInteger(l.totalRepayment) || l.totalRepayment<l.principal ||
-    !Number.isInteger(l.durationWeeks) || l.durationWeeks<1 || l.durationWeeks>260 ||
-    !Number.isSafeInteger(l.issuedAt) || l.issuedAt<0 || !Number.isInteger(l.paidInstallments) ||
-    l.paidInstallments<0 || l.paidInstallments>l.durationWeeks || !['active','repaid'].includes(l.status))
-    issue('invalid-loan', { clubId, loanId:l?.id || null });
+  const sponsorIds = new Set();
+  for (const s of sponsors) {
+    const valid = s && typeof s.id==='string' && s.id.length>0 && s.id.length<=80 &&
+      typeof s.name==='string' && s.name.length>0 && s.name.length<=80 && MONEY(s.weeklyPayment) && s.weeklyPayment>0 &&
+      Number.isInteger(s.durationWeeks) && s.durationWeeks>=1 && s.durationWeeks<=104 &&
+      Number.isSafeInteger(s.signedAt) && s.signedAt>=0 && Number.isInteger(s.paidWeeks) &&
+      s.paidWeeks>=0 && s.paidWeeks<=s.durationWeeks && ['active','completed'].includes(s.status);
+    if (!valid) issue('invalid-sponsor-contract', { clubId, sponsorId:s?.id || null });
+    if (typeof s?.id==='string') {
+      if (sponsorIds.has(s.id)) issue('duplicate-sponsor-contract', { clubId, sponsorId:s.id });
+      sponsorIds.add(s.id);
+    }
+  }
+  const loanIds = new Set();
+  for (const l of loans) {
+    const valid = l && typeof l.id==='string' && l.id.length>0 && l.id.length<=80 &&
+      typeof l.lender==='string' && l.lender.length>0 && l.lender.length<=80 &&
+      MONEY(l.principal) && l.principal>0 && MONEY(l.totalRepayment) && l.totalRepayment>=l.principal &&
+      Number.isInteger(l.durationWeeks) && l.durationWeeks>=1 && l.durationWeeks<=260 &&
+      Number.isSafeInteger(l.issuedAt) && l.issuedAt>=0 && Number.isInteger(l.paidInstallments) &&
+      l.paidInstallments>=0 && l.paidInstallments<=l.durationWeeks && ['active','repaid'].includes(l.status);
+    if (!valid) issue('invalid-loan', { clubId, loanId:l?.id || null });
+    if (typeof l?.id==='string') {
+      if (loanIds.has(l.id)) issue('duplicate-loan', { clubId, loanId:l.id });
+      loanIds.add(l.id);
+    }
+  }
   financeRows.push({ clubId, openingBalance:opening, balance, entries, sponsors, loans });
 }
 const payrollRows = [];
@@ -108,15 +124,30 @@ for (const clubId of byId.keys()) {
 for (const clubId of Object.keys(payroll?.clubs || {})) if (!byId.has(clubId)) issue('orphan-payroll-checkpoint', { clubId });
 
 const transferRows = journal?.transfers || [];
-for (const t of transferRows) if (!t?.id || !byId.has(t.fromClubId) || !byId.has(t.toClubId) ||
-  t.fromClubId===t.toClubId || !Number.isSafeInteger(t.fee) || t.fee<=0 ||
-  !Number.isSafeInteger(t.createdAt) || t.createdAt<0 ||
-  typeof t.debitPosted!=='boolean' || typeof t.creditPosted!=='boolean')
-  issue('invalid-transfer-checkpoint', { transferId:t?.id || null });
+const transferIds = new Set();
+for (const t of transferRows) {
+  const valid = t && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 &&
+    byId.has(t.fromClubId) && byId.has(t.toClubId) && t.fromClubId!==t.toClubId &&
+    MONEY(t.fee) && t.fee>0 && Number.isSafeInteger(t.createdAt) && t.createdAt>=0 &&
+    typeof t.debitPosted==='boolean' && typeof t.creditPosted==='boolean';
+  if (!valid) issue('invalid-transfer-checkpoint', { transferId:t?.id || null });
+  if (typeof t?.id==='string') {
+    if (transferIds.has(t.id)) issue('duplicate-transfer-checkpoint', { transferId:t.id });
+    transferIds.add(t.id);
+  }
+}
 const wageRows = journal?.playerWages || [];
-for (const w of wageRows) if (!w?.id || !byId.has(w.clubId) || !Number.isSafeInteger(w.amount) || w.amount<=0 ||
-  !Number.isSafeInteger(w.createdAt) || w.createdAt<0 || typeof w.posted!=='boolean')
-  issue('invalid-player-wage-checkpoint', { eventId:w?.id || null });
+const wageIds = new Set();
+for (const w of wageRows) {
+  const valid = w && typeof w.id==='string' && w.id.length>0 && w.id.length<=128 &&
+    byId.has(w.clubId) && MONEY(w.amount) && w.amount>0 &&
+    Number.isSafeInteger(w.createdAt) && w.createdAt>=0 && typeof w.posted==='boolean';
+  if (!valid) issue('invalid-player-wage-checkpoint', { eventId:w?.id || null });
+  if (typeof w?.id==='string') {
+    if (wageIds.has(w.id)) issue('duplicate-player-wage-checkpoint', { eventId:w.id });
+    wageIds.add(w.id);
+  }
+}
 
 const bundle = {
   format:'p27-club-d1-migration',
