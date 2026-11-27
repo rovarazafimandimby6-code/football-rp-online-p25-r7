@@ -486,8 +486,24 @@ export class Player {
     dt = Number.isFinite(dt) ? THREE.MathUtils.clamp(dt, 0, 0.05) : 0;
     const v = this.visual;
     const now = (typeof performance !== 'undefined' && Number.isFinite(performance.now?.())) ? performance.now() : Date.now();
-    const poseNodes = [v.body, v.headGroup, v.leftArm.shoulder, v.leftArm.elbow, v.rightArm.shoulder, v.rightArm.elbow, v.leftLeg.hip, v.leftLeg.knee, v.rightLeg.hip, v.rightLeg.knee];
-    const previousPose = poseNodes.map((node) => ({ position: node.position.clone(), rotation: node.rotation.clone() }));
+    // Cache les nœuds et les tampons de pose : aucune création de tableau/vecteur par image.
+    if (!this.visualPoseCache) {
+      const nodes = [v.body, v.headGroup, v.leftArm.shoulder, v.leftArm.elbow, v.rightArm.shoulder, v.rightArm.elbow, v.leftLeg.hip, v.leftLeg.knee, v.rightLeg.hip, v.rightLeg.knee];
+      this.visualPoseCache = {
+        nodes,
+        snapshots: nodes.map(() => ({
+          startPosition: new THREE.Vector3(),
+          startRotation: new THREE.Euler(),
+          targetPosition: new THREE.Vector3(),
+          targetRotation: new THREE.Euler()
+        }))
+      };
+    }
+    const { nodes: poseNodes, snapshots: previousPose } = this.visualPoseCache;
+    for (let i = 0; i < poseNodes.length; i++) {
+      previousPose[i].startPosition.copy(poseNodes[i].position);
+      previousPose[i].startRotation.copy(poseNodes[i].rotation);
+    }
     v.root.position.set(this.pos.x, 0, this.pos.z);
     // Rotation amortie : évite les changements d'orientation instantanés.
     const angleDelta = Math.atan2(Math.sin(this.facing - v.root.rotation.y), Math.cos(this.facing - v.root.rotation.y));
@@ -608,14 +624,19 @@ export class Player {
 
     // Interpolation des poses pour éviter les cassures lors des transitions d'action.
     const blend = 1 - Math.exp(-Math.max(0, Math.min(dt, 0.05)) * 16);
-    poseNodes.forEach((node, index) => {
-      const targetPosition = node.position.clone();
-      const targetRotation = node.rotation.clone();
-      node.position.copy(previousPose[index].position).lerp(targetPosition, blend);
-      node.rotation.x = previousPose[index].rotation.x + (targetRotation.x - previousPose[index].rotation.x) * blend;
-      node.rotation.y = previousPose[index].rotation.y + (targetRotation.y - previousPose[index].rotation.y) * blend;
-      node.rotation.z = previousPose[index].rotation.z + (targetRotation.z - previousPose[index].rotation.z) * blend;
-    });
+    for (let i = 0; i < poseNodes.length; i++) {
+      const node = poseNodes[i];
+      const snapshot = previousPose[i];
+      snapshot.targetPosition.copy(node.position);
+      snapshot.targetRotation.copy(node.rotation);
+      node.position.lerpVectors(snapshot.startPosition, snapshot.targetPosition, blend);
+      node.rotation.set(
+        snapshot.startRotation.x + (snapshot.targetRotation.x - snapshot.startRotation.x) * blend,
+        snapshot.startRotation.y + (snapshot.targetRotation.y - snapshot.startRotation.y) * blend,
+        snapshot.startRotation.z + (snapshot.targetRotation.z - snapshot.startRotation.z) * blend,
+        node.rotation.order
+      );
+    }
     v.updateModel?.(dt, state, speed, {
       progress: this.animDuration > 0 && this.animTimer > 0 ? THREE.MathUtils.clamp(1 - this.animTimer / this.animDuration, 0, 1) : 0.5,
       time: this.animElapsed,
