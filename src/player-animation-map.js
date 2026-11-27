@@ -31,3 +31,12 @@ export function resolvePlayerAnimationClip(clipNames, state, speed = 0) {
 export function isLoopingPlayerAnimation(state) {
   return ['idle', 'walk', 'run', 'control'].includes(state);
 }
+
+
+/** Keep locomotion cadence proportional to movement speed without abrupt playback jumps. */
+export function resolvePlayerAnimationTimeScale(state, speed = 0) {
+  const value = Number.isFinite(speed) ? Math.max(0, speed) : 0;
+  if (state === 'run') return Math.max(0.82, Math.min(1.2, value / 7.5));
+  if (state === 'walk') return Math.max(0.8, Math.min(1.15, value / 3.2));
+  return 1;
+}
