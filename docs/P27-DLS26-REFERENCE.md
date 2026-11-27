@@ -32,6 +32,7 @@ Le format de carte DLS 19 possède dix attributs de terrain : les huit statistiq
 - La note finale reste déterminée par les limites de niveau de la division P27.
 - L'écart de note est appliqué à 72 % sur les statistiques, puis chaque caractéristique reçoit un ajustement individuel de ±2 points. Cela conserve la signature du profil sans transformer brutalement toutes ses qualités.
 - Les six attributs historiques du gameplay sont alimentés par les statistiques de la fiche : vitesse moyenne SPE/ACC, tir, passe, défense/tacle, endurance et contrôle.
+- Pour une future carte DLS 19, CRO et HEA sont conservés en plus dans les attributs du joueur (`crossing`, `heading`) ; ils ne sont pas écrasés ni confondus avec PAS/TAC. La bibliothèque reste vide tant que des archives authentiques ne sont pas confirmées.
 - Les statistiques de référence complètes restent disponibles dans `playerReferenceStats`; la provenance multi-éditions est stockée dans `playerReference`. Le générateur évite aussi de réutiliser deux fois la même carte dans un même effectif lorsqu'il dispose d'assez de profils pour le poste.
 
 ## Identité fictive et personnalisation
