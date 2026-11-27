@@ -5,7 +5,7 @@ import process from 'node:process';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MONEY = n => Number.isSafeInteger(n) && n >= 0 && n <= 1_000_000_000_000;
-const CATEGORIES = new Set(['sponsorship','ticketing','matchday','merchandise','transfer-income','transfer-expense','wages','staff','stadium-maintenance','medical','training','travel','competition-prize','loan','other']);
+const CATEGORIES = new Set(['sponsorship','ticketing','matchday','merchandise','transfer-income','transfer-expense','wages','staff','stadium-maintenance','medical','training','travel','competition-prize','loan','other','shop-purchase','shop-resale']);
 const args = process.argv.slice(2);
 const arg = name => { const i=args.indexOf(name); return i<0 ? null : args[i+1] || null; };
 const root = path.resolve(arg('--data-root') || 'data');
