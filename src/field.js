@@ -373,7 +373,6 @@ export class FieldBuilder {
           attr.setZ(i, panel.base[i * 3 + 2] + wave);
         }
         attr.needsUpdate = true;
-        panel.mesh.geometry.computeVertexNormals();
       }
     } else if (this.netAnimating) {
       // Retour exact à la position initiale, une seule fois à la fin de l'impulsion.
@@ -381,7 +380,6 @@ export class FieldBuilder {
         const attr = panel.mesh.geometry.attributes.position;
         attr.array.set(panel.base);
         attr.needsUpdate = true;
-        panel.mesh.geometry.computeVertexNormals();
       }
       this.netAnimating = false;
     }
@@ -435,6 +433,9 @@ export class FieldBuilder {
 
     // Panneau arrière subdivisé : sa maille vibre brièvement après un but.
     const backNetGeo = new THREE.PlaneGeometry(PITCH.GOAL_W, h, 10, 6);
+    // The goal net is animated through vertex positions; use a dynamic GPU buffer.
+    // MeshBasicMaterial is unlit, so recomputing vertex normals on every pulse is unnecessary.
+    backNetGeo.attributes.position.setUsage(THREE.DynamicDrawUsage);
     const backNet = new THREE.Mesh(backNetGeo, netMat);
     backNet.position.set(xBack, h / 2, 0);
     backNet.rotation.y = Math.PI / 2;
