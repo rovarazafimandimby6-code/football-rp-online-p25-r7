@@ -24,7 +24,8 @@ export function listP27Players({ clubs = [], filters = {} } = {}) {
       const at = Date.parse(entry.releasedAt || '') || 0;
       const previous = released.get(player.id);
       if (!previous || at >= previous.at) released.set(player.id, {
-        ...player, clubId:null, clubName:null, division:null, status:'free',
+        ...player, number:null, clubId:null, clubName:null, division:null, status:'free',
+        appearance:{ ...(player.appearance || {}), kitColors:{ primary:'#465365', secondary:'#263344', accent:'#aab7c8' }, kitDesign:'central', kitVariant:'outfield', kitInspiration:'tenue neutre de joueur libre' },
         lastClubId:club.id, lastClubName:club.name, releasedAt:entry.releasedAt || null,
         releaseReason:entry.reason || 'released', at
       });
