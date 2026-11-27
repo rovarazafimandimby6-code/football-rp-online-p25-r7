@@ -116,7 +116,8 @@ export class SceneManager {
   }
 
   render(nowMs = performance.now()) {
-    if (!this.renderer || this.contextLost || this.renderer.getContext().isContextLost()) return false;
+    // The WebGL context events maintain this flag; avoid querying the GL context on every frame.
+    if (!this.renderer || this.contextLost) return false;
     // Cap GPU work to the selected device profile while simulation/input remain RAF-driven.
     if (this.framePacer && !this.framePacer.shouldRender(nowMs)) return false;
     this.renderer.render(this.scene, this.camera);
