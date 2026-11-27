@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chooseRenderProfile, resolveRenderProfile } from '../src/performance-tuning.js';
+import { RenderFramePacer } from '../src/render-frame-pacer.js';
 import { readFile } from 'node:fs/promises';
 
 const fieldSource = await readFile(new URL('../src/field.js', import.meta.url), 'utf8');
@@ -131,4 +132,22 @@ test('P27 joueurs : les oscillations visuelles utilisent une horloge locale accu
   assert.match(playerSource, /this\.visualAnimationTime \+= dt \* 1000/);
   assert.match(playerSource, /const now = this\.visualAnimationTime/);
   assert.doesNotMatch(playerSource, /performance\.now\?\./);
+});
+
+test('P27 rendu : le limiteur reprend immédiatement après un retour d horloge', () => {
+  const pacer = new RenderFramePacer(30);
+  assert.equal(pacer.shouldRender(100), true);
+  assert.equal(pacer.shouldRender(110), false);
+  assert.equal(pacer.shouldRender(134), true);
+  assert.equal(pacer.shouldRender(5), true);
+  assert.equal(pacer.shouldRender(10), false);
+  assert.equal(pacer.shouldRender(39), true);
+});
+
+test('P27 rendu : la réinitialisation du limiteur autorise la première frame', () => {
+  const pacer = new RenderFramePacer(30);
+  assert.equal(pacer.shouldRender(1000), true);
+  assert.equal(pacer.shouldRender(1010), false);
+  pacer.reset();
+  assert.equal(pacer.shouldRender(1011), true);
 });
