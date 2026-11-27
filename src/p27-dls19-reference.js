@@ -5,6 +5,16 @@ export const DLS19_ATTRIBUTE_KEYS = Object.freeze([
   'SPE','ACC','STA','STR','CON','PAS','SHO','TAC','CRO','HEA'
 ]);
 export const DLS19_POSITION_ALIASES = Object.freeze({ WF: 'SS' });
+const DLS19_VALID_POSITIONS = new Set(['GK','CB','LB','RB','LWB','RWB','DM','CM','AM','LM','RM','LW','RW','CF','SS']);
+
+export function roleForDls19Position(position) {
+  const normalized = DLS19_POSITION_ALIASES[position] || position;
+  if (normalized === 'GK') return 'GK';
+  if (['CB','LB','RB','LWB','RWB'].includes(normalized)) return 'DEF';
+  if (['DM','CM','AM','LM','RM'].includes(normalized)) return 'MID';
+  if (['LW','RW','CF','SS'].includes(normalized)) return 'FWD';
+  return null;
+}
 
 // Empty until archived DLS 19 card records with source/version evidence are
 // individually validated. The adapter is ready for accurate imports.
@@ -24,6 +34,8 @@ export function normalizeDls19Profile(record) {
   const heightCm = Number(record.heightCm);
   if (!Number.isInteger(overall) || overall < 1 || overall > 100) throw new RangeError('Invalid DLS19 overall');
   if (!Number.isInteger(heightCm) || heightCm < 140 || heightCm > 220) throw new RangeError('Invalid DLS19 height');
+  const position = DLS19_POSITION_ALIASES[record.position] || record.position;
+  if (!DLS19_VALID_POSITIONS.has(position)) throw new RangeError('Unsupported DLS19 position');
   if (!record.source || !/^https:\/\//.test(record.source)) throw new TypeError('DLS19 source URL required');
   if (!record.sourceRecordId || !record.version) throw new TypeError('DLS19 record ID and version required');
   return Object.freeze({
@@ -31,7 +43,7 @@ export function normalizeDls19Profile(record) {
     sourceGame: 'DLS19',
     version: String(record.version),
     cardType: 'normal',
-    position: DLS19_POSITION_ALIASES[record.position] || record.position,
+    position,
     overall,
     heightCm,
     preferredFoot: record.preferredFoot || null,
