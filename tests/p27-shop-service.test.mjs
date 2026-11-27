@@ -122,3 +122,15 @@ test('P27 boutique : une promotion fournie par le client est ignorée',()=>{
   assert.equal(bought.purchase.paidPrice,3000);
  }finally{f.cleanup();}
 });
+
+test('P27 boutique : empêche la revente d’un article actuellement équipé',()=>{
+ const f=fixture();try{
+  fund(f.progressionStore,'player-equipped');
+  const bought=f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-equipped',purchaseId:'equip-buy'});
+  assert.equal(bought.ok,true);
+  assert.equal(f.service.setEquipped({shop:'player',actorId:'player-equipped',itemId:'boots-standard'}).ok,true);
+  assert.equal(f.service.resale({shop:'player',actorId:'player-equipped',itemId:'boots-standard',resaleId:'equip-sale'}).reason,'item-active');
+  assert.equal(f.service.setEquipped({shop:'player',actorId:'player-equipped',itemId:'boots-standard',equipped:false}).ok,true);
+  assert.equal(f.service.resale({shop:'player',actorId:'player-equipped',itemId:'boots-standard',resaleId:'equip-sale-2'}).ok,true);
+ }finally{f.cleanup();}
+});
