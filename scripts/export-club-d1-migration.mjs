@@ -193,10 +193,8 @@ const report = {
 if (output && report.ok) {
   const target=path.resolve(output);
   await mkdir(path.dirname(target),{recursive:true});
-  await writeFile(target,JSON.stringify(bundle,null,2)+'
-',{mode:0o600});
+  await writeFile(target,JSON.stringify(bundle,null,2)+String.fromCharCode(10),{mode:0o600});
   report.output=target;
 }
-process.stdout.write(JSON.stringify(report,null,2)+'
-');
+process.stdout.write(JSON.stringify(report,null,2)+String.fromCharCode(10));
 if (!report.ok) process.exitCode=1;
