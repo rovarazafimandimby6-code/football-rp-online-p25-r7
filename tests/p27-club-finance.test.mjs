@@ -186,3 +186,27 @@ test('P27 finance : refuse de charger un historique corrompu au lieu de supprime
  const malformed={getItem:()=>'{broken',setItem:()=>{}};
  assert.throws(()=>new ClubFinanceStore(malformed,'corrupt-json'),{message:'FINANCE_STORAGE_CORRUPT'});
 });
+
+test('P27 finance : un versement sponsor refuse un identifiant d’échéance déjà utilisé avec un contenu différent',()=>{
+ const f=new ClubFinanceStore(null,'sponsor-installment-conflict');f.openAccount('club',100);
+ const start=Date.UTC(2026,0,1);
+ f.signSponsorContract('club',{id:'sponsor-conflict',name:'Partenaire',weeklyPayment:700,durationWeeks:2,signedAt:start});
+ f.post('club',{id:'sponsor-sponsor-conflict-1',category:'sponsorship',amount:999,direction:'income',
+  description:'Écriture étrangère',createdAt:start+7*86400000,referenceId:'sponsor-conflict'});
+ const result=f.settleSponsorPayments('club',start+8*86400000);
+ assert.deepEqual(result,{ok:false,reason:'transaction-id-conflict'});
+ assert.equal(f.getAccount('club').sponsors[0].paidWeeks,0);
+ assert.equal(f.getAccount('club').balance,1099);
+});
+
+test('P27 finance : un remboursement refuse un identifiant d’échéance déjà utilisé avec un contenu différent',()=>{
+ const f=new ClubFinanceStore(null,'loan-installment-conflict');f.openAccount('club',0);
+ const start=Date.UTC(2026,0,1);
+ f.issueLoan('club',{id:'loan-conflict',lender:'Banque',principal:1000,totalRepayment:1200,durationWeeks:2,issuedAt:start});
+ f.post('club',{id:'loan-payment-loan-conflict-1',category:'loan',amount:50,direction:'expense',
+  description:'Écriture étrangère',createdAt:start+7*86400000,referenceId:'loan-conflict'});
+ const result=f.settleLoanRepayments('club',start+8*86400000);
+ assert.deepEqual(result,{ok:false,reason:'transaction-id-conflict'});
+ assert.equal(f.getAccount('club').loans[0].paidInstallments,0);
+ assert.equal(f.getAccount('club').balance,950);
+});
