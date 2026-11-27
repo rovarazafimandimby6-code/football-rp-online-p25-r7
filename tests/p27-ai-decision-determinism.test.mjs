@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aiDecisionRoll, buildTeamContexts } from '../src/ai.js';
+import { aiDecisionRoll, buildTeamContexts, getSpacedSupportTarget } from '../src/ai.js';
 
 test('P27 gameplay: tirages du joueur du système reproductibles à état égal', () => {
   const first = { id: 'system-17', aiDecisionSequence: 0 };
@@ -56,4 +56,34 @@ test('P27 gameplay: TeamAI prépare les contextes avant la boucle des joueurs', 
   assert.match(update, /const contexts = buildTeamContexts\(players\)/);
   assert.match(update, /contexts\[p\.team\]/);
   assert.doesNotMatch(update, /players\.filter\(/);
+});
+
+
+test('P27 gameplay: le soutien se décale des coéquipiers proches sans sortir du terrain', () => {
+  const player = {
+    id: 'support-a', team: 'blue', slotIndex: 1,
+    pos: { x: 4, z: 2 }, homePos: { x: 2, z: 6 }
+  };
+  const mate = {
+    id: 'support-b', team: 'blue',
+    pos: { x: 4, z: 2 }, homePos: { x: 2, z: -6 }
+  };
+  const target = { x: 4, z: 2 };
+  const spaced = getSpacedSupportTarget(player, target, [player, mate]);
+  assert.ok(Math.hypot(spaced.x - target.x, spaced.z - target.z) > 0.5);
+  assert.ok(spaced.x >= -26 && spaced.x <= 26);
+  assert.ok(spaced.z >= -15 && spaced.z <= 15);
+  assert.deepEqual(target, { x: 4, z: 2 });
+});
+
+test('P27 gameplay: le soutien conserve sa cible si les coéquipiers sont éloignés', () => {
+  const player = {
+    id: 'support-a', team: 'blue', pos: { x: 0, z: 0 },
+    homePos: { x: 0, z: 5 }
+  };
+  const mate = { id: 'support-b', team: 'blue', pos: { x: -10, z: -10 } };
+  assert.deepEqual(
+    getSpacedSupportTarget(player, { x: 5, z: 5 }, [player, mate]),
+    { x: 5, z: 5 }
+  );
 });
