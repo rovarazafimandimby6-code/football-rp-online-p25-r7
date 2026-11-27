@@ -87,6 +87,43 @@ export function getDefensiveShapeTarget(player, ball, opponents, attackDir = 1, 
 }
 
 /**
+ * Place le défenseur de couverture sur la ligne de passe vers le receveur
+ * adverse le plus dangereux. En l'absence de solution, il protège l'axe du ballon.
+ */
+export function getDefensiveCoverTarget(player, ball, opponents, attackDir = 1) {
+  const carrier = ball?.owner?.pos || ball?.pos || { x: 0, z: 0 };
+  let receiver = null;
+  let bestScore = Infinity;
+  for (const opponent of opponents || []) {
+    if (!opponent?.pos || opponent === ball?.owner || opponent.role === 'GK') continue;
+    const dx = opponent.pos.x - carrier.x;
+    const dz = opponent.pos.z - carrier.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance < 2 || distance > 24) continue;
+    const forwardThreat = Math.max(0, -attackDir * dx);
+    const score = distance - forwardThreat * 0.18;
+    if (score < bestScore) {
+      bestScore = score;
+      receiver = opponent;
+    }
+  }
+
+  if (!receiver) {
+    return {
+      x: clamp(carrier.x - attackDir * (player.specialty === 'cover' ? 3.2 : 4.5), -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
+      z: clamp(carrier.z * 0.55 + player.homePos.z * 0.45, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
+    };
+  }
+
+  const targetX = carrier.x + (receiver.pos.x - carrier.x) * 0.55 - attackDir * 1.2;
+  const targetZ = carrier.z + (receiver.pos.z - carrier.z) * 0.55;
+  return {
+    x: clamp(targetX, -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
+    z: clamp(targetZ * 0.78 + player.homePos.z * 0.22, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
+  };
+}
+
+/**
  * Choisit une zone de soutien qui conserve le rôle du joueur tout en évitant
  * les couloirs déjà occupés par les défenseurs adverses.
  */
@@ -391,10 +428,8 @@ export class TeamAI {
       }
     } else if (!teamHasBall && isCover && distBall < pressRange * 0.9) {
       // Le deuxième défenseur ferme la ligne de passe au lieu de poursuivre le porteur.
-      const coverX = ball.pos.x - attackDir * (p.specialty === 'cover' ? 3.2 : 4.5);
-      const coverZ = ball.pos.z * 0.55 + p.homePos.z * 0.45;
-      this.steerPlayer(p, clamp(coverX, -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
-        clamp(coverZ, -PITCH.HALF_W + 2, PITCH.HALF_W - 2), 6.6 * staminaFactor * paceFactor, dt);
+      const coverTarget = getDefensiveCoverTarget(p, ball, context?.opponents || [], attackDir);
+      this.steerPlayer(p, coverTarget.x, coverTarget.z, 6.6 * staminaFactor * paceFactor, dt);
     } else if (teamHasBall) {
       // Soutien sans ballon, y compris lorsque le porteur est un joueur humain.
       const owner = ball.owner;
