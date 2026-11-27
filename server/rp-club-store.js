@@ -194,6 +194,15 @@ export class JsonRpClubStore {
     return club ? club.members.map(member => member.accountId) : null;
   }
 
+  getMessages(clubId, accountId, limit = 60) {
+    const club = this.state.clubs.find(item => item.id === clubId);
+    if (!club || !club.members.some(member => member.accountId === accountId)) return null;
+    const safeLimit = Number.isSafeInteger(limit) ? Math.max(1, Math.min(100, limit)) : 60;
+    return club.messages.slice(-safeLimit).map(({ id, playerId, displayName, text, createdAt }) => ({
+      id, playerId, displayName, text, createdAt
+    }));
+  }
+
   getForAccount(accountId) {
     const membership = this.findMembership(accountId);
     if (!membership) return null;
