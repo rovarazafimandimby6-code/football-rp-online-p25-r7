@@ -9,6 +9,7 @@ import { verifyGoogleWorkerIdToken } from "./google-id-token-verifier.js";
 import { D1PlayerProfileRepository } from "./player-profile-repository.js";
 import { D1PlayerProgressionRepository } from "./player-progression-repository.js";
 import { D1PlayerCareerRepository } from "./player-career-repository.js";
+import { D1PlayerShopRepository } from "./player-shop-repository.js";
 import { verifyCareerIngestSignature } from "./career-ingest-auth.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
@@ -443,6 +444,48 @@ export default {
         }
         return response;
       }
+    }
+
+    const playerShopRoute = url.pathname.startsWith("/api/shop/player/");
+    if (playerShopRoute && ["GET", "POST"].includes(request.method)) {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+      const token = sessionTokenFromRequest(request);
+      const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(token);
+      if (!account) return json(401, { error: "SESSION_EXPIRED" });
+      if (request.method === "POST") {
+        const origin = request.headers.get("origin");
+        if (origin) {
+          try {
+            if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+          } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
+        }
+      }
+      const shop = new D1PlayerShopRepository(env.P27_DB);
+      try {
+        if (request.method === "GET" && url.pathname === "/api/shop/player/catalog") {
+          return json(200, { catalog: await shop.catalog() });
+        }
+        if (request.method === "GET" && url.pathname === "/api/shop/player/inventory") {
+          return json(200, { inventory: await shop.inventory(account.id) });
+        }
+        if (request.method === "POST") {
+          const body = await readJson(request);
+          let result;
+          if (url.pathname === "/api/shop/player/purchase") {
+            result = await shop.purchase(account.id, { itemId: body.itemId, purchaseId: body.purchaseId });
+          } else if (url.pathname === "/api/shop/player/resale") {
+            result = await shop.resale(account.id, { itemId: body.itemId, resaleId: body.resaleId });
+          } else if (url.pathname === "/api/shop/player/equip") {
+            result = await shop.setEquipped(account.id, { itemId: body.itemId, equipped: body.equipped });
+          } else {
+            return json(404, { error: "SHOP_ROUTE_NOT_FOUND" });
+          }
+          return json(result.ok ? 200 : 409, result);
+        }
+        return json(405, { error: "METHOD_NOT_ALLOWED" });
+      } catch (error) { return errorResponse(error); }
     }
 
     if (url.pathname === "/api/progression/me" && ["GET", "POST"].includes(request.method)) {
