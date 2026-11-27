@@ -102,7 +102,7 @@ test('P27 boutique club : les maillots extérieur, troisième et gardien changen
   assert.equal(third.kitDesign,'hoops');
   assert.equal(third.kitVariant,'third');
   const goalkeeper = getP27ClubShopKit(club,inventory,'home','GK');
-  assert.deepEqual(goalkeeper.kitColors,{primary:'#eeeeee',secondary:'#102030',accent:'#123456'});
+  assert.deepEqual(goalkeeper.kitColors,{primary:'#eeeeee',secondary:'#123456',accent:'#102030'});
   assert.equal(goalkeeper.kitDesign,'central');
   assert.equal(goalkeeper.kitVariant,'goalkeeper');
 });
