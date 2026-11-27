@@ -2118,6 +2118,13 @@
  #main-menu #menu-content .p27-club-shop-select select{max-width:68%;flex:1}
 }
 
+#main-menu #menu-content .p27-shop-profile-card.profile-background-standard{background:linear-gradient(145deg,#293746,#111b29 78%);border-color:#8f9baa}
+#main-menu #menu-content .p27-shop-profile-card.profile-background-rare{background:linear-gradient(145deg,#173b58,#111a2a 78%);border-color:#5ba8df}
+#main-menu #menu-content .p27-shop-profile-card.profile-background-premium{background:radial-gradient(ellipse at 50% 0%,#70552c 0%,#182438 64%);border-color:#d1a95e}
+#main-menu #menu-content .avatar-preview-stage.profile-frame-standard{border:3px solid #aeb9c8;box-shadow:inset 0 0 0 3px #182433,0 0 0 1px #64748b}
+#main-menu #menu-content .avatar-preview-stage.profile-frame-rare{border:3px solid #63b7ff;box-shadow:inset 0 0 0 3px #10253c,0 0 13px #3199e855}
+#main-menu #menu-content .avatar-preview-stage.profile-frame-premium{border:3px solid #d8ad55;box-shadow:inset 0 0 0 3px #352817,0 0 16px #d8ad5555}
+
 /* P27 shop: transparent server-calculated resale estimate */
 .p27-shop-refund{display:block;color:#e4bd6b;font-weight:700;margin-top:5px;letter-spacing:.02em}
 
