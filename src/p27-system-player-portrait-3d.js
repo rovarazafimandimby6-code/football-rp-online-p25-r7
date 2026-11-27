@@ -63,7 +63,7 @@ function attachHair(model, sourceScene, color) {
 function safeColor(value, fallback) { return /^#[0-9a-f]{6}$/i.test(String(value||'')) ? value : fallback; }
 function signature(player) {
   const a = player.appearance || {};
-  return JSON.stringify([player.id, a.skinTone, a.bodyBuild, a.hairStyle, a.hairColor, a.faceShape, a.kitColors, a.kitDesign, a.kitVariant, a.facialHair]);
+  return JSON.stringify([player.id, a.skinTone, a.bodyBuild, a.hairStyle, a.hairColor, a.faceShape, a.eyeShape, a.kitColors, a.kitDesign, a.kitVariant, a.facialHair]);
 }
 function remember(key, value) {
   portraitCache.delete(key);
@@ -109,7 +109,9 @@ export async function renderSystemPlayerPortrait3D(player) {
       square: [1.08, 1.02, 1]
     }[faceShape] || [1, 1, 1];
     const buildScale = player?.appearance?.bodyBuild === 'strong' ? 1.07 : player?.appearance?.bodyBuild === 'lean' ? 0.95 : 1;
+    const eyeShapeScale = ({ almond:[1,0.96,1], round:[0.97,1.06,1], 'deep-set':[0.96,0.92,1], hooded:[1.02,0.91,1] })[player?.appearance?.eyeShape] || [1,1,1];
     model.traverse(node => {
+      if (node.name === 'Eyes') node.scale.multiply(new THREE.Vector3(...eyeShapeScale));
       if (!node.isBone) return;
       if (node.name === 'Head') node.scale.multiply(new THREE.Vector3(...faceScale));
       if (node.name === 'spine_02') node.scale.x *= buildScale;
