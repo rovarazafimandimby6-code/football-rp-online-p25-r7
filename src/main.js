@@ -1877,9 +1877,18 @@ menu.addEventListener('click', event => {
     renderPage('mercato');
     if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'active-contract' ? 'Vous avez déjà un contrat actif.' : result.reason === 'roster-full' ? 'Effectif complet : ce club ne peut pas inscrire votre footballeur.' : result.reason === 'roster-sync-failed' ? 'Inscription impossible : le contrat a été annulé car l’effectif n’a pas pu être enregistré.' : 'Impossible de signer ce contrat.';
   } else if (action === 'renew-contract') {
-    const result = career.renewContract({ salary: Number(document.getElementById('renew-contract-salary')?.value), durationDays: 180 });
+    const before = career.captureState();
+    let result = career.renewContract({ salary: Number(document.getElementById('renew-contract-salary')?.value), durationDays: 180 });
+    if (result.ok) {
+      const synced = syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      if (!synced.ok) {
+        career.restoreState(before);
+        career.saveState();
+        result = { ok:false, reason:'roster-sync-failed' };
+      }
+    }
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'contract-expired' ? 'Contrat expiré : signez un nouveau contrat.' : 'Renouvellement impossible : vérifiez le salaire.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'contract-expired' ? 'Contrat expiré : signez un nouveau contrat.' : result.reason === 'roster-sync-failed' ? 'Renouvellement annulé : impossible de synchroniser le contrat dans l’effectif.' : 'Renouvellement impossible : vérifiez le salaire.';
   } else if (action === 'terminate-contract') {
     const before = career.captureState();
     let result = career.terminateContract();
