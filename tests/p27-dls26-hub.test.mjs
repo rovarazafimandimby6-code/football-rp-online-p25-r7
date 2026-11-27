@@ -197,3 +197,16 @@ test('P27 Mercato : les offres et contrats ne ciblent que les clubs capables d�
   assert.ok(main.includes("availableClubs.length ? availableClubs.map"));
   assert.ok(main.includes("availableClubs.length ? '' : 'disabled'"));
 });
+
+
+test('P27 carrière : le renouvellement synchronise salaire et échéance dans l’effectif, avec annulation si la sauvegarde échoue', () => {
+  const start = main.indexOf("} else if (action === 'renew-contract') {");
+  const end = main.indexOf("} else if (action === 'terminate-contract') {", start);
+  assert.ok(start >= 0 && end > start);
+  const handler = main.slice(start, end);
+  assert.match(handler, /const before = career\.captureState\(\)/);
+  assert.match(handler, /career\.renewContract\(/);
+  assert.match(handler, /syncCareerPlayerRoster\(\{ clubs, career, profile: profileStore\.profile \}\)/);
+  assert.match(handler, /career\.restoreState\(before\)/);
+  assert.match(handler, /reason:'roster-sync-failed'/);
+});
