@@ -78,6 +78,7 @@ export class FieldBuilder {
     this.netPanels = [];
     this.cornerFlags = [];
     this.stadiumMaterials = [];
+    this.lineGeometryCache = new Map();
     this.clubBannerGroup = null;
     this.clubExpansionGroup = null;
     this.goalPulse = 0;
@@ -189,19 +190,25 @@ export class FieldBuilder {
   addLineRect(x, z, w, d, thickness = 0.14) {
     const mat = this.lineMaterial || (this.lineMaterial = new THREE.MeshBasicMaterial({ color: 0xf6fff7 }));
     const y = 0.015;
-    const top = new THREE.Mesh(new THREE.PlaneGeometry(w, thickness), mat);
+    const horizontalKey = `h:${w}:${thickness}`;
+    const verticalKey = `v:${thickness}:${d}`;
+    if (!this.lineGeometryCache.has(horizontalKey)) this.lineGeometryCache.set(horizontalKey, new THREE.PlaneGeometry(w, thickness));
+    if (!this.lineGeometryCache.has(verticalKey)) this.lineGeometryCache.set(verticalKey, new THREE.PlaneGeometry(thickness, d));
+    const horizontalGeometry = this.lineGeometryCache.get(horizontalKey);
+    const verticalGeometry = this.lineGeometryCache.get(verticalKey);
+    const top = new THREE.Mesh(horizontalGeometry, mat);
     top.rotation.x = -Math.PI / 2;
     top.position.set(x, y, z - d / 2);
 
-    const bot = new THREE.Mesh(new THREE.PlaneGeometry(w, thickness), mat);
+    const bot = new THREE.Mesh(horizontalGeometry, mat);
     bot.rotation.x = -Math.PI / 2;
     bot.position.set(x, y, z + d / 2);
 
-    const left = new THREE.Mesh(new THREE.PlaneGeometry(thickness, d), mat);
+    const left = new THREE.Mesh(verticalGeometry, mat);
     left.rotation.x = -Math.PI / 2;
     left.position.set(x - w / 2, y, z);
 
-    const right = new THREE.Mesh(new THREE.PlaneGeometry(thickness, d), mat);
+    const right = new THREE.Mesh(verticalGeometry, mat);
     right.rotation.x = -Math.PI / 2;
     right.position.set(x + w / 2, y, z);
 
@@ -391,13 +398,15 @@ export class FieldBuilder {
     }
 
     // Filets
-    const netMat = new THREE.MeshBasicMaterial({
+    // Les deux cages partagent la même texture et le même matériau de filet.
+    // Cela évite de dupliquer une texture Canvas identique pour chaque but.
+    const netMat = this.netMaterial || (this.netMaterial = new THREE.MeshBasicMaterial({
       map: createNetTexture(),
       transparent: true,
       opacity: 0.85,
       side: THREE.DoubleSide,
       depthWrite: false
-    });
+    }));
 
     // Panneau arrière subdivisé : sa maille vibre brièvement après un but.
     const backNetGeo = new THREE.PlaneGeometry(PITCH.GOAL_W, h, 10, 6);
