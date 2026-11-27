@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { generateClubRoster } from '../src/club-roster.js';
 import { renderSystemPlayerPortrait, systemPlayerPortraitDataUri } from '../src/p27-system-player-portrait.js';
 
 const player = {
@@ -38,6 +39,16 @@ test('portrait generation safely falls back when appearance and kit colors are a
   assert.match(svg, /#2865a8/);
 });
 
+
+test('system player appearance: beard variation is deterministic and age-gated', () => {
+  const club = { id:'portrait-beard-test', name:'Portrait Test', countryCode:'MG', rating:62, division:'D3', colors:['#24558b','#ffffff','#d7aa37'] };
+  const first = generateClubRoster(club, { size:80 });
+  const second = generateClubRoster(club, { size:80 });
+  assert.deepEqual(first.map(player => player.appearance.facialHair), second.map(player => player.appearance.facialHair));
+  assert.ok(first.some(player => player.age >= 20 && player.appearance.facialHair === 'beard'));
+  assert.ok(first.every(player => player.age >= 20 || player.appearance.facialHair === 'none'));
+});
+
 test('system portraits upgrade to the existing 3D humanoid model lazily', async () => {
   const { readFile } = await import('node:fs/promises');
   const { fileURLToPath } = await import('node:url');
@@ -48,12 +59,15 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   const main = await readFile(resolve(root, 'src/main.js'), 'utf8');
   assert.match(renderer, /Superhero_Male_FullBody\.gltf/);
   assert.match(renderer, /Hair_SimpleParted|Hair_Buzzed/);
+  assert.match(renderer, /Hair_Beard/);
+  assert.match(renderer, /facialHair === 'beard'/);
   assert.match(renderer, /powerPreference: 'low-power'/);
   assert.match(renderer, /MAX_CACHE = 180/);
   assert.match(renderer, /p27PortraitOwnedGeometry/);
   assert.match(renderer, /if \(node\.userData\?\.p27PortraitOwnedGeometry\) node\.geometry/);
   assert.match(integration, /IntersectionObserver/);
   assert.match(integration, /variant==='roster'\?'roster-player-portrait'/);
+  assert.match(integration, /a\.facialHair==='beard'/);
   assert.match(integration, /systemPlayerPortraitDataUri\(p\)/);
   assert.match(integration, /module\.renderSystemPlayerPortrait3D\(player\)/);
   assert.match(main, /hasPortrait\\?renderSystemPlayerPortrait\\(player,'roster'\\):''/);
