@@ -7,6 +7,8 @@ import { JsonProgressionStore } from '../server/progression-store.js';
 import { JsonClubFinanceService } from '../server/club-finance-service.js';
 import { JsonShopService } from '../server/shop-service.js';
 
+function fund(progressionStore,accountId,amount=10000){progressionStore.creditCoins(accountId,{transactionId:'test-fund-'+accountId,amount});}
+
 function fixture(){
  const directory=mkdtempSync(path.join(os.tmpdir(),'fpro-shop-service-'));
  const clubs=[{id:'club-one',budget:100000,roster:[]}];
@@ -19,6 +21,7 @@ function fixture(){
 
 test('P27 boutique achat joueur : débit les pièces et persiste l’inventaire une seule fois',()=>{
  const f=fixture();try{
+  fund(f.progressionStore,'player-one');
   const before=f.progressionStore.get('player-one').coins;
   const first=f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-one',purchaseId:'player-buy-1'});
   assert.equal(first.ok,true);assert.equal(first.item.paidPrice,500);
@@ -34,6 +37,7 @@ test('P27 boutique achat joueur : refuse solde insuffisant et articles déjà po
  const f=fixture();try{
   const poor=f.service.purchase({shop:'player',itemId:'boots-premium',actorId:'poor-player',purchaseId:'poor-buy'});
   assert.equal(poor.ok,false);assert.equal(poor.reason,'insufficient-coins');
+  fund(f.progressionStore,'player-one');
   const first=f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-one',purchaseId:'owned-buy'});
   assert.equal(first.ok,true);
   assert.equal(f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-one',purchaseId:'owned-buy-2'}).reason,'already-owned');
@@ -55,6 +59,7 @@ test('P27 boutique achat club : seul le propriétaire achète et la trésorerie 
 test('P27 boutique : respecte les promotions serveur et calcule la revente sur le prix payé',()=>{
  const f=fixture();
  try{
+  fund(f.progressionStore,'player-one');
   f.service.promotionProvider=()=>({startsAt:500,endsAt:1500,discountPercent:30,itemIds:['boots-premium']});
   const bought=f.service.purchase({shop:'player',itemId:'boots-premium',actorId:'player-one',purchaseId:'promo-buy'});
   assert.equal(bought.purchase.paidPrice,2100);
@@ -81,6 +86,7 @@ test('P27 boutique : refuse la revente des extensions et conserve les achats du 
 
 test('P27 boutique : transaction de revente et d’achat reste liée à son propriétaire',()=>{
  const f=fixture();try{
+  fund(f.progressionStore,'player-one');
   f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-one',purchaseId:'player-owned'});
   const denied=f.service.resale({shop:'player',actorId:'player-two',itemId:'boots-standard',resaleId:'foreign-sale'});
   assert.equal(denied.reason,'item-not-owned');
@@ -89,6 +95,7 @@ test('P27 boutique : transaction de revente et d’achat reste liée à son prop
 
 test('P27 boutique : une interruption après débit reprend sans double prélèvement',()=>{
  const f=fixture();try{
+  fund(f.progressionStore,'player-recovery');
   const original=f.progressionStore.spendCoins.bind(f.progressionStore);
   let interrupted=false;
   f.progressionStore.spendCoins=(accountId,args)=>{
@@ -108,6 +115,7 @@ test('P27 boutique : une interruption après débit reprend sans double prélèv
 
 test('P27 boutique : une promotion fournie par le client est ignorée',()=>{
  const f=fixture();try{
+  fund(f.progressionStore,'player-client-promo');
   const bought=f.service.purchase({shop:'player',itemId:'boots-premium',actorId:'player-client-promo',purchaseId:'client-promo',
    promotion:{startsAt:0,endsAt:999999,discountPercent:50,itemIds:['boots-premium']}});
   assert.equal(bought.ok,true);
