@@ -369,6 +369,14 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       });
       return json(res,200,result);
     }
+    const clubTakeoverMatch = url.pathname.match(/^\/api\/clubs\/([a-z0-9-]{1,48})\/takeover$/i);
+    if (req.method === 'POST' && clubTakeoverMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const result = serverClubManager.takeOver(clubTakeoverMatch[1], account.id);
+      const status = result.ok ? 200 : result.reason === 'invalid-request' ? 404 : 409;
+      return json(res, status, result);
+    }
     if (req.method === 'GET' && url.pathname === '/api/clubs') {
       const rawLimit=url.searchParams.get('limit'), rawOffset=url.searchParams.get('offset');
       const limit=rawLimit===null?24:Number(rawLimit), offset=rawOffset===null?0:Number(rawOffset);
