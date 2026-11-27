@@ -55,3 +55,78 @@ CREATE TABLE IF NOT EXISTS p27_player_shop_resales (
 );
 CREATE INDEX IF NOT EXISTS p27_player_shop_inventory_by_account
   ON p27_player_shop_inventory(account_id, status, purchased_at DESC);
+
+-- Keep purchase and resale journals immutable and bind inventory rows to their source purchase.
+CREATE TRIGGER IF NOT EXISTS p27_player_shop_inventory_purchase_match
+BEFORE INSERT ON p27_player_shop_inventory
+WHEN NOT EXISTS (
+  SELECT 1 FROM p27_player_shop_purchases p
+  WHERE p.account_id = NEW.account_id
+    AND p.purchase_id = NEW.purchase_id
+    AND p.item_id = NEW.item_id
+    AND p.category = NEW.category
+    AND p.rarity = NEW.rarity
+    AND p.equip_slot IS NEW.equip_slot
+    AND p.paid_price = NEW.paid_price
+    AND p.currency = NEW.currency
+)
+BEGIN
+  SELECT RAISE(ABORT, 'SHOP_PURCHASE_MISMATCH');
+END;
+
+CREATE TRIGGER IF NOT EXISTS p27_player_shop_purchase_immutable_update
+BEFORE UPDATE ON p27_player_shop_purchases
+BEGIN
+  SELECT RAISE(ABORT, 'SHOP_PURCHASE_IMMUTABLE');
+END;
+CREATE TRIGGER IF NOT EXISTS p27_player_shop_purchase_immutable_delete
+BEFORE DELETE ON p27_player_shop_purchases
+BEGIN
+  SELECT RAISE(ABORT, 'SHOP_PURCHASE_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS p27_player_shop_inventory_identity_immutable
+BEFORE UPDATE OF account_id, purchase_id, item_id, category, rarity, equip_slot,
+  paid_price, currency, resellable, resale_rate, purchased_at
+ON p27_player_shop_inventory
+BEGIN
+  SELECT RAISE(ABORT, 'SHOP_INVENTORY_IDENTITY_IMMUTABLE');
+END;
+CREATE TRIGGER IF NOT EXISTS p27_player_shop_inventory_no_resurrection
+BEFORE UPDATE OF status ON p27_player_shop_inventory
+WHEN OLD.status = 'resold' AND NEW.status <> 'resold'
+BEGIN
+  SELECT RAISE(ABORT, 'SHOP_INVENTORY_RESOLD');
+END;
+CREATE TRIGGER IF NOT EXISTS p27_player_shop_inventory_no_delete
+BEFORE DELETE ON p27_player_shop_inventory
+BEGIN
+  SELECT RAISE(ABORT, 'SHOP_INVENTORY_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS p27_player_shop_resale_match
+BEFORE INSERT ON p27_player_shop_resales
+WHEN NOT EXISTS (
+  SELECT 1 FROM p27_player_shop_inventory i
+  WHERE i.account_id = NEW.account_id
+    AND i.purchase_id = NEW.purchase_id
+    AND i.item_id = NEW.item_id
+    AND i.status = 'resold'
+    AND i.resale_id = NEW.resale_id
+    AND i.resold_at = NEW.created_at
+    AND i.currency = NEW.currency
+    AND NEW.amount = CAST(i.paid_price * i.resale_rate AS INTEGER)
+)
+BEGIN
+  SELECT RAISE(ABORT, 'SHOP_RESALE_MISMATCH');
+END;
+CREATE TRIGGER IF NOT EXISTS p27_player_shop_resale_immutable_update
+BEFORE UPDATE ON p27_player_shop_resales
+BEGIN
+  SELECT RAISE(ABORT, 'SHOP_RESALE_IMMUTABLE');
+END;
+CREATE TRIGGER IF NOT EXISTS p27_player_shop_resale_immutable_delete
+BEFORE DELETE ON p27_player_shop_resales
+BEGIN
+  SELECT RAISE(ABORT, 'SHOP_RESALE_IMMUTABLE');
+END;
