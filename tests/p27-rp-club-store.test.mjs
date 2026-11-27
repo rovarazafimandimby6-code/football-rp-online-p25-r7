@@ -266,6 +266,9 @@ test('Club RP : exclusion et départ révoquent immédiatement les accès réser
       accountId:'removed-member', playerId:'FRP-410002',
       displayName:'Exclu', text:'Message avant exclusion'
     }).ok, true);
+    assert.equal(store.getMessages(club.id, 'removed-member')[0].text, 'Message avant exclusion');
+    assert.equal(store.getMessages(club.id, 'stranger'), null);
+    assert.equal(store.getMessages('missing-club', 'president'), null);
     assert.equal(store.removeMember(club.id, 'FRP-410002', 'president').ok, true);
     assert.equal(store.getForAccount('removed-member'), null);
     assert.equal(store.getMemberAccounts(club.id, 'removed-member'), null);
