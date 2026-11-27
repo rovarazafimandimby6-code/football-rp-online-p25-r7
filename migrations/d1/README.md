@@ -43,3 +43,16 @@ Do not seed a club's D1 balance from its configured default budget when a legacy
 A deterministic legacy audit/export command now exists at `scripts/export-club-d1-migration.mjs`. It reads the actual server data files under `data/`, validates all 156 club records, resolves `managerId` against account IDs, verifies every finance ledger balance, and includes sponsor contracts, loans, payroll checkpoints, transfer-fee checkpoints and player-wage checkpoints. Run `node scripts/export-club-d1-migration.mjs --data-root data` for a read-only dry run. Only when the report is clean, create a protected export with `node scripts/export-club-d1-migration.mjs --data-root data --write /secure/path/p27-club-d1-bundle.json`. The script never writes a bundle when any validation issue exists.
 
 The export is a validated migration package, not proof that production D1 has been populated. The D1 import runner and remote cutover still require the live data directory and the production D1 binding/authorization. Keep the Node server as the only writer until the bundle has been imported, every row and final balance has been compared, and rollback has been rehearsed. Do not enable dual writes.
+
+
+## Import SQL (validated bundle only)
+
+After a clean export, generate the D1 import SQL without connecting to production:
+
+```sh
+node scripts/build-club-d1-import-sql.mjs --bundle /secure/path/p27-club-d1-bundle.json --output /secure/path/p27-club-d1-import.sql
+```
+
+Review the generated SQL and apply it only to the intended D1 database after confirming the account table and migrations are present. The SQL uses `INSERT OR IGNORE`; it never overwrites an existing row. This makes retries non-destructive, but it also means pre-existing conflicting rows must be detected by the post-import reconciliation rather than treated as successful imports. Compare all row counts and each club's owner, opening balance, final balance, ledger IDs/balance-after values, sponsor/loan records and scheduler checkpoints against the source bundle. Do not cut over on aggregate counts alone.
+
+A clean CI run validates the schema and generator against fixtures, not the live 156-club production dataset. The real migration remains pending until the owner supplies an authorized, current export of the server `data/` directory and access to the intended Cloudflare D1 database. Never commit production data, password hashes, session hashes or secrets into the repository.
