@@ -128,6 +128,7 @@ export class CareerManager {
   refreshOfferStatuses(at = Date.now()) {
     const now = timestamp(at);
     if (now === null) return { ok: false, reason: 'invalid-date', updated: 0 };
+    const before = this.captureState();
     let updated = 0;
     for (const offer of this.offers.values()) {
       if (offer.status !== 'pending' || !offer.expiresAt) continue;
@@ -137,22 +138,9 @@ export class CareerManager {
         updated++;
       }
     }
-    if (updated) {
-      const before = this.captureState();
-      // The snapshot is taken after the in-memory scan, so restore the statuses
-      // to pending explicitly if the storage write fails.
-      for (const offer of this.offers.values()) {
-        if (offer.status === 'expired' && offer.expiresAt && timestamp(offer.expiresAt) !== null && timestamp(offer.expiresAt) <= now) offer.status = 'pending';
-      }
-      const pendingSnapshot = this.captureState();
-      for (const offer of this.offers.values()) {
-        const previous = pendingSnapshot.offers.find(item => item.id === offer.id);
-        if (previous) offer.status = previous.status;
-      }
-      if (!this.saveState()) {
-        this.restoreState(pendingSnapshot);
-        return { ok:false, reason:'persistence-failed', updated:0 };
-      }
+    if (updated && !this.saveState()) {
+      this.restoreState(before);
+      return { ok:false, reason:'persistence-failed', updated:0 };
     }
     return { ok: true, updated };
   }
