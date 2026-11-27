@@ -178,11 +178,16 @@ export class JsonShopService {
     if(!actor||!target)return {ok:false,reason:'invalid-owner'};
     if(shop==='club'&&this.ownerOf(club)!==actor)return {ok:false,reason:'club-owner-required'};
     if(typeof equipped!=='boolean')return {ok:false,reason:'invalid-equipped-state'};
-    const row=this.findInventoryRow(shop,target);
-    const item=row?.items.find(entry=>entry.itemId===itemId&&entry.status==='owned');
-    if(!item)return {ok:false,reason:'item-not-owned'};
-    this.transaction(()=>{item.equipped=equipped;return true;});
-    return {ok:true,item:clone(item)};
+    const existing=this.findInventoryRow(shop,target)?.items.find(entry=>entry.itemId===itemId&&entry.status==='owned');
+    if(!existing)return {ok:false,reason:'item-not-owned'};
+    this.transaction(()=>{
+      const row=this.findInventoryRow(shop,target);
+      const item=row.items.find(entry=>entry.itemId===itemId&&entry.status==='owned');
+      if(!item)throw new Error('ITEM_NOT_OWNED');
+      item.equipped=equipped;
+      return true;
+    });
+    return {ok:true,item:clone(this.findInventoryRow(shop,target).items.find(entry=>entry.itemId===itemId))};
   }
   getHistory({shop,ownerId}={}){
     const id=cleanId(ownerId);
