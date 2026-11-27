@@ -138,7 +138,9 @@ for (const t of transferRows) {
   const valid = t && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 &&
     byId.has(t.fromClubId) && byId.has(t.toClubId) && t.fromClubId!==t.toClubId &&
     MONEY(t.fee) && t.fee>0 && Number.isSafeInteger(t.createdAt) && t.createdAt>=0 &&
-    typeof t.debitPosted==='boolean' && typeof t.creditPosted==='boolean' &&\n    (t.status===undefined || (t.status==='completed' && t.debitPosted && t.creditPosted) ||\n      (t.status==='pending' && !(t.debitPosted && t.creditPosted)));
+    typeof t.debitPosted==='boolean' && typeof t.creditPosted==='boolean' &&
+    (t.status===undefined || (t.status==='completed' && t.debitPosted && t.creditPosted) ||
+      (t.status==='pending' && !(t.debitPosted && t.creditPosted)));
   if (!valid) issue('invalid-transfer-checkpoint', { transferId:t?.id || null });
   if (typeof t?.id==='string') {
     if (transferIds.has(t.id)) issue('duplicate-transfer-checkpoint', { transferId:t.id });
@@ -191,8 +193,10 @@ const report = {
 if (output && report.ok) {
   const target=path.resolve(output);
   await mkdir(path.dirname(target),{recursive:true});
-  await writeFile(target,JSON.stringify(bundle,null,2)+'\n',{mode:0o600});
+  await writeFile(target,JSON.stringify(bundle,null,2)+'
+',{mode:0o600});
   report.output=target;
 }
-process.stdout.write(JSON.stringify(report,null,2)+'\n');
+process.stdout.write(JSON.stringify(report,null,2)+'
+');
 if (!report.ok) process.exitCode=1;
