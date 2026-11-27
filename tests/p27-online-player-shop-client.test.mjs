@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { OnlineAccountClient } from "../src/online-account-client.js";
+import { syncEquippedCosmetics } from "../src/player-shop-ui.js";
 
 const catalogItem = {
   id:"boots-standard", shop:"player", name:"Crampons standard", price:500, basePrice:500,
@@ -88,4 +89,34 @@ test("player shop client rejects malformed catalog payloads", async () => {
     catalog:[{...catalogItem,price:"500"}],inventory:[]
   }]);
   await assert.rejects(client.getPlayerShopCatalog(),/INVALID_SHOP_RESPONSE/);
+});
+
+test("equipped player cosmetics hydrate all supported appearance categories", () => {
+  const previous = globalThis.localStorage;
+  const values = new Map();
+  globalThis.localStorage = {
+    setItem:(key,value)=>values.set(key,String(value)),
+    getItem:key=>values.get(key) ?? null,
+  };
+  try {
+    syncEquippedCosmetics([
+      {itemId:"hair-rare",status:"owned",equipped:true},
+      {itemId:"beard-standard",category:"beard",status:"owned",equipped:true},
+      {itemId:"boots-premium",category:"crampons",status:"owned",equipped:true},
+      {itemId:"celebration-premium",category:"celebrations",status:"owned",equipped:true},
+      {itemId:"profile-frame-rare",category:"profile-frames",status:"owned",equipped:true},
+      {itemId:"profile-background-standard",category:"profile-backgrounds",status:"owned",equipped:true},
+      {itemId:"old-hair",category:"hair",status:"sold",equipped:false},
+    ],[
+      {id:"hair-rare",category:"hair"},
+    ]);
+    assert.deepEqual(JSON.parse(values.get("fpro.player-shop-equipped.v1")),{
+      hair:"hair-rare",beard:"beard-standard",crampons:"boots-premium",
+      celebrations:"celebration-premium","profile-frames":"profile-frame-rare",
+      "profile-backgrounds":"profile-background-standard"
+    });
+  } finally {
+    if(previous===undefined)delete globalThis.localStorage;
+    else globalThis.localStorage=previous;
+  }
 });
