@@ -79,7 +79,7 @@ test("player shop routes require configured D1 storage and an authenticated acco
   assert.equal(missingDb.status, 503);
   assert.equal((await missingDb.json()).error, "D1_BINDING_MISSING");
 
-  const db = { prepare() { return { bind() { return this; }, first: async () => null }; } };
+  const db = { prepare() { return { bind() { return this; }, first: async () => null }; }, batch: async () => [] };
   const anonymous = await worker.fetch(request("/api/shop/player/inventory"), { P27_DB: db });
   assert.equal(anonymous.status, 401);
   assert.equal((await anonymous.json()).error, "SESSION_EXPIRED");
@@ -90,7 +90,7 @@ test("player shop write routes require an authenticated account before processin
     method: "POST",
     headers: { origin: "https://attacker.example", "content-type": "application/json" },
     body: JSON.stringify({ itemId: "boots-standard", purchaseId: "purchase-1" }),
-  }), { P27_DB: { prepare() { return { bind() { return this; }, first: async () => null }; } } });
+  }), { P27_DB: { prepare() { return { bind() { return this; }, first: async () => null }; }, batch: async () => [] } });
   assert.equal(response.status, 401);
   assert.equal((await response.json()).error, "SESSION_EXPIRED");
 });
