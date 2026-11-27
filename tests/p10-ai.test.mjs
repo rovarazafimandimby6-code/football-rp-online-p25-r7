@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, getDefensiveBlockShift, getSpacedDefensiveTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
+import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, getDefensiveBlockShift, predictDefensiveThreatPosition, getSpacedDefensiveTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
 
 const player = (id, team, x, z, specialty = 'balanced') => ({
   id, team, role: 'FWD', specialty,
@@ -260,4 +260,30 @@ test('P27: le décalage collectif latéral est borné et symétrique', () => {
   assert.equal(getDefensiveBlockShift(20), 3.4);
   assert.equal(getDefensiveBlockShift(-20), -3.4);
   assert.equal(getDefensiveBlockShift(0), 0);
+});
+
+
+test('P27: la défense anticipe une course adverse vers son but', () => {
+  const runner = player('deep-runner', 'red', -3, 2, 'runner');
+  runner.vel = { x: -6, z: 1.5 };
+  const predicted = predictDefensiveThreatPosition(runner, 1, 0.7);
+  assert.ok(predicted.x < runner.pos.x - 3, 'la position anticipée doit tenir compte de la course vers notre but');
+  assert.ok(predicted.z > runner.pos.z, 'la dérive latérale modérée de la course est anticipée');
+  const retreating = player('retreating', 'red', -3, 2);
+  retreating.vel = { x: 5, z: 0 };
+  assert.deepEqual(predictDefensiveThreatPosition(retreating, 1), retreating.pos,
+    'un adversaire qui s’éloigne de notre but ne déclenche pas d’anticipation vers l’avant');
+});
+
+test('P27: le bloc se place plus tôt côté but face à un appel en profondeur', () => {
+  const defender = player('anticipation-defender', 'blue', -10, 2);
+  defender.homePos = { x: -10, z: 2 };
+  const staticRunner = player('static-runner', 'red', -3, 2);
+  const movingRunner = player('moving-runner', 'red', -3, 2);
+  movingRunner.vel = { x: -6, z: 0 };
+  const ball = { pos: { x: -1, z: 2 } };
+  const staticTarget = getDefensiveShapeTarget(defender, ball, [staticRunner], 1, 'balanced');
+  const movingTarget = getDefensiveShapeTarget(defender, ball, [movingRunner], 1, 'balanced');
+  assert.ok(movingTarget.x < staticTarget.x - 0.5,
+    'le défenseur anticipe davantage la course qui menace la profondeur');
 });
