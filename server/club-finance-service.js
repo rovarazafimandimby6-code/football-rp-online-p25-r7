@@ -63,11 +63,16 @@ export class JsonClubFinanceService {
     }
     const valid = {};
     for (const [clubId, at] of Object.entries(parsed.clubs)) {
-      if (this.clubs.has(clubId) && Number.isSafeInteger(at) && at >= 0) valid[clubId] = at;
+      // Never replace a malformed known-club checkpoint with "now": doing so
+      // would silently erase payroll arrears from the schedule.
+      if (this.clubs.has(clubId) && (!Number.isSafeInteger(at) || at < 0)) {
+        throw new Error('PAYROLL_SCHEDULE_CORRUPT');
+      }
+      if (this.clubs.has(clubId)) valid[clubId] = at;
     }
     let changed = false;
     for (const clubId of this.clubs.keys()) {
-      if (!Number.isSafeInteger(valid[clubId])) { valid[clubId] = this.now(); changed = true; }
+      if (!Object.hasOwn(valid, clubId)) { valid[clubId] = this.now(); changed = true; }
     }
     if (changed && !this.persistPayrollSchedule(valid)) throw new Error('PAYROLL_SCHEDULE_MIGRATION_FAILED');
     return valid;
