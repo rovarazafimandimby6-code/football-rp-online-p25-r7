@@ -16,11 +16,14 @@ export function resolvePlayerAnimationClip(clipNames, state, speed = 0) {
   const names = (Array.isArray(clipNames) ? clipNames : [])
     .map((clip) => typeof clip === 'string' ? clip : clip?.name)
     .filter((name) => typeof name === 'string' && name.length > 0);
-  const key = state === 'run' ? (speed > 7.5 ? 'sprint' : 'jog') : state;
-  const patterns = RULES[key] || [];
-  for (const pattern of patterns) {
-    const match = names.find((name) => pattern.test(name));
-    if (match) return match;
+  const keys = state === 'run'
+    ? (speed > 7.5 ? ['sprint', 'jog'] : ['jog', 'sprint'])
+    : [state];
+  for (const key of keys) {
+    for (const pattern of RULES[key] || []) {
+      const match = names.find((name) => pattern.test(name));
+      if (match) return match;
+    }
   }
   return null;
 }
