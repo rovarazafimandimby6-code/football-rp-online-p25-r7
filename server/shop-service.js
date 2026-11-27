@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { calculateResaleValue, getShopCatalog, getShopItem, getShopPrice, validateShopPurchase } from '../src/p27-shop-catalog.js';
+import { calculateResaleValue, getP27StadiumCapacity, getShopCatalog, getShopItem, getShopPrice, validateShopPurchase } from '../src/p27-shop-catalog.js';
 
 const cleanId=value=>String(value??'').trim().slice(0,80);
 const cleanTransactionId=value=>{const id=String(value??'').trim();return id.length>0&&id.length<=64?id:'';};
@@ -149,7 +149,7 @@ export class JsonShopService {
     const stadiumExpansionLevel=Math.max(0,...items
       .filter(entry=>entry.category==='capacity' && Number.isInteger(entry.upgradeLevel) && entry.upgradeLevel>=1 && entry.upgradeLevel<=4)
       .map(entry=>entry.upgradeLevel));
-    return {equippedItemIds,stadiumExpansionLevel};
+    return {equippedItemIds,stadiumExpansionLevel,stadiumCapacity:getP27StadiumCapacity(stadiumExpansionLevel)};
   }
   inventory(shop,ownerId){
     if(!validShop(shop)||!cleanId(ownerId))return [];
