@@ -35,12 +35,16 @@ test('P27 gestion équipe : le choix de formation avant match met à jour la feu
   assert.match(main, /id="pre-match-bench-size"/);
   assert.match(main, /selectedBenchSize = size/);
   assert.match(main, /benchSize: selectedBenchSize/);
+  assert.match(main, /homeStarterIds: selectedHomeStarterIds/);
+  assert.match(main, /data-squad-action="bench"/);
+  assert.match(main, /data-squad-action="start"/);
+  assert.match(main, /selectedHomeStarterIds = selectedHomeStarterIds\.map/);
   assert.match(main, /preferences\.formation = \['2-2','1-2-1','2-1-1'\]\.includes\(saved\.formation\)/);
   assert.match(main, /preferences\.benchSize = Number\.isInteger\(saved\.benchSize\)/);
   assert.match(main, /preferences\.formation = selectedFormation/);
   assert.match(main, /preferences\.benchSize = size/);
   assert.match(game, /const formation = \['2-2','1-2-1','2-1-1'\]\.includes\(callbacks\.formation\) \? callbacks\.formation : '2-2'/);
-  assert.match(game, /createTeamRoster\('blue', formation, callbacks\.homeRoster, callbacks\.careerPlayerId\)/);
+  assert.match(game, /createTeamRoster\('blue', formation, callbacks\.homeRoster, callbacks\.careerPlayerId, callbacks\.homeStarterIds\)/);
   assert.match(game, /this\.benchSize = Number\.isInteger\(callbacks\.benchSize\)/);
   assert.match(game, /createMatchSquad\('blue', formation, callbacks\.homeRoster, callbacks\.careerPlayerId, this\.benchSize\)/);
 });
@@ -65,4 +69,14 @@ test('P27 gestion équipe : la feuille de match accepte un banc réglable de tro
     assert.equal(squad.substitutes.length,size);
     assert.equal(new Set([...squad.starters,...squad.substitutes].map(player=>player.id)).size,5+size);
   }
+});
+
+test('P27 gestion équipe : les titulaires choisis par le manager sont exactement ceux transmis à la feuille de match', () => {
+  const selected = ['career-player','keeper','mid-a','fwd-a','reserve-a'];
+  const lineup = createTeamRoster('blue','2-2',roster,'career-player',selected);
+  assert.equal(lineup.length,5);
+  assert.deepEqual(new Set(lineup.map(player=>player.id)),new Set(selected));
+  const squad = createMatchSquad('blue','2-2',roster,'career-player',3,selected);
+  assert.deepEqual(new Set(squad.starters.map(player=>player.id)),new Set(selected));
+  assert.deepEqual(squad.substitutes.map(player=>player.id),['def-a']);
 });
