@@ -85,7 +85,7 @@ test('P27 DLS 26 : les profils ajoutés correspondent aux cartes normales vérif
 
 test('P27 : les profils DLS 23 complètent DLS 26 sans identité réelle embarquée', () => {
   assert.equal(DLS23_REFERENCE_PROFILES.length, 15);
-  assert.equal(DLS_REFERENCE_PROFILES.length, DLS26_REFERENCE_PROFILES.length + DLS23_REFERENCE_PROFILES.length);
+  assert.equal(DLS_REFERENCE_PROFILES.length, DLS26_REFERENCE_PROFILES.length + DLS23_REFERENCE_PROFILES.length + DLS19_REFERENCE_PROFILES.length);
   assert.ok(DLS23_REFERENCE_PROFILES.every(profile => profile.sourceGame === 'DLS23' && profile.version === '10.20' && profile.verification === 'community-dataset-record'));
   assert.ok(DLS23_REFERENCE_PROFILES.every(profile => profile.cardType === 'normal' && profile.archetype && profile.source.startsWith('https://')));
   for (const profile of DLS23_REFERENCE_PROFILES) {
@@ -110,7 +110,14 @@ test('P27 : DLS 26 reste prioritaire et DLS 23 sert de complément ciblé', () =
 
 test('P27 : adaptateur DLS 19 conserve les dix attributs historiques et le badge WF', () => {
   assert.equal(DLS19_ATTRIBUTE_KEYS.length, 10);
-  assert.deepEqual(DLS19_REFERENCE_PROFILES, []);
+  assert.equal(DLS19_REFERENCE_PROFILES.length, 1);
+  const historical = DLS19_REFERENCE_PROFILES[0];
+  assert.equal(historical.sourceGame, 'DLS19');
+  assert.equal(historical.verification, 'community-historical-record');
+  assert.equal(historical.overall, 83);
+  assert.equal(historical.stats.CRO, 72);
+  assert.equal(historical.stats.HEA, 82);
+  assert.equal(roleForDls19Position(historical.position), 'DEF');
   const record = normalizeDls19Profile({
     sourceRecordId: 'archived-test-001',
     version: 'archived-19-card',
