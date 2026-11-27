@@ -466,7 +466,8 @@ export class ClubManager {
     if (!assignedNumber) return { ok: false, reason: 'shirt-numbers-full' };
     // Prepare the destination snapshot before mutating either roster.
     // This prevents kit/contract preparation errors from orphaning the source player.
-    const transferred = applyP27ClubKit({ ...structuredClone(player), number:assignedNumber }, to);
+    const transferSnapshot = JSON.parse(JSON.stringify(player));
+    const transferred = applyP27ClubKit({ ...transferSnapshot, number:assignedNumber }, to);
     if (transferred.playerType === 'system') {
       transferred.contract = {
         ...createSystemPlayerContract({
