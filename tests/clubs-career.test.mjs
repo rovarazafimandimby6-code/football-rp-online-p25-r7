@@ -700,7 +700,6 @@ test('P27 mercato : la fin ou la résiliation du contrat annule et historise les
 });
 
 test('carrière : le club du contrat actif reste la référence si le clubId historique est incohérent', async () => {
-  const { syncCareerPlayerRoster } = await import('../src/career-roster-sync.js');
   const clubs = new ClubManager([
     { id: 'contract-club', name: 'Club du contrat', capacity: 12 },
     { id: 'stale-club', name: 'Ancien identifiant', capacity: 12 }
@@ -721,4 +720,13 @@ test('carrière : le club du contrat actif reste la référence si le clubId his
   assert.equal(clubs.getClub('contract-club').roster.some(player => player.id === 'career-player'), true);
   assert.equal(clubs.getClub('stale-club').roster.some(player => player.id === 'career-player'), false);
   assert.equal(synced.player.contract.clubId, 'contract-club');
+});
+
+test('mercato : refuse deux offres simultanées du même club', () => {
+  const career = new CareerManager();
+  career.signContract({ clubId: 'club-a', durationDays: 365, signedAt: '2032-01-01T00:00:00Z' });
+  const first = career.makeOffer({ fromClubId: 'club-b', salary: 40 });
+  assert.equal(first.ok, true);
+  assert.equal(career.makeOffer({ fromClubId: 'club-b', salary: 45 }).reason, 'duplicate-pending-offer');
+  assert.equal(career.makeOffer({ fromClubId: 'club-c', salary: 45 }).ok, true);
 });
