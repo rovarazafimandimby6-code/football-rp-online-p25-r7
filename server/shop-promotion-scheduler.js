@@ -31,7 +31,10 @@ export function getScheduledShopPromotion(shop,itemId,now=Date.now()){
   }
   const weekStart=Math.floor(now/WEEK)*WEEK;
   const weekA=featured(shop,'weekly-a',weekStart,catalog.length);
-  const weekB=featured(shop,'weekly-b',weekStart,catalog.length);
+  // Keep the two weekly slots distinct whenever the catalogue has at least two items.
+  const weekB=catalog.length>1
+    ? (weekA+1+(hash(shop+':weekly-b:'+weekStart)%(catalog.length-1)))%catalog.length
+    : weekA;
   if(index===weekA||index===weekB){
     return {type:'weekly',label:'Soldes hebdomadaires',startsAt:weekStart,endsAt:weekStart+WEEK,
       discountPercent:20+hash(shop+itemId+weekStart)%11,itemIds:[itemId]};
