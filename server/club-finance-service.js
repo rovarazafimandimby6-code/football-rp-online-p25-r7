@@ -404,6 +404,37 @@ export class JsonClubFinanceService {
         issues.push({ type: `${kind}-entry-conflict`, clubId, entryId });
       }
     };
+    const transferIds = new Set();
+    for (const transfer of this.transferJournal.transfers || []) {
+      if (!transfer?.id || transferIds.has(transfer.id)) {
+        issues.push({ type: 'transfer-journal-duplicate-or-missing-id', transferId: transfer?.id || null });
+      }
+      if (transfer?.id) transferIds.add(transfer.id);
+      if (!this.clubs.has(transfer?.fromClubId) || !this.clubs.has(transfer?.toClubId) ||
+          transfer?.fromClubId === transfer?.toClubId) {
+        issues.push({ type: 'transfer-journal-invalid-club-reference', transferId: transfer?.id || null });
+      }
+      if (!Number.isSafeInteger(transfer?.fee) || transfer.fee <= 0 ||
+          typeof transfer?.debitPosted !== 'boolean' || typeof transfer?.creditPosted !== 'boolean' ||
+          !['pending', 'completed'].includes(transfer?.status)) {
+        issues.push({ type: 'transfer-journal-invalid-state', transferId: transfer?.id || null });
+      }
+      if (transfer?.status === 'completed' && (!transfer.debitPosted || !transfer.creditPosted) ||
+          transfer?.status === 'pending' && transfer.debitPosted && transfer.creditPosted) {
+        issues.push({ type: 'transfer-journal-status-checkpoint-mismatch', transferId: transfer?.id || null });
+      }
+    }
+    const wageIds = new Set();
+    for (const wage of this.transferJournal.playerWages || []) {
+      if (!wage?.id || wageIds.has(wage.id)) {
+        issues.push({ type: 'player-wage-journal-duplicate-or-missing-id', wageId: wage?.id || null });
+      }
+      if (wage?.id) wageIds.add(wage.id);
+      if (!this.clubs.has(wage?.clubId) || !Number.isSafeInteger(wage?.amount) ||
+          wage.amount <= 0 || typeof wage?.posted !== 'boolean') {
+        issues.push({ type: 'player-wage-journal-invalid-state', wageId: wage?.id || null });
+      }
+    }
     for (const transfer of this.transferJournal.transfers || []) {
       const outId = `transfer-fee-out-${transfer.id}`, inId = `transfer-fee-in-${transfer.id}`;
       checkJournalEntry(transfer.fromClubId, outId, { amount: transfer.fee, direction: 'expense', category: 'transfer-expense', referenceId: transfer.id }, transfer.debitPosted, 'transfer-debit');
