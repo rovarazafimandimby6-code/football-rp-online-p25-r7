@@ -18,8 +18,10 @@ export function predictDefensiveThreatPosition(opponent, attackDir = 1, horizon 
   const towardOwnGoal = -attackDir * vx;
   if (towardOwnGoal <= 0.8) return { x: pos.x, z: pos.z };
   const time = clamp(Number(horizon) || 0, 0, 1);
+  // Le signe dépend du sens d'attaque : une équipe peut défendre vers +X ou -X.
+  const advance = Math.min(4.5, towardOwnGoal * time);
   return {
-    x: clamp(pos.x + clamp(vx * time, -4.5, 0), -PITCH.HALF_L + 1.5, PITCH.HALF_L - 1.5),
+    x: clamp(pos.x - attackDir * advance, -PITCH.HALF_L + 1.5, PITCH.HALF_L - 1.5),
     z: clamp(pos.z + clamp(vz * time, -2.2, 2.2), -PITCH.HALF_W + 1.5, PITCH.HALF_W - 1.5)
   };
 }
