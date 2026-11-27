@@ -27,7 +27,7 @@ const PLAYER_ITEMS = [
   ['profile-background-premium','profile-backgrounds','Fond de profil premium',2000,'premium']
 ].map(([id,category,name,price,rarity]) => ({
   id, shop:'player', category, name, price, rarity, currency:'player-coins',
-  resellable:true, resaleRate:PLAYER_RATES[rarity], permanent:true
+  resellable:true, resaleRate:PLAYER_RATES[rarity], permanent:true, equipSlot:category
 }));
 
 const CLUB_ITEMS = [
