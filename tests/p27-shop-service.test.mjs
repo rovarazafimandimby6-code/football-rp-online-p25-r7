@@ -86,3 +86,31 @@ test('P27 boutique : transaction de revente et d’achat reste liée à son prop
   assert.equal(denied.reason,'item-not-owned');
  }finally{f.cleanup();}
 });
+
+test('P27 boutique : une interruption après débit reprend sans double prélèvement',()=>{
+ const f=fixture();try{
+  const original=f.progressionStore.spendCoins.bind(f.progressionStore);
+  let interrupted=false;
+  f.progressionStore.spendCoins=(accountId,args)=>{
+   const result=original(accountId,args);
+   if(!interrupted){interrupted=true;throw new Error('SIMULATED_PROCESS_INTERRUPTION');}
+   return result;
+  };
+  assert.throws(()=>f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-recovery',purchaseId:'recover-buy'}),/SIMULATED_PROCESS_INTERRUPTION/);
+  const afterFirstDebit=f.progressionStore.get('player-recovery').coins;
+  f.progressionStore.spendCoins=original;
+  const resumed=f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-recovery',purchaseId:'recover-buy'});
+  assert.equal(resumed.ok,true);
+  assert.equal(f.progressionStore.get('player-recovery').coins,afterFirstDebit);
+  assert.equal(f.service.inventory('player','player-recovery').length,1);
+ }finally{f.cleanup();}
+});
+
+test('P27 boutique : une promotion fournie par le client est ignorée',()=>{
+ const f=fixture();try{
+  const bought=f.service.purchase({shop:'player',itemId:'boots-premium',actorId:'player-client-promo',purchaseId:'client-promo',
+   promotion:{startsAt:0,endsAt:999999,discountPercent:50,itemIds:['boots-premium']}});
+  assert.equal(bought.ok,true);
+  assert.equal(bought.purchase.paidPrice,3000);
+ }finally{f.cleanup();}
+});
