@@ -16,7 +16,7 @@ function fixture(){
  const clubFinanceService=new JsonClubFinanceService(path.join(directory,'finance'),{clubs});
  const ownerByClub={'club-one':'owner-one'};
  const service=new JsonShopService(path.join(directory,'shop'),{progressionStore,clubFinanceService,resolveClubOwner:id=>ownerByClub[id]||null,now:()=>1000});
- return {directory,progressionStore,clubFinanceService,service,cleanup:()=>rmSync(directory,{recursive:true,force:true})};
+ return {directory,progressionStore,clubFinanceService,service,ownerByClub,cleanup:()=>rmSync(directory,{recursive:true,force:true})};
 }
 
 test('P27 boutique achat joueur : débit les pièces et persiste l’inventaire une seule fois',()=>{
