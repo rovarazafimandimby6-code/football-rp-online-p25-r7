@@ -46,6 +46,7 @@ function attachHair(model, sourceScene) {
     hair.quaternion.copy(source.quaternion);
     hair.scale.copy(source.scale);
     hair.bind(new THREE.Skeleton(linked, source.skeleton.boneInverses.map(matrix => matrix.clone())), source.bindMatrix.clone());
+    hair.userData.p27PortraitOwnedGeometry = true;
     hair.frustumCulled = false;
     model.add(hair);
   });
@@ -125,7 +126,7 @@ export async function renderSystemPlayerPortrait3D(player) {
     scene.remove(model);
     model.traverse(node => {
       if (node.isSkinnedMesh) {
-        node.geometry?.dispose?.();
+        if (node.userData?.p27PortraitOwnedGeometry) node.geometry?.dispose?.();
         const mats = Array.isArray(node.material) ? node.material : [node.material];
         mats.forEach(mat => mat?.dispose?.());
       }
