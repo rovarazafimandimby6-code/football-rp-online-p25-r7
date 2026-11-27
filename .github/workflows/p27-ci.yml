@@ -23,6 +23,8 @@ jobs:
           node-version: 22
       - name: Run complete test suite
         run: npm test
+      - name: Apply all D1 migrations to local SQLite emulator
+        run: npx --yes wrangler@4 d1 migrations apply p27-world --local --config wrangler.toml
       - name: Check Cloudflare Worker syntax
         run: node --check src/cloudflare/worker.js
       - name: Check D1 career repository syntax
