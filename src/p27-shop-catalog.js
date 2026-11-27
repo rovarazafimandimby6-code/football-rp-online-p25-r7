@@ -66,7 +66,7 @@ const CLUB_ITEMS = [
     'club-grass-standard':'stadium-grass','club-grass-premium':'stadium-grass',
     'club-supporter-flags':'supporter-flags','club-supporter-banners':'supporter-banners','club-supporter-tifo':'supporter-tifo'
   })[id]||null,
-  ...(category==='capacity' ? { upgradeLevel:Number(id.slice(-1)) } : {})
+  ...(category==='capacity' ? { upgradeLevel:Number(id.slice(-1)), capacityIncrease:P27_STADIUM_CAPACITY_PER_LEVEL, capacityAfterUpgrade:getP27StadiumCapacity(Number(id.slice(-1))) } : {})
 }));
 
 const resolveEquipSlot = item => {
