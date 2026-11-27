@@ -199,7 +199,7 @@ export class CareerManager {
       expiresAt: new Date(now + days * 86400000).toISOString(),
       status: 'active'
     };
-    this.history.push({ type: 'renewal', clubId: this.clubId, date: new Date(now).toISOString(), salary: wage, durationDays: days });
+    this.history.push({ type: 'renewal', clubId: this.contract.clubId, date: new Date(now).toISOString(), salary: wage, durationDays: days });
     if (!this.saveState()) {
       this.restoreState(before);
       return { ok:false, reason:'persistence-failed' };
@@ -219,7 +219,7 @@ export class CareerManager {
     if (!accrual.ok) return { ok:false, reason:accrual.reason };
     this.wallet += accrual.paid;
     if (accrual.periods > 0 && accrual.paid > 0) this.history.push({ type:'salary', salary:this.contract.salary, periods:accrual.periods, amount:accrual.paid, date:new Date(accrual.paidThrough).toISOString(), paidAt:new Date(now).toISOString() });
-    const previousClub = this.clubId;
+    const previousClub = this.contract.clubId;
     this.contract = { ...this.contract, status: 'terminated', terminatedAt: new Date(now).toISOString() };
     this.clubId = null;
     for (const offer of this.offers.values()) if (offer.status === 'pending') {
@@ -264,7 +264,7 @@ export class CareerManager {
     if (!from || !this.contract || this.getContractStatus(now).expired) return { ok: false, reason: 'no-current-contract' };
     if (!Number.isFinite(Number(salary))) return { ok:false, reason:'invalid-salary' };
     if (!Number.isFinite(Number(fee))) return { ok:false, reason:'invalid-fee' };
-    if (from === this.clubId) return { ok: false, reason: 'same-club' };
+    if (from === this.contract.clubId) return { ok: false, reason: 'same-club' };
     const expiry = expiresAt == null ? null : timestamp(expiresAt);
     if (expiresAt != null && expiry === null) return { ok: false, reason: 'invalid-expiry' };
     if (expiry !== null && expiry <= now) return { ok: false, reason: 'offer-expired' };
@@ -337,13 +337,13 @@ export class CareerManager {
       }
       return { ok: false, reason: 'offer-expired' };
     }
-    if (offer.fromClubId === this.clubId) return { ok: false, reason: 'same-club' };
+    if (offer.fromClubId === this.contract.clubId) return { ok: false, reason: 'same-club' };
     const accrual = calculateSalaryAccrual(this.contract, this.wallet, now);
     if (!accrual.ok) return { ok:false, reason:accrual.reason };
     if (this.wallet + accrual.paid < offer.fee) return { ok: false, reason: 'insufficient-funds' };
 
     const before = this.captureState();
-    const previousClub = this.clubId;
+    const previousClub = this.contract.clubId;
     const signedAt = new Date(now).toISOString();
     this.wallet += accrual.paid;
     if (accrual.periods > 0 && accrual.paid > 0) this.history.push({ type:'salary', salary:this.contract.salary, periods:accrual.periods, amount:accrual.paid, date:new Date(accrual.paidThrough).toISOString(), paidAt:signedAt });
