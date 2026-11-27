@@ -664,7 +664,7 @@ export class RoomManager {
       const outgoing = outgoingCandidates.find(candidate => {
         const result = validateRotation({
           phase: room.phase === 'halftime' ? 'halftime' : 'stoppage',
-          elapsedMatchSeconds: room.elapsedMs / 1000,
+          elapsedMatchSeconds: virtualMatchSeconds(room),
           outgoing: candidate,
           incoming,
           teamPlayers: [...room.players.values()],
@@ -700,7 +700,7 @@ export class RoomManager {
     if (outgoing.isOnPitch === false || incoming.isOnPitch !== false) throw new Error('PLAYER_NOT_IN_EXPECTED_LIST');
     if (!outgoing.isBot && !outgoing.connected && !outgoing.aiControlled) throw new Error('OUTGOING_UNAVAILABLE');
     if (!incoming.isBot && !incoming.connected && !incoming.aiControlled) throw new Error('INCOMING_UNAVAILABLE');
-    const elapsedMatchSeconds = room.elapsedMs / 1000;
+    const elapsedMatchSeconds = virtualMatchSeconds(room);
     const validation = validateRotation({ phase: room.phase === 'halftime' ? 'halftime' : 'stoppage', elapsedMatchSeconds, outgoing, incoming, teamPlayers: [...room.players.values()] });
     if (!validation.ok) throw new Error(validation.code === 'return-cooldown' ? 'RETURN_COOLDOWN' : 'ROTATION_NOT_ALLOWED');
     const slot = outgoing.slot;
