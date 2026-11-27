@@ -44,7 +44,7 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
       const [label,icon]=categories[item.category]||['ARTICLE','✦'];
       const isOwned=owned.has(item.id);
       return `<article class="p27-shop-item ${isOwned?'is-owned':''}">
-        <div class="p27-shop-item-art">${renderItemArt(category,entry.rarity)}<small>${rarities[item.rarity]||'STANDARD'}</small></div>
+        <div class="p27-shop-item-art">${renderItemArt(item.category,item.rarity)}<small>${rarities[item.rarity]||'STANDARD'}</small></div>
         <div class="p27-shop-item-copy"><span class="p27-shop-category">${label}</span><h3>${escapeHtml(item.name)}</h3>
           <p>${item.discountPercent>0?'<del>'+money(item.basePrice)+'</del> ':''}<strong>${money(item.price)} pièces</strong></p>
           ${item.discountPercent>0?'<small class="p27-shop-discount">−'+item.discountPercent+' % · '+escapeHtml(item.promotionLabel||'PROMOTION')+'</small>':''}
