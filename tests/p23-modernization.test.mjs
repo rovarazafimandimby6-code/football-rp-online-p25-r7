@@ -32,6 +32,8 @@ test('P23 : les spectateurs utilisent des silhouettes instanciées avec têtes s
   assert.match(field, /new THREE\.SphereGeometry\(0\.5, lowEndCrowd \? 6 : 8, lowEndCrowd \? 5 : 6\)/);
   assert.match(field, /new THREE\.InstancedMesh\(torsoGeo, torsoMat, count\)/);
   assert.match(field, /addSpectator/);
+  assert.match(field, /const cheering = idx % 11 === 0/);
+  assert.match(field, /cheering \? 0\.92/);
   assert.match(field, /crowd\.count = idx/);
 });
 
