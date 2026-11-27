@@ -69,6 +69,19 @@ function createNetTexture() {
   return tex;
 }
 
+function disposeGroupResources(group) {
+  if (!group) return;
+  const geometries = new Set();
+  const materials = new Set();
+  group.traverse((object) => {
+    if (object.geometry) geometries.add(object.geometry);
+    const list = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
+    for (const material of list) materials.add(material);
+  });
+  for (const material of materials) material.dispose();
+  for (const geometry of geometries) geometry.dispose();
+}
+
 export class FieldBuilder {
   constructor(scene) {
     this.scene = scene;
@@ -100,8 +113,11 @@ export class FieldBuilder {
     const stadiumTint = stadium === 'premium' ? 0x8aa0b7 : stadium === 'standard' ? 0x687f91 : 0xffffff;
     applyStadiumTint(this.stadiumMaterials, stadiumTint);
 
-    this.clubExpansionGroup?.parent?.remove(this.clubExpansionGroup);
-    this.clubExpansionGroup = null;
+    if (this.clubExpansionGroup) {
+      this.group.remove(this.clubExpansionGroup);
+      disposeGroupResources(this.clubExpansionGroup);
+      this.clubExpansionGroup = null;
+    }
     const expansionLevel = Number.isInteger(appearance.stadiumExpansionLevel)
       ? Math.max(0, Math.min(4, appearance.stadiumExpansionLevel)) : 0;
     if (expansionLevel > 0) {
@@ -129,8 +145,11 @@ export class FieldBuilder {
       this.clubExpansionGroup = expansion;
     }
 
-    this.clubBannerGroup?.parent?.remove(this.clubBannerGroup);
-    this.clubBannerGroup = null;
+    if (this.clubBannerGroup) {
+      this.group.remove(this.clubBannerGroup);
+      disposeGroupResources(this.clubBannerGroup);
+      this.clubBannerGroup = null;
+    }
     const supporters = appearance.supporters || {};
     if (!supporters.flags && !supporters.banners && !supporters.tifo) return;
     const colors = Array.isArray(appearance.colors) && appearance.colors.length >= 3
