@@ -25,7 +25,7 @@ const profilePlayer = (profile, target, career) => {
     weeklyWage:Math.max(0, Math.floor(Number(career.contract.salary) || 0)),
     signedAt:career.contract.signedAt,
     expiresAt:career.contract.expiresAt,
-    durationWeeks:Math.max(1, Math.ceil((Date.parse(career.contract.expiresAt) - Date.parse(career.contract.signedAt)) / (7 * 86400000)))
+    durationWeeks:Number.isFinite(Date.parse(career.contract.expiresAt) - Date.parse(career.contract.signedAt)) ? Math.max(1, Math.ceil((Date.parse(career.contract.expiresAt) - Date.parse(career.contract.signedAt)) / (7 * 86400000))) : 180
   } : null;
   return {
     id:CAREER_ROSTER_PLAYER_ID,
