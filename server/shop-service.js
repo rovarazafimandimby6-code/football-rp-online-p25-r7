@@ -18,6 +18,7 @@ function validPersistedState(value){
       if(!row||!cleanId(row.ownerId)||owners.has(cleanId(row.ownerId))||!Array.isArray(row.items))return false;
       owners.add(cleanId(row.ownerId));
       const activeItems=new Set();
+      const equippedSlots=new Set();
       for(const entry of row.items){
         const item=getShopItem(entry?.itemId);
         if(!item||item.shop!==shop||entry.category!==item.category||entry.rarity!==item.rarity||
@@ -30,6 +31,10 @@ function validPersistedState(value){
         if(entry.status==='owned'){
           if(activeItems.has(entry.itemId)||entry.resaleId||entry.resoldAt!==undefined)return false;
           activeItems.add(entry.itemId);
+          if(entry.equipped===true&&item.equipSlot){
+            if(equippedSlots.has(item.equipSlot))return false;
+            equippedSlots.add(item.equipSlot);
+          }
         }else if(entry.equipped===true||!cleanTransactionId(entry.resaleId)||
           !Number.isSafeInteger(entry.resoldAt)||entry.resoldAt<0)return false;
         inventoryByPurchase.set(entry.purchaseId,{shop,ownerId:cleanId(row.ownerId),entry});
