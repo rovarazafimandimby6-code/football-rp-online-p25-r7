@@ -83,6 +83,9 @@ test("player shop client blocks unauthenticated and malformed commands", async (
 });
 
 test("player shop client rejects malformed catalog payloads", async () => {
-  const {client} = clientFor([{catalog:[{...catalogItem,price:"500"}]}]);
-  await assert.rejects(client.getPlayerShopCatalog(),/INVALID_PLAYER_SHOP_CATALOG/);
+  const {client} = clientFor([{
+    shop:"player",currency:"player-coins",balance:5000,
+    catalog:[{...catalogItem,price:"500"}],inventory:[]
+  }]);
+  await assert.rejects(client.getPlayerShopCatalog(),/INVALID_SHOP_RESPONSE/);
 });
