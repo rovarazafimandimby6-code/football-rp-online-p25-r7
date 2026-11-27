@@ -4,6 +4,7 @@ import { resolveMatchClub, cloneMatchTeams } from './club-catalog.js';
 import { averageAiShouldAct, averageAiAim, averageAiMovement } from '../src/average-ai.js';
 import { validateRotation } from '../src/rotation-rules.js';
 import { buildMatchPerformance } from './player-rating.js';
+import { getP27StadiumCapacity } from '../src/p27-shop-catalog.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -140,9 +141,7 @@ export class RoomManager {
         : [];
       const stadiumExpansionLevel = Number.isInteger(source.stadiumExpansionLevel)
         ? clamp(source.stadiumExpansionLevel, 0, 4) : 0;
-      const fallbackCapacity = 5000 + stadiumExpansionLevel * 2500;
-      const stadiumCapacity = Number.isSafeInteger(source.stadiumCapacity) && source.stadiumCapacity >= 5000 && source.stadiumCapacity <= 15000
-        ? source.stadiumCapacity : fallbackCapacity;
+      const stadiumCapacity = getP27StadiumCapacity(stadiumExpansionLevel);
       return { ...club, shopAppearance:{ equippedItemIds, stadiumExpansionLevel, stadiumCapacity } };
     };
     const roomId = randomBytes(6).toString('hex');
