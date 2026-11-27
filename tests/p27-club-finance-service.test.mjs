@@ -483,3 +483,24 @@ test('P27 réconciliation : vérifie les identifiants et montants exacts des éc
   assert.equal(audit.issues.some(issue=>issue.type==='loan-installment-invalid'),true);
  } finally {f.cleanup();}
 });
+
+
+test('P27 réconciliation : détecte un salaire système modifié dans le grand livre',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'audited-system-wage-club',budget:1000,roster:[
+  {id:'audited-player',name:'Joueur Audité',playerType:'system',contract:{
+   id:'audited-contract',clubId:'audited-system-wage-club',playerId:'audited-player',
+   status:'active',weeklyWage:100,salary:100,signedAt:new Date(start).toISOString()
+  }}
+ ]};
+ const f=setup({clubs:[club],now:()=>now});
+ try {
+  now=start+7*86400000;
+  assert.equal(f.service.settleSystemPayroll(now).posted,1);
+  const entry=f.service.store.accounts.get(club.id).entries[0];
+  entry.amount=99;
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='system-wage-entry-invalid'&&issue.entryId===entry.id),true);
+ } finally {f.cleanup();}
+});
