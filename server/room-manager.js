@@ -166,14 +166,16 @@ export class RoomManager {
     const humans = { blue: 0, red: 0 };
     for (const player of room.players.values()) if (!player.isBot && player.connected) humans[player.team]++;
     let team = preferredTeam === 'blue' || preferredTeam === 'red' ? preferredTeam : (humans.blue <= humans.red ? 'blue' : 'red');
-    if (humans[team] >= 5) team = team === 'blue' ? 'red' : 'blue';
-    if (humans[team] >= 5) throw new Error('ROOM_FULL');
+    if (humans[team] >= 7) team = team === 'blue' ? 'red' : 'blue';
+    if (humans[team] >= 7) throw new Error('ROOM_FULL');
 
-    // Human arrivals take the place of a reserve bot first, preserving the 5-player cap.
-    const reserve = [...room.players.values()].find(p => p.isBot && p.team === team && p.isOnPitch !== false);
+    // Five players start on the pitch; up to two additional humans join as substitutes.
+    const isStarter = humans[team] < 5;
+    const reserve = [...room.players.values()].find(p => p.isBot && p.team === team && (isStarter ? p.isOnPitch !== false : p.isOnPitch === false));
     const usedSlots = new Set([...room.players.values()].filter(p => p.team === team && p !== reserve).map(p => p.slot));
-    const slot = reserve?.slot ?? [0,1,2,3,4].find(value => !usedSlots.has(value));
-    if (slot === undefined || (!reserve && room.players.size >= 10)) throw new Error('ROOM_FULL');
+    const allowedSlots = isStarter ? [0,1,2,3,4] : [5,6,7,8,9,10,11];
+    const slot = reserve?.slot ?? allowedSlots.find(value => !usedSlots.has(value));
+    if (slot === undefined || (!reserve && room.players.size >= 24)) throw new Error('ROOM_FULL');
     if (reserve) room.players.delete(reserve.id);
     const token = randomBytes(24).toString('base64url');
     const player = {
@@ -184,9 +186,9 @@ export class RoomManager {
       team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
       z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
       role: ['GK','DEF','MID','FWD'].includes(role) ? role : (['GK','DEF','MID','FWD','FWD'][slot] || 'FWD'), isBot: false,
-      isOnPitch: true, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
+      isOnPitch: isStarter, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
       input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0, lastCallForPassAt: -Infinity, callForPassUntil: 0,
-      connected: true, controlMode: 'human', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
+      connected: true, controlMode: isStarter ? 'human' : 'bench', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
       stats: { passes: 0, completedPasses: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
     };
     room.players.set(player.id, player);
@@ -201,7 +203,7 @@ export class RoomManager {
     if (room.phase === 'fulltime') return;
     for (const team of ['blue', 'red']) {
       let count = [...room.players.values()].filter(p => p.team === team && p.isOnPitch !== false && (p.connected || p.aiControlled)).length;
-      while (count < 5 && room.players.size < 20) {
+      while (count < 5 && room.players.size < 24) {
         const usedSlots = new Set([...room.players.values()].filter(p => p.team === team).map(p => p.slot));
         const slot = [0,1,2,3,4].find(value => !usedSlots.has(value)) ?? count;
         const club = room.teams[team];
@@ -220,7 +222,7 @@ export class RoomManager {
         count++;
       }
       let benchCount = [...room.players.values()].filter(p => p.team === team && p.isOnPitch === false).length;
-      while (benchCount < 2 && room.players.size < 20) {
+      while (benchCount < 7 && room.players.size < 24) {
         const slot = 5 + benchCount;
         const id = `bench-${team}-${randomBytes(5).toString('hex')}`;
         room.players.set(id, {
