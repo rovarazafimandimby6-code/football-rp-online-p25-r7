@@ -988,7 +988,6 @@ ${renderGoogleProtectionCard({ compact: true })}
   } else if (page === 'mercato') {
     career.refreshContractStatus();
     career.refreshOfferStatuses();
-    career.refreshContractStatus();
     syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
     const clubsList = clubs.listClubs();
     const availableClubs = clubsList.filter(club => club.humanAdmission !== 'system-only' && club.roster.length < club.capacity && club.roster.filter(player => player.playerType === 'human').length < 7);
