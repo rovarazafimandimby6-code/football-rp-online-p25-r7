@@ -215,3 +215,15 @@ test('P27 boutique : rejette un inventaire persistant dont le prix payé dépass
   assert.throws(()=>new JsonShopService(path.join(f.directory,'shop'),{progressionStore:f.progressionStore,clubFinanceService:f.clubFinanceService}),/SHOP_STORE_CORRUPT/);
  }finally{f.cleanup();}
 });
+
+
+test('P27 boutique : refuse un journal personnel où acteur et propriétaire divergent',()=>{
+ const f=fixture();try{
+  fund(f.progressionStore,'player-ledger-identity');
+  f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-ledger-identity',purchaseId:'ledger-identity-buy'});
+  const state=JSON.parse(readFileSync(f.service.file,'utf8'));
+  state.purchases[0].actorId='different-player';
+  writeFileSync(f.service.file,JSON.stringify(state));
+  assert.throws(()=>new JsonShopService(path.join(f.directory,'shop'),{progressionStore:f.progressionStore,clubFinanceService:f.clubFinanceService}),/SHOP_STORE_CORRUPT/);
+ }finally{f.cleanup();}
+});
