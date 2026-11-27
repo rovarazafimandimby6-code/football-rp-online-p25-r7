@@ -61,6 +61,25 @@ test('P27 transfert local : prépare une copie profonde avant de déplacer le jo
  } finally {f.cleanup();}
 });
 
+test('P27 transfert local : réattribue un numéro déjà porté dans le club acheteur',()=>{
+ const f=setup();
+ try {
+  const target=f.manager.addPlayer('club-b',{id:'destination-number-owner',playerType:'system',rating:55,number:99});
+  assert.equal(target.ok,true);
+  const occupiedNumber=target.number;
+  const source=f.manager.addPlayer('club-a',{id:'incoming-number-collision',playerType:'system',rating:61,number:occupiedNumber});
+  assert.equal(source.ok,true);
+  assert.equal(source.number,occupiedNumber);
+  const result=f.manager.transferPlayer('club-a','club-b','incoming-number-collision');
+  assert.equal(result.ok,true);
+  assert.notEqual(result.number,occupiedNumber);
+  const roster=f.manager.clubs.get('club-b').roster;
+  const numbers=roster.map(player=>player.number);
+  assert.equal(new Set(numbers).size,numbers.length);
+  assert.equal(roster.find(player=>player.id==='incoming-number-collision').number,result.number);
+ } finally {f.cleanup();}
+});
+
 test('P27 lot 85 : transfert IA déplace le joueur et règle le club acheteur vers le vendeur une seule fois',()=>{
  const f=setup();
  try {
