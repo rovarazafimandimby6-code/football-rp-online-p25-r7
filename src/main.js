@@ -1170,6 +1170,29 @@ function showMainMenu() {
   renderPage('home');
 }
 
+function buildCareerMatchRoster(club) {
+  const roster = Array.isArray(club?.roster) ? club.roster.slice() : [];
+  if (roster.some(player => player.id === 'career-player')) return roster;
+  const profile = profileStore.profile;
+  const attributes = { ...(profile.progression?.attributes || {}) };
+  const values = Object.values(attributes).map(Number).filter(Number.isFinite);
+  const rating = Math.max(1, Math.min(99, Math.round(values.length ? values.reduce((sum,value)=>sum+value,0)/values.length : 50)));
+  roster.push({
+    id:'career-player',
+    name:profile.identity.displayName || 'Mon joueur',
+    role:['GK','DEF','MID','FWD'].includes(profile.identity.role) ? profile.identity.role : 'MID',
+    number:profile.identity.number || 17,
+    rating,
+    potential:Math.max(rating, Number(profile.progression?.level)||rating),
+    attributes,
+    playerType:'human',
+    preferredFoot:profile.identity.preferredFoot || 'right',
+    appearance:profile.appearance && typeof profile.appearance === 'object' ? { ...profile.appearance } : null,
+    archetype:'Joueur carrière'
+  });
+  return roster;
+}
+
 async function startMatch(online = null) {
   menu.classList.add('hidden');
   shell.classList.remove('hidden');
@@ -1181,6 +1204,7 @@ async function startMatch(online = null) {
     gl2.getExtension('WEBGL_lose_context')?.loseContext();
     const { Game } = await import('./game.js');
     const onlineTeams = online?.joinResult?.state?.teams || null;
+    if (!online && career.contract?.status === 'active' && career.clubId) selectedMatchup.home = career.clubId;
     const homeClub = onlineTeams?.blue?.id ? clubs.getClub(onlineTeams.blue.id) : clubs.getClub(selectedMatchup.home);
     const awayClub = onlineTeams?.red?.id ? clubs.getClub(onlineTeams.red.id) : clubs.getClub(selectedMatchup.away);
     const loadClubKits = async (club, kitType, teamKey) => {
@@ -1223,8 +1247,8 @@ async function startMatch(online = null) {
       onlineClient: online?.client || null,
       onlineJoinResult: online?.joinResult || null,
       preferredFoot: profileStore.profile.identity.preferredFoot,
-      homeRoster: homeClub?.roster,
-      homeStarterIds: selectedHomeStarterIds,
+      homeRoster: online ? homeClub?.roster : buildCareerMatchRoster(homeClub),
+      homeStarterIds: online ? null : selectedHomeStarterIds,
       awayRoster: awayClub?.roster,
       homeKitColors: homeKitAppearance?.kitColors || null,
       awayKitColors: awayKitAppearance?.kitColors || null,
@@ -1675,6 +1699,7 @@ menu.addEventListener('click', event => {
     const field = document.getElementById('online-room-id'); if (field) field.value = id;
     joinOnlineRoom(id);
   } else if (action === 'choose-match') {
+    if (career.contract?.status === 'active' && career.clubId) selectedMatchup.home = career.clubId;
     const options = clubs.listClubs().map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('');
     document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MODE DISPONIBLE · MATCH RAPIDE</span><h2>Préparez votre entrée sur le terrain</h2><p>Match local de démonstration en 5 contre 5 face à une équipe contrôlée par le système. Chaque commande reste limitée à votre propre footballeur.</p><div class="match-centre">
       <div class="match-centre-heading"><span class="eyebrow">AVANT-MATCH · CENTRE DE PRÉPARATION</span><b>CHOISISSEZ VOTRE AFFiche</b></div>
@@ -1690,6 +1715,7 @@ menu.addEventListener('click', event => {
     document.getElementById('menu-content').scrollTop = 0;
     const homeSelect=document.getElementById('match-home'), awaySelect=document.getElementById('match-away');
     homeSelect.value=selectedMatchup.home; awaySelect.value=selectedMatchup.away;
+    homeSelect.disabled = Boolean(career.contract?.status === 'active' && career.clubId);
     const updateMatchup=()=>{
       if(homeSelect.value===awaySelect.value) awaySelect.value=clubs.listClubs().find(c=>c.id!==homeSelect.value)?.id||awaySelect.value;
       selectedMatchup={home:homeSelect.value,away:awaySelect.value};
@@ -1710,6 +1736,7 @@ menu.addEventListener('click', event => {
   } else if (action === 'show-lineup') {
     const content=document.getElementById('menu-content');
     const home=clubs.getClub(selectedMatchup.home), away=clubs.getClub(selectedMatchup.away);
+    const homeRoster = buildCareerMatchRoster(home);
     const roleLabels = { GK:'Gardien', DEF:'Défenseur', MID:'Milieu', FWD:'Attaquant' };
     const formationLabels = { '2-2':'2–2 · Équilibrée', '1-2-1':'1–2–1 · Axiale', '2-1-1':'2–1–1 · Compacte' };
     const formationSelect = `<label class="pre-match-formation">FORMATION DE L’ÉQUIPE <select id="pre-match-formation">${Object.entries(formationLabels).map(([value,label])=>`<option value="${value}" ${selectedFormation===value?'selected':''}>${label}</option>`).join('')}</select></label>`;
@@ -1718,9 +1745,9 @@ menu.addEventListener('click', event => {
     const validHomeStarterSelection = Array.isArray(selectedHomeStarterIds) && selectedHomeStarterIds.length === 5
       && new Set(selectedHomeStarterIds).size === 5
       && selectedHomeStarterIds.includes('career-player')
-      && selectedHomeStarterIds.every(id => home.roster.some(player => player.id === id));
+      && selectedHomeStarterIds.every(id => homeRoster.some(player => player.id === id));
     if (selectedHomeStarterClubId !== home.id || !validHomeStarterSelection) {
-      const defaults = createMatchSquad('blue',selectedFormation,home.roster,'career-player',selectedBenchSize);
+      const defaults = createMatchSquad('blue',selectedFormation,homeRoster,'career-player',selectedBenchSize);
       selectedHomeStarterIds = defaults.starters.map(player => player.id);
       selectedHomeStarterClubId = home.id;
       preferences.homeStarterClubId = home.id;
@@ -1739,7 +1766,7 @@ menu.addEventListener('click', event => {
     }).join('');
     const renderLineup = (team, squad) => `<section class="pre-match-team ${team}"><div class="pre-match-team-heading"><span class="eyebrow">${team==='blue'?'ÉQUIPE DOMICILE':'ÉQUIPE EXTÉRIEURE'}</span><b>${team==='blue'?'BLEU':'ROUGE'} · ${squad.starters.length}/5</b></div>${team==='blue'?'<small class="lineup-manager-hint">Choisissez vos titulaires et remplaçants. Votre joueur carrière reste titulaire.</small>':''}<div class="pre-match-player-list">${renderPlayers(squad.starters,team,'starter')}</div><div class="pre-match-bench-heading"><span>REMPLAÇANTS</span><b>${squad.substitutes.length}</b></div><div class="pre-match-player-list pre-match-bench-list">${squad.substitutes.length ? renderPlayers(squad.substitutes,team,'bench') : '<p class="pre-match-no-bench">Aucun remplaçant enregistré</p>'}</div><small class="pre-match-squad-total">Effectif disponible : ${squad.squadSize} joueur(s)</small></section>`;
     const renderSquads = () => {
-      const homeSquad = createMatchSquad('blue',selectedFormation,home.roster,'career-player',selectedBenchSize,selectedHomeStarterIds);
+      const homeSquad = createMatchSquad('blue',selectedFormation,homeRoster,'career-player',selectedBenchSize,selectedHomeStarterIds);
       const awaySquad = createMatchSquad('red',selectedFormation,away.roster,null,selectedBenchSize);
       const lineups = content.querySelector('.pre-match-lineups');
       if (lineups) lineups.innerHTML = `${renderLineup('blue',homeSquad)}${renderLineup('red',awaySquad)}`;
@@ -1769,7 +1796,7 @@ menu.addEventListener('click', event => {
       const button = event.target.closest('[data-squad-action]');
       if (!button) return;
       const id = button.dataset.playerId;
-      const squad = createMatchSquad('blue',selectedFormation,home.roster,'career-player',selectedBenchSize,selectedHomeStarterIds);
+      const squad = createMatchSquad('blue',selectedFormation,homeRoster,'career-player',selectedBenchSize,selectedHomeStarterIds);
       if (button.dataset.squadAction === 'start') {
         if (!squad.substitutes.some(player => player.id === id)) return;
         const outgoing = squad.starters.filter(player => player.id !== 'career-player')
