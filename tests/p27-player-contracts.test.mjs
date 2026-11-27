@@ -149,3 +149,20 @@ test('P27 contrats système : un renouvellement non persisté ne modifie pas le 
  assert.equal(result.reason,'roster-persistence-failed');
  assert.deepEqual(manager.getClub(club.id).roster.find(item=>item.id===player.id).contract,before);
 });
+
+test('P27 effectifs système : le recrutement de remplacement est annulé si la sauvegarde échoue',()=>{
+ const values=new Map();
+ let failWrites=false;
+ const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+ const manager=new ClubManager(undefined,storage,'p27-system-recruitment-atomic');
+ const club=manager.getClub('antananarivo-fc');
+ const departing=club.roster.find(item=>item.playerType==='system');
+ assert.ok(departing);
+ assert.equal(manager.removePlayer(club.id,departing.id),true);
+ const rosterBefore=manager.getClub(club.id).roster.map(item=>item.id);
+ failWrites=true;
+ const result=manager.replenishSystemRosterVacancies({clubIds:[club.id],now:Date.UTC(2036,0,1)});
+ assert.equal(result.ok,false);
+ assert.equal(result.reason,'roster-persistence-failed');
+ assert.deepEqual(manager.getClub(club.id).roster.map(item=>item.id),rosterBefore);
+});
