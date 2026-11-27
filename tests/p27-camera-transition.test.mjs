@@ -34,3 +34,15 @@ test('P27 caméra : la transition se termine après sa durée sans accumulation'
   for (let i = 0; i < 30; i++) rig.update(ball, player, 1 / 60);
   assert.equal(rig.transition, null);
 });
+
+
+test('P27 caméra personnelle : une transition avance une seule fois par frame', () => {
+  const camera = new THREE.PerspectiveCamera(49, 16 / 9, 0.1, 300);
+  const rig = new BroadcastCamera(camera, 'broadcast');
+  rig.setMode('player');
+  const ball = { pos: { x: 2, z: 4 }, vel: { x: 0, z: 0 }, owner: null };
+  const player = { role: 'MID', team: 'blue', pos: { x: 1, y: 0, z: 2 }, facing: 0 };
+  for (let i = 0; i < 10; i++) rig.update(ball, player, 1 / 60);
+  assert.ok(rig.transition, 'la transition de 0,32 s ne doit pas se terminer en 10 frames');
+  assert.ok(Math.abs(rig.transition.elapsed - 10 / 60) < 1e-9, 'le temps doit avancer de 1/60 s par frame');
+});
