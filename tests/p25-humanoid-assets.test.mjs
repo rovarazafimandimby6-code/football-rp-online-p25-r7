@@ -148,3 +148,12 @@ test('P27 humanoïde : un chargement tardif abandonne proprement un joueur déj�
   assert.match(loader, /function disposePlayerModelResources\(model\)/);
   assert.match(loader, /disposePlayerModelResources\(model\);/);
 });
+
+
+test('P27 rendu : la suppression du joueur libère aussi le mannequin procédural et ses textures', async () => {
+  const player = await readFile(path.join(root, 'src/player.js'), 'utf8');
+  assert.match(player, /function disposeFallbackVisualResources\(root\)/);
+  assert.match(player, /if \(node\.geometry\) geometries\.add\(node\.geometry\)/);
+  assert.match(player, /if \(value\?\.isTexture\) textures\.add\(value\)/);
+  assert.match(player, /disposeFallbackVisualResources\(root\)/);
+});
