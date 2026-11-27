@@ -29,7 +29,8 @@ export function getScheduledShopPromotion(shop,itemId,now=Date.now()){
     return {type:'daily',label:'Offre du jour',startsAt:dayStart,endsAt:dayStart+DAY,
       discountPercent:10+hash(itemId+dayStart)%11,itemIds:[itemId]};
   }
-  const weekStart=Math.floor(now/WEEK)*WEEK;
+  // Anchor commercial weeks to Monday 00:00 UTC (1970-01-05), not the Unix epoch Thursday.
+  const weekStart=Math.floor((now+3*DAY)/WEEK)*WEEK-3*DAY;
   const weekA=featured(shop,'weekly-a',weekStart,catalog.length);
   // Keep the two weekly slots distinct whenever the catalogue has at least two items.
   const weekB=catalog.length>1
@@ -39,7 +40,8 @@ export function getScheduledShopPromotion(shop,itemId,now=Date.now()){
     return {type:'weekly',label:'Soldes hebdomadaires',startsAt:weekStart,endsAt:weekStart+WEEK,
       discountPercent:20+hash(shop+itemId+weekStart)%11,itemIds:[itemId]};
   }
-  const specialStart=Math.floor(now/FORTNIGHT)*FORTNIGHT;
+  // The fortnightly collection follows the same Monday-based calendar.
+  const specialStart=Math.floor((now+3*DAY)/FORTNIGHT)*FORTNIGHT-3*DAY;
   const specialCategory=catalog[featured(shop,'special-category',specialStart,catalog.length)]?.category;
   const specialItems=catalog.filter(item=>item.category===specialCategory).slice(0,3).map(item=>item.id);
   if(specialItems.includes(itemId)){
