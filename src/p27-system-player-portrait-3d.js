@@ -35,7 +35,10 @@ function loadHair(style) {
   const file = ({ shaved:'Hair_Buzzed', fade:'Hair_Buzzed', short:'Hair_SimpleParted', curly:'Hair_SimpleParted', wavy:'Hair_SimpleParted', long:'Hair_Long', braids:'Hair_Buns', twists:'Hair_Buns', afro:'Hair_Buzzed' })[style];
   return loadHairAsset(file);
 }
-function attachHair(model, sourceScene) {
+function hairColorHex(value) {
+  return ({ black:'#171515', dark:'#211b1a', brown:'#493027', blond:'#b58a4d', auburn:'#8b3f26', grey:'#777b82' })[value] || '#211b1a';
+}
+function attachHair(model, sourceScene, color) {
   if (!sourceScene) return;
   const bones = new Map();
   model.traverse(node => { if (node.isBone && node.name) bones.set(node.name, node); });
@@ -43,7 +46,10 @@ function attachHair(model, sourceScene) {
     if (!source.isSkinnedMesh) return;
     const linked = source.skeleton.bones.map(bone => bones.get(bone.name));
     if (linked.some(bone => !bone)) return;
-    const hair = new THREE.SkinnedMesh(source.geometry.clone(), source.material.clone());
+    const material = Array.isArray(source.material) ? source.material.map(item => item.clone()) : source.material.clone();
+    const materials = Array.isArray(material) ? material : [material];
+    materials.forEach(item => item.color?.set(color));
+    const hair = new THREE.SkinnedMesh(source.geometry.clone(), material);
     hair.name = 'P27_SystemPortrait_Hair';
     hair.position.copy(source.position);
     hair.quaternion.copy(source.quaternion);
@@ -93,8 +99,9 @@ export async function renderSystemPlayerPortrait3D(player) {
       };
       node.material = Array.isArray(node.material) ? node.material.map(recolor) : recolor(node.material);
     });
-    attachHair(model, hairSource);
-    attachHair(model, beardSource);
+    const hairTint = hairColorHex(player?.appearance?.hairColor);
+    attachHair(model, hairSource, hairTint);
+    attachHair(model, beardSource, hairTint);
     const faceShape = player?.appearance?.faceShape || 'oval';
     const faceScale = {
       oval: [0.98, 1.04, 1], round: [1.08, 0.98, 1],
