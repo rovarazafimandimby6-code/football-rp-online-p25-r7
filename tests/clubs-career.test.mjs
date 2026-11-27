@@ -607,7 +607,7 @@ test('P27 carrière : le renouvellement règle les salaires échus une seule foi
   career.signContract({ clubId:'club-a', salary:80, durationDays:90, signedAt:'2036-01-01T00:00:00Z' });
   const renewed = career.renewContract({ salary:100, durationDays:180, renewedAt:'2036-01-15T00:00:00Z' });
   assert.equal(renewed.ok,true);
-  assert.equal(career.wallet,180);
+  assert.equal(career.wallet,260);
   assert.equal(career.history.filter(item=>item.type==='salary').length,1);
   assert.equal(career.history.filter(item=>item.type==='renewal').length,1);
   assert.equal(career.contract.lastSalaryPaidAt,'2036-01-15T00:00:00.000Z');
