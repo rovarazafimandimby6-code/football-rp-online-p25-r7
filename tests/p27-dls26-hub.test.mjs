@@ -20,9 +20,10 @@ test('P27 DLS26: l’en-tête est compact et ne réintroduit pas les anciens lib
 
 test('P27 DLS26: le hub utilise des panneaux de tailles hiérarchisées', () => {
   assert.match(main, /p27-dls-home/);
-  assert.match(css, /grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
-  assert.match(css, /\.p27-hub-career\{grid-column:span 5;grid-row:span 2/);
-  assert.match(css, /\.p27-hub-match\{grid-column:span 3/);
+  assert.ok(css.includes('grid-template-columns:repeat(3,minmax(0,1fr))'));
+  assert.ok(css.includes('#main-menu .p27-hub-career{grid-column:span 2;grid-row:1}'));
+  assert.ok(css.includes('#main-menu .p27-hub-match{grid-column:3;grid-row:1}'));
+  for (const tile of ['p27-hub-player','p27-hub-competitions','p27-hub-market','p27-hub-rankings','p27-hub-club','p27-hub-results']) assert.ok(css.includes(tile));
   assert.doesNotMatch(main, /p27-home-tiles/);
 });
 
