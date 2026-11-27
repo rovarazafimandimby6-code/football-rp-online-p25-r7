@@ -14,7 +14,8 @@ SQL migrations are applied in CI against Wrangler's local SQLite-backed D1 emula
 - `0008_player_contracts.sql`: player contract persistence.
 - `0009_season_calendar.sql`: season calendar state.
 - `0010_player_shop.sql`: player-owned shop purchases, inventory and resale journal.
-- `0011_club_ownership_finance.sql`: canonical club owner references, ownership audit events, collective treasury balances and immutable finance entries. Schema foundation only; not yet the production source of truth.
+- `0011_club_ownership_finance.sql`: canonical club owner references, ownership audit events, collective treasury balances and immutable finance entries.
+- `0012_club_finance_contracts_checkpoints.sql`: sponsor contracts, loans, payroll checkpoints and transfer/player-wage recovery checkpoints.
 
 ## Career write boundary
 
@@ -39,4 +40,6 @@ The repository is deliberately not wired into the Cloudflare Worker or the live 
 
 Do not seed a club's D1 balance from its configured default budget when a legacy finance account already exists. The import operation accepts an explicit opening balance and refuses to overwrite an existing account whose owner or opening/current balance differs. The current finance account's opening balance and every ledger entry must be exported from the legacy finance store, and the final D1 balance must match the legacy balance before enabling D1 writes.
 
-The next required phase is a deterministic export/import and reconciliation command for all 156 clubs, including owner references resolved against D1 account IDs, complete finance ledger history, sponsors, loans and payroll checkpoints. It must produce a dry-run report and stop on unknown owners, duplicate owners, missing finance accounts, invalid ledger rows or any balance mismatch. Only after a clean reconciliation should the Worker become the single writer for club ownership and treasury. Do not enable dual writes.
+A deterministic legacy audit/export command now exists at `scripts/export-club-d1-migration.mjs`. It reads the actual server data files under `data/`, validates all 156 club records, resolves `managerId` against account IDs, verifies every finance ledger balance, and includes sponsor contracts, loans, payroll checkpoints, transfer-fee checkpoints and player-wage checkpoints. Run `node scripts/export-club-d1-migration.mjs --data-root data` for a read-only dry run. Only when the report is clean, create a protected export with `node scripts/export-club-d1-migration.mjs --data-root data --write /secure/path/p27-club-d1-bundle.json`. The script never writes a bundle when any validation issue exists.
+
+The export is a validated migration package, not proof that production D1 has been populated. The D1 import runner and remote cutover still require the live data directory and the production D1 binding/authorization. Keep the Node server as the only writer until the bundle has been imported, every row and final balance has been compared, and rollback has been rehearsed. Do not enable dual writes.
