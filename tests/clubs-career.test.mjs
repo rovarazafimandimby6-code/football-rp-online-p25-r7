@@ -686,3 +686,14 @@ test('P27 mercato : refuser une offre déjà expirée l’enregistre comme expir
   assert.equal(career.offers.get(offer.offer.id).status,'expired');
   assert.equal(career.history.at(-1).type,'offer-expired');
 });
+
+
+test('P27 mercato : la fin ou la résiliation du contrat annule et historise les offres encore ouvertes', () => {
+  const career = new CareerManager();
+  career.signContract({clubId:'club-current',durationDays:1,signedAt:'2041-01-01T00:00:00Z'});
+  const offer=career.makeOffer({fromClubId:'club-other',at:'2041-01-01T00:00:00Z'});
+  assert.equal(offer.ok,true);
+  career.terminateContract('2041-01-01T12:00:00Z');
+  assert.equal(career.offers.get(offer.offer.id).status,'cancelled');
+  assert.ok(career.history.some(item=>item.type==='offer-cancelled'&&item.reason==='contract-terminated'));
+});
