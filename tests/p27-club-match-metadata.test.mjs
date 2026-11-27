@@ -181,12 +181,12 @@ test('P27: les bots des clubs utilisent une identité stable reliée aux fiches 
 test('P27 match : les apparences publiques des clubs sont jointes au salon sans inventaire privé',()=>{
  const manager=new RoomManager({
   resolveClubAppearance:clubId=>clubId==='antananarivo-fc'
-   ? {equippedItemIds:['club-crest-custom','club-supporter-flags'],stadiumExpansionLevel:3,ownerId:'must-not-leak',balance:999999}
+   ? {equippedItemIds:['club-crest-custom','club-supporter-flags'],stadiumExpansionLevel:3,stadiumCapacity:12500,ownerId:'must-not-leak',balance:999999}
    : {equippedItemIds:[],stadiumExpansionLevel:0}
  });
  const created=manager.create({blueClubId:'antananarivo-fc',redClubId:'fianarantsoa-athletic'});
- assert.deepEqual(created.teams.blue.shopAppearance,{equippedItemIds:['club-crest-custom','club-supporter-flags'],stadiumExpansionLevel:3});
- assert.deepEqual(created.teams.red.shopAppearance,{equippedItemIds:[],stadiumExpansionLevel:0});
+ assert.deepEqual(created.teams.blue.shopAppearance,{equippedItemIds:['club-crest-custom','club-supporter-flags'],stadiumExpansionLevel:3,stadiumCapacity:12500});
+ assert.deepEqual(created.teams.red.shopAppearance,{equippedItemIds:[],stadiumExpansionLevel:0,stadiumCapacity:5000});
  assert.equal(JSON.stringify(created.teams).includes('must-not-leak'),false);
  assert.equal(JSON.stringify(created.teams).includes('999999'),false);
 });
