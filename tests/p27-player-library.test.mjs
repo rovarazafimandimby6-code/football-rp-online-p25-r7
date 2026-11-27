@@ -39,3 +39,20 @@ test('P27 bibliothèque joueurs : un joueur transféré archivé ne réapparaît
   const result = listP27Players({ clubs, filters:{ status:'free', limit:100 } });
   assert.deepEqual(result.players.map(item => item.id), ['p3']);
 });
+
+test('P27 bibliothèque joueurs : le maillot suit le club actuel sans écraser le portrait ni le numéro', () => {
+  const custom = player('p-kit','Joueur maillot', {
+    number:27,
+    appearance:{ skinTone:'dark', hairStyle:'curly', hairColor:'black', kitColors:{ primary:'#111111', secondary:'#222222', accent:'#333333' }, kitDesign:'central' }
+  });
+  const club = { id:'kit-club', name:'Kit Club', division:'D1', colors:['#aa1122','#1122aa','#eeeeee'], kitDesign:'sash', roster:[custom] };
+  const result = listP27Players({ clubs:[club], filters:{ limit:10 } });
+  const found = result.players[0];
+  assert.equal(found.number, 27);
+  assert.equal(found.appearance.skinTone, 'dark');
+  assert.equal(found.appearance.hairStyle, 'curly');
+  assert.equal(found.appearance.kitColors.primary, '#aa1122');
+  assert.equal(found.appearance.kitColors.secondary, '#1122aa');
+  assert.equal(found.appearance.kitColors.accent, '#eeeeee');
+  assert.equal(found.appearance.kitDesign, 'sash');
+});
