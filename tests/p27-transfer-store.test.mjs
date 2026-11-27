@@ -114,7 +114,7 @@ test('P27 prêts : un prêt actif bloque les transferts définitifs et invalide 
   assert.equal(accepted.career.offers.find(item=>item.id===permanent.offer.id).status,'cancelled');
   assert.equal(f.store.requestOffer('account-loan-transfer-lock',{toClubId:'fianarantsoa-athletic'}).reason,'player-on-loan');
   const row=f.store.state.careers.find(item=>item.accountId==='account-loan-transfer-lock');
-  row.offers.push({...permanent.offer,status:'pending'});
+  row.offers.find(item=>item.id===permanent.offer.id).status='pending';
   assert.equal(f.store.acceptOffer('account-loan-transfer-lock',permanent.offer.id).reason,'player-on-loan');
   assert.equal(f.store.getCareer('account-loan-transfer-lock').clubId,'toamasina-united');
  }finally{f.cleanup();}
