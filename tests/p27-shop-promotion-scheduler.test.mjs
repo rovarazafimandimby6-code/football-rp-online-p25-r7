@@ -56,3 +56,24 @@ test('P27 promotions : les deux emplacements hebdomadaires ne ciblent jamais le 
   assert.ok(weeklyIds.size>=2,shop+' doit proposer deux articles hebdomadaires distincts');
  }
 });
+
+
+test('P27 promotions : les soldes hebdomadaires suivent le calendrier lundi-dimanche UTC',()=>{
+ const monday=Date.UTC(2027,0,4,0);
+ const sunday=monday+6*24*60*60*1000+12*60*60*1000;
+ const nextMonday=monday+7*24*60*60*1000;
+ for(const shop of ['player','club']){
+  const ids=getShopCatalog(shop).map(item=>item.id);
+  const weekly=ids.map(id=>getScheduledShopPromotion(shop,id,monday+12*60*60*1000)).find(offer=>offer?.type==='weekly');
+  assert.ok(weekly,shop+' doit avoir au moins une offre hebdomadaire visible');
+  assert.equal(weekly.startsAt,monday);
+  assert.equal(weekly.endsAt,monday+7*24*60*60*1000);
+  const sameOffer=ids.map(id=>getScheduledShopPromotion(shop,id,sunday)).find(offer=>offer?.type==='weekly'&&offer.itemIds[0]===weekly.itemIds[0]);
+  assert.ok(sameOffer,shop+' doit conserver le même article hebdomadaire jusqu’au dimanche');
+  assert.equal(sameOffer.startsAt,monday);
+  const renewed=getScheduledShopPromotion(shop,weekly.itemIds[0],nextMonday+12*60*60*1000);
+  assert.ok(renewed);
+  assert.equal(renewed.startsAt,nextMonday);
+  assert.equal(renewed.endsAt,nextMonday+7*24*60*60*1000);
+ }
+});
