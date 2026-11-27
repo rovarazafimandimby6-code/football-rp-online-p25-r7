@@ -287,3 +287,17 @@ test('P27 boutique club : le snapshot public ne divulgue que les cosmétiques é
   assert.deepEqual(f.service.publicAppearance('unknown-club'),{equippedItemIds:[],stadiumExpansionLevel:0});
  }finally{f.cleanup();}
 });
+
+
+test('P27 boutique : refuse les périmètres de boutique inconnus sans exposer les biens du club',()=>{
+ const f=fixture();try{
+  const bought=f.service.purchase({shop:'club',itemId:'club-kit-home',actorId:'owner-one',clubId:'club-one',purchaseId:'scope-guard-buy'});
+  assert.equal(bought.ok,true);
+  assert.deepEqual(f.service.inventory('unknown','club-one'),[]);
+  assert.equal(f.service.purchase({shop:'unknown',itemId:'club-kit-home',actorId:'owner-one',clubId:'club-one',purchaseId:'scope-guard-buy-2'}).reason,'invalid-shop');
+  assert.equal(f.service.resale({shop:'unknown',actorId:'owner-one',clubId:'club-one',itemId:'club-kit-home',resaleId:'scope-guard-sale'}).reason,'invalid-shop');
+  assert.equal(f.service.setEquipped({shop:'unknown',actorId:'owner-one',clubId:'club-one',itemId:'club-kit-home'}).reason,'invalid-shop');
+  assert.deepEqual(f.service.getHistory({shop:'unknown',ownerId:'club-one'}),{purchases:[],resales:[]});
+  assert.equal(f.service.inventory('club','club-one').length,1);
+ }finally{f.cleanup();}
+});
