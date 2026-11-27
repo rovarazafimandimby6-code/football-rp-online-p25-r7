@@ -410,14 +410,50 @@ export class JsonClubFinanceService {
       totalExpenses += account?.totalExpenses || 0;
       totalBalance += account?.balance || 0;
       for (const sponsor of raw.sponsors || []) {
-        const paid = raw.entries.filter(entry => entry.id.startsWith(`sponsor-${sponsor.id}-`) &&
-          entry.category === 'sponsorship' && entry.direction === 'income' && entry.referenceId === sponsor.id).length;
-        if (paid !== sponsor.paidWeeks) issues.push({ type: 'sponsor-checkpoint-mismatch', clubId, sponsorId: sponsor.id, checkpoint: sponsor.paidWeeks, ledgerPayments: paid });
+        const prefix = `sponsor-${sponsor.id}-`;
+        const sponsorEntries = raw.entries.filter(entry => entry.id.startsWith(prefix));
+        if (sponsorEntries.length !== sponsor.paidWeeks) issues.push({ type: 'sponsor-checkpoint-mismatch', clubId, sponsorId: sponsor.id, checkpoint: sponsor.paidWeeks, ledgerPayments: sponsorEntries.length });
+        const expectedIds = new Set();
+        for (let installment = 1; installment <= sponsor.paidWeeks; installment++) {
+          const entryId = prefix + installment;
+          expectedIds.add(entryId);
+          const entry = sponsorEntries.find(item => item.id === entryId);
+          const expectedAt = sponsor.signedAt + installment * 7 * 86400000;
+          if (!entry) issues.push({ type: 'sponsor-installment-missing', clubId, sponsorId: sponsor.id, installment, entryId });
+          else if (entry.category !== 'sponsorship' || entry.direction !== 'income' ||
+              entry.amount !== sponsor.weeklyPayment || entry.referenceId !== sponsor.id ||
+              entry.createdAt !== expectedAt) {
+            issues.push({ type: 'sponsor-installment-invalid', clubId, sponsorId: sponsor.id, installment, entryId });
+          }
+        }
+        for (const entry of sponsorEntries) if (!expectedIds.has(entry.id)) {
+          issues.push({ type: 'sponsor-installment-unexpected', clubId, sponsorId: sponsor.id, entryId: entry.id });
+        }
       }
       for (const loan of raw.loans || []) {
-        const paid = raw.entries.filter(entry => entry.id.startsWith(`loan-payment-${loan.id}-`) &&
-          entry.category === 'loan' && entry.direction === 'expense' && entry.referenceId === loan.id).length;
-        if (paid !== loan.paidInstallments) issues.push({ type: 'loan-checkpoint-mismatch', clubId, loanId: loan.id, checkpoint: loan.paidInstallments, ledgerPayments: paid });
+        const prefix = `loan-payment-${loan.id}-`;
+        const loanEntries = raw.entries.filter(entry => entry.id.startsWith(prefix));
+        if (loanEntries.length !== loan.paidInstallments) issues.push({ type: 'loan-checkpoint-mismatch', clubId, loanId: loan.id, checkpoint: loan.paidInstallments, ledgerPayments: loanEntries.length });
+        const expectedIds = new Set();
+        const installmentAmount = Math.ceil(loan.totalRepayment / loan.durationWeeks);
+        for (let installment = 1; installment <= loan.paidInstallments; installment++) {
+          const entryId = prefix + installment;
+          expectedIds.add(entryId);
+          const entry = loanEntries.find(item => item.id === entryId);
+          const expectedAmount = installment === loan.durationWeeks
+            ? loan.totalRepayment - installmentAmount * (loan.durationWeeks - 1)
+            : installmentAmount;
+          const expectedAt = loan.issuedAt + installment * 7 * 86400000;
+          if (!entry) issues.push({ type: 'loan-installment-missing', clubId, loanId: loan.id, installment, entryId });
+          else if (entry.category !== 'loan' || entry.direction !== 'expense' ||
+              entry.amount !== expectedAmount || entry.referenceId !== loan.id ||
+              entry.createdAt !== expectedAt) {
+            issues.push({ type: 'loan-installment-invalid', clubId, loanId: loan.id, installment, entryId });
+          }
+        }
+        for (const entry of loanEntries) if (!expectedIds.has(entry.id)) {
+          issues.push({ type: 'loan-installment-unexpected', clubId, loanId: loan.id, entryId: entry.id });
+        }
       }
     }
 
