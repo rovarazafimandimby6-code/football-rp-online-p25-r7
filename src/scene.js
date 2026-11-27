@@ -38,6 +38,7 @@ export class SceneManager {
     this.renderer.sortObjects = true;
     this.renderer.useLegacyLights = false;
     this.renderer.setSize(w, h);
+    this.lastSize = { width: w, height: h };
     this.renderer.domElement.setAttribute('aria-label', 'Vue 3D du match de football');
     container.appendChild(this.renderer.domElement);
     this.contextLost = false;
@@ -45,6 +46,7 @@ export class SceneManager {
     this._onContextRestored = () => {
       this.contextLost = false;
       this.framePacer?.reset();
+      this.lastSize = null;
       this.resize();
     };
     this.renderer.domElement.addEventListener('webglcontextlost', this._onContextLost, false);
@@ -114,9 +116,11 @@ export class SceneManager {
     const h = Math.round(bounds?.height || this.container.clientHeight || window.innerHeight);
     // Ignore transient zero-size layouts while the menu and match shell switch visibility.
     if (w <= 0 || h <= 0) return;
+    if (this.lastSize?.width === w && this.lastSize?.height === h) return;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
+    this.lastSize = { width: w, height: h };
   }
 
   render(nowMs = performance.now()) {
