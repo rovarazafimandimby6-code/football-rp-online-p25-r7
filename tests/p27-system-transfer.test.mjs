@@ -447,3 +447,23 @@ test('P27 effectifs : ajout et modification sont annulés si la sauvegarde écho
  assert.equal(after.rating,before.rating);
  assert.equal(storage.value,saved);
 });
+
+test('P27 carrière humaine : changement de club met à jour le maillot, le numéro et le contrat sans doublon',()=>{
+ const storage={value:null,getItem(){return this.value;},setItem(key,value){this.value=value;}};
+ const manager=new ClubManager(clubs,storage,'human-career-roster-sync');
+ const playerId='human-career-sync-p27';
+ const first=manager.syncHumanCareer({playerId,clubId:'club-a',name:'Human Career',contract:{status:'active',clubId:'club-a',salary:1500,expiresAt:'2037-06-01T00:00:00.000Z'}});
+ assert.equal(first.ok,true);
+ const sourceBefore=manager.getClub('club-a').roster.find(player=>player.id===playerId);
+ assert.ok(sourceBefore);
+ const moved=manager.syncHumanCareer({playerId,clubId:'club-b',previousClubId:'club-a',name:'Human Career',contract:{status:'active',clubId:'club-b',salary:1700,expiresAt:'2037-08-01T00:00:00.000Z'}});
+ assert.equal(moved.ok,true);
+ assert.equal(moved.action,'transferred');
+ assert.equal(manager.getClub('club-a').roster.some(player=>player.id===playerId),false);
+ const target=manager.getClub('club-b').roster.filter(player=>player.id===playerId);
+ assert.equal(target.length,1);
+ assert.equal(target[0].contract.clubId,'club-b');
+ assert.equal(target[0].contract.salary,1700);
+ assert.equal(target[0].number,moved.number);
+ assert.notDeepEqual(target[0].appearance.kitColors,sourceBefore.appearance.kitColors);
+});
