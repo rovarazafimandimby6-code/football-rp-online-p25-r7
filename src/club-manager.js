@@ -464,8 +464,9 @@ export class ClubManager {
     if (player.playerType === 'human' && to.roster.filter(item => item.playerType === 'human').length >= 7) return { ok: false, reason: 'human-player-limit' };
     const assignedNumber = availableShirtNumber(to, player.number);
     if (!assignedNumber) return { ok: false, reason: 'shirt-numbers-full' };
-    from.roster.splice(sourceIndex, 1);
-    const transferred = applyP27ClubKit({ ...player, number:assignedNumber }, to);
+    // Prepare the destination snapshot before mutating either roster.
+    // This prevents kit/contract preparation errors from orphaning the source player.
+    const transferred = applyP27ClubKit({ ...structuredClone(player), number:assignedNumber }, to);
     if (transferred.playerType === 'system') {
       transferred.contract = {
         ...createSystemPlayerContract({
@@ -487,6 +488,7 @@ export class ClubManager {
         previousClubId: from.id
       };
     }
+    from.roster.splice(sourceIndex, 1);
     to.roster.push(transferred);
     if (!this.saveSeason()) {
       to.roster.pop();
