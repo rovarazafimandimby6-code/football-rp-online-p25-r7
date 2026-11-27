@@ -8,6 +8,74 @@ const cleanTransactionId=value=>{const id=String(value??'').trim();return id.len
 const clone=value=>JSON.parse(JSON.stringify(value));
 const emptyState=()=>({version:1,players:[],clubs:[],purchases:[],resales:[]});
 
+function validPersistedState(value){
+  if(value?.version!==1||!Array.isArray(value.players)||!Array.isArray(value.clubs)||
+    !Array.isArray(value.purchases)||!Array.isArray(value.resales))return false;
+  const purchaseById=new Map(), resaleById=new Map(), inventoryByPurchase=new Map();
+  for(const [shop,rows] of [['player',value.players],['club',value.clubs]]){
+    const owners=new Set();
+    for(const row of rows){
+      if(!row||!cleanId(row.ownerId)||owners.has(cleanId(row.ownerId))||!Array.isArray(row.items))return false;
+      owners.add(cleanId(row.ownerId));
+      const activeItems=new Set();
+      for(const entry of row.items){
+        const item=getShopItem(entry?.itemId);
+        if(!item||item.shop!==shop||!['owned','resold'].includes(entry.status)||
+          !Number.isSafeInteger(entry.paidPrice)||entry.paidPrice<1||entry.paidPrice>item.price||
+          entry.currency!==item.currency||entry.resellable!==item.resellable||
+          entry.resaleRate!==item.resaleRate||typeof entry.equipped!=='boolean'||
+          !cleanTransactionId(entry.purchaseId)||inventoryByPurchase.has(entry.purchaseId))return false;
+        if(entry.status==='owned'){
+          if(activeItems.has(entry.itemId)||entry.resaleId||entry.resoldAt!==undefined)return false;
+          activeItems.add(entry.itemId);
+        }else if(entry.equipped===true||!cleanTransactionId(entry.resaleId)||
+          !Number.isSafeInteger(entry.resoldAt)||entry.resoldAt<0)return false;
+        inventoryByPurchase.set(entry.purchaseId,{shop,ownerId:cleanId(row.ownerId),entry});
+      }
+    }
+  }
+  for(const purchase of value.purchases){
+    const item=getShopItem(purchase?.itemId);
+    if(!cleanTransactionId(purchase?.id)||purchaseById.has(purchase.id)||!item||
+      purchase.shop!==item.shop||!cleanId(purchase.ownerId)||!cleanId(purchase.actorId)||
+      !['pending','completed','failed'].includes(purchase.status)||
+      !Number.isSafeInteger(purchase.paidPrice)||purchase.paidPrice<1||purchase.paidPrice>item.price||
+      purchase.basePrice!==item.price||!Number.isInteger(purchase.discountPercent)||
+      purchase.discountPercent<0||purchase.discountPercent>50||
+      purchase.paidPrice!==Math.max(1,Math.round(item.price*(100-purchase.discountPercent)/100))||
+      purchase.currency!==item.currency||!Number.isSafeInteger(purchase.createdAt)||purchase.createdAt<0)return false;
+    const inventory=inventoryByPurchase.get(purchase.id);
+    if(purchase.status==='completed'){
+      if(!inventory||inventory.shop!==purchase.shop||inventory.ownerId!==purchase.ownerId||
+        inventory.entry.itemId!==purchase.itemId)return false;
+    }else if(inventory)return false;
+    purchaseById.set(purchase.id,purchase);
+  }
+  for(const [purchaseId,inventory] of inventoryByPurchase){
+    const purchase=purchaseById.get(purchaseId);
+    if(!purchase||purchase.status!=='completed'||purchase.ownerId!==inventory.ownerId||
+      purchase.shop!==inventory.shop||purchase.itemId!==inventory.entry.itemId)return false;
+  }
+  for(const resale of value.resales){
+    const item=getShopItem(resale?.itemId), inventory=inventoryByPurchase.get(resale?.purchaseId);
+    if(!cleanTransactionId(resale?.id)||resaleById.has(resale.id)||!item||
+      resale.shop!==item.shop||!cleanId(resale.ownerId)||!cleanId(resale.actorId)||
+      !['pending','completed'].includes(resale.status)||!Number.isSafeInteger(resale.amount)||
+      resale.amount<1||resale.currency!==item.currency||!Number.isSafeInteger(resale.createdAt)||
+      resale.createdAt<0||!inventory||inventory.shop!==resale.shop||
+      inventory.ownerId!==resale.ownerId||inventory.entry.itemId!==resale.itemId||
+      calculateResaleValue(item,inventory.entry.paidPrice)!==resale.amount)return false;
+    if(resale.status==='completed'){
+      if(inventory.entry.status!=='resold'||inventory.entry.resaleId!==resale.id)return false;
+    }else if(inventory.entry.status!=='owned')return false;
+    resaleById.set(resale.id,resale);
+  }
+  for(const inventory of inventoryByPurchase.values()){
+    if(inventory.entry.status==='resold'&&!resaleById.has(inventory.entry.resaleId))return false;
+  }
+  return true;
+}
+
 /**
  * Persistent shop orchestration. Player balances are debited by the progression
  * ledger; club balances are debited by the club finance ledger. The shop journal
@@ -29,7 +97,7 @@ export class JsonShopService {
   read(){
     try{
       const value=JSON.parse(readFileSync(this.file,'utf8'));
-      if(value?.version!==1||!Array.isArray(value.players)||!Array.isArray(value.clubs)||!Array.isArray(value.purchases)||!Array.isArray(value.resales))throw new Error('bad schema');
+      if(!validPersistedState(value))throw new Error('bad schema or ledger invariants');
       return value;
     }catch(error){
       if(error.code==='ENOENT')return emptyState();
