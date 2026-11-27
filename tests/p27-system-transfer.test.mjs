@@ -489,6 +489,7 @@ test('P27 clubs : une prise de contrôle non sauvegardée restaure le club ouver
  let failWrites=false;
  const storage={value:null,getItem(){return this.value;},setItem(key,value){if(failWrites)throw new Error('DISK_FULL');this.value=value;}};
  const manager=new ClubManager(clubs,storage,'club-takeover-rollback');
+ manager.clubs.get('club-a').control='open';
  const before=storage.value;
  failWrites=true;
  const result=manager.takeOver('club-a','manager-rollback-p27');
