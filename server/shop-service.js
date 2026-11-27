@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { calculateResaleValue, getShopItem, getShopPrice, validateShopPurchase } from '../src/p27-shop-catalog.js';
+import { calculateResaleValue, getShopCatalog, getShopItem, getShopPrice, validateShopPurchase } from '../src/p27-shop-catalog.js';
 
 const cleanId=value=>String(value??'').trim().slice(0,80);
 const cleanTransactionId=value=>{const id=String(value??'').trim();return id.length>0&&id.length<=64?id:'';};
@@ -50,6 +50,13 @@ export class JsonShopService {
   ownerOf(clubId){
     const owner=this.resolveClubOwner(clubId);
     return owner===null||owner===undefined?null:cleanId(owner)||null;
+  }
+  catalog(shop){
+    if(!['player','club'].includes(shop))return [];
+    return getShopCatalog(shop).map(item=>{
+      const promotion=this.promotionProvider(shop,item.id)||null;
+      return {...item,...getShopPrice(item,{promotion,now:this.now()})};
+    });
   }
   inventory(shop,ownerId){
     const rows=shop==='player'?this.state.players:this.state.clubs;
