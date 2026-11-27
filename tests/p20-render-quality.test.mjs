@@ -106,3 +106,12 @@ test('P27 stade : les deux cages partagent les géométries statiques sans parta
   assert.ok(goalBuilder.includes('const backNetGeo = new THREE.PlaneGeometry'));
   assert.ok(goalBuilder.includes('this.netPanels.push({ mesh: backNet, base:'));
 });
+
+
+test('P27 stade : les marquages répétés et les fanions réutilisent leurs géométries statiques', () => {
+  for (const key of ['pitch-midline','pitch-center-ring','pitch-center-spot','pitch-penalty-spot','pitch-penalty-arc','pitch-corner-arc','corner-flag','corner-flag-pole']) {
+    assert.ok(fieldSource.includes(`getSharedGeometry('${key}'`), `géométrie partagée attendue : ${key}`);
+  }
+  assert.match(fieldSource, /const poleGeo = this\.getSharedGeometry\('corner-flag-pole'/);
+  assert.match(fieldSource, /const flagGeo = this\.getSharedGeometry\('corner-flag'/);
+});
