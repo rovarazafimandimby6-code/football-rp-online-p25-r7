@@ -46,3 +46,20 @@ test('SQL builder refuses incomplete bundles and inconsistent ledgers',async t=>
   result=spawnSync(process.execPath,[script,'--bundle',bundle,'--output',output],{encoding:'utf8'});
   assert.equal(result.status,1);
 });
+
+test('SQL builder refuses duplicate contract and checkpoint identities before emitting SQL',async t=>{
+  const dir=await mkdtemp(path.join(os.tmpdir(),'p27-d1-sql-duplicates-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+  const bundle=path.join(dir,'bundle.json'),output=path.join(dir,'import.sql');
+  const cases=[
+    value=>{value.clubs[0].finance.sponsors.push({...value.clubs[0].finance.sponsors[0]});},
+    value=>{value.clubs[0].finance.loans.push({...value.clubs[0].finance.loans[0]});},
+    value=>{value.payroll.push({...value.payroll[0]});},
+    value=>{value.transferCheckpoints=[{id:'transfer-1',fromClubId:'club-001',toClubId:'club-002',fee:10,createdAt:1000,debitPosted:true,creditPosted:false},{id:'transfer-1',fromClubId:'club-001',toClubId:'club-002',fee:10,createdAt:1000,debitPosted:true,creditPosted:false}];},
+    value=>{value.playerWageCheckpoints=[{id:'wage-1',clubId:'club-001',amount:10,createdAt:1000,posted:true},{id:'wage-1',clubId:'club-001',amount:10,createdAt:1000,posted:true}];}
+  ];
+  for(const mutate of cases){
+    const value=makeBundle();mutate(value);await writeFile(bundle,JSON.stringify(value));
+    const result=spawnSync(process.execPath,[script,'--bundle',bundle,'--output',output],{encoding:'utf8'});
+    assert.equal(result.status,1,result.stdout);
+  }
+});
