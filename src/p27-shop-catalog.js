@@ -61,7 +61,27 @@ const CLUB_ITEMS = [
   ...(category==='capacity' ? { upgradeLevel:Number(id.slice(-1)) } : {})
 }));
 
-const CATALOG = Object.freeze([...PLAYER_ITEMS,...CLUB_ITEMS].map(item=>Object.freeze(item)));
+const resolveEquipSlot = item => {
+  if(item.shop==='player') return item.category;
+  const fixed = {
+    'club-crest-custom':'club-crest',
+    'club-official-colors':'club-colors',
+    'club-kit-home':'kit-home',
+    'club-kit-away':'kit-away',
+    'club-kit-third':'kit-third',
+    'club-kit-goalkeeper':'kit-goalkeeper',
+    'club-stadium-standard':'stadium-skin',
+    'club-stadium-premium':'stadium-skin',
+    'club-grass-standard':'stadium-grass',
+    'club-grass-premium':'stadium-grass',
+    'club-supporter-flags':'supporter-flags',
+    'club-supporter-banners':'supporter-banners',
+    'club-supporter-tifo':'supporter-tifo'
+  };
+  return fixed[item.id] || null;
+};
+
+const CATALOG = Object.freeze([...PLAYER_ITEMS,...CLUB_ITEMS].map(item=>Object.freeze({...item,equipSlot:resolveEquipSlot(item)})));
 
 export function getShopCatalog(shop) {
   if (!['player','club'].includes(shop)) return [];
