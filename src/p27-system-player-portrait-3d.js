@@ -32,7 +32,7 @@ function loadHairAsset(file) {
   return hairCache.get(file);
 }
 function loadHair(style) {
-  const file = ({ shaved:'Hair_Buzzed', fade:'Hair_Buzzed', short:'Hair_SimpleParted', curly:'Hair_SimpleParted', wavy:'Hair_SimpleParted', long:'Hair_Long', braids:'Hair_Long', twists:'Hair_Long', afro:'Hair_Buzzed' })[style];
+  const file = ({ shaved:'Hair_Buzzed', fade:'Hair_Buzzed', short:'Hair_SimpleParted', curly:'Hair_SimpleParted', wavy:'Hair_SimpleParted', long:'Hair_Long', braids:'Hair_Buns', twists:'Hair_Buns', afro:'Hair_Buzzed' })[style];
   return loadHairAsset(file);
 }
 function attachHair(model, sourceScene) {
