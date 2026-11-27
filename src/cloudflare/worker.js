@@ -446,6 +446,43 @@ export default {
       }
     }
 
+    // Unified player-shop API used by the current in-game shop client.
+    // Club-shop requests remain on the authoritative server until club ownership and treasury are D1-backed.
+    if (url.pathname === "/api/shop" && request.method === "GET" && (url.searchParams.get("shop") || "player") === "player") {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") return json(503, { error: "D1_BINDING_MISSING" });
+      const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionTokenFromRequest(request));
+      if (!account) return json(401, { error: "SESSION_EXPIRED" });
+      try {
+        const shop = new D1PlayerShopRepository(env.P27_DB);
+        const progression = await new D1PlayerProgressionRepository(env.P27_DB).get(account.id);
+        return json(200, {
+          shop:"player", currency:"player-coins", balance:progression.progression.coins,
+          catalog:await shop.catalog(), inventory:await shop.inventory(account.id)
+        });
+      } catch (error) { return errorResponse(error); }
+    }
+    if (["/api/shop/purchase","/api/shop/resale","/api/shop/equip"].includes(url.pathname) && request.method === "POST") {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") return json(503, { error: "D1_BINDING_MISSING" });
+      const origin = request.headers.get("origin");
+      if (origin) {
+        try { if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error:"ORIGIN_NOT_ALLOWED" }); }
+        catch { return json(403, { error:"ORIGIN_NOT_ALLOWED" }); }
+      }
+      const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionTokenFromRequest(request));
+      if (!account) return json(401, { error:"SESSION_EXPIRED" });
+      try {
+        const body = await readJson(request);
+        if (!body || body.shop !== "player") return json(400, { error:"UNSUPPORTED_SHOP" });
+        const shop = new D1PlayerShopRepository(env.P27_DB);
+        const result = url.pathname === "/api/shop/purchase"
+          ? await shop.purchase(account.id, { itemId:body.itemId, purchaseId:body.purchaseId })
+          : url.pathname === "/api/shop/resale"
+            ? await shop.resale(account.id, { itemId:body.itemId, resaleId:body.resaleId })
+            : await shop.setEquipped(account.id, { itemId:body.itemId, equipped:body.equipped });
+        return json(result.ok ? 200 : 409, result);
+      } catch (error) { return errorResponse(error); }
+    }
+
     const playerShopRoute = url.pathname.startsWith("/api/shop/player/");
     if (playerShopRoute && ["GET", "POST"].includes(request.method)) {
       if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
