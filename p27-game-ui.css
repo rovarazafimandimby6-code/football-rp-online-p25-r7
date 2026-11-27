@@ -2108,3 +2108,5 @@
 
 /* P27 shop: transparent server-calculated resale estimate */
 .p27-shop-refund{display:block;color:#e4bd6b;font-weight:700;margin-top:5px;letter-spacing:.02em}
+
+#main-menu #menu-content .p27-shop-item-art>.p27-shop-art-svg{display:block;width:min(76px,82%);height:64px;filter:drop-shadow(0 4px 7px #0008)}
