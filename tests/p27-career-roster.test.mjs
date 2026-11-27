@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { ClubManager } from '../src/club-manager.js';
 import { CareerManager } from '../src/career-manager.js';
 import { createDefaultProfile } from '../src/player-profile.js';
@@ -100,4 +101,36 @@ test('P27 effectifs carrière : mise à jour du profil répercute le joueur déj
   assert.equal(updated.player.name, 'Nouveau nom');
   assert.equal(updated.player.role, 'MID');
   assert.equal(updated.player.attributes.passing, 90);
+});
+
+
+test('P27 effectifs carrière : une panne de sauvegarde ne libère pas le joueur du club', () => {
+  const values = new Map();
+  let failWrites = false;
+  const storage = {
+    getItem:key=>values.get(key)??null,
+    setItem:(key,value)=>{ if (failWrites) throw new Error('DISK_FULL'); values.set(key,String(value)); }
+  };
+  const clubs = new ClubManager([{id:'atomic-career-club',name:'Atomic Career Club',countryCode:'MG',capacity:4}],storage,'atomic-career-roster');
+  const career = new CareerManager();
+  const profile = makeProfile();
+  assert.equal(career.signContract({clubId:'atomic-career-club',durationDays:365}).ok,true);
+  assert.equal(syncCareerPlayerRoster({clubs,career,profile}).ok,true);
+  failWrites = true;
+  assert.equal(career.terminateContract().ok,true);
+  const result = syncCareerPlayerRoster({clubs,career,profile});
+  assert.equal(result.ok,false);
+  assert.equal(result.reason,'roster-persistence-failed');
+  assert.equal(clubs.getClub('atomic-career-club').roster.some(player=>player.id===CAREER_ROSTER_PLAYER_ID),true);
+});
+
+test('P27 carrière : les changements de profil après un match sont répercutés dans l’effectif avant la rencontre suivante', async () => {
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /profileStore\.grantMatchRewards\(reward\);\s*syncCareerPlayerRoster\(\{ clubs, career, profile: profileStore\.profile \}\);/);
+});
+
+test('P27 carrière / Mercato : les actions de contrat annulent la mutation si la synchronisation de roster échoue', async () => {
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /const before = career\.captureState\(\);\s*let result = canRegister/);
+  assert.match(main, /career\.restoreState\(before\);\s*career\.saveState\(\);\s*result = \{ ok:false, reason:'roster-sync-failed' \};/);
 });
