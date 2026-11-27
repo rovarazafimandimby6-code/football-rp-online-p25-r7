@@ -14,7 +14,7 @@ import { createMatchSquad } from './match-squad.js';
 import { validateRotation } from './rotation-rules.js';
 import { selectAISubstitution } from './ai-substitution-manager.js';
 import { ControlsManager } from './controls.js';
-import { MatchState } from './match.js';
+import { MatchState, toVirtualMatchSeconds } from './match.js';
 import { UIManager } from './ui.js';
 import { selectRolePlayer } from './role-presentation.js';
 import { OnlineMatchBridge } from './online-match-bridge.js';
@@ -270,7 +270,7 @@ export class Game {
     const outgoing = this.players.filter(player => player.team === 'blue' && !player.isControlled);
     const pairs = outgoing.flatMap(player => this.benchPlayers.blue
       .filter(candidate => validateRotation({
-        phase:'paused', elapsedMatchSeconds:this.match.elapsedMatchTime,
+        phase:'paused', elapsedMatchSeconds:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration),
         outgoing:player, incoming:candidate, teamPlayers:squad
       }).ok)
       .map(candidate => ({ outgoing: player, incoming: candidate })));
@@ -283,7 +283,7 @@ export class Game {
     const incoming = incomingIndex >= 0 ? this.benchPlayers.blue[incomingIndex] : null;
     const validation = validateRotation({
       phase: this.match.phase,
-      elapsedMatchSeconds: this.match.elapsedMatchTime,
+      elapsedMatchSeconds: toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration),
       outgoing,
       incoming,
       teamPlayers: [...this.players.filter(player => player.team === 'blue'), ...this.benchPlayers.blue]
@@ -332,7 +332,7 @@ export class Game {
     this.benchPlayers.blue.push({
       id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number,
       attributes, rating: averageRating, specialty: outgoing.specialty,
-      preferredFoot: outgoing.preferredFoot, team:'blue', lastSubstitutedOutAt:this.match.elapsedMatchTime
+      preferredFoot: outgoing.preferredFoot, team:'blue', lastSubstitutedOutAt:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration)
     });
     this.substitutionsUsed.blue += 1;
     this.match.recordEvent('substitution', 'blue', `${outgoing.name} → ${replacement.name}`);
