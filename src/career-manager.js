@@ -270,6 +270,7 @@ export class CareerManager {
     if (expiry !== null && expiry <= now) return { ok: false, reason: 'offer-expired' };
     const refreshed = this.refreshOfferStatuses(now);
     if (!refreshed.ok) return { ok:false, reason:'persistence-failed' };
+    if ([...this.offers.values()].some(offer => offer.status === 'pending' && offer.fromClubId === from)) return { ok:false, reason:'duplicate-pending-offer' };
     if ([...this.offers.values()].filter(offer => offer.status === 'pending').length >= MAX_PENDING_OFFERS) return { ok:false, reason:'pending-offer-limit' };
     const before = this.captureState();
     const offerId = `offer-${this.nextOfferNumber++}`;
