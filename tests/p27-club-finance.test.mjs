@@ -167,3 +167,22 @@ test('P27 finance : un prêt refuse des échéances qui ne peuvent pas toutes ê
  assert.equal(f.balance('club'),0);
  assert.equal(f.getAccount('club').loans.length,0);
 });
+
+
+test('P27 finance : refuse de charger un historique corrompu au lieu de supprimer des écritures',()=>{
+ const cases=[
+  {version:1,accounts:[{clubId:'club',openingBalance:100,entries:[{id:'bad',category:'invalid',amount:5,direction:'income'}]}]},
+  {version:1,accounts:[{clubId:'club',openingBalance:100,entries:[
+   {id:'same',category:'other',amount:5,direction:'income'},
+   {id:'same',category:'other',amount:7,direction:'income'}
+  ]}]},
+  {version:1,accounts:[{clubId:'club',openingBalance:100,entries:[],sponsors:[{id:'bad'}]}]},
+  {version:1,accounts:[{clubId:'club',openingBalance:100,entries:[]},{clubId:'club',openingBalance:200,entries:[]}]}
+ ];
+ for(const value of cases) {
+  const storage={getItem:()=>JSON.stringify(value),setItem:()=>{}};
+  assert.throws(()=>new ClubFinanceStore(storage,'corrupt-finance'),{message:'FINANCE_STORAGE_CORRUPT'});
+ }
+ const malformed={getItem:()=>'{broken',setItem:()=>{}};
+ assert.throws(()=>new ClubFinanceStore(malformed,'corrupt-json'),{message:'FINANCE_STORAGE_CORRUPT'});
+});
