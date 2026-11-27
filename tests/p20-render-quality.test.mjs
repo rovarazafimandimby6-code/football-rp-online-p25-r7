@@ -29,9 +29,10 @@ test('P20 : les niveaux manuels restent bornés et le profil matériel reste pru
   assert.equal(chooseRenderProfile({ hardwareConcurrency: 2, deviceMemory: 1 }).tier, 'low');
 });
 
-test('P20 : les filets ne recalculent plus leurs normales hors impulsion de but', () => {
+test('P20 : les filets animés utilisent un buffer dynamique sans recalcul de normales', () => {
   assert.match(fieldSource, /if \(this\.goalPulse > 0\.001\)/);
-  assert.match(fieldSource, /computeVertexNormals\(\)/);
+  assert.match(fieldSource, /backNetGeo\.attributes\.position\.setUsage\(THREE\.DynamicDrawUsage\)/);
+  assert.doesNotMatch(fieldSource, /computeVertexNormals\(\)/);
   assert.match(fieldSource, /else if \(this\.netAnimating\)/);
   assert.match(fieldSource, /attr\.array\.set\(panel\.base\)/);
 });
