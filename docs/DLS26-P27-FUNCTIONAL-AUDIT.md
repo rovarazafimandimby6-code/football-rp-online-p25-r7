@@ -461,3 +461,8 @@ Les tris numériques ignorent désormais les valeurs non numériques pour le cla
 ### Archives des résultats — robustesse des données
 
 La page d’archives normalise désormais les métadonnées de pagination, borne les offsets et n’active « Suivants » que si un offset suivant valide existe. Les entrées mal formées sont ignorées, les dates invalides sont présentées comme inconnues et une feuille de match sans identifiant de rencontre n’affiche plus de bouton inopérant. Un test de non-régression couvre ces garde-fous.
+
+
+### Effectifs de clubs — compteur de recherche en direct
+
+Les filtres de l'effectif affichent maintenant le nombre de joueurs visibles par rapport au total de l'effectif. Le compteur est annoncé comme statut accessible et se met à jour à chaque recherche ou changement de poste. L'état vide reste synchronisé avec le même résultat filtré. Aucun joueur ni aucune donnée d'effectif n'est modifié.
