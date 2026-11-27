@@ -285,7 +285,9 @@ export class ClubManager {
     if (!club || !manager) return { ok: false, reason: 'invalid-request' };
     if (club.control !== 'open' || club.humanAdmission === 'system-only' || club.managerId) return { ok: false, reason: 'club-not-available' };
     if ([...this.clubs.values()].some(other => other.managerId === manager)) return { ok: false, reason: 'manager-already-has-club' };
-    club.control = 'player'; club.managerId = manager; this.saveSeason();
+    const previousControl = club.control; const previousManagerId = club.managerId;
+    club.control = 'player'; club.managerId = manager;
+    if (!this.saveSeason()) { club.control = previousControl; club.managerId = previousManagerId; return { ok:false, reason:'roster-persistence-failed' }; }
     return { ok: true, club: this.getClub(club.id) };
   }
 
