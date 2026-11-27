@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
 import { getP27ClubKit, getP27ClubShopKit, getP27ClubShopAppearance } from '../src/p27-club-kit.js';
-import { getP27StadiumCapacity } from '../src/p27-shop-catalog.js';
+import { getP27StadiumCapacity, getShopItem } from '../src/p27-shop-catalog.js';
 import { renderClubCrest } from '../src/club-identity.js';
 import { listP27Players } from '../src/p27-player-library.js';
 import { renderSystemPlayerPortrait } from '../src/p27-system-player-portrait.js';
@@ -173,6 +173,10 @@ test('P27 stade : capacité d’accueil mesurable distincte de la capacité de l
  assert.equal(getP27StadiumCapacity(3),12500);
  assert.equal(getP27StadiumCapacity(4),15000);
  assert.equal(getP27StadiumCapacity(99),15000);
+ const levelThree=getShopItem('club-capacity-level-3');
+ assert.equal(levelThree.capacityIncrease,2500);
+ assert.equal(levelThree.capacityAfterUpgrade,12500);
+ assert.equal(levelThree.resellable,false);
  assert.equal(getP27StadiumCapacity(-1),5000);
  const appearance=getP27ClubShopAppearance(customClub('capacity-club',['#123456','#102030','#eeeeee'],'vertical'),[
   {itemId:'club-capacity-level-1',category:'capacity',upgradeLevel:1,status:'owned',equipped:false},
