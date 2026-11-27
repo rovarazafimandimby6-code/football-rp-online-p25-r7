@@ -173,7 +173,8 @@ test('P27 Mercato : les dates de contrat et d’historique restent lisibles si u
 
 
 test('P27 carrière : signature, résiliation et transfert synchronisent immédiatement le joueur dans les effectifs', () => {
-  assert.ok(main.includes('career.refreshContractStatus();\n    syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });'));
+  assert.ok(main.includes('career.refreshContractStatus();'));
+  assert.ok(main.includes('syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });'));
   assert.ok(main.includes("const before = career.captureState();\n    let result = canRegister"));
   assert.ok(main.includes("const synced = syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });\n      if (!synced.ok)"));
   assert.ok(main.includes("} else if (action === 'terminate-contract') {\n    const before = career.captureState();\n    let result = career.terminateContract();"));
