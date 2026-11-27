@@ -14,8 +14,8 @@ const squad = (team = 'blue') => ({
 
 test('P27 rotation V1 : feuille 5v5 avec 2 à 5 remplaçants', () => {
   assert.equal(validateMatchSheet(squad()).ok, true);
-  assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: [squad().substitutes[0]] }).code, 'invalid-substitutes-count');
-  assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: Array.from({ length: 6 }, (_, i) => ({ id: `b${i}` })) }).code, 'invalid-substitutes-count');
+  assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: squad().substitutes.slice(0,2) }).code, 'invalid-substitutes-count');
+  assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: Array.from({ length: 8 }, (_, i) => ({ id: `b${i}` })) }).code, 'invalid-substitutes-count');
   assert.equal(ROTATION_RULES_V1.playersOnPitchPerTeam, 5);
 });
 
