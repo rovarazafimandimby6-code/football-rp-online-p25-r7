@@ -158,3 +158,35 @@ test('P27 boutique : inventaire personnel persistant après redémarrage du serv
   assert.equal(restarted.inventory('player','player-other').length,0);
  }finally{f.cleanup();}
 });
+
+
+test('P27 boutique club : le changement de propriétaire conserve les biens et transfère les permissions',()=>{
+ const f=fixture();try{
+  let currentOwner='owner-one';
+  f.service.resolveClubOwner=id=>id==='club-one'?currentOwner:null;
+  const bought=f.service.purchase({shop:'club',itemId:'club-kit-home',actorId:'owner-one',clubId:'club-one',purchaseId:'owner-transfer-buy'});
+  assert.equal(bought.ok,true);
+  const originalInventory=f.service.inventory('club','club-one');
+  currentOwner='owner-two';
+  assert.equal(f.service.purchase({shop:'club',itemId:'club-kit-away',actorId:'owner-one',clubId:'club-one',purchaseId:'former-owner-buy'}).reason,'club-owner-required');
+  assert.equal(f.service.resale({shop:'club',actorId:'owner-one',clubId:'club-one',itemId:'club-kit-home',resaleId:'former-owner-sale'}).reason,'club-owner-required');
+  const newOwnerInventory=f.service.inventory('club','club-one');
+  assert.deepEqual(newOwnerInventory,originalInventory);
+  assert.equal(f.service.purchase({shop:'club',itemId:'club-kit-away',actorId:'owner-two',clubId:'club-one',purchaseId:'new-owner-buy'}).ok,true);
+  assert.equal(f.service.inventory('club','club-one').length,2);
+ }finally{f.cleanup();}
+});
+
+test('P27 boutique : refuse une revente dont l’identifiant est réutilisé pour un autre article',()=>{
+ const f=fixture();try{
+  fund(f.progressionStore,'player-resale-id');
+  f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-resale-id',purchaseId:'resale-id-buy-1'});
+  f.service.purchase({shop:'player',itemId:'accessory-standard',actorId:'player-resale-id',purchaseId:'resale-id-buy-2'});
+  const first=f.service.resale({shop:'player',actorId:'player-resale-id',itemId:'boots-standard',resaleId:'same-resale-id'});
+  assert.equal(first.ok,true);
+  const conflict=f.service.resale({shop:'player',actorId:'player-resale-id',itemId:'accessory-standard',resaleId:'same-resale-id'});
+  assert.equal(conflict.ok,false);
+  assert.equal(conflict.reason,'resale-id-conflict');
+  assert.equal(f.service.inventory('player','player-resale-id').filter(item=>item.status==='resold').length,1);
+ }finally{f.cleanup();}
+});
