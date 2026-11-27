@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { generateClubRoster } from '../src/club-roster.js';
 import { applyDls26Reference, DLS26_ATTRIBUTE_KEYS, DLS26_GOALKEEPER_ATTRIBUTE_KEYS, DLS26_REFERENCE_PROFILES, DLS_REFERENCE_PROFILES, findDls26Reference } from '../src/p27-dls26-reference.js';
 import { DLS23_REFERENCE_PROFILES } from '../src/p27-dls23-reference.js';
+import { DLS19_ATTRIBUTE_KEYS, DLS19_REFERENCE_PROFILES, normalizeDls19Profile } from '../src/p27-dls19-reference.js';
 
 test('P27 DLS 26 : catalogue de références normal cards couvrant les quatre rôles', () => {
   assert.equal(DLS26_REFERENCE_PROFILES.length, 21);
@@ -104,4 +105,26 @@ test('P27 : DLS 26 reste prioritaire et DLS 23 sert de complément ciblé', () =
   assert.equal(adapted.reference.sourceGame, 'DLS23');
   assert.equal(adapted.reference.version, '10.20');
   assert.equal(adapted.reference.sourceRecordId, legacy.sourceRecordId);
+});
+
+
+test('P27 : adaptateur DLS 19 conserve les dix attributs historiques et le badge WF', () => {
+  assert.equal(DLS19_ATTRIBUTE_KEYS.length, 10);
+  assert.deepEqual(DLS19_REFERENCE_PROFILES, []);
+  const record = normalizeDls19Profile({
+    sourceRecordId: 'archived-test-001',
+    version: 'archived-19-card',
+    position: 'WF',
+    overall: 78,
+    heightCm: 177,
+    preferredFoot: 'left',
+    source: 'https://example.org/verified-dls19-card-record',
+    stats: { SPE:81, ACC:82, STA:78, STR:65, CON:80, PAS:77, SHO:79, TAC:35, CRO:74, HEA:68 }
+  });
+  assert.equal(record.sourceGame, 'DLS19');
+  assert.equal(record.position, 'SS');
+  assert.equal(record.stats.CRO, 74);
+  assert.equal(record.stats.HEA, 68);
+  assert.equal(record.verification, 'archived-card-record');
+  assert.throws(() => normalizeDls19Profile({ ...record, stats: { ...record.stats, CRO: undefined } }), /CRO/);
 });
