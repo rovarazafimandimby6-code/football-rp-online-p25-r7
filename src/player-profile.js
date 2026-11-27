@@ -79,8 +79,10 @@ export class PlayerProfileStore {
     return this.profile;
   }
   save(profile = this.profile) {
-    this.profile = validateProfile(profile);
-    return writeJsonWithBackup(this.storage, this.key, this.profile, normalizeStoredProfile);
+    const nextProfile = validateProfile(profile);
+    if (!writeJsonWithBackup(this.storage, this.key, nextProfile, normalizeStoredProfile)) return false;
+    this.profile = nextProfile;
+    return true;
   }
   updateIdentity(changes = {}) {
     return this.save({ ...this.profile, identity: { ...this.profile.identity, ...changes } });
@@ -102,7 +104,7 @@ export class PlayerProfileStore {
     }
     if (p.progression.level >= 99) p.progression.experience = 0;
     if (id) { p.appliedMatchIds.push(id); p.appliedMatchIds = p.appliedMatchIds.slice(-2000); }
-    this.save(p);
+    if (!this.save(p)) return { ok:false, reason:'persistence-failed', progression:this.profile.progression };
     return { ok: true, duplicate: false, progression: this.profile.progression };
   }
   addExperience(amount) {
@@ -142,7 +144,7 @@ export class PlayerProfileStore {
       p.progression.trainingPoints += 2;
       p.progression.coins += 50;
     }
-    this.save(p);
+    if (!this.save(p)) return { ok:false, reason:'persistence-failed' };
     return { ok: true, attribute, value: this.profile.progression.attributes[attribute], spentCoins: cost, progression: this.profile.progression };
   }
   train(attribute, amount = 1) {
@@ -156,7 +158,7 @@ export class PlayerProfileStore {
     p.progression.trainingPoints -= points;
     p.progression.coins -= cost;
     p.progression.attributes[attribute] += points;
-    this.save(p);
+    if (!this.save(p)) return { ok:false, reason:'persistence-failed' };
     return { ok: true, attribute, value: this.profile.progression.attributes[attribute], spentCoins: cost };
   }
   reset() { this.profile = createDefaultProfile(); this.save(); return this.profile; }
