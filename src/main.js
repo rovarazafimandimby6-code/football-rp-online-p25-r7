@@ -857,6 +857,7 @@ ${renderGoogleProtectionCard({ compact: true })}
         <label><span>TRI</span><select id="library-sort"><option value="rating">Note générale</option><option value="potential">Potentiel</option><option value="age">Âge</option><option value="name">Nom A–Z</option></select></label>
         <label><span>NOTE MIN.</span><select id="library-min-rating"><option value="0">Toutes</option><option value="60">60+</option><option value="70">70+</option><option value="80">80+</option></select></label>
       </div>
+      <p id="library-empty-state" class="notice player-library-empty-state" role="status" hidden>Aucun joueur ne correspond à ces critères. Modifiez la recherche ou les filtres.</p>
       <div class="player-library-resultline"><span id="library-count">${rosterPlayers.length} joueurs</span><span>EFFECTIFS · LIBRES · PRÊTS</span></div>
       <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>{const origin=(player.playerType==='human'||player.isHuman===true||player.ownerType==='human'||player.source==='human'||player.createdBy==='user')?'human':'system';const attrs=player.attributes||{};const cardAttributes=[['RAP',attrs.pace],['ACC',attrs.acceleration],['END',attrs.stamina],['PUI',attrs.strength],['CON',attrs.control],['PAS',attrs.passing],['TIR',attrs.shooting],['TAC',attrs.defense]];return `<article class="player-library-card" role="button" tabindex="0" aria-label="Afficher la carte de ${escapeHTML(player.name)}" aria-expanded="false" data-player-profile="${index}" data-profile-origin="players" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId||'')}" data-club-name="${escapeHTML((player.clubName||'').toLocaleLowerCase('fr'))}" data-last-club="${escapeHTML((player.lastClubName||'').toLocaleLowerCase('fr'))}" data-status="${escapeHTML(player.status||'active')}" data-type="${escapeHTML(player.playerType||'system')}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
         ${origin==='system'?renderSystemPlayerPortrait(player,'card'):`<span class="player-card-portrait player-card-portrait-human" aria-hidden="true"><b>${escapeHTML(String(player.name||'').split(/\\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase())}</b><small>${escapeHTML(player.position||roleNames[player.role]||player.role||'')}</small></span>`}
@@ -1838,6 +1839,8 @@ const filterPlayerLibrary = () => {
   const start=playerLibraryPage*playerLibraryLimit;
   const visibleCards=new Set(matchedCards.slice(start,start+playerLibraryLimit));
   for(const card of cards){card.classList.toggle('hidden',!visibleCards.has(card));root.appendChild(card);}
+  const emptyState=document.getElementById('library-empty-state');
+  if(emptyState) emptyState.hidden=matchedCards.length>0;
   const count=document.getElementById('library-count');
   const shown=document.getElementById('library-visible-count');
   const label=document.getElementById('library-page-label');
