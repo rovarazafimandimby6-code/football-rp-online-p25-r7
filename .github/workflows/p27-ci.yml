@@ -23,6 +23,13 @@ jobs:
           node-version: 22
       - name: Run complete test suite
         run: npm test
+      - name: Build the web game and verify shop UI syntax
+        run: |
+          npm run build
+          node --check src/club-shop-ui.js
+          node --check src/player-shop-ui.js
+          node --check src/online-account-client.js
+          node --check server/index.js
       - name: Apply all D1 migrations to local SQLite emulator
         run: npx --yes wrangler@4 d1 migrations apply p27-world --local --config wrangler.toml
       - name: Check Cloudflare Worker syntax
