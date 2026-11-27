@@ -135,3 +135,10 @@ test('P27 catalogue clubs : une recherche sans résultat affiche un état vide e
   assert.ok(main.includes("if(emptyState) emptyState.hidden=matchedTotal>0"));
   assert.ok(main.includes('Aucun club ne correspond à ces critères.'));
 });
+
+
+test('P27 bibliothèque joueurs : une recherche sans résultat affiche un état vide explicite', () => {
+  assert.ok(main.includes('id="library-empty-state"'));
+  assert.ok(main.includes('if(emptyState) emptyState.hidden=matchedCards.length>0'));
+  assert.ok(main.includes('Aucun joueur ne correspond à ces critères.'));
+});
