@@ -17,7 +17,7 @@ export function validateMatchSheet({ starters = [], substitutes = [] } = {}) {
   if (!Array.isArray(substitutes)
     || substitutes.length < ROTATION_RULES_V1.minimumSubstitutesPerTeam
     || substitutes.length > ROTATION_RULES_V1.maximumSubstitutesPerTeam) {
-    return fail('invalid-substitutes-count', 'La feuille de match doit contenir entre 2 et 5 remplaçants.');
+    return fail('invalid-substitutes-count', 'La feuille de match doit contenir entre 3 et 7 remplaçants.');
   }
   const all = [...starters, ...substitutes];
   const ids = all.map(player => player?.id);
