@@ -54,7 +54,7 @@ export function renderSystemPlayerPortrait(player, variant='card') {
   const cls=variant==='detail'?'player-career-avatar player-career-avatar-portrait':variant==='roster'?'roster-player-portrait':'player-card-portrait player-card-portrait-system';
   const number=Number.isInteger(Number(p.number)) && Number(p.number)>=1 && Number(p.number)<=99 ? Number(p.number) : null;
   const config=encodeURIComponent(JSON.stringify({id:p.id||'',role:p.role||'',position:p.position||'',number:number||0,appearance:p.appearance||{}}));
-  return `<span class="${cls}" aria-label="Portrait 3D du joueur ${label}${number ? `, numéro ${number}` : ''}"><img loading="lazy" decoding="async" data-p27-system-portrait data-p27-portrait-config="${config}" src="${systemPlayerPortraitDataUri(p)}" alt="Portrait du joueur ${label}"/><small>${role}${number ? ` · N° ${number}` : ''}</small></span>`;
+  return `<span class="${cls}" style="position:relative;display:inline-block" aria-label="Portrait 3D du joueur ${label}${number ? `, numéro ${number}` : ''}"><img loading="lazy" decoding="async" data-p27-system-portrait data-p27-portrait-config="${config}" src="${systemPlayerPortraitDataUri(p)}" alt="Portrait du joueur ${label}"/>${number ? `<b aria-hidden="true" style="position:absolute;left:50%;bottom:17%;transform:translateX(-50%);font:900 1.15em Arial,sans-serif;color:#fff;text-shadow:0 1px 3px #101820,0 0 5px #101820">${number}</b>` : ''}<small>${role}${number ? ` · N° ${number}` : ''} </small></span>`;
 }
 
 let portraitObserver = null;
