@@ -520,3 +520,8 @@ La limite de cinq offres en attente est maintenant appliquée dans CareerManager
 - **Mercato : 100 % du parcours local** — génération limitée d'offres, négociation, refus, expiration, acceptation, budget, fenêtre, capacité/admission du club, annulation des autres offres et synchronisation du contrat dans l'effectif.
 
 Cette clôture concerne le fonctionnement du prototype sur la branche P27 et les parcours couverts par les tests automatisés. Les offres du Mercato restent explicitement simulées localement ; la négociation réseau entre clubs, la migration/déploiement du backend et la livraison APK restent hors de ce lot et ne sont pas déclarées terminées ici.
+
+
+### Gestion d'équipe — délai de retour calé sur l'horloge du match
+
+Le délai de dix minutes avant le retour d'un joueur remplacé est désormais calculé sur l'horloge virtuelle affichée (00' à 90'), et non sur le temps réel compressé de la partie. La conversion est commune au match local et aux salons en ligne : un match de 3 ou 5 minutes conserve ainsi la même règle sportive de dix minutes affichées. Des tests couvrent les deux durées et le contrôle serveur.
