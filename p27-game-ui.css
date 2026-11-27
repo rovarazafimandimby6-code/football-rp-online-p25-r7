@@ -2018,3 +2018,13 @@
 #main-menu .rp-club-governance-event small{color:#819bb2;font-size:7px}
 #main-menu .rp-club-governance-event p{margin:4px 0 0;color:#a9bfd2;font-size:8px}
 @media(orientation:portrait){#main-menu .rp-club-governance-list{grid-template-columns:1fr}}
+
+/* P27 system-player portrait cards: deterministic, offline SVG portraits. */
+#main-menu #menu-content .player-card-portrait-system{position:relative;display:block;flex:0 0 54px;width:54px;height:66px;overflow:hidden;border-radius:7px;background:#17283d;border:1px solid #7695b5}
+#main-menu #menu-content .player-card-portrait-system img{display:block;width:100%;height:100%;object-fit:cover}
+#main-menu #menu-content .player-card-portrait-system small{position:absolute;right:3px;bottom:3px;padding:1px 3px;border-radius:3px;background:#07111ddd;color:#fff;font-size:7px;font-weight:900}
+#main-menu #menu-content .player-career-avatar-portrait{position:relative;display:block;width:clamp(112px,18vw,170px);height:clamp(132px,22vw,198px);overflow:hidden;border-radius:12px;background:#17283d;border:1px solid #7695b5;flex:0 0 auto}
+#main-menu #menu-content .player-career-avatar-portrait img{width:100%;height:100%;display:block;object-fit:cover}
+#main-menu #menu-content .player-career-avatar-portrait small{position:absolute;right:6px;bottom:6px;padding:3px 6px;border-radius:4px;background:#07111ddd;color:#fff;font-size:9px;font-weight:900}
+#main-menu #menu-content .player-card-portrait-human{display:flex}
+@media(max-width:520px){#main-menu #menu-content .player-card-portrait-system{flex-basis:44px;width:44px;height:56px}}
