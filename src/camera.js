@@ -23,6 +23,7 @@ export class BroadcastCamera {
     this.desiredLookTarget = new THREE.Vector3();
     this.zoom = 55; // P27 : zoom partagé entre les vues TV et personnelle
     this.transition = null;
+    this.transitionLookTarget = new THREE.Vector3();
   }
 
   setZoom(value) {
@@ -110,8 +111,8 @@ export class BroadcastCamera {
     const linear = this.transition.elapsed / this.transition.duration;
     const blend = linear * linear * (3 - 2 * linear);
     this.camera.position.lerpVectors(this.transition.fromPosition, this.camPos, blend);
-    const blendedTarget = new THREE.Vector3().lerpVectors(this.transition.fromTarget, this.lookTarget, blend);
-    this.camera.lookAt(blendedTarget);
+    this.transitionLookTarget.lerpVectors(this.transition.fromTarget, this.lookTarget, blend);
+    this.camera.lookAt(this.transitionLookTarget);
     if (linear >= 1) this.transition = null;
   }
 
