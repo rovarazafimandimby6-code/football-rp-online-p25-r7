@@ -93,6 +93,13 @@ export class D1PlayerShopRepository {
       const result = await this.db.batch(statements);
       if (Number(result?.[0]?.meta?.changes) !== 1) return { ok:false, reason:"INSUFFICIENT_COINS" };
     } catch (error) {
+      const committed = await this.db.prepare(
+        "SELECT item_id AS itemId FROM p27_player_shop_purchases WHERE account_id = ? AND purchase_id = ?"
+      ).bind(accountId,id).first();
+      if (committed) {
+        if (committed.itemId === item.id) return { ok:true, duplicate:true, inventory:await this.inventory(accountId) };
+        return { ok:false, reason:"purchase-id-conflict" };
+      }
       const latest = await this.db.prepare(
         "SELECT 1 AS owned FROM p27_player_shop_inventory WHERE account_id = ? AND item_id = ? AND status = 'owned'"
       ).bind(accountId,item.id).first();
@@ -140,7 +147,15 @@ export class D1PlayerShopRepository {
       ).bind(accountId,id,owned.purchaseId,item.id,amount,owned.currency,now),
     ];
     const result = await this.db.batch(statements);
-    if (Number(result?.[0]?.meta?.changes) !== 1) return { ok:false, reason:"item-not-owned" };
+    if (Number(result?.[0]?.meta?.changes) !== 1) {
+      const committed = await this.db.prepare(
+        "SELECT item_id AS itemId FROM p27_player_shop_resales WHERE account_id = ? AND resale_id = ?"
+      ).bind(accountId,id).first();
+      if (committed) return committed.itemId === item.id
+        ? { ok:true, duplicate:true, inventory:await this.inventory(accountId) }
+        : { ok:false, reason:"resale-id-conflict" };
+      return { ok:false, reason:"item-not-owned" };
+    }
     return { ok:true, duplicate:false, amount, currency:item.currency, inventory:await this.inventory(accountId) };
   }
 
@@ -154,7 +169,7 @@ export class D1PlayerShopRepository {
     ).bind(accountId,item.id).first();
     if (!owned) return { ok:false, reason:"item-not-owned" };
     if (equipped && item.equipSlot) {
-      await this.db.batch([
+      const result = await this.db.batch([
         this.db.prepare(
           "UPDATE p27_player_shop_inventory SET equipped=0 WHERE account_id=? AND equip_slot=? AND status='owned'"
         ).bind(accountId,item.equipSlot),
@@ -162,6 +177,7 @@ export class D1PlayerShopRepository {
           "UPDATE p27_player_shop_inventory SET equipped=1 WHERE account_id=? AND purchase_id=? AND status='owned'"
         ).bind(accountId,owned.purchase_id),
       ]);
+      if (Number(result?.[1]?.meta?.changes) !== 1) return { ok:false, reason:"item-not-owned" };
     } else {
       await this.db.prepare(
         "UPDATE p27_player_shop_inventory SET equipped=? WHERE account_id=? AND purchase_id=? AND status='owned'"
