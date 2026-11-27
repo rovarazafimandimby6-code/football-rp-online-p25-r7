@@ -133,6 +133,7 @@ export function getSpacedSupportTarget(player, target, teammates, minDistance = 
     if (!mate || mate === player || mate.team !== player.team || !mate.pos) continue;
     let dx = x - mate.pos.x;
     let dz = z - mate.pos.z;
+    let distance = Math.hypot(dx, dz);
     const overlap = minDistance - distance;
     if (overlap <= 0) continue;
     if (distance < 0.001) {
