@@ -90,3 +90,20 @@ Exécution : https://github.com/rovarazafimandimby6-code/football-rp-online-p25-
 - La validation automatisée ne garantit pas encore la qualité perçue des visuels ni les performances sur le ZTE Blade A33+.
 
 La PR #7 reste ouverte en brouillon. Aucun merge n'a été effectué.
+
+
+### 6. Compte, synchronisation et backend Cloudflare — migration incomplète
+
+Contrôles satisfaisants côté client :
+- sessions Bearer et reprise de session par cookie ;
+- file locale persistante avec identifiants d'opération et accusés de réception serveur ;
+- refus de synchroniser lorsque l'identité locale ne correspond pas au compte connecté ;
+- écritures D1 du profil avec contrôle de révision pour éviter les mises à jour concurrentes ;
+- aperçu et confirmation explicite avant restauration d'un snapshot de compte.
+
+Blocage relevé :
+- le Worker Cloudflare n'expose qu'une partie des routes présentes dans le serveur Node P27 ;
+- plusieurs parcours complets ne sont pas encore migrés, notamment l'inscription/connexion classique, les salons, les compétitions, les contrats/transferts, les résultats et les Clubs RP ;
+- les routes non migrées aboutissent à la réponse `501 CLOUDFLARE_API_NOT_MIGRATED`.
+
+Conséquence : le serveur Node et les tests locaux ne prouvent pas que l'ensemble du jeu peut fonctionner derrière le Worker Cloudflare. Le déploiement distant doit rester bloqué jusqu'à migration et tests d'intégration de toutes les routes nécessaires. Aucun déploiement n'a été tenté dans cet audit.
