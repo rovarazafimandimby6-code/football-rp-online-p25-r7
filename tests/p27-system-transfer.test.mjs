@@ -484,3 +484,17 @@ test('P27 carrière humaine : un transfert non sauvegardé restaure les deux eff
  assert.equal(manager.getClub('club-a').releasedPlayers.some(entry=>entry.player.id===playerId),false);
  assert.equal(storage.value,saved);
 });
+
+test('P27 clubs : une prise de contrôle non sauvegardée restaure le club ouvert',()=>{
+ let failWrites=false;
+ const storage={value:null,getItem(){return this.value;},setItem(key,value){if(failWrites)throw new Error('DISK_FULL');this.value=value;}};
+ const manager=new ClubManager(clubs,storage,'club-takeover-rollback');
+ const before=storage.value;
+ failWrites=true;
+ const result=manager.takeOver('club-a','manager-rollback-p27');
+ assert.deepEqual(result,{ok:false,reason:'roster-persistence-failed'});
+ const club=manager.getClub('club-a');
+ assert.equal(club.control,'open');
+ assert.equal(club.managerId,null);
+ assert.equal(storage.value,before);
+});
