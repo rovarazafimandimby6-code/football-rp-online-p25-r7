@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
-import { getP27ClubKit } from '../src/p27-club-kit.js';
+import { getP27ClubKit, getP27ClubShopKit } from '../src/p27-club-kit.js';
 import { listP27Players } from '../src/p27-player-library.js';
 import { renderSystemPlayerPortrait } from '../src/p27-system-player-portrait.js';
 
@@ -73,4 +73,45 @@ test('P27 portrait : le numéro de maillot apparaît aussi sous le portrait 3D',
   const html = renderSystemPlayerPortrait({ id:'p-10', name:'Test', role:'FWD', number:10 }, 'roster');
   assert.match(html, /N° 10/);
   assert.match(html, /numéro 10/);
+});
+
+test('P27 boutique club : le maillot domicile équipé conserve la palette officielle et le motif du club', () => {
+  const club = customClub('shop-kit-club',['#123456','#102030','#eeeeee'],'vertical');
+  const kit = getP27ClubShopKit(club,[
+    {itemId:'club-kit-home',status:'owned',equipped:true},
+    {itemId:'club-kit-away',status:'owned',equipped:false}
+  ],'home','MID');
+  assert.deepEqual(kit.kitColors,{primary:'#123456',secondary:'#102030',accent:'#eeeeee'});
+  assert.equal(kit.kitDesign,'vertical');
+  assert.equal(kit.kitVariant,'home');
+});
+
+test('P27 boutique club : les maillots extérieur, troisième et gardien changent réellement de tenue', () => {
+  const club = customClub('shop-kit-club',['#123456','#102030','#eeeeee'],'vertical');
+  const inventory = [
+    {itemId:'club-kit-away',status:'owned',equipped:true},
+    {itemId:'club-kit-third',status:'owned',equipped:true},
+    {itemId:'club-kit-goalkeeper',status:'owned',equipped:true}
+  ];
+  const away = getP27ClubShopKit(club,inventory,'away','MID');
+  assert.deepEqual(away.kitColors,{primary:'#eeeeee',secondary:'#123456',accent:'#102030'});
+  assert.equal(away.kitDesign,'diagonal');
+  assert.equal(away.kitVariant,'away');
+  const third = getP27ClubShopKit(club,inventory,'third','MID');
+  assert.deepEqual(third.kitColors,{primary:'#102030',secondary:'#eeeeee',accent:'#123456'});
+  assert.equal(third.kitDesign,'hoops');
+  assert.equal(third.kitVariant,'third');
+  const goalkeeper = getP27ClubShopKit(club,inventory,'home','GK');
+  assert.deepEqual(goalkeeper.kitColors,{primary:'#eeeeee',secondary:'#102030',accent:'#123456'});
+  assert.equal(goalkeeper.kitDesign,'central');
+  assert.equal(goalkeeper.kitVariant,'goalkeeper');
+});
+
+test('P27 boutique club : un article non équipé ou revendu ne modifie jamais le maillot', () => {
+  const club = customClub('shop-kit-club',['#123456','#102030','#eeeeee'],'vertical');
+  const expected = getP27ClubKit(club,'MID');
+  assert.deepEqual(getP27ClubShopKit(club,[
+    {itemId:'club-kit-away',status:'owned',equipped:false},
+    {itemId:'club-kit-third',status:'resold',equipped:true}
+  ],'away','MID'),expected);
 });
