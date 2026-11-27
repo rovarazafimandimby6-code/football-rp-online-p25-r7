@@ -295,6 +295,8 @@ function mountAvatarPreview(profile) {
 let selectedMatchup = { home: 'antananarivo-fc', away: 'toamasina-united' };
 let selectedFormation = '2-2';
 let selectedBenchSize = 5;
+let selectedHomeStarterIds = null;
+let selectedHomeStarterClubId = null;
 let selectedClubId = null;
 let playerLibraryLimit = 12;
 let playerLibraryPage = 0;
@@ -312,11 +314,15 @@ try {
   preferences.cameraMode = ['player','touchline','broadcast','close','tactical','spectator'].includes(saved.cameraMode) ? saved.cameraMode : 'player';
   preferences.cameraZoom = Number.isFinite(Number(saved.cameraZoom)) ? Math.max(0, Math.min(100, Number(saved.cameraZoom))) : 55;
   preferences.nameDisplay = 'standard';
+  preferences.homeStarterClubId = typeof saved.homeStarterClubId === 'string' ? saved.homeStarterClubId : null;
+  preferences.homeStarterIds = Array.isArray(saved.homeStarterIds) ? saved.homeStarterIds.filter(id => typeof id === 'string').slice(0,5) : null;
   preferences.formation = ['2-2','1-2-1','2-1-1'].includes(saved.formation) ? saved.formation : '2-2';
   preferences.benchSize = Number.isInteger(saved.benchSize) ? Math.max(3, Math.min(7, saved.benchSize)) : 5;
 } catch (_) {}
 selectedFormation = preferences.formation || '2-2';
 selectedBenchSize = preferences.benchSize || 5;
+selectedHomeStarterClubId = preferences.homeStarterClubId;
+selectedHomeStarterIds = preferences.homeStarterIds;
 
 const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58, colors: club.colors });
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -1218,6 +1224,7 @@ async function startMatch(online = null) {
       onlineJoinResult: online?.joinResult || null,
       preferredFoot: profileStore.profile.identity.preferredFoot,
       homeRoster: homeClub?.roster,
+      homeStarterIds: selectedHomeStarterIds,
       awayRoster: awayClub?.roster,
       homeKitColors: homeKitAppearance?.kitColors || null,
       awayKitColors: awayKitAppearance?.kitColors || null,
@@ -1708,13 +1715,27 @@ menu.addEventListener('click', event => {
     const formationSelect = `<label class="pre-match-formation">FORMATION DE L’ÉQUIPE <select id="pre-match-formation">${Object.entries(formationLabels).map(([value,label])=>`<option value="${value}" ${selectedFormation===value?'selected':''}>${label}</option>`).join('')}</select></label>`;
     const benchSizeSelect = `<label class="pre-match-formation">REMPLAÇANTS <select id="pre-match-bench-size">${[3,4,5,6,7].map(value=>`<option value="${value}" ${selectedBenchSize===value?'selected':''}>${value} remplaçants</option>`).join('')}</select></label>`;
     const isSystemPortraitEligible = player => (player?.playerType==='system'||player?.controlStatus==='system')&&player?.isHuman!==true&&player?.ownerType!=='human'&&player?.source!=='human'&&player?.createdBy!=='user';
-    const renderPlayers = (players) => players.map(player=>{
+    if (selectedHomeStarterClubId !== home.id || !Array.isArray(selectedHomeStarterIds) || selectedHomeStarterIds.length !== 5) {
+      const defaults = createMatchSquad('blue',selectedFormation,home.roster,'career-player',selectedBenchSize);
+      selectedHomeStarterIds = defaults.starters.map(player => player.id);
+      selectedHomeStarterClubId = home.id;
+      preferences.homeStarterClubId = home.id;
+      preferences.homeStarterIds = selectedHomeStarterIds;
+      try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
+    }
+    const renderPlayers = (players, team, group) => players.map(player=>{
       const hasPortrait = isSystemPortraitEligible(player);
-      return `<div class="pre-match-player${hasPortrait?' has-system-portrait':''}"><span class="pre-match-number">${player.number}</span>${hasPortrait?renderSystemPlayerPortrait(player,'roster'):''}<b>${escapeHTML(player.name)}</b><small>${roleLabels[player.role]||player.role}</small><strong>${player.rating}</strong></div>`;
+      const canMove = team === 'blue' && player.id !== 'career-player';
+      const control = canMove
+        ? group === 'starter'
+          ? '<button type="button" class="lineup-selection-control" data-squad-action="bench" data-player-id="'+escapeHTML(player.id)+'">SORTIR</button>'
+          : '<button type="button" class="lineup-selection-control" data-squad-action="start" data-player-id="'+escapeHTML(player.id)+'">TITULAIRE</button>'
+        : team === 'blue' && player.id === 'career-player' ? '<small class="career-player-lock">TITULAIRE FIXE</small>' : '';
+      return `<div class="pre-match-player${hasPortrait?' has-system-portrait':''}"><span class="pre-match-number">${player.number}</span>${hasPortrait?renderSystemPlayerPortrait(player,'roster'):''}<b>${escapeHTML(player.name)}</b><small>${roleLabels[player.role]||player.role}</small><strong>${player.rating}</strong>${control}</div>`;
     }).join('');
-    const renderLineup = (team, squad) => `<section class="pre-match-team ${team}"><div class="pre-match-team-heading"><span class="eyebrow">${team==='blue'?'ÉQUIPE DOMICILE':'ÉQUIPE EXTÉRIEURE'}</span><b>${team==='blue'?'BLEU':'ROUGE'} · ${squad.starters.length}/5</b></div><div class="pre-match-player-list">${renderPlayers(squad.starters)}</div><div class="pre-match-bench-heading"><span>REMPLAÇANTS</span><b>${squad.substitutes.length}</b></div><div class="pre-match-player-list pre-match-bench-list">${squad.substitutes.length ? renderPlayers(squad.substitutes) : '<p class="pre-match-no-bench">Aucun remplaçant enregistré</p>'}</div><small class="pre-match-squad-total">Effectif disponible : ${squad.squadSize} joueur(s)</small></section>`;
+    const renderLineup = (team, squad) => `<section class="pre-match-team ${team}"><div class="pre-match-team-heading"><span class="eyebrow">${team==='blue'?'ÉQUIPE DOMICILE':'ÉQUIPE EXTÉRIEURE'}</span><b>${team==='blue'?'BLEU':'ROUGE'} · ${squad.starters.length}/5</b></div>${team==='blue'?'<small class="lineup-manager-hint">Choisissez vos titulaires et remplaçants. Votre joueur carrière reste titulaire.</small>':''}<div class="pre-match-player-list">${renderPlayers(squad.starters,team,'starter')}</div><div class="pre-match-bench-heading"><span>REMPLAÇANTS</span><b>${squad.substitutes.length}</b></div><div class="pre-match-player-list pre-match-bench-list">${squad.substitutes.length ? renderPlayers(squad.substitutes,team,'bench') : '<p class="pre-match-no-bench">Aucun remplaçant enregistré</p>'}</div><small class="pre-match-squad-total">Effectif disponible : ${squad.squadSize} joueur(s)</small></section>`;
     const renderSquads = () => {
-      const homeSquad = createMatchSquad('blue',selectedFormation,home.roster,'career-player',selectedBenchSize);
+      const homeSquad = createMatchSquad('blue',selectedFormation,home.roster,'career-player',selectedBenchSize,selectedHomeStarterIds);
       const awaySquad = createMatchSquad('red',selectedFormation,away.roster,null,selectedBenchSize);
       const lineups = content.querySelector('.pre-match-lineups');
       if (lineups) lineups.innerHTML = `${renderLineup('blue',homeSquad)}${renderLineup('red',awaySquad)}`;
@@ -1737,6 +1758,26 @@ menu.addEventListener('click', event => {
       if (!Number.isInteger(size) || size < 3 || size > 7) return;
       selectedBenchSize = size;
       preferences.benchSize = size;
+      try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
+      renderSquads();
+    });
+    content.querySelector('.pre-match-lineups')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-squad-action]');
+      if (!button) return;
+      const id = button.dataset.playerId;
+      const squad = createMatchSquad('blue',selectedFormation,home.roster,'career-player',selectedBenchSize,selectedHomeStarterIds);
+      if (button.dataset.squadAction === 'start') {
+        if (!squad.substitutes.some(player => player.id === id)) return;
+        const outgoing = squad.starters.filter(player => player.id !== 'career-player')
+          .sort((a,b)=>(Number(a.rating)||0)-(Number(b.rating)||0))[0];
+        if (!outgoing) return;
+        selectedHomeStarterIds = selectedHomeStarterIds.map(playerId => playerId === outgoing.id ? id : playerId);
+      } else if (button.dataset.squadAction === 'bench') {
+        if (id === 'career-player' || !squad.starters.some(player => player.id === id) || !squad.substitutes.length) return;
+        selectedHomeStarterIds = selectedHomeStarterIds.map(playerId => playerId === id ? squad.substitutes[0].id : playerId);
+      } else return;
+      preferences.homeStarterClubId = home.id;
+      preferences.homeStarterIds = selectedHomeStarterIds;
       try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
       renderSquads();
     });
