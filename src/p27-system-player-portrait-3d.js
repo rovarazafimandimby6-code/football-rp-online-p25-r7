@@ -61,6 +61,64 @@ function attachHair(model, sourceScene, color) {
   });
 }
 function safeColor(value, fallback) { return /^#[0-9a-f]{6}$/i.test(String(value||'')) ? value : fallback; }
+const KIT_PATTERN_INDEX = Object.freeze({
+  vertical:0, sash:1, hoops:2, wave:3, pinstripes:4, quartered:5, chevron:6, sunburst:7,
+  horizontal:8, diagonal:9, central:10, split:11, shoulder:12, ripple:13, cross:14, sidepanels:15
+});
+function applyClubKitShader(material, appearance = {}) {
+  const colors = appearance.kitColors || {};
+  const primary = safeColor(colors.primary, '#2865a8');
+  const secondary = safeColor(colors.secondary, '#17365d');
+  const accent = safeColor(colors.accent, '#f4f6fb');
+  const design = KIT_PATTERN_INDEX[String(appearance.kitDesign || 'central')] ?? KIT_PATTERN_INDEX.central;
+  material.color?.set('#ffffff');
+  material.onBeforeCompile = shader => {
+    shader.uniforms.p27KitPrimary = { value:new THREE.Color(primary) };
+    shader.uniforms.p27KitSecondary = { value:new THREE.Color(secondary) };
+    shader.uniforms.p27KitAccent = { value:new THREE.Color(accent) };
+    shader.uniforms.p27KitDesign = { value:design };
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      '#include <common>\\nvarying vec3 p27LocalPosition;'
+    ).replace(
+      '#include <skinning_vertex>',
+      '#include <skinning_vertex>\\np27LocalPosition = transformed;'
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <common>',
+      '#include <common>\\nuniform vec3 p27KitPrimary;\\nuniform vec3 p27KitSecondary;\\nuniform vec3 p27KitAccent;\\nuniform float p27KitDesign;\\nvarying vec3 p27LocalPosition;'
+    ).replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+      float p27X = p27LocalPosition.x;
+      float p27Y = p27LocalPosition.y;
+      float p27Pattern = 0.0;
+      if (p27KitDesign < 0.5) p27Pattern = step(0.5, fract((p27X + 0.28) * 18.0));
+      else if (p27KitDesign < 1.5) p27Pattern = 1.0 - smoothstep(0.025, 0.055, abs(p27X - (p27Y - 1.05) * 0.68));
+      else if (p27KitDesign < 2.5) p27Pattern = step(0.5, fract(p27Y * 9.0));
+      else if (p27KitDesign < 3.5) p27Pattern = 1.0 - smoothstep(0.06, 0.15, abs(sin(p27Y * 23.0 + p27X * 9.0)));
+      else if (p27KitDesign < 4.5) p27Pattern = 1.0 - smoothstep(0.12, 0.24, fract(abs(p27X) * 44.0));
+      else if (p27KitDesign < 5.5) p27Pattern = step(0.0, p27X);
+      else if (p27KitDesign < 6.5) p27Pattern = 1.0 - smoothstep(0.035, 0.075, abs(abs(p27X) - (1.45 - p27Y) * 0.72));
+      else if (p27KitDesign < 7.5) p27Pattern = 1.0 - smoothstep(0.025, 0.06, abs(p27X - (p27Y - 0.9) * 0.22));
+      else if (p27KitDesign < 8.5) p27Pattern = step(0.5, fract(p27Y * 9.0));
+      else if (p27KitDesign < 9.5) p27Pattern = step(0.5, fract((p27X + p27Y) * 11.0));
+      else if (p27KitDesign < 10.5) p27Pattern = 1.0 - smoothstep(0.07, 0.12, abs(p27X));
+      else if (p27KitDesign < 11.5) p27Pattern = step(0.0, p27X);
+      else if (p27KitDesign < 12.5) p27Pattern = smoothstep(1.30, 1.38, p27Y);
+      else if (p27KitDesign < 13.5) p27Pattern = 1.0 - smoothstep(0.08, 0.17, abs(sin(p27Y * 22.0 + p27X * 7.0)));
+      else if (p27KitDesign < 14.5) p27Pattern = max(1.0 - smoothstep(0.07, 0.12, abs(p27X)), 1.0 - smoothstep(0.025, 0.055, abs(p27Y - 1.16)));
+      else p27Pattern = smoothstep(0.14, 0.20, abs(p27X));
+      float p27ShirtMask = (1.0 - smoothstep(0.24, 0.32, abs(p27X))) * smoothstep(0.82, 0.96, p27Y) * (1.0 - smoothstep(1.43, 1.53, p27Y));
+      vec3 p27PatternColor = mix(p27KitPrimary, p27KitSecondary, p27Pattern);
+      float p27AccentLine = 1.0 - smoothstep(0.012, 0.028, abs(fract((p27X + p27Y) * 18.0) - 0.5));
+      p27PatternColor = mix(p27PatternColor, p27KitAccent, p27AccentLine * 0.18);
+      diffuseColor.rgb = mix(diffuseColor.rgb, p27PatternColor, p27ShirtMask * 0.94);`
+    );
+  };
+  material.customProgramCacheKey = () => 'p27-club-kit-shader-v1';
+  material.needsUpdate = true;
+}
 function signature(player) {
   const a = player.appearance || {};
   return JSON.stringify([player.id, player.clubId, player.number, a.skinTone, a.bodyBuild, a.hairStyle, a.hairColor, a.faceShape, a.eyeShape, a.kitColors, a.kitDesign, a.kitVariant, a.facialHair]);
@@ -125,7 +183,7 @@ export async function renderSystemPlayerPortrait3D(player) {
         const mat = source.clone();
         const name = String(mat.name || '').toLowerCase();
         if (/hair/.test(name)) mat.color?.set(hairColorHex(player?.appearance?.hairColor));
-        if (/superhero|shirt|jersey|cloth/.test(name)) mat.color?.set(safeColor(player?.appearance?.kitColors?.primary, '#2865a8'));
+        if (/superhero|shirt|jersey|cloth/.test(name)) applyClubKitShader(mat, player?.appearance);
         return mat;
       };
       node.material = Array.isArray(node.material) ? node.material.map(recolor) : recolor(node.material);
