@@ -26,13 +26,34 @@ function renderArt(category, itemId) {
   return '<div class="p27-shop-item-art p27-club-shop-art '+variant+'"><span>'+glyph+'</span><small>'+escapeHtml(categories[category]||'CLUB')+'</small></div>';
 }
 export function mountClubShop(root, accountClient, onNavigate) {
-  const state = {clubs:[],clubId:'',catalog:[],inventory:[],balance:0,view:'catalog',category:'all',busy:false};
+  const state = {clubs:[],clubId:'',catalog:[],inventory:[],history:{purchases:[],resales:[]},balance:0,view:'catalog',category:'all',busy:false};
   const status = message => { const node=root.querySelector('#club-shop-status'); if(node) node.textContent=message; };
   const currentClub = () => state.clubs.find(club=>club.id===state.clubId) || null;
   const renderItems = () => {
     const host=root.querySelector('#club-shop-items');
     if(!host)return;
     const owned=new Map(state.inventory.filter(item=>item.status==='owned').map(item=>[item.itemId,item]));
+    if(state.view==='history'){
+      const transactions=[
+        ...state.history.purchases.map(entry=>({...entry,kind:'purchase',at:entry.completedAt||entry.createdAt,amount:entry.paidPrice})),
+        ...state.history.resales.map(entry=>({...entry,kind:'resale',at:entry.completedAt||entry.createdAt}))
+      ].sort((a,b)=>(Number(b.at)||0)-(Number(a.at)||0));
+      const itemNames=new Map(state.catalog.map(item=>[item.id,item.name]));
+      host.innerHTML=transactions.length?transactions.map(entry=>{
+        const completed=entry.status==='completed';
+        const amount=entry.kind==='purchase'?'-'+money(entry.amount):'+'+money(entry.amount);
+        const label=entry.kind==='purchase'?'ACHAT':'REVENTE';
+        const statusLabel=completed?'CONFIRMÉ':entry.status==='failed'?'REFUSÉ':'EN ATTENTE';
+        const date=Number.isFinite(Number(entry.at))?new Date(Number(entry.at)).toLocaleString('fr-FR'):'Date indisponible';
+        return '<article class="p27-shop-item p27-shop-history-entry">'+
+          '<div class="p27-shop-item-art p27-club-shop-art"><span>'+(entry.kind==='purchase'?'↘':'↗')+'</span><small>'+label+'</small></div>'+
+          '<div class="p27-shop-item-copy"><span class="p27-shop-category">'+statusLabel+'</span>'+
+          '<h3>'+escapeHtml(itemNames.get(entry.itemId)||entry.itemId)+'</h3><p>'+escapeHtml(date)+'</p>'+
+          '<small>Référence : '+escapeHtml(entry.id)+'</small></div>'+
+          '<div class="p27-shop-item-actions"><strong class="'+(entry.kind==='purchase'?'p27-shop-expense':'p27-shop-refund')+'">'+amount+' pièces</strong></div></article>';
+      }).join(''):'<div class="p27-shop-empty"><b>Aucune transaction</b><p>Les achats et reventes du club seront conservés ici.</p></div>';
+      return;
+    }
     if(state.view==='inventory'){
       const entries=state.inventory.filter(item=>item.status==='owned');
       host.innerHTML=entries.length?entries.map(entry=>{
@@ -65,6 +86,7 @@ export function mountClubShop(root, accountClient, onNavigate) {
   const loadSnapshot = async () => {
     const snapshot=await accountClient.getShopSnapshot('club',state.clubId);
     state.catalog=snapshot.catalog;state.inventory=snapshot.inventory;state.balance=snapshot.balance;
+    if(typeof accountClient.getShopHistory==='function') state.history=await accountClient.getShopHistory('club',state.clubId);
     root.querySelector('#club-shop-balance').textContent=money(state.balance);
     root.querySelector('#club-shop-count').textContent=state.catalog.length+' articles';
     renderItems();
@@ -103,7 +125,7 @@ export function mountClubShop(root, accountClient, onNavigate) {
     '<div class="p27-shop-wallet"><small>TRÉSORERIE DU CLUB</small><strong id="club-shop-balance">—</strong><span>Pièces club</span></div></div>'+
     '<div class="p27-shop-switch"><button class="text-cta" data-page="boutique">← BOUTIQUE PERSONNELLE</button><span>ACHATS RÉSERVÉS AU PROPRIÉTAIRE</span></div>'+
     '<div class="p27-shop-toolbar"><label class="p27-club-shop-select">CLUB <select id="club-shop-select" aria-label="Choisir un club"></select></label>'+
-    '<div class="p27-shop-views"><button class="active" data-shop-view="catalog">BOUTIQUE</button><button data-shop-view="inventory">INVENTAIRE</button></div><span id="club-shop-count">Chargement…</span></div>'+
+    '<div class="p27-shop-views"><button class="active" data-shop-view="catalog">BOUTIQUE</button><button data-shop-view="inventory">INVENTAIRE</button><button data-shop-view="history">HISTORIQUE</button></div><span id="club-shop-count">Chargement…</span></div>'+
     '<nav class="p27-shop-categories" aria-label="Catégories de la boutique du club"><button class="active" data-shop-category="all">TOUT</button>'+
     Object.entries(categories).map(([key,label])=>'<button data-shop-category="'+key+'">'+label+'</button>').join('')+'</nav>'+
     '<div id="club-shop-items" class="p27-shop-grid"><div class="p27-shop-empty">Chargement…</div></div>'+
@@ -123,7 +145,7 @@ export function mountClubShop(root, accountClient, onNavigate) {
     const page=event.target.closest('[data-page]');
     if(page){event.preventDefault();event.stopPropagation();onNavigate(page.dataset.page);return;}
     const view=event.target.closest('[data-shop-view]');
-    if(view){state.view=view.dataset.shopView;root.querySelectorAll('[data-shop-view]').forEach(node=>node.classList.toggle('active',node===view));root.querySelector('.p27-shop-categories').classList.toggle('is-hidden',state.view==='inventory');renderItems();return;}
+    if(view){state.view=view.dataset.shopView;root.querySelectorAll('[data-shop-view]').forEach(node=>node.classList.toggle('active',node===view));root.querySelector('.p27-shop-categories').classList.toggle('is-hidden',state.view!=='catalog');renderItems();return;}
     const category=event.target.closest('[data-shop-category]');
     if(category){state.category=category.dataset.shopCategory;root.querySelectorAll('[data-shop-category]').forEach(node=>node.classList.toggle('active',node===category));renderItems();return;}
     const button=event.target.closest('[data-shop-action]');
