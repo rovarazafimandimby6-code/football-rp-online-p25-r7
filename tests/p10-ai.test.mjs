@@ -88,6 +88,21 @@ test('P27: les appels offensifs choisissent un couloir moins occupé par les dé
   assert.ok(target.z <= 15 && target.z >= -15, 'la course doit rester dans les limites du terrain');
 });
 
+test('P27: après récupération, les appels offensifs attaquent plus vite la profondeur sans déplacer le joueur de couverture', () => {
+  const runner = player('runner-transition', 'blue', 0, -4, 'runner');
+  runner.homePos = { x: 0, z: -4 };
+  const cover = player('cover-transition', 'blue', -8, 5, 'cover');
+  cover.homePos = { x: -8, z: 5 };
+  const carrier = player('carrier-transition', 'blue', 2, 0, 'playmaker');
+  const players = [runner, cover, carrier];
+  const normalRun = getSupportTarget(runner, carrier, players, 1, [], false);
+  const fastBreakRun = getSupportTarget(runner, carrier, players, 1, [], true);
+  const normalCover = getSupportTarget(cover, carrier, players, 1, [], false);
+  const transitionCover = getSupportTarget(cover, carrier, players, 1, [], true);
+  assert.ok(fastBreakRun.x > normalRun.x + 2, 'le coureur doit attaquer plus tôt la profondeur');
+  assert.deepEqual(transitionCover, normalCover, 'le joueur de couverture conserve sa position de sécurité');
+});
+
 test('P27: le meneur se rend disponible derrière le porteur et le défenseur de couverture garde sa ligne', () => {
   const carrier = player('carrier', 'blue', 8, 2, 'runner');
   const playmaker = player('maker', 'blue', 2, 7, 'playmaker');
