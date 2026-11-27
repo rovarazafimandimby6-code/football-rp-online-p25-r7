@@ -2308,7 +2308,7 @@
 #main-menu #menu-content .player-library-card::after{content:"";position:absolute;inset:0 auto 0 0;width:2px;background:linear-gradient(180deg,rgba(117,184,238,.8),rgba(117,184,238,.08));pointer-events:none}
 #main-menu #menu-content .player-library-card:hover{border-color:rgba(139,199,248,.62);background:linear-gradient(115deg,rgba(43,88,129,.96),rgba(7,20,34,.99) 72%)}
 #main-menu #menu-content .player-card-portrait{position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 25%,rgba(151,197,235,.32),transparent 44%),linear-gradient(160deg,#315879,#0a1a2b 78%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.045)}
-#main-menu #menu-content .player-card-portrait::after{content:"";position:absolute;left:50%;bottom:-13px;width:28px;height:34px;transform:translateX(-50%);border-radius:48% 48% 10% 10%;background:linear-gradient(90deg,rgba(4,14,24,.92),rgba(77,111,143,.72),rgba(4,14,24,.92));opacity:.55;pointer-events:none}
+#main-menu #menu-content .player-card-portrait::after{content:none}
 #main-menu #menu-content .player-card-name-line .player-card-rating{border:1px solid rgba(242,211,125,.45);background:linear-gradient(145deg,#5c512f,#1b2430);color:#ffe7a0;font-variant-numeric:tabular-nums}
 #main-menu #menu-content .player-library-card.is-expanded{border-color:rgba(126,193,244,.78);box-shadow:0 0 0 1px rgba(102,171,228,.18),0 8px 18px rgba(0,0,0,.3)}
 #main-menu #menu-content .p27-market-shortcuts .panel-heading{margin-bottom:9px}
@@ -2322,3 +2322,11 @@
 #main-menu #menu-content .market-history .history-list>div{align-items:center}
 @media(max-width:760px) and (orientation:landscape){#main-menu #menu-content .player-library-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#main-menu #menu-content .player-library-card{min-height:60px}#main-menu #menu-content .p27-market-shortcuts{padding:9px}#main-menu #menu-content .career-summary>div{padding:9px}}
 @media(max-width:420px) and (orientation:portrait){#main-menu #menu-content .player-library-card{min-height:66px}#main-menu #menu-content .player-card-compact-copy>small{font-size:7px}}
+
+/* Mercato/catalogue separation: descriptive shortcuts remain compact and readable. */
+#main-menu #menu-content .p27-market-shortcuts-intro{margin:5px 0 0;color:#9fb5ca;font-size:9px;line-height:1.45;max-width:58ch}
+#main-menu #menu-content .p27-market-shortcut-actions button>span{display:grid;gap:4px;min-width:0}
+#main-menu #menu-content .p27-market-shortcut-actions button>span b{font-size:10px;letter-spacing:.04em}
+#main-menu #menu-content .p27-market-shortcut-actions button>span small{color:#c0d3e5;font-size:8px;font-weight:650;line-height:1.35;white-space:normal}
+#main-menu #menu-content .p27-market-shortcut-actions button>em{flex:0 0 auto;color:#b7dfff;font-size:18px;font-style:normal}
+@media(max-width:520px){#main-menu #menu-content .p27-market-shortcuts-intro{font-size:8px}#main-menu #menu-content .p27-market-shortcut-actions button>span small{font-size:7px}}
