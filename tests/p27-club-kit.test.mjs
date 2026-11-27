@@ -153,3 +153,13 @@ test('P27 boutique club : les articles non équipés ou revendus ne changent auc
     supporters:{flags:false,banners:false,tifo:false}
   });
 });
+
+
+test('P27 boutique club : les extensions achetées restent actives même sans emplacement équipable',()=>{
+  const club = customClub('shop-capacity-club',['#123456','#102030','#eeeeee'],'vertical');
+  const appearance = getP27ClubShopAppearance(club,[
+    {itemId:'club-capacity-level-1',category:'capacity',upgradeLevel:1,status:'owned',equipped:false},
+    {itemId:'club-capacity-level-2',category:'capacity',upgradeLevel:2,status:'owned',equipped:false}
+  ]);
+  assert.equal(appearance.stadiumExpansionLevel,2);
+});
