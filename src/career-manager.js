@@ -141,6 +141,7 @@ export class CareerManager {
       const expiry = timestamp(offer.expiresAt);
       if (expiry !== null && expiry <= now) {
         offer.status = 'expired';
+        this.history.push({ type:'offer-expired', offerId:offer.id, clubId:offer.fromClubId, date:new Date(now).toISOString() });
         updated++;
       }
     }
@@ -272,6 +273,7 @@ export class CareerManager {
       status: 'pending'
     };
     this.offers.set(offerId, offer);
+    this.history.push({ type:'offer-received', offerId, clubId:from, salary:offer.salary, fee:offer.fee, date:new Date(now).toISOString(), expiresAt:offer.expiresAt });
     if (!this.saveState()) {
       this.restoreState(before);
       return { ok:false, reason:'persistence-failed' };
@@ -298,6 +300,7 @@ export class CareerManager {
     const before = this.captureState();
     if (salary !== undefined) offer.salary = nonNegativeInt(salary);
     if (fee !== undefined) offer.fee = nonNegativeInt(fee);
+    this.history.push({ type:'offer-negotiated', offerId:offer.id, clubId:offer.fromClubId, salary:offer.salary, fee:offer.fee, date:new Date(now).toISOString() });
     if (!this.saveState()) {
       this.restoreState(before);
       return { ok:false, reason:'persistence-failed' };
@@ -350,11 +353,13 @@ export class CareerManager {
     return { ok: true, clubId: this.clubId, wallet: this.wallet, contract: { ...this.contract } };
   }
 
-  rejectOffer(offerId) {
+  rejectOffer(offerId, at = Date.now()) {
     const offer = this.offers.get(idOf(offerId));
-    if (!offer || offer.status !== 'pending') return false;
+    const now = timestamp(at);
+    if (!offer || offer.status !== 'pending' || now === null) return false;
     const before = this.captureState();
     offer.status = 'rejected';
+    this.history.push({ type:'offer-rejected', offerId:offer.id, clubId:offer.fromClubId, date:new Date(now).toISOString() });
     if (!this.saveState()) {
       this.restoreState(before);
       return false;
