@@ -282,6 +282,7 @@ test('P27 boutique club : le snapshot public ne divulgue que les cosmétiques é
   const snapshot=f.service.publicAppearance('club-one');
   assert.deepEqual(snapshot.equippedItemIds.sort(),['club-crest-custom','club-supporter-flags'].sort());
   assert.equal(snapshot.stadiumExpansionLevel,2);
+  assert.equal(snapshot.stadiumCapacity,10000);
   assert.equal(Object.hasOwn(snapshot,'balance'),false);
   assert.equal(JSON.stringify(snapshot).includes('paidPrice'),false);
   assert.deepEqual(f.service.publicAppearance('unknown-club'),{equippedItemIds:[],stadiumExpansionLevel:0});
@@ -299,5 +300,28 @@ test('P27 boutique : refuse les périmètres de boutique inconnus sans exposer l
   assert.equal(f.service.setEquipped({shop:'unknown',actorId:'owner-one',clubId:'club-one',itemId:'club-kit-home'}).reason,'invalid-shop');
   assert.deepEqual(f.service.getHistory({shop:'unknown',ownerId:'club-one'}),{purchases:[],resales:[]});
   assert.equal(f.service.inventory('club','club-one').length,1);
+ }finally{f.cleanup();}
+});
+
+
+test('P27 boutique club : le nouvel propriétaire conserve les biens et devient seul autorisé',()=>{
+ const f=fixture();try{
+  const bought=f.service.purchase({shop:'club',itemId:'club-kit-home',actorId:'owner-one',clubId:'club-one',purchaseId:'owner-transfer-kit'});
+  assert.equal(bought.ok,true);
+  assert.equal(f.service.setEquipped({shop:'club',actorId:'owner-one',clubId:'club-one',itemId:'club-kit-home',equipped:true}).ok,true);
+  const beforeTransfer=f.clubFinanceService.store.balance('club-one');
+  f.ownerByClub['club-one']='owner-two';
+  assert.equal(f.service.purchase({shop:'club',itemId:'club-kit-away',actorId:'owner-one',clubId:'club-one',purchaseId:'former-owner-buy'}).reason,'club-owner-required');
+  assert.equal(f.service.setEquipped({shop:'club',actorId:'owner-one',clubId:'club-one',itemId:'club-kit-home',equipped:false}).reason,'club-owner-required');
+  assert.equal(f.service.resale({shop:'club',actorId:'owner-one',clubId:'club-one',itemId:'club-kit-home',resaleId:'former-owner-sale'}).reason,'club-owner-required');
+  assert.equal(f.service.inventory('club','club-one')[0].equipped,true);
+  const newPurchase=f.service.purchase({shop:'club',itemId:'club-kit-away',actorId:'owner-two',clubId:'club-one',purchaseId:'new-owner-buy'});
+  assert.equal(newPurchase.ok,true);
+  assert.equal(f.clubFinanceService.store.balance('club-one'),beforeTransfer-6000);
+  assert.equal(f.service.setEquipped({shop:'club',actorId:'owner-two',clubId:'club-one',itemId:'club-kit-home',equipped:false}).ok,true);
+  const resale=f.service.resale({shop:'club',actorId:'owner-two',clubId:'club-one',itemId:'club-kit-home',resaleId:'new-owner-sale'});
+  assert.equal(resale.ok,true);
+  assert.equal(resale.resale.amount,4000);
+  assert.equal(f.service.inventory('club','club-one').find(item=>item.itemId==='club-kit-home').status,'resold');
  }finally{f.cleanup();}
 });
