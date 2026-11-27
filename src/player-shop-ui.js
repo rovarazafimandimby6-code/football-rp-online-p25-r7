@@ -31,7 +31,7 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
         const [label,icon]=categories[category]||['ARTICLE','✦'];
         return `<article class="p27-shop-item p27-shop-owned">
           <div class="p27-shop-item-art"><span>${icon}</span><small>${rarities[entry.rarity]||'STANDARD'}</small></div>
-          <div class="p27-shop-item-copy"><span class="p27-shop-category">${label}</span><h3>${escapeHtml(item?.name||entry.itemId)}</h3><p>Acheté : ${money(entry.paidPrice)} pièces</p><small>${entry.equipped?'ÉQUIPÉ':'DANS L’INVENTAIRE'}</small></div>
+          <div class="p27-shop-item-copy"><span class="p27-shop-category">${label}</span><h3>${escapeHtml(item?.name||entry.itemId)}</h3><p>Acheté : ${money(entry.paidPrice)} pièces</p>${entry.resellable?'<small class="p27-shop-refund">Revente estimée : '+money(Math.floor(Number(entry.paidPrice||0)*Number(entry.resaleRate||0)))+' pièces</small>':''}<small>${entry.equipped?'ÉQUIPÉ':'DANS L’INVENTAIRE'}</small></div>
           <div class="p27-shop-item-actions"><button class="small-action" data-shop-action="equip" data-item="${escapeHtml(entry.itemId)}" data-equipped="${entry.equipped?'false':'true'}">${entry.equipped?'RETIRER':'ÉQUIPER'}</button><button class="text-cta" data-shop-action="resale" data-item="${escapeHtml(entry.itemId)}" ${entry.resellable&&!entry.equipped?'':'disabled'}>REVENDRE</button></div>
         </article>`;
       }).join(''):'<div class="p27-shop-empty"><b>Votre inventaire est vide</b><p>Vos achats apparaîtront ici.</p></div>';
@@ -95,7 +95,7 @@ export function mountPlayerShop(root, accountClient, onNavigate) {
     if(action==='refresh'){await refresh();return;}
     const item=state.catalog.find(value=>value.id===itemId);
     if(action==='purchase'&&(!item||!window.confirm('Acheter « '+item.name+' » pour '+money(item.price)+' pièces ?')))return;
-    if(action==='resale'&&!window.confirm('Revendre cet article au jeu ? Le remboursement sera calculé sur le prix réellement payé.'))return;
+    if(action==='resale'){const owned=state.inventory.find(entry=>entry.itemId===itemId&&entry.status==='owned');const estimate=owned?Math.floor(Number(owned.paidPrice||0)*Number(owned.resaleRate||0)):0;if(!owned||!owned.resellable||estimate<1||!window.confirm('Revendre cet article au jeu pour '+money(estimate)+' pièces ?\nLe montant définitif est recalculé par le serveur sur le prix réellement payé.'))return;}
     state.busy=true;button.disabled=true;status('Transaction sécurisée en cours…');
     try{
       if(action==='purchase')await accountClient.purchasePlayerShopItem(itemId,'p27-buy-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12));
