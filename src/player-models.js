@@ -78,7 +78,7 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
     model.scale.setScalar(scale);
     model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
 
-    const hairStyle = ({ shaved: 'buzzed', fade: 'buzzed', short: 'short', curly: 'short', long: 'long' })[appearance?.hairStyle] || 'short';
+    const hairStyle = ({ shaved: 'buzzed', fade: 'buzzed', short: 'short', curly: 'short', long: 'long' })[appearance?.shopHairStyle] || ({ shaved: 'buzzed', fade: 'buzzed', short: 'short', curly: 'short', long: 'long' })[appearance?.hairStyle] || 'short';
     const hair = await loadHair(hairStyle).catch(() => null);
     attachHair(model, hair);
 
