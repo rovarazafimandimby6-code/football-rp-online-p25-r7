@@ -2129,3 +2129,38 @@
 .p27-shop-refund{display:block;color:#e4bd6b;font-weight:700;margin-top:5px;letter-spacing:.02em}
 
 #main-menu #menu-content .p27-shop-item-art>.p27-shop-art-svg{display:block;width:min(76px,82%);height:64px;filter:drop-shadow(0 4px 7px #0008)}
+
+/* Final DLS-inspired P27 hub: compact landscape header and three-column home. */
+#main-menu .p27-game-topbar{height:25px;min-height:25px;flex-basis:25px;gap:7px;padding:1px 9px}
+#main-menu .p27-back-home,#main-menu .p27-game-topbar .menu-settings-icon{width:21px;height:21px;min-width:21px;flex:0 0 21px;padding:0;border-radius:4px;font-size:15px;line-height:1}
+#main-menu .p27-top-section,#main-menu .p27-profile-shortcut{display:none!important}
+#main-menu .p27-career-progress{display:flex;align-items:center;gap:6px;min-width:70px;max-width:190px;flex:1;margin-left:3px}
+#main-menu .p27-career-progress>span{flex:0 0 auto;color:#d9e8f7;font-size:8px;font-weight:950;letter-spacing:.05em;white-space:nowrap}
+#main-menu .p27-career-progress>span b{color:#fff}
+#main-menu .p27-career-progress>div{height:3px;min-width:16px;flex:1;overflow:hidden;border-radius:4px;background:rgba(180,204,226,.2)}
+#main-menu .p27-career-progress i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#4da7e8,#b9dcf7)}
+#main-menu .p27-top-currency{display:flex;align-items:center;flex-direction:row;margin-left:auto;padding:0 4px 0 8px;border:0;line-height:1}
+#main-menu .p27-top-currency:before{content:"";width:8px;height:8px;margin-right:5px;border-radius:50%;background:linear-gradient(145deg,#ffe99a,#c58a28);box-shadow:0 0 5px rgba(255,207,95,.4)}
+#main-menu .p27-top-currency strong{font-size:10px;color:#f5d987;font-variant-numeric:tabular-nums}
+#main-menu .p27-dls-home{height:100%;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:7px}
+#main-menu .p27-hub-career{grid-column:span 2;grid-row:1}
+#main-menu .p27-hub-match{grid-column:3;grid-row:1}
+#main-menu .p27-hub-player{grid-column:1;grid-row:2;background:linear-gradient(145deg,#315c7e,#10283e 90%)}
+#main-menu .p27-hub-competitions{grid-column:2;grid-row:2}
+#main-menu .p27-hub-market{grid-column:3;grid-row:2}
+#main-menu .p27-hub-rankings{grid-column:1;grid-row:3;background:linear-gradient(145deg,#365a78,#13283b 90%)}
+#main-menu .p27-hub-club{grid-column:2;grid-row:3;background:linear-gradient(145deg,#36516b,#142537 90%)}
+#main-menu .p27-hub-results{grid-column:3;grid-row:3;background:linear-gradient(145deg,#31534e,#142622 90%)}
+#main-menu .p27-hub-panel strong{font-size:clamp(8px,1.65vh,13px)}
+#main-menu .p27-hub-panel small{font-size:clamp(6px,1.05vh,8px)}
+@media(max-width:760px) and (orientation:landscape){
+  #main-menu .p27-game-topbar{height:25px;min-height:25px;flex-basis:25px;padding:1px 7px}
+  #main-menu .p27-dls-home{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:5px}
+  #main-menu .p27-hub-career{padding:7px 9px}
+  #main-menu .p27-hub-career h2{font-size:clamp(13px,2.8vh,22px)}
+  #main-menu .p27-hub-xp{margin-top:7px}
+  #main-menu .p27-hub-career-copy>button{margin-top:7px;padding:5px 7px;font-size:7px}
+  #main-menu .p27-hub-rating{width:46px;height:46px;flex-basis:46px}
+  #main-menu .p27-hub-rating strong{font-size:19px}
+  #main-menu .p27-hub-panel{padding:5px 7px}
+}
