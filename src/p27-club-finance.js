@@ -35,20 +35,39 @@ export class ClubFinanceStore {
     this.storage=storage; this.storageKey=storageKey; this.accounts=new Map(); this.load();
   }
   load() {
-    try {
-      const raw=JSON.parse(this.storage?.getItem(this.storageKey)||'null');
-      if(!raw || raw.version!==1 || !Array.isArray(raw.accounts)) return false;
-      const restored=new Map();
-      for(const item of raw.accounts) {
-        const clubId=cleanId(item?.clubId), opening=money(item?.openingBalance), entries=Array.isArray(item?.entries)?item.entries.map(normalizeEntry).filter(Boolean):[];
-        if(!clubId || opening===null) continue;
-        const seen=new Set(); const unique=entries.filter(entry=>!seen.has(entry.id)&&seen.add(entry.id));
-        const sponsors=Array.isArray(item.sponsors)?item.sponsors.map(normalizeSponsor).filter(Boolean):[],
-          loans=Array.isArray(item.loans)?item.loans.map(normalizeLoan).filter(Boolean):[];
-        restored.set(clubId,{clubId,openingBalance:opening,entries:unique,sponsors,loans});
+    const stored=this.storage?.getItem(this.storageKey);
+    if(stored===null || stored===undefined || stored==='') return false;
+    let raw;
+    try { raw=JSON.parse(stored); }
+    catch { throw new Error('FINANCE_STORAGE_CORRUPT'); }
+    if(!raw || raw.version!==1 || !Array.isArray(raw.accounts)) throw new Error('FINANCE_STORAGE_CORRUPT');
+    const restored=new Map();
+    for(const item of raw.accounts) {
+      const clubId=cleanId(item?.clubId), opening=money(item?.openingBalance);
+      if(!clubId || opening===null || restored.has(clubId) || !Array.isArray(item.entries) ||
+          (item.sponsors!==undefined && !Array.isArray(item.sponsors)) ||
+          (item.loans!==undefined && !Array.isArray(item.loans))) throw new Error('FINANCE_STORAGE_CORRUPT');
+      const entries=item.entries.map(normalizeEntry);
+      const sponsors=(item.sponsors||[]).map(normalizeSponsor);
+      const loans=(item.loans||[]).map(normalizeLoan);
+      if(entries.some(entry=>!entry) || sponsors.some(contract=>!contract) || loans.some(loan=>!loan))
+        throw new Error('FINANCE_STORAGE_CORRUPT');
+      const entryIds=new Set(), sponsorIds=new Set(), loanIds=new Set();
+      for(const entry of entries) {
+        if(entryIds.has(entry.id)) throw new Error('FINANCE_STORAGE_CORRUPT');
+        entryIds.add(entry.id);
       }
-      this.accounts=restored; return true;
-    } catch(_) { return false; }
+      for(const sponsor of sponsors) {
+        if(sponsorIds.has(sponsor.id)) throw new Error('FINANCE_STORAGE_CORRUPT');
+        sponsorIds.add(sponsor.id);
+      }
+      for(const loan of loans) {
+        if(loanIds.has(loan.id)) throw new Error('FINANCE_STORAGE_CORRUPT');
+        loanIds.add(loan.id);
+      }
+      restored.set(clubId,{clubId,openingBalance:opening,entries,sponsors,loans});
+    }
+    this.accounts=restored; return true;
   }
   persist() {
     try {
