@@ -17,6 +17,7 @@ import { ProfileSyncCoordinator } from './profile-sync-coordinator.js';
 import { createAccountRecoveryAdapters, hasAccountRecoveryData } from './account-recovery-adapters.js';
 import { restoreAccountSnapshot } from './account-recovery.js';
 import { mountPlayerShop } from './player-shop-ui.js';
+import { mountClubShop } from './club-shop-ui.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
 
@@ -730,7 +731,7 @@ function renderPage(page = 'home') {
         <button class="p27-hub-panel p27-hub-competitions" data-page="competitions">
           <span class="p27-hub-kicker">SAISON</span><strong>COMPÉTITIONS</strong><small>${clubs.listDivisions().length} divisions</small><i>›</i>
         </button>
-        <button class="p27-hub-panel p27-hub-shop" data-page="boutique"><span class="p27-hub-kicker">PERSONNALISATION</span><strong>BOUTIQUE</strong><small>Articles et accessoires du joueur</small><i>›</i></button>
+        <button class="p27-hub-panel p27-hub-shop" data-page="boutique"><span class="p27-hub-kicker">PERSONNALISATION</span><strong>BOUTIQUE</strong><small>Boutique joueur & club</small><i>›</i></button>
         <button class="p27-hub-panel p27-hub-market" data-page="mercato">
           <span class="p27-hub-kicker">MARCHÉ</span><strong>MERCATO</strong><small>${pendingOffers} offre(s) en attente</small><i>›</i>
         </button>
@@ -743,6 +744,10 @@ function renderPage(page = 'home') {
     title.textContent = 'Boutique joueur'; subtitle.textContent = 'Articles personnels · pièces · inventaire';
     content.innerHTML = '<div id="p27-player-shop-mount"></div>';
     mountPlayerShop(document.getElementById('p27-player-shop-mount'), accountClient, renderPage);
+  } else if (page === 'boutique-club') {
+    title.textContent = 'Boutique du club'; subtitle.textContent = 'TRÉSORERIE · PERSONNALISATION · INVENTAIRE';
+    content.innerHTML = '<div id="p27-club-shop-mount"></div>';
+    mountClubShop(document.getElementById('p27-club-shop-mount'), accountClient, renderPage);
   } else if (page === 'player') {
     const p = profileStore.profile;
     const a = p.progression.attributes;
