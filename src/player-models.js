@@ -149,6 +149,11 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
     const bones = new Map();
     model.traverse((node) => { if (node.isBone && node.name) bones.set(node.name, node); });
     const restRotations = new Map([...bones].map(([name, bone]) => [name, bone.rotation.clone()]));
+    const restPoseEntries = [...bones].map(([name, bone]) => ({ bone, rest: restRotations.get(name) }));
+    const rotate = (name, x = 0, y = 0, z = 0) => {
+      const bone = bones.get(name);
+      if (bone) { bone.rotation.x += x; bone.rotation.y += y; bone.rotation.z += z; }
+    };
     const actions = new Map();
     for (const clip of animationSource.animations || []) actions.set(clip.name, mixer.clipAction(clip));
     const clipNames = [...actions.keys()];
@@ -198,18 +203,14 @@ export async function mountHumanoidPlayer({ root, fallbackBody, team, isGK, appe
           activeActionMode = null;
         }
         // Procedural fallback: restore the bind pose before layering this frame's gesture.
-        for (const [name, bone] of bones) {
-          const rest = restRotations.get(name);
-          if (rest) bone.rotation.copy(rest);
+        for (let i = 0; i < restPoseEntries.length; i++) {
+          const entry = restPoseEntries[i];
+          entry.bone.rotation.copy(entry.rest);
         }
         const progress = THREE.MathUtils.clamp(action.progress ?? 0.5, 0, 1);
         const pulse = Math.sin(progress * Math.PI);
         const side = action.preferredFoot === 'left' ? 'l' : 'r';
         const other = side === 'l' ? 'r' : 'l';
-        const rotate = (name, x = 0, y = 0, z = 0) => {
-          const bone = bones.get(name);
-          if (bone) { bone.rotation.x += x; bone.rotation.y += y; bone.rotation.z += z; }
-        };
         if (state === 'pass' || state === 'shoot') {
           const shooting = state === 'shoot';
           const power = shooting ? 1.0 : 0.62;
