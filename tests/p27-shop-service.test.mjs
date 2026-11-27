@@ -134,3 +134,27 @@ test('P27 boutique : empêche la revente d’un article actuellement équipé',(
   assert.equal(f.service.resale({shop:'player',actorId:'player-equipped',itemId:'boots-standard',resaleId:'equip-sale-2'}).ok,true);
  }finally{f.cleanup();}
 });
+
+test('P27 boutique club : revend les cosmétiques au club et bloque les biens équipés',()=>{
+ const f=fixture();try{
+  const before=f.clubFinanceService.store.balance('club-one');
+  assert.equal(f.service.purchase({shop:'club',itemId:'club-kit-home',actorId:'owner-one',clubId:'club-one',purchaseId:'club-kit-buy'}).ok,true);
+  assert.equal(f.service.setEquipped({shop:'club',itemId:'club-kit-home',actorId:'owner-one',clubId:'club-one'}).ok,true);
+  assert.equal(f.service.resale({shop:'club',itemId:'club-kit-home',actorId:'owner-one',clubId:'club-one',resaleId:'club-kit-sale'}).reason,'item-active');
+  f.service.setEquipped({shop:'club',itemId:'club-kit-home',actorId:'owner-one',clubId:'club-one',equipped:false});
+  const sold=f.service.resale({shop:'club',itemId:'club-kit-home',actorId:'owner-one',clubId:'club-one',resaleId:'club-kit-sale'});
+  assert.equal(sold.ok,true);
+  assert.equal(sold.resale.amount,4000);
+  assert.equal(f.clubFinanceService.store.balance('club-one'),before-4000);
+ }finally{f.cleanup();}
+});
+
+test('P27 boutique : inventaire personnel persistant après redémarrage du service',()=>{
+ const f=fixture();try{
+  fund(f.progressionStore,'player-restart');
+  f.service.purchase({shop:'player',itemId:'boots-standard',actorId:'player-restart',purchaseId:'restart-buy'});
+  const restarted=new JsonShopService(path.join(f.directory,'shop'),{progressionStore:f.progressionStore,clubFinanceService:f.clubFinanceService,resolveClubOwner:()=> 'owner-one'});
+  assert.equal(restarted.inventory('player','player-restart').length,1);
+  assert.equal(restarted.inventory('player','player-other').length,0);
+ }finally{f.cleanup();}
+});
