@@ -122,3 +122,9 @@ test("P27 effectif de club : clic et clavier ouvrent la fiche joueur", () => {
   assert.ok(main.includes("rosterRow && (event.key === 'Enter' || event.key === ' ')"));
   assert.ok(main.includes("renderPage('player-detail')"));
 });
+
+
+test("P27 fiche joueur : le libellé de retour correspond à la page d’origine", () => {
+  assert.ok(main.includes("playerProfileReturnPage === 'clubs' ? 'RETOUR À L’EFFECTIF' : 'RETOUR À LA BIBLIOTHÈQUE'"));
+  assert.ok(main.includes("renderPage(playerProfileReturnPage)"));
+});
