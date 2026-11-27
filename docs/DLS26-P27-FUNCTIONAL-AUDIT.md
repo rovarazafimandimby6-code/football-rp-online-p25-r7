@@ -476,3 +476,8 @@ Les dates affichées dans le contrat et le journal du Mercato vérifient mainten
 ### Carrière / effectifs — synchronisation immédiate des contrats
 
 Correction d'un défaut d'intégration entre le Mercato et les effectifs de championnat : la signature d'un premier contrat, l'acceptation d'un transfert et la résiliation mettaient à jour le CareerManager, mais ne déclenchaient pas systématiquement la synchronisation du joueur personnel dans les effectifs. Ces actions réconcilient désormais immédiatement l'effectif concerné. L'ouverture du Mercato rafraîchit également l'état d'expiration du contrat puis réconcilie l'effectif, afin qu'un contrat arrivé à échéance ne laisse pas le joueur inscrit dans son ancien club. La synchronisation est déclenchée uniquement après une mutation réussie pour les actions explicites. Test de non-régression ajouté.
+
+
+### Mercato — génération d'offres en liste courte
+
+La sollicitation d'offres locales ne génère plus une proposition pour presque chaque club du monde. Le système complète désormais une liste de cinq offres en attente au maximum, en privilégiant les clubs dont la note est la plus proche de celle du club actuel, puis en départageant par nom. Les offres déjà en attente ne sont pas dupliquées. Les règles d'acceptation restent inchangées : contrat actif, fenêtre officielle ouverte, budget suffisant et place disponible dans l'effectif cible. Les offres restent explicitement des simulations locales, pas des offres réseau. Test de non-régression ajouté.
