@@ -22,6 +22,7 @@ import { CareerSyncService } from './career-sync-service.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
 import { JsonProgressionStore } from './progression-store.js';
 import { JsonShopService } from './shop-service.js';
+import { getScheduledShopPromotion } from './shop-promotion-scheduler.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
@@ -78,7 +79,8 @@ const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs:[...ser
 const shopDirectory = process.env.SHOP_INVENTORY_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'shop');
 const shopService = new JsonShopService(shopDirectory, {
   progressionStore, clubFinanceService:clubFinance,
-  resolveClubOwner:clubId => serverClubManager.getClub(clubId)?.managerId || null
+  resolveClubOwner:clubId => serverClubManager.getClub(clubId)?.managerId || null,
+  promotionProvider:(shop,itemId) => getScheduledShopPromotion(shop,itemId,Date.now())
 });
 const systemTransferDirectory = process.env.SYSTEM_TRANSFERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'system-transfers');
 const systemTransfers = new P27SystemTransferService(systemTransferDirectory, { clubManager:serverClubManager, financeService:clubFinance });
