@@ -15,11 +15,11 @@ test('P27 : les bots complètent un vrai 5 contre 5 et lancent le match dès le 
   const first = manager.join(room.id, { displayName: 'Humain 1' });
   assert.equal(first.state.phase, 'playing');
   assert.deepEqual(first.state.counts, { blue: 5, red: 5 });
-  assert.equal(first.state.players.filter(p => p.isBot).length, 13);
+  assert.equal(first.state.players.filter(p => p.isBot).length, 23);
   assert.equal(first.state.players.filter(p => p.team === 'blue' && p.isOnPitch !== false).length, 5);
   assert.equal(first.state.players.filter(p => p.team === 'red' && p.isOnPitch !== false).length, 5);
   assert.deepEqual(first.state.players.filter(p => p.team === 'blue' && p.isOnPitch !== false).map(p => p.role).sort(), ['DEF','FWD','FWD','GK','MID'].sort());
-  assert.deepEqual(first.state.benchCounts, { blue: 2, red: 2 });
+  assert.deepEqual(first.state.benchCounts, { blue: 7, red: 7 });
   assert.equal(first.state.players.filter(p => !p.isBot).length, 1);
 });
 
@@ -119,7 +119,7 @@ test('P27 rotations : changement aux arrêts de jeu, sans quota, avec dix minute
   assert.equal(outgoing.isOnPitch, false);
   assert.equal(incoming.isOnPitch, true);
   assert.equal(first.state.counts.blue, 5);
-  assert.equal(first.state.benchCounts.blue, 2);
+  assert.equal(first.state.benchCounts.blue, 7);
   assert.throws(() => manager.rotate(room.id, joined.token, { outgoingId: incoming.id, incomingId: outgoing.id }), /RETURN_COOLDOWN/);
   internal.elapsedMs = 1_200_000;
   const second = manager.rotate(room.id, joined.token, { outgoingId: incoming.id, incomingId: outgoing.id });
@@ -127,7 +127,7 @@ test('P27 rotations : changement aux arrêts de jeu, sans quota, avec dix minute
   assert.equal(outgoing.isOnPitch, true);
   assert.equal(incoming.isOnPitch, false);
   assert.equal(second.state.counts.blue, 5);
-  assert.equal(second.state.benchCounts.blue, 2);
+  assert.equal(second.state.benchCounts.blue, 7);
 });
 
 test('P27 rotations : le jeton ne peut pas remplacer un joueur adverse', () => {
@@ -155,12 +155,24 @@ test('client en ligne : envoie une rotation authentifiée au serveur', async () 
   assert.deepEqual(JSON.parse(call.options.body), { outgoingId: 'out-1', incomingId: 'in-2' });
 });
 
-test('serveur multijoueur : limite les équipes à cinq joueurs', () => {
+test('serveur multijoueur : accepte sept humains par club avec cinq titulaires et des réservistes', () => {
   const manager = new RoomManager();
   const room = manager.create();
-  for (let i = 0; i < 10; i++) manager.join(room.id);
-  assert.equal(manager.get(room.id).players.length, 14);
-  assert.throws(() => manager.join(room.id), /ROOM_FULL/);
+  const blue = [];
+  const red = [];
+  for (let i = 0; i < 7; i++) blue.push(manager.join(room.id, { preferredTeam:'blue', displayName:`Bleu ${i+1}` }));
+  for (let i = 0; i < 7; i++) red.push(manager.join(room.id, { preferredTeam:'red', displayName:`Rouge ${i+1}` }));
+  const state = manager.get(room.id);
+  assert.equal(state.players.length, 24);
+  assert.equal(state.players.filter(player => !player.isBot && player.team === 'blue').length, 7);
+  assert.equal(state.players.filter(player => !player.isBot && player.team === 'red').length, 7);
+  assert.equal(state.players.filter(player => player.team === 'blue' && player.isOnPitch !== false).length, 5);
+  assert.equal(state.players.filter(player => player.team === 'red' && player.isOnPitch !== false).length, 5);
+  assert.equal(state.benchCounts.blue, 7);
+  assert.equal(state.benchCounts.red, 7);
+  assert.equal(blue.filter(joined => joined.state.players.find(player => player.id === joined.playerId)?.isOnPitch === false).length, 2);
+  assert.equal(red.filter(joined => joined.state.players.find(player => player.id === joined.playerId)?.isOnPitch === false).length, 2);
+  assert.throws(() => manager.join(room.id, { preferredTeam:'blue' }), /ROOM_FULL/);
 });
 
 test('serveur multijoueur : durée réglementaire plafonnée à trois minutes si demandée', () => {
