@@ -79,6 +79,7 @@ export class FieldBuilder {
     this.cornerFlags = [];
     this.stadiumMaterials = [];
     this.lineGeometryCache = new Map();
+    this.sharedGeometryCache = new Map();
     this.clubBannerGroup = null;
     this.clubExpansionGroup = null;
     this.goalPulse = 0;
@@ -157,6 +158,11 @@ export class FieldBuilder {
     }
     this.group.add(group);
     this.clubBannerGroup = group;
+  }
+
+  getSharedGeometry(key, create) {
+    if (!this.sharedGeometryCache.has(key)) this.sharedGeometryCache.set(key, create());
+    return this.sharedGeometryCache.get(key);
   }
 
   build() {
@@ -304,22 +310,22 @@ export class FieldBuilder {
     for (const side of [-1, 1]) {
       const x = side * 8.2;
       const z = side * (PITCH.HALF_W + 5.4);
-      const base = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.28, 2.0), baseMat);
+      const base = new THREE.Mesh(this.getSharedGeometry('technical-base', () => new THREE.BoxGeometry(9.2, 0.28, 2.0)), baseMat);
       base.position.set(x, 0.14, z);
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(9.4, 0.16, 2.15), roofMat);
+      const roof = new THREE.Mesh(this.getSharedGeometry('technical-roof', () => new THREE.BoxGeometry(9.4, 0.16, 2.15)), roofMat);
       roof.position.set(x, 2.05, z);
-      const back = new THREE.Mesh(new THREE.BoxGeometry(9.2, 1.75, 0.12), seatMat);
+      const back = new THREE.Mesh(this.getSharedGeometry('technical-back', () => new THREE.BoxGeometry(9.2, 1.75, 0.12)), seatMat);
       back.position.set(x, 1.05, z - side * 0.92);
       this.group.add(base, roof, back);
       for (let n = -3; n <= 3; n++) {
-        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.22, 0.55), seatMat);
+        const seat = new THREE.Mesh(this.getSharedGeometry('technical-seat', () => new THREE.BoxGeometry(0.82, 0.22, 0.55)), seatMat);
         seat.position.set(x + n * 1.2, 0.62, z);
         this.group.add(seat);
       }
     }
     const lineMat = new THREE.MeshBasicMaterial({ color: 0xdce8e5 });
     for (const side of [-1, 1]) {
-      const line = new THREE.Mesh(new THREE.BoxGeometry(12, 0.025, 0.08), lineMat);
+      const line = new THREE.Mesh(this.getSharedGeometry('technical-touchline', () => new THREE.BoxGeometry(12, 0.025, 0.08)), lineMat);
       line.position.set(0, 0.025, side * (PITCH.HALF_W + 2.8));
       this.group.add(line);
     }
@@ -453,13 +459,14 @@ export class FieldBuilder {
     for (let t = 0; t < 3; t++) {
       const mat = new THREE.MeshLambertMaterial({ color: tierColors[t] });
       this.stadiumMaterials.push(mat);
-      const nTier = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 16, 1.3, 2.4), mat);
+      const nTier = new THREE.Mesh(this.getSharedGeometry('stand-tier-north', () => new THREE.BoxGeometry(PITCH.L + 16, 1.3, 2.4)), mat);
       nTier.position.set(0, 1.1 + t * 1.25, -PITCH.HALF_W - 5.4 - t * 2.3);
       this.group.add(nTier);
 
-      const wTier = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.3, PITCH.W + 10), mat);
+      const sideTierGeometry = this.getSharedGeometry('stand-tier-side', () => new THREE.BoxGeometry(2.4, 1.3, PITCH.W + 10));
+      const wTier = new THREE.Mesh(sideTierGeometry, mat);
       wTier.position.set(-PITCH.HALF_L - 6.2 - t * 2.3, 1.1 + t * 1.25, -1);
-      const eTier = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.3, PITCH.W + 10), mat);
+      const eTier = new THREE.Mesh(sideTierGeometry, mat);
       eTier.position.set(PITCH.HALF_L + 6.2 + t * 2.3, 1.1 + t * 1.25, -1);
       this.group.add(wTier, eTier);
     }
@@ -592,10 +599,12 @@ export class FieldBuilder {
       [-PITCH.HALF_L - 14, PITCH.HALF_W + 14],
       [PITCH.HALF_L + 14, PITCH.HALF_W + 14]
     ];
+    const pylonGeometry = this.getSharedGeometry('floodlight-pole', () => new THREE.CylinderGeometry(0.13, 0.2, 18, 8));
+    const bulbGeometry = this.getSharedGeometry('floodlight-head', () => new THREE.BoxGeometry(2.1, 0.72, 0.42));
     for (const [px, pz] of pylonPos) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.2, 18, 8), poleMat);
+      const pole = new THREE.Mesh(pylonGeometry, poleMat);
       pole.position.set(px, 9, pz);
-      const head = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.72, 0.42), bulbMat);
+      const head = new THREE.Mesh(bulbGeometry, bulbMat);
       head.position.set(px, 18, pz);
       head.lookAt(0, 0, 0);
       this.floodlightBulbs.push(head);
@@ -603,12 +612,14 @@ export class FieldBuilder {
     }
 
     // Gradins derrière les deux cages : deux niveaux bas ferment l'enceinte.
+    const endStandMaterials = [
+      new THREE.MeshLambertMaterial({ color: 0x354958 }),
+      new THREE.MeshLambertMaterial({ color: 0x43596a })
+    ];
+    const endStandGeometries = [0, 1].map((tier) => this.getSharedGeometry(`end-stand-${tier}`, () => new THREE.BoxGeometry(2.8, 1.0, PITCH.W + 15 + tier * 3)));
     for (const end of [-1, 1]) {
       for (let tier = 0; tier < 2; tier++) {
-        const stand = new THREE.Mesh(
-          new THREE.BoxGeometry(2.8, 1.0, PITCH.W + 15 + tier * 3),
-          new THREE.MeshLambertMaterial({ color: tier === 0 ? 0x354958 : 0x43596a })
-        );
+        const stand = new THREE.Mesh(endStandGeometries[tier], endStandMaterials[tier]);
         stand.position.set(end * (PITCH.HALF_L + 7.2 + tier * 2.2), 1.0 + tier * 1.0, 0);
         this.group.add(stand);
       }
