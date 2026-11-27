@@ -2183,3 +2183,121 @@
  #main-menu .p27-dls-career-footer{gap:8px;padding-inline:7px}
  #main-menu .p27-dls-career-footer button{padding:6px 7px;font-size:7px}
 }
+
+
+/* P27 global interface pass — consistent hierarchy, touch feedback and safe layouts. */
+#main-menu #menu-content{
+  color:#eaf2fb;
+  scrollbar-color:#46627e #091522;
+  scrollbar-width:thin;
+}
+#main-menu #menu-content :where(section,article,aside){min-width:0}
+#main-menu #menu-content :where(h1,h2,h3,h4){text-wrap:balance}
+#main-menu #menu-content :where(p,small){overflow-wrap:anywhere}
+#main-menu #menu-content :where(button,[role="button"],a,select,input,textarea){
+  -webkit-tap-highlight-color:transparent;
+}
+#main-menu #menu-content :where(button):not(:disabled){
+  cursor:pointer;
+  transition:filter .16s ease,border-color .16s ease,background-color .16s ease,transform .16s ease;
+}
+#main-menu #menu-content :where(button):disabled{
+  cursor:not-allowed;
+  opacity:.48;
+  filter:saturate(.55);
+}
+#main-menu #menu-content :where(button,input,select,textarea):focus-visible,
+#main-menu .p27-game-topbar :where(button):focus-visible{
+  outline:2px solid #9bcfff;
+  outline-offset:2px;
+}
+#main-menu #menu-content :where(input,select,textarea){
+  max-width:100%;
+  color-scheme:dark;
+}
+#main-menu #menu-content :where(.competition-panel,.ranking-screen,.player-career-columns>section,.p27-market-shortcuts){
+  min-width:0;
+  box-shadow:0 8px 22px rgba(0,0,0,.16);
+}
+#main-menu #menu-content :where(.panel-heading){
+  min-width:0;
+}
+#main-menu #menu-content :where(.panel-heading h2,.panel-heading h3){
+  color:#f0f6fd;
+  line-height:1.15;
+}
+#main-menu #menu-content :where(.eyebrow){
+  letter-spacing:.13em;
+}
+#main-menu #menu-content :where(.primary-cta,.secondary-cta,.small-action){
+  min-height:34px;
+  border-radius:5px;
+  font-weight:950;
+  letter-spacing:.035em;
+}
+#main-menu #menu-content :where(.primary-cta):not(:disabled){
+  box-shadow:0 4px 12px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.12);
+}
+#main-menu #menu-content :where(.notice,[role="status"],[aria-live="polite"]){
+  line-height:1.45;
+}
+#main-menu #menu-content :where(table){
+  border-collapse:separate;
+  border-spacing:0;
+}
+#main-menu #menu-content :where(th){
+  position:sticky;
+  top:0;
+  z-index:1;
+}
+#main-menu #menu-content :where(.player-card,.player-library-card,.club-card,.result-card){
+  min-width:0;
+}
+#main-menu #menu-content :where(img,svg,canvas){
+  max-width:100%;
+}
+#main-menu .p27-game-topbar{
+  z-index:20;
+  position:relative;
+}
+#main-menu .p27-back-home[hidden]{display:none!important}
+@media(hover:hover) and (pointer:fine){
+  #main-menu #menu-content :where(button):not(:disabled):hover{
+    filter:brightness(1.12);
+  }
+}
+@media(orientation:landscape) and (max-height:430px){
+  #main-menu .menu-layout.p27-screen-layout{min-height:0}
+  #main-menu #menu-content{overscroll-behavior:contain}
+  #main-menu #menu-content :where(.competition-layout,.player-career-columns){align-items:start}
+  #main-menu #menu-content :where(.competition-panel){padding:9px}
+}
+@media(orientation:portrait){
+  #main-menu #menu-content :where(.competition-layout,.player-career-columns){
+    grid-template-columns:minmax(0,1fr);
+  }
+  #main-menu #menu-content :where(.p27-market-shortcut-actions,.contract-actions,.sign-contract-row){
+    flex-wrap:wrap;
+  }
+  #main-menu #menu-content :where(.p27-market-shortcut-actions)>*{
+    flex:1 1 145px;
+  }
+}
+@media(max-width:520px){
+  #main-menu #menu-content :where(.panel-heading){
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  #main-menu #menu-content :where(.competition-panel,.ranking-screen){
+    border-radius:6px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  #main-menu #menu-content *,
+  #main-menu .p27-game-topbar *{
+    scroll-behavior:auto!important;
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+}
