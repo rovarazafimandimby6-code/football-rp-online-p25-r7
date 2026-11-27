@@ -50,7 +50,9 @@ test('P25 humanoïde : le chargeur GLTF et les animations standard sont raccord�
   const loader = await readFile(path.join(root, 'src/player-models.js'), 'utf8');
   const animationMap = await readFile(path.join(root, 'src/player-animation-map.js'), 'utf8');
   assert.match(player, /mountHumanoidPlayer/);
-  assert.ok(player.includes('updateModel?.(dt, state, speed, {'));
+  assert.ok(player.includes('v.updateModel?.(dt, state, speed, modelAction);'));
+  assert.match(player, /const modelAction = this\.visualModelAction/);
+  assert.match(player, /modelAction\.progress = this\.animDuration/);
   assert.match(loader, /GLTFLoader/);
   for (const clip of ['Idle_Loop','Walk_Loop','Jog_Fwd_Loop','Sprint_Loop']) assert.ok(animationMap.includes(clip), `clip ${clip} doit être reconnu`);
   assert.match(loader, /resolvePlayerAnimationClip/);
@@ -95,7 +97,7 @@ test('P25 R7 : les gestes de match sont appliqués au modèle humanoïde sans re
   assert.match(loader, /fallbackBody\.visible = false/);
   for (const state of ['pass', 'shoot', 'control', 'tackle', 'dive', 'celebrate']) assert.ok(loader.includes(`state === '${state}'`), `geste humanoïde manquant : ${state}`);
   for (const bone of ['pelvis', 'spine_02', 'thigh_l', 'calf_l', 'upperarm_l']) assert.ok(loader.includes(`'${bone}'`), `articulation non pilotée : ${bone}`);
-  assert.match(player, /progress: this\.animDuration/);
+  assert.match(player, /modelAction\.progress = this\.animDuration/);
   assert.match(player, /preferredFoot: this\.preferredFoot/);
 });
 
