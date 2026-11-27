@@ -4,6 +4,19 @@ const PITCH = Object.freeze({ HALF_L: 28, HALF_W: 17, GOAL_W: 6.6 });
 import { specialtyForSlot } from './player-specialties.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+/** Tirage déterministe par joueur et action : le même état produit la même décision. */
+export function aiDecisionRoll(player, action = 'decision') {
+  const sequence = Math.max(0, Math.floor(Number(player?.aiDecisionSequence) || 0));
+  if (player) player.aiDecisionSequence = sequence + 1;
+  const input = `${String(player?.id ?? "system-player")}:${sequence}:${action}`;
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 4294967296;
+}
 const ratingOf = (player, key, fallback = 50) => clamp(Number(player?.attributes?.[key] ?? fallback) || fallback, 1, 99);
 
 /** Qualité d'exécution pondérée par les attributs, sans rendre l'action infaillible. */
@@ -289,8 +302,8 @@ export class TeamAI {
       const distToGoal = Math.hypot(oppGoalX - p.pos.x, -p.pos.z);
       const shootBias = (p.specialty === 'finisher' ? 3.0 : p.specialty === 'playmaker' ? 1.35 : 2.0)
         * decisionAttributeFactor(p, 'shooting', 'composure');
-      if (distToGoal < (p.specialty === 'finisher' ? 19 : 16.5) && p.decisionTimer <= 0 && Math.random() < dt * shootBias) {
-        p.decisionTimer = 0.55 + Math.random() * 0.35;
+      if (distToGoal < (p.specialty === 'finisher' ? 19 : 16.5) && p.decisionTimer <= 0 && aiDecisionRoll(p, 'shoot-trigger') < 1 - Math.exp(-dt * shootBias)) {
+        p.decisionTimer = 0.55 + aiDecisionRoll(p, 'shoot-delay') * 0.35;
         actions.aiShoot(p);
         return;
       }
@@ -303,8 +316,8 @@ export class TeamAI {
       const passChance = ((p.specialty === 'playmaker' ? 3.8 : passBias * 3.0)
         + (bestPass?.mate === requestedReceiver ? 0.85 : 0))
         * decisionAttributeFactor(p, 'passing', 'vision');
-      if (p.decisionTimer <= 0 && usefulPass && ((pressed && Math.random() < dt * passChance) || Math.random() < dt * passBias)) {
-        p.decisionTimer = 0.5 + Math.random() * 0.35;
+      if (p.decisionTimer <= 0 && usefulPass && ((pressed && aiDecisionRoll(p, 'pressed-pass') < 1 - Math.exp(-dt * passChance)) || aiDecisionRoll(p, 'open-pass') < 1 - Math.exp(-dt * passBias))) {
+        p.decisionTimer = 0.5 + aiDecisionRoll(p, 'pass-delay') * 0.35;
         actions.aiPass(p, bestPass.mate);
         return;
       }
@@ -327,7 +340,7 @@ export class TeamAI {
     if (!teamHasBall && isChaser) {
       this.steerPlayer(p, ball.pos.x, ball.pos.z, (p.specialty === 'stopper' ? 8.35 : 7.9) * staminaFactor * paceFactor, dt);
       // Seul le premier défenseur déclenche le duel ; les partenaires gardent leur structure.
-      if (ball.owner && ball.owner.team !== p.team && distBall < 1.55 && p.actionCooldown <= 0 && Math.random() < dt * 2.1) {
+      if (ball.owner && ball.owner.team !== p.team && distBall < 1.55 && p.actionCooldown <= 0 && aiDecisionRoll(p, 'tackle-trigger') < 1 - Math.exp(-dt * 2.1)) {
         actions.tryTackle(p);
       }
     } else if (!teamHasBall && isCover && distBall < pressRange * 0.9) {
