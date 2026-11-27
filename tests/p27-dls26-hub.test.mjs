@@ -178,3 +178,11 @@ test('P27 carrière : signature, résiliation et transfert synchronisent immédi
   assert.ok(main.includes("} else if (action === 'terminate-contract') {\n    const result = career.terminateContract();\n    if (result.ok) syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });"));
   assert.ok(main.includes("} else if (action === 'accept-offer') {"));
 });
+
+
+test('P27 Mercato : la génération locale reste limitée à cinq offres en attente et privilégie les niveaux proches', () => {
+  assert.ok(main.includes("const availableSlots = Math.max(0, 5 - pendingOffers.length)"));
+  assert.ok(main.includes(".slice(0, availableSlots)"));
+  assert.ok(main.includes("Math.abs(Number(a.rating || 0) - Number(clubs.getClub(career.clubId)?.rating || 0))"));
+  assert.ok(main.includes("String(a.name).localeCompare(String(b.name), 'fr')"));
+});
