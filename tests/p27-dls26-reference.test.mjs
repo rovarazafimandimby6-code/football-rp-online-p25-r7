@@ -139,4 +139,10 @@ test('P27 : adaptateur DLS 19 conserve les dix attributs historiques et le badge
   assert.equal(roleForDls19Position('UNKNOWN'), null);
   assert.throws(() => normalizeDls19Profile({ ...record, position: 'UNKNOWN' }), /position/);
   assert.throws(() => normalizeDls19Profile({ ...record, stats: { ...record.stats, CRO: undefined } }), /CRO/);
+  assert.equal(normalizeDls19Profile({ ...record, position: ' wf ', preferredFoot: ' RIGHT ' }).position, 'SS');
+  assert.equal(roleForDls19Position(' cb '), 'DEF');
+  assert.throws(() => normalizeDls19Profile({ ...record, source: 'http://example.org/card' }), /HTTPS/);
+  assert.throws(() => normalizeDls19Profile({ ...record, source: 'https:// not-a-valid-host' }), /source URL/);
+  assert.throws(() => normalizeDls19Profile({ ...record, preferredFoot: 'north' }), /preferred foot/);
+  assert.throws(() => normalizeDls19Profile({ ...record, sourceRecordId: '   ' }), /record ID/);
 });
