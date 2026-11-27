@@ -108,10 +108,11 @@ export function getDefensiveCoverTarget(player, ball, opponents, attackDir = 1) 
     }
   }
 
+  const homeZ = player.homePos?.z ?? player.pos?.z ?? 0;
   if (!receiver) {
     return {
       x: clamp(carrier.x - attackDir * (player.specialty === 'cover' ? 3.2 : 4.5), -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
-      z: clamp(carrier.z * 0.55 + player.homePos.z * 0.45, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
+      z: clamp(carrier.z * 0.55 + homeZ * 0.45, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
     };
   }
 
@@ -119,7 +120,7 @@ export function getDefensiveCoverTarget(player, ball, opponents, attackDir = 1) 
   const targetZ = carrier.z + (receiver.pos.z - carrier.z) * 0.55;
   return {
     x: clamp(targetX, -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
-    z: clamp(targetZ * 0.78 + player.homePos.z * 0.22, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
+    z: clamp(targetZ * 0.78 + homeZ * 0.22, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
   };
 }
 
@@ -194,6 +195,37 @@ export function getSpacedSupportTarget(player, target, teammates, minDistance = 
   };
 }
 
+
+/** Maintient des intervalles défensifs pour éviter que plusieurs joueurs occupent le même couloir. */
+export function getSpacedDefensiveTarget(player, target, teammates, minDistance = 4.8) {
+  let x = target.x;
+  let z = target.z;
+  for (const mate of teammates || []) {
+    if (!mate || mate === player || mate.team !== player.team || mate.role === 'GK' || !mate.pos) continue;
+    let dx = x - mate.pos.x;
+    let dz = z - mate.pos.z;
+    let distance = Math.hypot(dx, dz);
+    if (distance >= minDistance) continue;
+    if (distance < 0.001) {
+      dx = (player.homePos?.x ?? player.pos?.x ?? 0) - (mate.homePos?.x ?? mate.pos.x);
+      dz = (player.homePos?.z ?? player.pos?.z ?? 0) - (mate.homePos?.z ?? mate.pos.z);
+      distance = Math.hypot(dx, dz);
+      if (distance < 0.001) {
+        const side = (Number(player.slotIndex) || 0) % 2 === 0 ? 1 : -1;
+        dx = 0;
+        dz = side;
+        distance = 1;
+      }
+    }
+    const strength = (minDistance - distance) * 0.32;
+    x += dx / distance * strength;
+    z += dz / distance * strength;
+  }
+  return {
+    x: clamp(x, -PITCH.HALF_L + 2, PITCH.HALF_L - 2),
+    z: clamp(z, -PITCH.HALF_W + 2, PITCH.HALF_W - 2)
+  };
+}
 
 /** Une demande humaine ne valorise que les lignes déjà jugées acceptables. */
 export function scorePassOptionWithRequest(passer, mate, opponents, attackDir = 1, requestedReceiver = null) {
@@ -319,12 +351,17 @@ export class TeamAI {
       for (const p of players) {
         if (p.team !== team || p.role === 'GK' || p.isControlled) continue;
         const d = Math.hypot(p.pos.x - ball.pos.x, p.pos.z - ball.pos.z);
-        if (d < bestDist) {
+        const stableKey = (candidate) => `${String(candidate.slotIndex ?? 99).padStart(3, '0')}:${String(candidate.id ?? '')}`;
+        const closer = d < bestDist - 0.0001
+          || (Math.abs(d - bestDist) <= 0.0001 && closestByTeam[team] && stableKey(p) < stableKey(closestByTeam[team]));
+        const secondCloser = d < secondDist - 0.0001
+          || (Math.abs(d - secondDist) <= 0.0001 && coverByTeam[team] && stableKey(p) < stableKey(coverByTeam[team]));
+        if (closer) {
           secondDist = bestDist;
           coverByTeam[team] = closestByTeam[team];
           bestDist = d;
           closestByTeam[team] = p;
-        } else if (d < secondDist) {
+        } else if (secondCloser) {
           secondDist = d;
           coverByTeam[team] = p;
         }
@@ -429,7 +466,8 @@ export class TeamAI {
     } else if (!teamHasBall && isCover && distBall < pressRange * 0.9) {
       // Le deuxième défenseur ferme la ligne de passe au lieu de poursuivre le porteur.
       const coverTarget = getDefensiveCoverTarget(p, ball, context?.opponents || [], attackDir);
-      this.steerPlayer(p, coverTarget.x, coverTarget.z, 6.6 * staminaFactor * paceFactor, dt);
+      const spacedCover = getSpacedDefensiveTarget(p, coverTarget, context?.teammates);
+      this.steerPlayer(p, spacedCover.x, spacedCover.z, 6.6 * staminaFactor * paceFactor, dt);
     } else if (teamHasBall) {
       // Soutien sans ballon, y compris lorsque le porteur est un joueur humain.
       const owner = ball.owner;
@@ -444,7 +482,8 @@ export class TeamAI {
       // au lieu de simplement glisser tous vers la position du ballon.
       const opponents = context?.opponents || players.filter((other) => other.team !== p.team && other.role !== 'GK');
       const shape = getDefensiveShapeTarget(p, ball, opponents, attackDir, this.mentality);
-      this.steerPlayer(p, shape.x, shape.z, 6.7 * staminaFactor * paceFactor, dt);
+      const spacedShape = getSpacedDefensiveTarget(p, shape, context?.teammates);
+      this.steerPlayer(p, spacedShape.x, spacedShape.z, 6.7 * staminaFactor * paceFactor, dt);
     }
   }
 
