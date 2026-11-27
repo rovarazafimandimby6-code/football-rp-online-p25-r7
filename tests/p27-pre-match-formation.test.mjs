@@ -30,7 +30,7 @@ test('P27 gestion équipe : le choix de formation avant match met à jour la feu
   assert.match(main, /let selectedFormation = '2-2'/);
   assert.match(main, /id="pre-match-formation"/);
   assert.match(main, /selectedFormation = event.target.value/);
-  assert.match(main, /createMatchSquad\('blue',selectedFormation,home.roster,'career-player',selectedBenchSize\)/);
+  assert.match(main, /createMatchSquad\('blue',selectedFormation,homeRoster,'career-player',selectedBenchSize,selectedHomeStarterIds\)/);
   assert.match(main, /formation: selectedFormation/);
   assert.match(main, /id="pre-match-bench-size"/);
   assert.match(main, /selectedBenchSize = size/);
@@ -49,7 +49,7 @@ test('P27 gestion équipe : le choix de formation avant match met à jour la feu
   assert.match(game, /const formation = \['2-2','1-2-1','2-1-1'\]\.includes\(callbacks\.formation\) \? callbacks\.formation : '2-2'/);
   assert.match(game, /createTeamRoster\('blue', formation, callbacks\.homeRoster, callbacks\.careerPlayerId, callbacks\.homeStarterIds\)/);
   assert.match(game, /this\.benchSize = Number\.isInteger\(callbacks\.benchSize\)/);
-  assert.match(game, /createMatchSquad\('blue', formation, callbacks\.homeRoster, callbacks\.careerPlayerId, this\.benchSize\)/);
+  assert.match(game, /createMatchSquad\('blue', formation, callbacks\.homeRoster, callbacks\.careerPlayerId, this\.benchSize, callbacks\.homeStarterIds\)/);
 });
 
 test('P27 gestion équipe : le joueur personnel reste titulaire avec son poste et son numéro après sélection du schéma', () => {
