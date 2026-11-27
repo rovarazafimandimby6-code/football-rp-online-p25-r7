@@ -27,8 +27,8 @@ for(const row of bundle.clubs){
   const ledger=[];
   for(const e of f.entries){
     if(!e||typeof e.id!=='string'||e.id.length<1||e.id.length>80||entryIds.has(e.id)||
-      !/^[a-z-]+$/.test(e.category)||!safeInt(e.amount,1)||!['income','expense'].includes(e.direction)||
-      typeof e.description!=='string'||e.description.length>120||!safeInt(e.createdAt))fail('INVALID_LEDGER_ENTRY');
+      !ledgerCategories.has(e.category)||!safeInt(e.amount,1)||!['income','expense'].includes(e.direction)||
+      typeof e.description!=='string'||e.description.length>120||(e.referenceId!=null&&(typeof e.referenceId!=='string'||e.referenceId.length>80))||!safeInt(e.createdAt))fail('INVALID_LEDGER_ENTRY');
     entryIds.add(e.id);balance+=e.direction==='income'?e.amount:-e.amount;
     if(!safeInt(balance))fail('LEDGER_BALANCE_OUT_OF_RANGE');
     ledger.push({...e,balanceAfter:balance});
