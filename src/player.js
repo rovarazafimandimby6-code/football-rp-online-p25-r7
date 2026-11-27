@@ -456,6 +456,9 @@ export class Player {
     this.tackleTimer = 0;
     this.stridePhase = Math.random() * Math.PI * 2;
     this.previousVisualSpeed = 0;
+    // Réutilise les paramètres d'animation transmis au modèle 3D à chaque image.
+    this.visualGaitCache = {};
+    this.visualModelAction = { progress: 0.5, time: 0, diveDir: 0, preferredFoot: this.preferredFoot, phase: this.dribblePhase, celebrationStyle: this.shopCelebrationStyle };
 
     const playerAppearance = withEquippedShopAppearance(appearance);
     this.shopCelebrationStyle = playerAppearance.shopCelebrationStyle || 'standard';
@@ -551,7 +554,7 @@ export class Player {
       v.headGroup.rotation.z = Math.sin(now * 0.0013 + this.number) * 0.025;
     } else if (state === 'walk' || state === 'run') {
       const turnRate = dt > 0.001 ? THREE.MathUtils.clamp(angleDelta / dt, -8, 8) : 0;
-      const gait = gaitProfile(speed, this.stamina, this.vel.x, acceleration, turnRate);
+      const gait = gaitProfile(speed, this.stamina, this.vel.x, acceleration, turnRate, this.visualGaitCache);
       const isRun = gait.running;
       this.stridePhase += dt * gait.strideRate;
       const amp = gait.strideAmplitude;
@@ -637,13 +640,13 @@ export class Player {
         node.rotation.order
       );
     }
-    v.updateModel?.(dt, state, speed, {
-      progress: this.animDuration > 0 && this.animTimer > 0 ? THREE.MathUtils.clamp(1 - this.animTimer / this.animDuration, 0, 1) : 0.5,
-      time: this.animElapsed,
-      diveDir: this.diveDir,
-      preferredFoot: this.preferredFoot,
-      phase: this.dribblePhase,
-      celebrationStyle:this.shopCelebrationStyle
-    });
+    const modelAction = this.visualModelAction;
+    modelAction.progress = this.animDuration > 0 && this.animTimer > 0 ? THREE.MathUtils.clamp(1 - this.animTimer / this.animDuration, 0, 1) : 0.5;
+    modelAction.time = this.animElapsed;
+    modelAction.diveDir = this.diveDir;
+    modelAction.preferredFoot = this.preferredFoot;
+    modelAction.phase = this.dribblePhase;
+    modelAction.celebrationStyle = this.shopCelebrationStyle;
+    v.updateModel?.(dt, state, speed, modelAction);
   }
 }
