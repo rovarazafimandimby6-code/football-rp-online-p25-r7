@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ClubManager, DEFAULT_CLUBS } from '../src/club-manager.js';
-import { getP27ClubKit, getP27ClubShopKit } from '../src/p27-club-kit.js';
+import { getP27ClubKit, getP27ClubShopKit, getP27ClubShopAppearance } from '../src/p27-club-kit.js';
+import { renderClubCrest } from '../src/club-identity.js';
 import { listP27Players } from '../src/p27-player-library.js';
 import { renderSystemPlayerPortrait } from '../src/p27-system-player-portrait.js';
 
@@ -114,4 +115,41 @@ test('P27 boutique club : un article non équipé ou revendu ne modifie jamais l
     {itemId:'club-kit-away',status:'owned',equipped:false},
     {itemId:'club-kit-third',status:'resold',equipped:true}
   ],'away','MID'),expected);
+});
+
+
+test('P27 boutique club : écusson, couleurs, stade, pelouse et supporters suivent uniquement les articles équipés', () => {
+  const club = customClub('shop-visual-club',['#123456','#102030','#eeeeee'],'vertical');
+  const inventory = [
+    {itemId:'club-crest-custom',status:'owned',equipped:true},
+    {itemId:'club-official-colors',status:'owned',equipped:true},
+    {itemId:'club-stadium-premium',status:'owned',equipped:true},
+    {itemId:'club-grass-standard',status:'owned',equipped:true},
+    {itemId:'club-supporter-flags',status:'owned',equipped:true},
+    {itemId:'club-supporter-tifo',status:'owned',equipped:false},
+    {itemId:'club-supporter-banners',status:'resold',equipped:true}
+  ];
+  const appearance = getP27ClubShopAppearance(club, inventory);
+  assert.equal(appearance.crestStyle, 'custom');
+  assert.deepEqual(appearance.crestColors, club.colors);
+  assert.equal(appearance.stadiumSkin, 'premium');
+  assert.equal(appearance.grassSkin, 'standard');
+  assert.deepEqual(appearance.supporters,{flags:true,banners:false,tifo:false});
+  assert.match(renderClubCrest({id:club.id,name:club.name,crestStyle:appearance.crestStyle}),/M50 5L91 24/);
+  assert.doesNotMatch(renderClubCrest({id:club.id,name:club.name}),/M50 5L91 24/);
+});
+
+test('P27 boutique club : les articles non équipés ou revendus ne changent aucune apparence', () => {
+  const club = customClub('shop-visual-club',['#123456','#102030','#eeeeee'],'vertical');
+  const appearance = getP27ClubShopAppearance(club,[
+    {itemId:'club-crest-custom',status:'owned',equipped:false},
+    {itemId:'club-official-colors',status:'resold',equipped:true},
+    {itemId:'club-stadium-premium',status:'owned',equipped:false},
+    {itemId:'club-grass-premium',status:'resold',equipped:true},
+    {itemId:'club-supporter-tifo',status:'owned',equipped:false}
+  ]);
+  assert.deepEqual(appearance,{
+    crestStyle:'classic',crestColors:null,stadiumSkin:'default',grassSkin:'default',
+    supporters:{flags:false,banners:false,tifo:false}
+  });
 });
