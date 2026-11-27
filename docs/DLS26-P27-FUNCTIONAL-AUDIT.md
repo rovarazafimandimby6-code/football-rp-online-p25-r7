@@ -456,3 +456,8 @@ La bibliothèque affiche désormais un message dédié lorsqu’aucun joueur ne 
 ### Bibliothèques joueurs et clubs — tri déterministe
 
 Les tris numériques ignorent désormais les valeurs non numériques pour le classement principal : les fiches avec une métrique valide passent avant celles dont la donnée manque. Les égalités sont départagées par nom, dans les deux catalogues, afin de conserver un ordre stable. Un test vérifie les deux comparateurs.
+
+
+### Archives des résultats — robustesse des données
+
+La page d’archives normalise désormais les métadonnées de pagination, borne les offsets et n’active « Suivants » que si un offset suivant valide existe. Les entrées mal formées sont ignorées, les dates invalides sont présentées comme inconnues et une feuille de match sans identifiant de rencontre n’affiche plus de bouton inopérant. Un test de non-régression couvre ces garde-fous.
