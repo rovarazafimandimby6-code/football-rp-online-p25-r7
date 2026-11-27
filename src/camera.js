@@ -181,6 +181,5 @@ export class BroadcastCamera {
     }
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.lookTarget);
-    this.applyTransition(dt);
   }
 }
