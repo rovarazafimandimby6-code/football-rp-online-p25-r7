@@ -65,6 +65,7 @@ export class FieldBuilder {
     this.cornerFlags = [];
     this.stadiumMaterials = [];
     this.clubBannerGroup = null;
+    this.clubExpansionGroup = null;
     this.goalPulse = 0;
     this.netAnimating = false;
     this.elapsed = 0;
@@ -84,6 +85,35 @@ export class FieldBuilder {
     for (const material of this.stadiumMaterials) material.color.setHex(
       material.userData.p27BaseColor ?? material.color.getHex()
     ), material.color.multiply(new THREE.Color(stadiumTint));
+
+    this.clubExpansionGroup?.parent?.remove(this.clubExpansionGroup);
+    this.clubExpansionGroup = null;
+    const expansionLevel = Number.isInteger(appearance.stadiumExpansionLevel)
+      ? Math.max(0, Math.min(4, appearance.stadiumExpansionLevel)) : 0;
+    if (expansionLevel > 0) {
+      const expansion = new THREE.Group();
+      const seatPalette = [0x526b80,0x607b91,0x708ba0,0x829caf];
+      for (let tier = 1; tier <= expansionLevel; tier++) {
+        const material = new THREE.MeshLambertMaterial({ color:seatPalette[tier - 1] });
+        const offset = tier * 2.15;
+        const y = 4.55 + tier * 0.95;
+        const north = new THREE.Mesh(
+          new THREE.BoxGeometry(PITCH.L + 18 + offset * 2, 0.95, 1.8),
+          material
+        );
+        north.position.set(0, y, -PITCH.HALF_W - 12.0 - offset);
+        const west = new THREE.Mesh(
+          new THREE.BoxGeometry(1.8, 0.95, PITCH.W + 20 + offset * 2),
+          material
+        );
+        west.position.set(-PITCH.HALF_L - 13.0 - offset, y, -1);
+        const east = west.clone();
+        east.position.x *= -1;
+        expansion.add(north, west, east);
+      }
+      this.group.add(expansion);
+      this.clubExpansionGroup = expansion;
+    }
 
     this.clubBannerGroup?.parent?.remove(this.clubBannerGroup);
     this.clubBannerGroup = null;
