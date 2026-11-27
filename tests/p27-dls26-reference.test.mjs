@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { generateClubRoster } from '../src/club-roster.js';
 import { applyDls26Reference, DLS26_ATTRIBUTE_KEYS, DLS26_GOALKEEPER_ATTRIBUTE_KEYS, DLS26_REFERENCE_PROFILES, DLS_REFERENCE_PROFILES, findDls26Reference } from '../src/p27-dls26-reference.js';
 import { DLS23_REFERENCE_PROFILES } from '../src/p27-dls23-reference.js';
-import { DLS19_ATTRIBUTE_KEYS, DLS19_REFERENCE_PROFILES, normalizeDls19Profile, roleForDls19Position } from '../src/p27-dls19-reference.js';
+import { DLS19_ATTRIBUTE_KEYS, DLS19_REFERENCE_PROFILES, normalizeDls19Profile, roleForDls19Position, mapDls19StatsToGameplay } from '../src/p27-dls19-reference.js';
 
 test('P27 DLS 26 : catalogue de références normal cards couvrant les quatre rôles', () => {
   assert.equal(DLS26_REFERENCE_PROFILES.length, 21);
@@ -125,6 +125,12 @@ test('P27 : adaptateur DLS 19 conserve les dix attributs historiques et le badge
   assert.equal(record.position, 'SS');
   assert.equal(record.stats.CRO, 74);
   assert.equal(record.stats.HEA, 68);
+  const gameplay = mapDls19StatsToGameplay(record.stats);
+  assert.deepEqual(gameplay, {
+    pace: 82, shooting: 79, passing: 77, defense: 35,
+    stamina: 78, control: 80, crossing: 74, heading: 68
+  });
+  assert.throws(() => mapDls19StatsToGameplay({ ...record.stats, HEA: undefined }), /HEA/);
   assert.equal(record.verification, 'archived-card-record');
   assert.equal(roleForDls19Position(record.position), 'FWD');
   assert.equal(roleForDls19Position('CB'), 'DEF');
