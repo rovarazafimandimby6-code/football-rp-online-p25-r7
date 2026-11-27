@@ -289,6 +289,7 @@ export class CareerManager {
     if (offer.expiresAt && timestamp(offer.expiresAt) <= now) {
       const before = this.captureState();
       offer.status = 'expired';
+      this.history.push({ type:'offer-expired', offerId:offer.id, clubId:offer.fromClubId, date:new Date(now).toISOString() });
       if (!this.saveState()) {
         this.restoreState(before);
         return { ok:false, reason:'persistence-failed' };
@@ -318,6 +319,7 @@ export class CareerManager {
     if (offer.expiresAt && timestamp(offer.expiresAt) <= now) {
       const beforeExpiry = this.captureState();
       offer.status = 'expired';
+      this.history.push({ type:'offer-expired', offerId:offer.id, clubId:offer.fromClubId, date:new Date(now).toISOString() });
       if (!this.saveState()) {
         this.restoreState(beforeExpiry);
         return { ok:false, reason:'persistence-failed' };
