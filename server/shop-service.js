@@ -21,6 +21,7 @@ function validPersistedState(value){
       for(const entry of row.items){
         const item=getShopItem(entry?.itemId);
         if(!item||item.shop!==shop||entry.category!==item.category||entry.rarity!==item.rarity||
+          (Object.hasOwn(entry,'equipSlot')&&entry.equipSlot!==(item.equipSlot||null))||
           entry.upgradeLevel!==(item.upgradeLevel||null)||!['owned','resold'].includes(entry.status)||
           !Number.isSafeInteger(entry.paidPrice)||entry.paidPrice<1||entry.paidPrice>item.price||
           entry.currency!==item.currency||entry.resellable!==item.resellable||
@@ -41,6 +42,7 @@ function validPersistedState(value){
       purchase.shop!==item.shop||!cleanId(purchase.ownerId)||!cleanId(purchase.actorId)||
       (purchase.shop==='player'&&purchase.actorId!==purchase.ownerId)||
       purchase.category!==item.category||purchase.rarity!==item.rarity||
+      (Object.hasOwn(purchase,'equipSlot')&&purchase.equipSlot!==(item.equipSlot||null))||
       !['pending','completed','failed'].includes(purchase.status)||
       !Number.isSafeInteger(purchase.paidPrice)||purchase.paidPrice<1||purchase.paidPrice>item.price||
       purchase.basePrice!==item.price||!Number.isInteger(purchase.discountPercent)||
@@ -169,7 +171,7 @@ export class JsonShopService {
     if(!price)return {ok:false,reason:'invalid-price'};
     let journal=prior;
     if(!journal){
-      journal={id,shop,ownerId:target,actorId:actor,itemId:item.id,category:item.category,rarity:item.rarity,
+      journal={id,shop,ownerId:target,actorId:actor,itemId:item.id,category:item.category,rarity:item.rarity,equipSlot:item.equipSlot||null,
         basePrice:price.basePrice,paidPrice:price.price,discountPercent:price.discountPercent,promotionType:offer?.type||null,promotionEndsAt:price.endsAt||null,
         currency:item.currency,status:'pending',createdAt:this.now()};
       this.transaction(()=>{this.state.purchases.push(journal);return true;});
@@ -182,7 +184,7 @@ export class JsonShopService {
     const completed={...journal,status:'completed',completedAt:this.now()};
     const ownedItem={itemId:item.id,category:item.category,rarity:item.rarity,paidPrice:journal.paidPrice,
       currency:item.currency,resellable:item.resellable===true,resaleRate:item.resaleRate||0,
-      upgradeLevel:item.upgradeLevel||null,equipped:false,status:'owned',purchasedAt:journal.createdAt,purchaseId:id};
+      upgradeLevel:item.upgradeLevel||null,equipSlot:item.equipSlot||null,equipped:false,status:'owned',purchasedAt:journal.createdAt,purchaseId:id};
     this.transaction(()=>{
       const row=this.findInventoryRow(shop,target,true);
       if(row.items.some(entry=>entry.itemId===item.id&&entry.status!=='resold'))throw new Error('ALREADY_OWNED');
@@ -263,6 +265,13 @@ export class JsonShopService {
       const row=this.findInventoryRow(shop,target);
       const item=row.items.find(entry=>entry.itemId===itemId&&entry.status==='owned');
       if(!item)throw new Error('ITEM_NOT_OWNED');
+      const slot=getShopItem(itemId)?.equipSlot||null;
+      if(equipped&&slot){
+        for(const other of row.items){
+          if(other.status==='owned'&&other.purchaseId!==item.purchaseId&&
+            (getShopItem(other.itemId)?.equipSlot||null)===slot)other.equipped=false;
+        }
+      }
       item.equipped=equipped;
       return true;
     });
