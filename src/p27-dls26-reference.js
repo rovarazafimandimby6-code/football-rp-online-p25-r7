@@ -1,4 +1,5 @@
 import { DLS23_REFERENCE_PROFILES } from './p27-dls23-reference.js';
+import { DLS19_REFERENCE_PROFILES, roleForDls19Position } from './p27-dls19-reference.js';
 
 // DLS 26 is the primary reference pool; older DLS cards are a controlled fallback.
 // Only card statistics and physical measurements are used to shape fictional P27 players.
@@ -69,12 +70,21 @@ const ROLE_PROFILE_IDS = Object.freeze({
   MID: ['midfielder-controller-85','midfielder-creator-80','midfielder-anchor-84','midfielder-box-to-box-84','midfielder-playmaker-83','dls23-1498','dls23-10297','dls23-12427','dls23-4739','dls23-12434'],
   FWD: ['forward-pace-86','forward-power-86','forward-wing-85','forward-finisher-84','forward-target-77','forward-wing-84','forward-complete-86','dls23-19392','dls23-17319','dls23-382','dls23-15403','dls23-5403']
 });
-export const DLS_REFERENCE_PROFILES = Object.freeze([...DLS26_REFERENCE_PROFILES, ...DLS23_REFERENCE_PROFILES]);
+// Verified DLS19 records automatically join the same selector once imported.
+// The array is currently empty; no historical ratings are fabricated.
+export const DLS_REFERENCE_PROFILES = Object.freeze([
+  ...DLS26_REFERENCE_PROFILES,
+  ...DLS23_REFERENCE_PROFILES,
+  ...DLS19_REFERENCE_PROFILES
+]);
 const PROFILE_BY_ID = new Map(DLS_REFERENCE_PROFILES.map(profile => [profile.id, profile]));
 
 export function findDls26Reference(role, archetype, random = Math.random, excludedProfileIds = new Set()) {
   const ids = ROLE_PROFILE_IDS[role] || ROLE_PROFILE_IDS.FWD;
-  const eligible = ids.map(id => PROFILE_BY_ID.get(id)).filter(Boolean);
+  const dls19Ids = DLS19_REFERENCE_PROFILES
+    .filter(profile => roleForDls19Position(profile.position) === role)
+    .map(profile => profile.id);
+  const eligible = [...ids, ...dls19Ids].map(id => PROFILE_BY_ID.get(id)).filter(Boolean);
   const preferred = eligible.filter(profile => {
     if (profile.sourceGame === 'DLS23') return profile.archetype === archetype;
     if (role === 'GK') return true;
