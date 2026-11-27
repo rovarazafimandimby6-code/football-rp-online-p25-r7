@@ -90,7 +90,7 @@ export class OnlineAccountClient {
       credentials: 'same-origin'
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `HTTP_${response.status}`);
+    if (!response.ok) throw new Error(data.error || data.reason || `HTTP_${response.status}`);
     return data;
   }
 
