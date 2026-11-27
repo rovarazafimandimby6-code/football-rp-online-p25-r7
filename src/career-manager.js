@@ -137,22 +137,44 @@ export class CareerManager {
         updated++;
       }
     }
-    if (updated) this.persist();
+    if (updated) {
+      const before = this.captureState();
+      // The snapshot is taken after the in-memory scan, so restore the statuses
+      // to pending explicitly if the storage write fails.
+      for (const offer of this.offers.values()) {
+        if (offer.status === 'expired' && offer.expiresAt && timestamp(offer.expiresAt) !== null && timestamp(offer.expiresAt) <= now) offer.status = 'pending';
+      }
+      const pendingSnapshot = this.captureState();
+      for (const offer of this.offers.values()) {
+        const previous = pendingSnapshot.offers.find(item => item.id === offer.id);
+        if (previous) offer.status = previous.status;
+      }
+      if (!this.saveState()) {
+        this.restoreState(pendingSnapshot);
+        return { ok:false, reason:'persistence-failed', updated:0 };
+      }
+    }
     return { ok: true, updated };
   }
 
   refreshContractStatus(at = Date.now()) {
-    this.processSalary(at);
+    const salary = this.processSalary(at);
     const state = this.getContractStatus(at);
+    if (!salary.ok) return state ? { ...state, persistenceFailed:true } : state;
     if (!state || !state.expired || this.contract.status !== 'active') return state;
     const now = timestamp(at);
     if (now === null) return state;
+    const before = this.captureState();
     const date = new Date(now).toISOString();
+    const previousClub = this.contract.clubId;
     this.contract = { ...this.contract, status: 'expired', expiredAt: date };
     this.clubId = null;
     for (const offer of this.offers.values()) if (offer.status === 'pending') offer.status = 'cancelled';
-    this.history.push({ type: 'contract-expired', clubId: this.contract.clubId, date });
-    this.persist();
+    this.history.push({ type: 'contract-expired', clubId: previousClub, date });
+    if (!this.saveState()) {
+      this.restoreState(before);
+      return { ...state, persistenceFailed:true };
+    }
     return this.getContractStatus(at);
   }
 
