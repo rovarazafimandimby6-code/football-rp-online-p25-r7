@@ -116,7 +116,7 @@ export async function renderSystemPlayerPortrait3D(player) {
     const rimLight = new THREE.DirectionalLight(0x78b8ff, 0.8);
     rimLight.position.set(2.4, 2.8, -2.5); scene.add(rimLight);
     const camera = new THREE.PerspectiveCamera(27, WIDTH / HEIGHT, 0.1, 20);
-    camera.position.set(0, 1.43, 4.2);
+    camera.position.set(0, 1.43, 4.05);
     camera.lookAt(0, 1.38, 0);
     activeRenderer.render(scene, camera);
     let uri;
