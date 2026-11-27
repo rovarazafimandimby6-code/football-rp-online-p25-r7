@@ -17,6 +17,9 @@ test('P27 rotation V1 : feuille 5v5 avec 2 à 5 remplaçants', () => {
   assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: squad().substitutes.slice(0,2) }).code, 'invalid-substitutes-count');
   assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: Array.from({ length: 8 }, (_, i) => ({ id: `b${i}` })) }).code, 'invalid-substitutes-count');
   assert.equal(ROTATION_RULES_V1.playersOnPitchPerTeam, 5);
+  assert.equal(ROTATION_RULES_V1.minimumSubstitutesPerTeam, 3);
+  assert.equal(ROTATION_RULES_V1.maximumSubstitutesPerTeam, 7);
+  assert.equal(validateMatchSheet({starters:squad().starters,substitutes:Array.from({length:7},(_,i)=>({id:`seven-${i}`}))}).ok,true);
 });
 
 test('P27 rotation V1 : refuse les doublons et les joueurs sans identifiant', () => {
