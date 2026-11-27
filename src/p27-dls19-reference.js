@@ -8,7 +8,8 @@ export const DLS19_POSITION_ALIASES = Object.freeze({ WF: 'SS' });
 const DLS19_VALID_POSITIONS = new Set(['GK','CB','LB','RB','LWB','RWB','DM','CM','AM','LM','RM','LW','RW','CF','SS']);
 
 export function roleForDls19Position(position) {
-  const normalized = DLS19_POSITION_ALIASES[position] || position;
+  const code = typeof position === 'string' ? position.trim().toUpperCase() : '';
+  const normalized = DLS19_POSITION_ALIASES[code] || code;
   if (normalized === 'GK') return 'GK';
   if (['CB','LB','RB','LWB','RWB'].includes(normalized)) return 'DEF';
   if (['DM','CM','AM','LM','RM'].includes(normalized)) return 'MID';
@@ -57,22 +58,29 @@ export function normalizeDls19Profile(record) {
   const heightCm = Number(record.heightCm);
   if (!Number.isInteger(overall) || overall < 1 || overall > 100) throw new RangeError('Invalid DLS19 overall');
   if (!Number.isInteger(heightCm) || heightCm < 140 || heightCm > 220) throw new RangeError('Invalid DLS19 height');
-  const position = DLS19_POSITION_ALIASES[record.position] || record.position;
+  const rawPosition = typeof record.position === 'string' ? record.position.trim().toUpperCase() : '';
+  const position = DLS19_POSITION_ALIASES[rawPosition] || rawPosition;
   if (!DLS19_VALID_POSITIONS.has(position)) throw new RangeError('Unsupported DLS19 position');
-  if (!record.source || !/^https:\/\//.test(record.source)) throw new TypeError('DLS19 source URL required');
-  if (!record.sourceRecordId || !record.version) throw new TypeError('DLS19 record ID and version required');
+  let sourceUrl;
+  try { sourceUrl = new URL(record.source); } catch { throw new TypeError('DLS19 source URL required'); }
+  if (sourceUrl.protocol !== 'https:' || !sourceUrl.hostname) throw new TypeError('DLS19 source URL must be HTTPS');
+  const sourceRecordId = String(record.sourceRecordId ?? '').trim();
+  const version = String(record.version ?? '').trim();
+  if (!sourceRecordId || !version) throw new TypeError('DLS19 record ID and version required');
+  const preferredFoot = record.preferredFoot == null || record.preferredFoot === '' ? null : String(record.preferredFoot).trim().toLowerCase();
+  if (preferredFoot && !['left','right','both'].includes(preferredFoot)) throw new RangeError('Unsupported preferred foot');
   return Object.freeze({
     id: `dls19-${String(record.sourceRecordId)}`,
     sourceGame: 'DLS19',
-    version: String(record.version),
+    version,
     cardType: 'normal',
     position,
     overall,
     heightCm,
-    preferredFoot: record.preferredFoot || null,
+    preferredFoot,
     stats: Object.freeze(stats),
-    source: record.source,
-    sourceRecordId: String(record.sourceRecordId),
+    source: sourceUrl.href,
+    sourceRecordId,
     verification: 'archived-card-record'
   });
 }
