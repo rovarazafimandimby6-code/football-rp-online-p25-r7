@@ -691,6 +691,7 @@ export class ClubManager {
       clubId: club.id, playerId: player.id, division: club.division, rating: player.rating
     })?.weeklyWage;
     if (!Number.isSafeInteger(weeklyWage) || weeklyWage <= 0) return { ok: false, reason: 'invalid-wage' };
+    const previousContract = clonePlayer(player).contract;
     const previousWage = player.contract.weeklyWage ?? player.contract.salary;
     player.contract = {
       ...player.contract,
@@ -699,7 +700,10 @@ export class ClubManager {
       reviewedAt: new Date(now).toISOString(),
       reviewCount: Math.max(0, Number(player.contract.reviewCount) || 0) + 1
     };
-    this.saveSeason();
+    if (!this.saveSeason()) {
+      player.contract = previousContract;
+      return { ok:false, reason:'roster-persistence-failed' };
+    }
     return { ok: true, previousWage, weeklyWage, contract: { ...player.contract } };
   }
 
