@@ -13,6 +13,8 @@ test('P27 bibliothèque joueurs : réunit effectifs et joueurs libres sans doubl
   assert.equal(result.total, 5);
   assert.equal(result.players.filter(item => item.id === 'p3').length, 1);
   assert.equal(result.players.find(item => item.id === 'p3').status, 'free');
+  assert.equal(result.players.find(item => item.id === 'p3').number, null);
+  assert.equal(result.players.find(item => item.id === 'p3').appearance.kitColors.primary, '#465365');
   assert.equal(result.players.find(item => item.id === 'p4').clubId, 'club-b');
   assert.equal(result.players.find(item => item.id === 'p4').status, 'active');
   assert.equal(result.facets.statuses.loaned, 1);
