@@ -27,6 +27,16 @@ test('P27 DLS26: le hub utilise des panneaux de tailles hiérarchisées', () => 
   assert.doesNotMatch(main, /p27-home-tiles/);
 });
 
+test('P27 DLS26: le hub carrière affiche uniquement la forme et les statistiques de saison enregistrées', () => {
+  assert.ok(main.includes('const seasonSnapshot = seasonStats.snapshot();'));
+  assert.ok(main.includes('seasonSnapshot.currentForm'));
+  assert.ok(main.includes('p27-dls-career-form'));
+  assert.ok(main.includes('seasonTotals.matches'));
+  assert.ok(main.includes('seasonSnapshot.averageRating'));
+  assert.ok(main.includes('data-page="results"'));
+  assert.ok(css.includes('.p27-dls-career-form .p27-form-chip.win'));
+});
+
 test('P27 DLS26: les panneaux sont reliés aux vraies fonctions existantes', () => {
   for (const value of ['data-action="choose-match"','data-page="player"','data-page="players"','data-page="competitions"','data-page="mercato"','data-page="clubs"','data-page="rankings"','data-page="rp-club"','data-page="results"']) {
     assert.ok(main.includes(value), `accès manquant : ${value}`);
