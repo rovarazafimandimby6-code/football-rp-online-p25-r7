@@ -293,6 +293,7 @@ function mountAvatarPreview(profile) {
 }
 
 let selectedMatchup = { home: 'antananarivo-fc', away: 'toamasina-united' };
+let selectedFormation = '2-2';
 let selectedClubId = null;
 let playerLibraryLimit = 12;
 let playerLibraryPage = 0;
@@ -1180,6 +1181,7 @@ async function startMatch(online = null) {
     const awayKitAppearance = awayKits.outfield;
     game = new Game(container, {
       careerPlayerId: 'career-player',
+      formation: selectedFormation,
       playerRole: profileStore.profile.identity.role,
       playerName: profileStore.profile.identity.displayName,
       playerNumber: profileStore.profile.identity.number,
@@ -1672,16 +1674,30 @@ menu.addEventListener('click', event => {
   } else if (action === 'show-lineup') {
     const content=document.getElementById('menu-content');
     const home=clubs.getClub(selectedMatchup.home), away=clubs.getClub(selectedMatchup.away);
-    const homeSquad = createMatchSquad('blue','2-2',home.roster,'career-player');
-    const awaySquad = createMatchSquad('red','2-2',away.roster);
     const roleLabels = { GK:'Gardien', DEF:'Défenseur', MID:'Milieu', FWD:'Attaquant' };
+    const formationLabels = { '2-2':'2–2 · Équilibrée', '1-2-1':'1–2–1 · Axiale', '2-1-1':'2–1–1 · Compacte' };
+    const formationSelect = `<label class="pre-match-formation">FORMATION DE L’ÉQUIPE <select id="pre-match-formation">${Object.entries(formationLabels).map(([value,label])=>`<option value="${value}" ${selectedFormation===value?'selected':''}>${label}</option>`).join('')}</select></label>`;
     const isSystemPortraitEligible = player => (player?.playerType==='system'||player?.controlStatus==='system')&&player?.isHuman!==true&&player?.ownerType!=='human'&&player?.source!=='human'&&player?.createdBy!=='user';
     const renderPlayers = (players) => players.map(player=>{
       const hasPortrait = isSystemPortraitEligible(player);
       return `<div class="pre-match-player${hasPortrait?' has-system-portrait':''}"><span class="pre-match-number">${player.number}</span>${hasPortrait?renderSystemPlayerPortrait(player,'roster'):''}<b>${escapeHTML(player.name)}</b><small>${roleLabels[player.role]||player.role}</small><strong>${player.rating}</strong></div>`;
     }).join('');
     const renderLineup = (team, squad) => `<section class="pre-match-team ${team}"><div class="pre-match-team-heading"><span class="eyebrow">${team==='blue'?'ÉQUIPE DOMICILE':'ÉQUIPE EXTÉRIEURE'}</span><b>${team==='blue'?'BLEU':'ROUGE'} · ${squad.starters.length}/5</b></div><div class="pre-match-player-list">${renderPlayers(squad.starters)}</div><div class="pre-match-bench-heading"><span>REMPLAÇANTS</span><b>${squad.substitutes.length}</b></div><div class="pre-match-player-list pre-match-bench-list">${squad.substitutes.length ? renderPlayers(squad.substitutes) : '<p class="pre-match-no-bench">Aucun remplaçant enregistré</p>'}</div><small class="pre-match-squad-total">Effectif disponible : ${squad.squadSize} joueur(s)</small></section>`;
-    content.innerHTML=`<div class="match-intro"><span class="eyebrow">PRÉSENTATION DU MATCH</span><h2>LE TERRAIN VOUS ATTEND</h2><p>5 contre 5 · ${preferences.duration} minutes · Stade de démonstration</p><div class="intro-versus"><div>${crest(home)}<b>${escapeHTML(home.name)}</b><small>${escapeHTML(home.city)}</small></div><strong>VS</strong><div>${crest(away)}<b>${escapeHTML(away.name)}</b><small>${escapeHTML(away.city)}</small></div></div><div class="intro-lineup"><span>FORMATION 2–2</span><span>10 TITULAIRES · RÉSERVES AFFICHÉES</span><span>CONTRÔLE INDIVIDUEL</span></div><div class="pre-match-lineups">${renderLineup('blue',homeSquad)}${renderLineup('red',awaySquad)}</div><button class="primary-cta" data-action="start-match">ENTRER SUR LE TERRAIN <span>→</span></button><button class="text-cta" data-action="choose-match">Modifier les équipes</button></div>`;
+    const renderSquads = () => {
+      const homeSquad = createMatchSquad('blue',selectedFormation,home.roster,'career-player');
+      const awaySquad = createMatchSquad('red',selectedFormation,away.roster);
+      const lineups = content.querySelector('.pre-match-lineups');
+      if (lineups) lineups.innerHTML = `${renderLineup('blue',homeSquad)}${renderLineup('red',awaySquad)}`;
+      const label = content.querySelector('[data-current-formation]');
+      if (label) label.textContent = formationLabels[selectedFormation];
+    };
+    content.innerHTML=`<div class="match-intro"><span class="eyebrow">PRÉSENTATION DU MATCH</span><h2>LE TERRAIN VOUS ATTEND</h2><p>5 contre 5 · ${preferences.duration} minutes · Stade de démonstration</p><div class="intro-versus"><div>${crest(home)}<b>${escapeHTML(home.name)}</b><small>${escapeHTML(home.city)}</small></div><strong>VS</strong><div>${crest(away)}<b>${escapeHTML(away.name)}</b><small>${escapeHTML(away.city)}</small></div></div>${formationSelect}<div class="intro-lineup"><span>FORMATION <b data-current-formation>${formationLabels[selectedFormation]}</b></span><span>10 TITULAIRES · RÉSERVES AFFICHÉES</span><span>CONTRÔLE INDIVIDUEL</span></div><div class="pre-match-lineups"></div><button class="primary-cta" data-action="start-match">ENTRER SUR LE TERRAIN <span>→</span></button><button class="text-cta" data-action="choose-match">Modifier les équipes</button></div>`;
+    renderSquads();
+    content.querySelector('#pre-match-formation')?.addEventListener('change', event => {
+      if (!Object.hasOwn(formationLabels,event.target.value)) return;
+      selectedFormation = event.target.value;
+      renderSquads();
+    });
     content.scrollTop = 0;
   } else if (action === 'start-match') startMatch();
   else if (action === 'take-club') {
