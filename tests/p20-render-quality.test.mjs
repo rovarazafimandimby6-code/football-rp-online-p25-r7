@@ -54,3 +54,12 @@ test('P27 : la pelouse gagne en relief par bandes de tonte sans augmenter la gé
 test('P27 : les lignes du terrain partagent un matériau unique', () => {
   assert.match(fieldSource, /this\.lineMaterial \|\| \(this\.lineMaterial = new THREE\.MeshBasicMaterial/);
 });
+
+
+test('P27 : les rectangles de lignes réutilisent leurs géométries et les filets partagent leur matériau', () => {
+  assert.match(fieldSource, /this\.lineGeometryCache = new Map\(\)/);
+  assert.match(fieldSource, /horizontalGeometry = this\.lineGeometryCache\.get/);
+  assert.match(fieldSource, /verticalGeometry = this\.lineGeometryCache\.get/);
+  assert.match(fieldSource, /this\.netMaterial \|\| \(this\.netMaterial = new THREE\.MeshBasicMaterial/);
+  assert.match(fieldSource, /map: createNetTexture\(\)/);
+});
