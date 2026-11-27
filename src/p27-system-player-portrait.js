@@ -5,7 +5,7 @@ async function renderSystemPlayerPortrait3D(player) {
   return module.renderSystemPlayerPortrait3D(player);
 }
 const SKIN = Object.freeze({ light:'#efc6a1', tan:'#d99d70', medium:'#b97850', brown:'#8b543a', dark:'#623b2d', deep:'#45291f', olive:'#c69a70' });
-const HAIR = Object.freeze({ dark:'#211b1a', black:'#171515', brown:'#493027', blond:'#b58a4d' });
+const HAIR = Object.freeze({ dark:'#211b1a', black:'#171515', brown:'#493027', blond:'#b58a4d', auburn:'#8b3f26', grey:'#777b82' });
 const SAFE_HEX = /^#[0-9a-f]{6}$/i;
 const pick = (value, fallback) => value ?? fallback;
 function hash(value) { let h=2166136261; for (const c of String(value||'system-player')) { h^=c.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; }
