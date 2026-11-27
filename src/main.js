@@ -807,7 +807,7 @@ ${renderGoogleProtectionCard({ compact: true })}
     const playerClubLabel = player.clubName || (player.lastClubName ? `Dernier club : ${player.lastClubName}` : 'Sans club');
     content.innerHTML = `<button class="text-cta" data-action="back-player-library">← RETOUR À LA BIBLIOTHÈQUE</button>
       <section class="player-career-hero">
-        ${player.playerType==='system'||player.controlStatus==='system'?renderSystemPlayerPortrait(player,'detail'):`<div class="player-career-avatar"><span>#${player.number}</span><b>${escapeHTML(initials)}</b></div>`}
+        ${(player.playerType==='system'||player.controlStatus==='system')&&player.isHuman!==true&&player.ownerType!=='human'&&player.source!=='human'&&player.createdBy!=='user'?renderSystemPlayerPortrait(player,'detail'):`<div class="player-career-avatar"><span>#${player.number}</span><b>${escapeHTML(initials)}</b></div>`}
         <div class="player-career-identity"><span class="eyebrow">${escapeHTML(player.clubDivision||player.division||playerStatusLabel)} · ${escapeHTML(roleNames[player.role]||player.role)}</span><h2>${escapeHTML(player.name)}</h2><p>${escapeHTML(playerClubLabel)} · <span class="player-nationality"><b aria-hidden="true">${countryFlag(player.nationality)}</b>  ${escapeHTML(countryName(player.nationality))}</span> · ${player.age} ans</p><div class="player-career-tags"><span>NOTE ${player.rating}</span><span>POTENTIEL ${player.potential}</span><span>${playerStatusLabel}</span><span>PIED ${player.preferredFoot==='left'?'GAUCHE':player.preferredFoot==='both'?'AMBIDEXTRE':'DROIT'}</span></div></div>
       </section>
       <div class="player-career-columns">
