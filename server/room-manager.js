@@ -9,7 +9,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Authoritative in-memory 5v5 room manager. One input stream controls one avatar. */
 export class RoomManager {
-  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, roomStore = null, careerStore = null, careerSyncQueue = null, progressionStore = null, competitionStore = null } = {}) {
+  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, roomStore = null, careerStore = null, careerSyncQueue = null, progressionStore = null, competitionStore = null, resolveClubAppearance = () => ({ equippedItemIds:[], stadiumExpansionLevel:0 }) } = {}) {
     this.now = now;
     this.roomTtlMs = roomTtlMs;
     this.disconnectGraceMs = disconnectGraceMs;
@@ -19,6 +19,7 @@ export class RoomManager {
     this.careerSyncQueue = careerSyncQueue;
     this.progressionStore = progressionStore;
     this.competitionStore = competitionStore;
+    this.resolveClubAppearance = typeof resolveClubAppearance === 'function' ? resolveClubAppearance : () => ({ equippedItemIds:[], stadiumExpansionLevel:0 });
     this.rooms = new Map();
     this.lastCheckpointAt = new Map();
     this.restoreCheckpoints();
@@ -130,6 +131,17 @@ export class RoomManager {
       if (!['scheduled','replay-required'].includes(competitionFixture.status)) throw new Error('COMPETITION_FIXTURE_NOT_READY');
       if (!blueClub || blueClub.id !== competitionFixture.homeClubId || redClub.id !== competitionFixture.awayClubId) throw new Error('COMPETITION_FIXTURE_MISMATCH');
     }
+    const publicTeam = club => {
+      if (!club) return null;
+      let source = {};
+      try { source = this.resolveClubAppearance(club.id) || {}; } catch (_) { source = {}; }
+      const equippedItemIds = Array.isArray(source.equippedItemIds)
+        ? [...new Set(source.equippedItemIds.filter(id => typeof id === 'string' && /^[a-z0-9-]{1,64}$/i.test(id)))].slice(0, 24)
+        : [];
+      const stadiumExpansionLevel = Number.isInteger(source.stadiumExpansionLevel)
+        ? clamp(source.stadiumExpansionLevel, 0, 4) : 0;
+      return { ...club, shopAppearance:{ equippedItemIds, stadiumExpansionLevel } };
+    };
     const roomId = randomBytes(6).toString('hex');
     const room = {
       id: roomId, name: String(name).trim().slice(0, 36) || 'Match rapide', competitionFixtureId: competitionFixture?.id || null,
@@ -137,7 +149,7 @@ export class RoomManager {
       phase: 'lobby', createdAt: this.now(), updatedAt: this.now(),
       startedAt: null, elapsedMs: 0, sequence: 0, players: new Map(),
       period: 1, halftimeUntil: null, halftimeDurationMs: 5_000, goalPauseMs: 0, lastTickAt: this.now(), attackDirection: { blue: 1, red: -1 },
-      teams: { blue: blueClub, red: redClub },
+      teams: { blue: publicTeam(blueClub), red: publicTeam(redClub) },
       nextEventId: 1, result: null, rotationRequests: [], score: { blue: 0, red: 0 }, ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null }, events: [],
     };
     this.rooms.set(roomId, room);
