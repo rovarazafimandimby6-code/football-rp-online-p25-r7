@@ -26,12 +26,13 @@ function clientFor(responses) {
   return {client,calls};
 }
 
-test("player shop client reads and validates catalog and inventory", async () => {
-  const {client,calls} = clientFor([{catalog:[catalogItem]},{inventory:[inventoryItem]}]);
+test("player shop client reads the authoritative server snapshot", async () => {
+  const snapshot = {shop:"player",currency:"player-coins",balance:5000,catalog:[catalogItem],inventory:[inventoryItem]};
+  const {client,calls} = clientFor([snapshot,snapshot]);
   assert.deepEqual(await client.getPlayerShopCatalog(),[catalogItem]);
   assert.deepEqual(await client.getPlayerShopInventory(),[inventoryItem]);
-  assert.equal(calls[0].url,"/api/shop/player/catalog");
-  assert.equal(calls[1].url,"/api/shop/player/inventory");
+  assert.equal(calls[0].url,"/api/shop?shop=player");
+  assert.equal(calls[1].url,"/api/shop?shop=player");
   assert.equal(calls.every(call=>call.options.headers.authorization === "Bearer p27-test-token-with-enough-length"),true);
 });
 
@@ -41,9 +42,32 @@ test("player shop client sends authenticated purchase, resale, and equipment com
   await client.resellPlayerShopItem("boots-standard","resale-1");
   await client.equipPlayerShopItem("boots-standard",true);
   assert.deepEqual(calls.map(call=>[call.url,call.options.method,JSON.parse(call.options.body)]),[
-    ["/api/shop/player/purchase","POST",{itemId:"boots-standard",purchaseId:"purchase-1"}],
-    ["/api/shop/player/resale","POST",{itemId:"boots-standard",resaleId:"resale-1"}],
-    ["/api/shop/player/equip","POST",{itemId:"boots-standard",equipped:true}],
+    ["/api/shop/purchase","POST",{shop:"player",itemId:"boots-standard",purchaseId:"purchase-1"}],
+    ["/api/shop/resale","POST",{shop:"player",itemId:"boots-standard",resaleId:"resale-1"}],
+    ["/api/shop/equip","POST",{shop:"player",itemId:"boots-standard",equipped:true}],
+  ]);
+});
+
+
+test("club shop client verifies owned clubs and uses club-only treasury commands", async () => {
+  const clubItem = {...catalogItem,id:"club-kit-home",shop:"club",currency:"club-coins"};
+  const snapshot = {shop:"club",currency:"club-coins",balance:42000,catalog:[clubItem],inventory:[]};
+  const {client,calls} = clientFor([
+    {clubs:[{id:"club-one",name:"Club One",balance:42000}]},snapshot,{ok:true},{ok:true},{ok:true}
+  ]);
+  assert.deepEqual(await client.getOwnedShopClubs(),[{id:"club-one",name:"Club One",balance:42000}]);
+  assert.deepEqual(await client.getShopSnapshot("club","club-one"),snapshot);
+  await client.purchaseShopItem("club","club-kit-home","club-buy-1","club-one");
+  await client.resellShopItem("club","club-kit-home","club-sale-1","club-one");
+  await client.equipShopItem("club","club-kit-home",true,"club-one");
+  assert.deepEqual(calls.map(call=>call.url),[
+    "/api/shop/clubs","/api/shop?shop=club&clubId=club-one",
+    "/api/shop/purchase","/api/shop/resale","/api/shop/equip"
+  ]);
+  assert.deepEqual(calls.slice(2).map(call=>JSON.parse(call.options.body)),[
+    {shop:"club",itemId:"club-kit-home",purchaseId:"club-buy-1",clubId:"club-one"},
+    {shop:"club",itemId:"club-kit-home",resaleId:"club-sale-1",clubId:"club-one"},
+    {shop:"club",itemId:"club-kit-home",equipped:true,clubId:"club-one"}
   ]);
 });
 
