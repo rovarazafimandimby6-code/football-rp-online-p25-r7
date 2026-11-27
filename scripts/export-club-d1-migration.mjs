@@ -37,7 +37,16 @@ if (!journal || journal.version !== 1 || !Array.isArray(journal.transfers) || !A
 if (!transfers || transfers.version !== 1 || !Array.isArray(transfers.events)) issue('invalid-transfer-store-schema');
 if (!accountRows) issue('invalid-account-store-schema');
 
-const accountIds = new Set((accountRows || []).map(row => row?.id).filter(id => typeof id === 'string' && UUID.test(id)));
+const accountIds = new Set();
+for (const row of accountRows || []) {
+  const id = row?.id;
+  if (typeof id !== 'string' || !UUID.test(id)) {
+    issue('invalid-account-id');
+    continue;
+  }
+  if (accountIds.has(id)) issue('duplicate-account-id', { accountId:id });
+  accountIds.add(id);
+}
 const clubs = rosterClubs || [];
 const byId = new Map();
 const owners = new Map();
