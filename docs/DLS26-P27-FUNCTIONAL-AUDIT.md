@@ -471,3 +471,8 @@ Les filtres de l'effectif affichent maintenant le nombre de joueurs visibles par
 ### Mercato — dates de carrière robustes
 
 Les dates affichées dans le contrat et le journal du Mercato vérifient maintenant la validité de la date avant formatage. Une ancienne sauvegarde ou une entrée endommagée ne fait plus apparaître « Invalid Date » dans l'interface : le libellé neutre « Date inconnue » est utilisé. Les données et les règles contractuelles ne sont pas modifiées.
+
+
+### Carrière / effectifs — synchronisation immédiate des contrats
+
+Correction d'un défaut d'intégration entre le Mercato et les effectifs de championnat : la signature d'un premier contrat, l'acceptation d'un transfert et la résiliation mettaient à jour le CareerManager, mais ne déclenchaient pas systématiquement la synchronisation du joueur personnel dans les effectifs. Ces actions réconcilient désormais immédiatement l'effectif concerné. L'ouverture du Mercato rafraîchit également l'état d'expiration du contrat puis réconcilie l'effectif, afin qu'un contrat arrivé à échéance ne laisse pas le joueur inscrit dans son ancien club. La synchronisation est déclenchée uniquement après une mutation réussie pour les actions explicites. Test de non-régression ajouté.
