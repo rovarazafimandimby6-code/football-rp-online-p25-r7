@@ -1,3 +1,4 @@
+import { renderSystemPlayerPortrait3D } from './p27-system-player-portrait-3d.js';
 const SKIN = Object.freeze({ light:'#efc6a1', tan:'#d99d70', medium:'#b97850', brown:'#8b543a', dark:'#623b2d', deep:'#45291f', olive:'#c69a70' });
 const HAIR = Object.freeze({ dark:'#211b1a', black:'#171515', brown:'#493027', blond:'#b58a4d' });
 const SAFE_HEX = /^#[0-9a-f]{6}$/i;
@@ -22,5 +23,70 @@ export function renderSystemPlayerPortrait(player, variant='card') {
   const p=player||{}, role=String(p.position||p.role||'').toUpperCase();
   const label=String(p.name||'Joueur du système').replace(/[<>&"']/g,'');
   const cls=variant==='detail'?'player-career-avatar player-career-avatar-portrait':'player-card-portrait player-card-portrait-system';
-  return `<span class="${cls}" aria-label="Portrait illustré de ${label}"><img loading="lazy" decoding="async" src="${systemPlayerPortraitDataUri(p)}" alt="Portrait illustré de ${label}"/><small>${role}</small></span>`;
+  const config=encodeURIComponent(JSON.stringify({id:p.id||'',role:p.role||'',position:p.position||'',number:p.number||0,appearance:p.appearance||{}}));
+  return `<span class="${cls}" aria-label="Portrait 3D du joueur ${label}"><img loading="lazy" decoding="async" data-p27-system-portrait data-p27-portrait-config="${config}" src="${systemPlayerPortraitDataUri(p)}" alt="Portrait du joueur ${label}"/><small>${role}</small></span>`;
+}
+
+let portraitObserver = null;
+let mutationObserver = null;
+function queuePortrait(img) {
+  if (!(img instanceof HTMLImageElement) || img.dataset.p27PortraitQueued || img.dataset.p27PortraitDone) return;
+  if (!img.dataset.p27PortraitConfig) return;
+  img.dataset.p27PortraitQueued = '1';
+  const render = async () => {
+    img.dataset.p27PortraitAttempted = '1';
+    try {
+      const player = JSON.parse(decodeURIComponent(img.dataset.p27PortraitConfig));
+      const uri = await renderSystemPlayerPortrait3D(player);
+      if (img.isConnected && uri) {
+        img.src = uri;
+        img.dataset.p27PortraitDone = '1';
+      }
+    } catch {
+      // The SVG fallback remains visible when WebGL or the 3D assets are unavailable.
+    }
+  };
+  if (portraitObserver) portraitObserver.observe(img);
+  else render();
+}
+function scanPortraits(root) {
+  if (!root) return;
+  if (root.matches?.('img[data-p27-system-portrait]')) queuePortrait(root);
+  root.querySelectorAll?.('img[data-p27-system-portrait]').forEach(queuePortrait);
+}
+export function observeSystemPlayerPortraits() {
+  if (typeof document === 'undefined' || !document.body || mutationObserver) return;
+  if (typeof IntersectionObserver === 'function') {
+    portraitObserver = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        portraitObserver.unobserve(entry.target);
+        const img = entry.target;
+        const config = img.dataset.p27PortraitConfig;
+        if (!config || img.dataset.p27PortraitAttempted) continue;
+        img.dataset.p27PortraitAttempted = '1';
+        (async () => {
+          try {
+            const player = JSON.parse(decodeURIComponent(config));
+            const uri = await renderSystemPlayerPortrait3D(player);
+            if (img.isConnected && uri) {
+              img.src = uri;
+              img.dataset.p27PortraitDone = '1';
+            }
+          } catch {
+            // Keep the local SVG fallback.
+          }
+        })();
+      }
+    }, { rootMargin: '100px' });
+  }
+  scanPortraits(document.body);
+  mutationObserver = new MutationObserver(records => {
+    for (const record of records) for (const node of record.addedNodes) if (node.nodeType === 1) scanPortraits(node);
+  });
+  mutationObserver.observe(document.body, { childList: true, subtree: true });
+}
+if (typeof document !== 'undefined') {
+  if (document.body) observeSystemPlayerPortraits();
+  else document.addEventListener('DOMContentLoaded', observeSystemPlayerPortraits, { once: true });
 }
