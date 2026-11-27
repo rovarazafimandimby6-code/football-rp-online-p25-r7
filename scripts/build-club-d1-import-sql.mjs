@@ -88,8 +88,5 @@ for(const w of bundle.playerWageCheckpoints||[]){
 statements.push('COMMIT;');
 statements.push('-- Post-import verification: compare these counts and per-club balances to the source bundle before cutover.');
 statements.push('SELECT (SELECT COUNT(*) FROM p27_clubs) AS clubs, (SELECT COUNT(*) FROM p27_club_finance_accounts) AS finance_accounts, (SELECT COUNT(*) FROM p27_club_finance_entries) AS ledger_entries, (SELECT COUNT(*) FROM p27_club_sponsor_contracts) AS sponsors, (SELECT COUNT(*) FROM p27_club_loans) AS loans, (SELECT COUNT(*) FROM p27_club_payroll_checkpoints) AS payroll_checkpoints, (SELECT COUNT(*) FROM p27_club_transfer_finance_checkpoints) AS transfer_checkpoints, (SELECT COUNT(*) FROM p27_club_player_wage_checkpoints) AS player_wage_checkpoints;');
-const target=path.resolve(output);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,statements.join('
-')+'
-',{mode:0o600});
-process.stdout.write(JSON.stringify({ok:true,clubs:bundle.clubs.length,owners:owners.size,statements:statements.length-5,output:target},null,2)+'
-');
+const target=path.resolve(output);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,statements.join(String.fromCharCode(10))+String.fromCharCode(10),{mode:0o600});
+process.stdout.write(JSON.stringify({ok:true,clubs:bundle.clubs.length,owners:owners.size,statements:statements.length-5,output:target},null,2)+String.fromCharCode(10));
