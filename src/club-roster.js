@@ -1,6 +1,7 @@
 import { createSystemPlayerContract } from './p27-player-contracts.js';
 import { applyPlayerReference, findPlayerReference } from './p27-dls26-reference.js';
 import { mapDls19StatsToGameplay } from './p27-dls19-reference.js';
+import { getP27ClubKit } from './p27-club-kit.js';
 const NATIONAL_POOLS = Object.freeze({
   MG: { names: ['Toky','Hery','Mika','Tiana','Njaka','Kanto','Mamy','Faneva','Rado','Ando','Lova','Tahina','Faly','Niry','Hasina','Miora','Soa','Voary','Nantenaina','Fitia','Tsanta','Haja'], surnames: ['Rakoto','Randria','Andrian','Raveloson','Razafindrakoto','Rasolo','Ramanantsoa','Rakotomalala','Randrianarisoa','Andriamihaja','Razanakoto','Rajaonarison','Rafalimanana','Rakotondrabe','Ratsimbazafy','Rasoanaivo','Andriatsiferana','Rakotovao'] },
   FR: { names: ['Noah','Elias','Mathis','Yanis','Enzo','Sami','Lucas','Nolan','Theo','Mael','Bastien','Adrien','Ilyes','Remy'], surnames: ['Morel','Diallo','Laurent','Bernard','Camara','Leroy','Petit','Garnier','Fontaine','Chevalier','Roux','Marchand','Giraud','Perrin','Colin','Andre'] },
@@ -85,12 +86,7 @@ const NATIONALITY_PROFILES = Object.freeze({
 });
 
 
-const CLUB_KIT_DESIGNS = Object.freeze({
-  'antananarivo-fc':'vertical', 'manparis-sporting':'sash', 'dakar-milan-union':'hoops', 'toamasina-united':'wave',
-  'londaka-city':'pinstripes', 'lisboa-nova-athletic':'quartered', 'fianarantsoa-athletic':'chevron', 'osaka-antsirabe-fc':'sunburst',
-  'mahajanga-city':'horizontal', 'rio-tana-creative':'diagonal', 'antsirabe-sport':'central', 'valencia-northbridge':'split',
-  'tulear-sunrise':'shoulder', 'morondava-lagoon':'ripple', 'nairobi-tana-academy':'cross', 'antsiranana-north-fc':'sidepanels'
-});
+
 
 const ARCHETYPES = Object.freeze({ GK: ['Gardien réflexe','Gardien relanceur'], DEF: ['Défenseur stoppeur','Défenseur relanceur','Latéral endurant','Défenseur aérien'], MID: ['Milieu récupérateur','Meneur créatif','Relayeur dynamique','Milieu organisateur'], FWD: ['Avant-centre puissant','Ailier percutant','Attaquant mobile','Finisseur de surface'] });
 const ROLES = ['GK','GK','DEF','DEF','DEF','DEF','MID','MID','MID','MID','FWD','FWD'];
@@ -299,8 +295,7 @@ export function generateClubRoster(club, { size = 12, usedNames = new Set(), nat
       archetype,
       appearance: {
         skinTone, bodyBuild,
-        kitColors: role === 'GK' ? { primary: club.colors?.[2] || '#eaf4ff', secondary: club.colors?.[0] || '#2676f2', accent: club.colors?.[1] || '#123269' } : { primary: club.colors?.[0] || '#2676f2', secondary: club.colors?.[1] || '#123269', accent: club.colors?.[2] || '#eaf4ff' },
-        kitDesign: CLUB_KIT_DESIGNS[club.id] || club.kitDesign || 'central', kitVariant: role === 'GK' ? 'goalkeeper' : 'outfield',
+        ...getP27ClubKit(club, role),
         hairStyle: pick((['JP','MA','DZ','TN'].includes(code) ? ['short','short','fade','wavy','curly','shaved'] : ['short','short','curly','afro','fade','shaved','braids','twists','wavy']), random),
         hairColor: pick(['dark','dark','brown','black','brown','blond','auburn','grey'], random),
         facialHair: age >= 20 && hashSeed(`${club.id}:${index}:facial-hair`) % 100 < 28 ? 'beard' : 'none',
