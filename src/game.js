@@ -281,7 +281,7 @@ export class Game {
     const outgoing = this.players.find(player => player.id === outgoingId);
     const incomingIndex = this.benchPlayers.blue.findIndex(player => player.id === incomingId);
     const incoming = incomingIndex >= 0 ? this.benchPlayers.blue[incomingIndex] : null;
-    const validation = validateSubstitution({
+    const validation = validateRotation({
       phase: this.match.phase,
       elapsedMatchSeconds: this.match.elapsedMatchTime,
       outgoing,
@@ -346,7 +346,9 @@ export class Game {
     const bench = this.benchPlayers[team];
     const incomingIndex = bench.findIndex(player => player.id === incoming.id);
     const playerIndex = this.players.indexOf(outgoing);
-    if (incomingIndex < 0 || playerIndex < 0 || outgoing.isControlled || outgoing.team !== team || incoming.role !== outgoing.role) return false;
+    if (incomingIndex < 0 || playerIndex < 0 || outgoing.isControlled || outgoing.team !== team) return false;
+    const validation = validateRotation({ phase:'stoppage', elapsedMatchSeconds:this.match.elapsedMatchTime, outgoing, incoming, teamPlayers:[...this.players.filter(player=>player.team===team), ...bench] });
+    if (!validation.ok) return false;
     const replacement = new Player({
       id: incoming.id, team, number: incoming.number, name: incoming.name, role: outgoing.role,
       specialty: incoming.specialty || incoming.archetype || 'balanced', slotIndex: outgoing.slotIndex,
@@ -370,7 +372,7 @@ export class Game {
     const attributes = { ...outgoing.attributes };
     const values = Object.values(attributes);
     const averageRating = Math.round(values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length));
-    bench.push({ id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number, attributes, rating: averageRating, specialty: outgoing.specialty, preferredFoot: outgoing.preferredFoot });
+    bench.push({ id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number, attributes, rating: averageRating, specialty: outgoing.specialty, preferredFoot: outgoing.preferredFoot, team, lastSubstitutedOutAt:this.match.elapsedMatchTime });
     this.substitutionsUsed[team] += 1;
     this.match.recordEvent('substitution', team, `${outgoing.name} → ${replacement.name} (IA)`);
     return true;
