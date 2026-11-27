@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 const fieldSource = await readFile(new URL('../src/field.js', import.meta.url), 'utf8');
 const sceneSource = await readFile(new URL('../src/scene.js', import.meta.url), 'utf8');
 const mainSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+const playerSource = await readFile(new URL('../src/player.js', import.meta.url), 'utf8');
 
 test('P20 : le mode automatique limite la charge sur un appareil Android modeste', () => {
   const profile = resolveRenderProfile('auto', { hardwareConcurrency: 4, deviceMemory: 2, pixelRatio: 2.75 });
@@ -114,4 +115,12 @@ test('P27 stade : les marquages répétés et les fanions réutilisent leurs gé
   }
   assert.match(fieldSource, /const poleGeo = this\.getSharedGeometry\('corner-flag-pole'/);
   assert.match(fieldSource, /const flagGeo = this\.getSharedGeometry\('corner-flag'/);
+});
+
+
+test('P27 joueurs : les oscillations visuelles utilisent une horloge locale accumulée', () => {
+  assert.match(playerSource, /this\.visualAnimationTime = 0/);
+  assert.match(playerSource, /this\.visualAnimationTime \+= dt \* 1000/);
+  assert.match(playerSource, /const now = this\.visualAnimationTime/);
+  assert.doesNotMatch(playerSource, /performance\.now\?\./);
 });
