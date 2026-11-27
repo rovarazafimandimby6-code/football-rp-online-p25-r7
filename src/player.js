@@ -428,6 +428,8 @@ export class Player {
     this.isControlled = false;
     this.animState = 'idle'; // idle | walk | run | pass | shoot | control | tackle | celebrate | dive
     this.animTimer = 0;
+    this.animDuration = 0;
+    this.animElapsed = 0;
     this.actionCooldown = 0;
     this.diveDir = 0;
     this.tackleTimer = 0;
@@ -446,7 +448,9 @@ export class Player {
 
   triggerAnim(state, duration = 0.32, diveDir = 0) {
     this.animState = state;
-    this.animTimer = duration;
+    this.animDuration = Math.max(0.001, Number.isFinite(duration) ? duration : 0.32);
+    this.animTimer = this.animDuration;
+    this.animElapsed = 0;
     this.diveDir = diveDir;
   }
 
@@ -477,10 +481,9 @@ export class Player {
     }
 
     if (this.animTimer > 0) {
-      this.animTimer -= dt;
-      if (this.animTimer <= 0) {
-        this.animState = 'idle';
-      }
+      this.animElapsed += dt;
+      this.animTimer = Math.max(0, this.animTimer - dt);
+      if (this.animTimer <= 0) this.animState = 'idle';
     }
 
     let state = this.animState;
@@ -593,7 +596,8 @@ export class Player {
       node.rotation.z = previousPose[index].rotation.z + (targetRotation.z - previousPose[index].rotation.z) * blend;
     });
     v.updateModel?.(dt, state, speed, {
-      progress: this.animTimer > 0 ? 1 - this.animTimer / 0.32 : 0.5,
+      progress: this.animDuration > 0 && this.animTimer > 0 ? THREE.MathUtils.clamp(1 - this.animTimer / this.animDuration, 0, 1) : 0.5,
+      time: this.animElapsed,
       diveDir: this.diveDir,
       preferredFoot: this.preferredFoot,
       phase: this.dribblePhase,
