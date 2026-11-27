@@ -508,7 +508,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         } catch (error) { return json(res, 400, { error: String(error?.message || 'INVALID_PROGRESSION_ACTION') }); }
       }
     }
-    if (url.pathname === '/api/shop' || url.pathname === '/api/shop/history') {
+    if (req.method === 'GET' && (url.pathname === '/api/shop' || url.pathname === '/api/shop/history')) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
       const shop = url.searchParams.get('shop') || 'player';
