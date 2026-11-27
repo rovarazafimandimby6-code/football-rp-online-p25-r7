@@ -66,7 +66,10 @@ export function getDefensiveShapeTarget(player, ball, opponents, attackDir = 1, 
   for (const opponent of threats) {
     const distanceToPlayer = Math.hypot(opponent.pos.x - player.pos.x, opponent.pos.z - player.pos.z);
     const distanceToBall = Math.hypot(opponent.pos.x - ball.pos.x, opponent.pos.z - ball.pos.z);
-    const score = distanceToPlayer + distanceToBall * 0.24;
+    // Un défenseur ne traverse pas tout le bloc pour suivre une menace éloignée
+    // de son couloir : la priorité reste la menace proche ET dans sa zone.
+    const laneDrift = Math.abs(opponent.pos.z - (player.homePos?.z ?? player.pos.z));
+    const score = distanceToPlayer + distanceToBall * 0.24 + laneDrift * 0.42;
     if (score < threatScore) { threat = opponent; threatScore = score; }
   }
   const tacticalPush = mentality === 'defensive' ? -2.4 : mentality === 'attacking' ? 1.8 : 0;
