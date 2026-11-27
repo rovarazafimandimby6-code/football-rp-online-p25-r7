@@ -50,9 +50,12 @@ test('P23 avatar : coiffures afro et dégradé et chaussures arrondies sont gén
 });
 
 test('P23 avatar : transitions articulaires amorties pour les poses et actions', () => {
-  assert.match(playerSource, /const previousPose = poseNodes\.map/);
+  assert.match(playerSource, /snapshots: nodes\.map/);
+  assert.match(playerSource, /startPosition: new THREE\.Vector3\(\)/);
+  assert.match(playerSource, /targetRotation: new THREE\.Euler\(\)/);
   assert.match(playerSource, /const blend = 1 - Math\.exp/);
-  assert.match(playerSource, /node\.rotation\.x = previousPose\[index\]\.rotation\.x/);
+  assert.match(playerSource, /snapshot\.startRotation\.x \+ \(snapshot\.targetRotation\.x - snapshot\.startRotation\.x\) \* blend/);
+  assert.match(playerSource, /node\.position\.lerpVectors\(snapshot\.startPosition, snapshot\.targetPosition, blend\)/);
 });
 
 test('P23 avatar : aperçu 3D interactif du profil monté puis nettoyé à la navigation', () => {
