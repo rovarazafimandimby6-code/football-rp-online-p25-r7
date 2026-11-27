@@ -41,7 +41,11 @@ export function createPromotionPlayoff({seasonId,division,conference=null,standi
   const national=['D2','D3'].includes(division)&&conference===null;
   const regional=['D4','D5'].includes(division)&&((division==='D4'&&['A','B'].includes(conference))||(division==='D5'&&['A','B','C','D'].includes(conference)));
   if(!national&&!regional)throw new Error('INVALID_PROMOTION_PLAYOFF_GROUP');
-  if(!Array.isArray(standings)||standings.length!==(national?({D2:20,D3:24}[division]):16))throw new Error('INVALID_PROMOTION_PLAYOFF_STANDINGS');
+  const expectedStandings=national?({D2:20,D3:24}[division]):16;
+  if(typeof seasonId!=='string'||!seasonId.trim()||seasonId.length>48)throw new Error('INVALID_PROMOTION_PLAYOFF_SEASON');
+  if(!Array.isArray(standings)||standings.length!==expectedStandings)throw new Error('INVALID_PROMOTION_PLAYOFF_STANDINGS');
+  const standingIds=standings.map(row=>row?.id);
+  if(standingIds.some(id=>typeof id!=='string'||!id.trim())||new Set(standingIds).size!==expectedStandings)throw new Error('INVALID_PROMOTION_PLAYOFF_STANDING_IDS');
   const [first,second]=national?[4,5]:[2,3];
   const [last,thirdLast]=national?[7,6]:[5,4];
   const prefix=`${seasonId}-playoff-${division}${conference?'-'+conference:''}`;
@@ -53,18 +57,28 @@ export function createPromotionPlayoff({seasonId,division,conference=null,standi
 
 /** Advance a completed playoff tie; a draw requires a replay and cannot qualify either club. */
 export function advancePromotionPlayoff(competition,fixture) {
-  if(!competition||competition.type!=='promotion-playoff'||!fixture||fixture.result==null)return {ok:false,reason:'invalid-playoff-fixture'};
-  if(fixture.result.home===fixture.result.away){fixture.status='replay-required';fixture.replayCount=(fixture.replayCount||0)+1;return {ok:true,decided:false,replayRequired:true};}
-  const winnerId=fixture.result.home>fixture.result.away?fixture.homeClubId:fixture.awayClubId;
-  if(fixture.round===1){
-    const final=competition.fixtures.find(item=>item.round===2);
+  const stored=competition?.fixtures?.find(item=>item.id===fixture?.id);
+  const result=fixture?.result;
+  if(!competition||competition.type!=='promotion-playoff'||!stored||stored!==fixture||
+    !Number.isSafeInteger(result?.home)||result.home<0||!Number.isSafeInteger(result?.away)||result.away<0||
+    !fixture.homeClubId||!fixture.awayClubId||fixture.homeClubId===fixture.awayClubId)
+    return {ok:false,reason:'invalid-playoff-fixture'};
+  if(result.home===result.away){fixture.status='replay-required';fixture.replayCount=(fixture.replayCount||0)+1;return {ok:true,decided:false,replayRequired:true};}
+  const winnerId=result.home>result.away?fixture.homeClubId:fixture.awayClubId;
+  if(fixture.round===1&&fixture.stage==='semi-final'){
+    const final=competition.fixtures.find(item=>item.round===2&&item.stage==='final');
     if(!final)return {ok:false,reason:'playoff-final-missing'};
+    if(final.status!=='waiting'||[final.homeClubId,final.awayClubId].includes(winnerId))
+      return {ok:false,reason:'playoff-final-slot-conflict'};
     if(!final.homeClubId)final.homeClubId=winnerId;
     else if(!final.awayClubId)final.awayClubId=winnerId;
     if(final.homeClubId&&final.awayClubId)final.status='scheduled';
     return {ok:true,decided:true,winnerId,finalReady:final.status==='scheduled'};
   }
-  if(fixture.round===2){
+  if(fixture.round===2&&fixture.stage==='final'){
+    if(fixture.status!=='completed'||competition.status==='completed'||
+      ![fixture.homeClubId,fixture.awayClubId].includes(winnerId))
+      return {ok:false,reason:'playoff-final-not-ready'};
     competition.championClubId=winnerId;
     competition.status='completed';
     return {ok:true,decided:true,winnerId,championClubId:winnerId};
