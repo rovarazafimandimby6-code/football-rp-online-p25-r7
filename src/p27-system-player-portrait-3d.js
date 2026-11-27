@@ -108,13 +108,20 @@ export async function renderSystemPlayerPortrait3D(player) {
       angular: [0.94, 1.06, 1], long: [0.96, 1.12, 1],
       square: [1.08, 1.02, 1]
     }[faceShape] || [1, 1, 1];
-    const buildScale = player?.appearance?.bodyBuild === 'strong' ? 1.07 : player?.appearance?.bodyBuild === 'lean' ? 0.95 : 1;
+    const bodyBuild = player?.appearance?.bodyBuild || 'athletic';
+    const bodyShape = ({
+      strong: { torso:1.07, shoulders:1.055, neck:0.96 },
+      lean: { torso:0.95, shoulders:0.965, neck:1.035 },
+      athletic: { torso:1, shoulders:1.015, neck:1 }
+    })[bodyBuild] || { torso:1, shoulders:1, neck:1 };
     const eyeShapeScale = ({ almond:[1,0.96,1], round:[0.97,1.06,1], 'deep-set':[0.96,0.92,1], hooded:[1.02,0.91,1] })[player?.appearance?.eyeShape] || [1,1,1];
     model.traverse(node => {
       if (node.name === 'Eyes') node.scale.multiply(new THREE.Vector3(...eyeShapeScale));
       if (!node.isBone) return;
       if (node.name === 'Head') node.scale.multiply(new THREE.Vector3(...faceScale));
-      if (node.name === 'spine_02') node.scale.x *= buildScale;
+      if (node.name === 'spine_02') node.scale.x *= bodyShape.torso;
+      if (node.name === 'spine_03') node.scale.x *= bodyShape.shoulders;
+      if (node.name === 'neck_01') node.scale.y *= bodyShape.neck;
     });
     const bounds = new THREE.Box3().setFromObject(model);
     const size = bounds.getSize(new THREE.Vector3());
