@@ -36,9 +36,9 @@ test('P20 : les filets ne recalculent plus leurs normales hors impulsion de but'
   assert.match(fieldSource, /attr\.array\.set\(panel\.base\)/);
 });
 
-test('P20 : les fanions de corner ont une animation légère et le mode auto est proposé', () => {
+test('P20 : les fanions de corner sont légers et les réglages avancés restent différés', () => {
   assert.match(fieldSource, /this\.cornerFlags/);
   assert.match(fieldSource, /Math\.sin\(this\.elapsed \* 2\.2/);
   assert.match(sceneSource, /resolveRenderProfile\(level/);
-  assert.match(mainSource, /value="auto"/);
+  assert.match(mainSource, /Les options détaillées seront ajoutées après la finalisation des écrans principaux/);
 });
