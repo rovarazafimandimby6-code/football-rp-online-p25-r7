@@ -140,7 +140,10 @@ export class RoomManager {
         : [];
       const stadiumExpansionLevel = Number.isInteger(source.stadiumExpansionLevel)
         ? clamp(source.stadiumExpansionLevel, 0, 4) : 0;
-      return { ...club, shopAppearance:{ equippedItemIds, stadiumExpansionLevel } };
+      const fallbackCapacity = 5000 + stadiumExpansionLevel * 2500;
+      const stadiumCapacity = Number.isSafeInteger(source.stadiumCapacity) && source.stadiumCapacity >= 5000 && source.stadiumCapacity <= 15000
+        ? source.stadiumCapacity : fallbackCapacity;
+      return { ...club, shopAppearance:{ equippedItemIds, stadiumExpansionLevel, stadiumCapacity } };
     };
     const roomId = randomBytes(6).toString('hex');
     const room = {
