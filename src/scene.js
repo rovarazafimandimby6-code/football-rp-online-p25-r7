@@ -89,6 +89,9 @@ export class SceneManager {
       pixelRatio: window.devicePixelRatio || 1
     });
     this.quality = profile.quality;
+    // Stadium construction reads this once to select a crowd budget suited
+    // to the device without changing match simulation or player counts.
+    this.scene.userData.renderQuality = profile.quality;
     this.requestedQuality = level;
     this.targetFps = profile.targetFps || 30;
     this.framePacer?.setTargetFps(this.targetFps);
