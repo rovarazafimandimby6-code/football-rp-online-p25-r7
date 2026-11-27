@@ -421,3 +421,8 @@ Ce lot est une harmonisation CSS transversale : il ne prétend pas ajouter les f
 - Les règles métier ne changent pas : portefeuille de transfert, salaire hebdomadaire et crédits d'entraînement restent distincts ; les fenêtres de transfert continuent de contrôler les actions existantes. Aucun transfert entre joueurs ou vente entre clubs n'est ajouté par cette passe UI.
 - Les vues restent compactes en paysage et basculent vers une composition à deux colonnes sur les petits écrans portrait.
 - Cette passe améliore la présentation ; elle n'ajoute pas de moteur de transfert de joueurs entre clubs ni d'agents/recruteurs non implémentés.
+
+
+### Clarification fonctionnelle Mercato / catalogues — lot UI
+
+Le centre Mercato est explicitement présenté comme l'espace des contrats, fenêtres, offres et négociations. Les catalogues joueurs et clubs sont des espaces de consultation séparés, accessibles par deux raccourcis descriptifs depuis le Mercato. Le texte de l'interface précise désormais que les offres du prototype sont simulées localement : il ne les présente pas comme des propositions provenant d'un serveur ou de clubs connectés. Le décor CSS superposé aux portraits a été retiré pour éviter de masquer les images/avatars existants. Aucun mécanisme de transfert ni aucune règle économique n'a été modifié.
