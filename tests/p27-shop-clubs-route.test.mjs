@@ -67,6 +67,51 @@ test('P27 boutique club : liste uniquement les clubs réellement dirigés par le
     assert.equal(deniedEquip.status,403);
     assert.equal((await deniedEquip.json()).reason,'club-owner-required');
 
+
+    // Exercise the complete financial lifecycle through authenticated HTTP routes.
+    const balanceBeforePurchase = ownedPayload.clubs[0].balance;
+    const purchaseId = randomUUID();
+    const purchase = await fetch(base+'/api/shop/purchase',{
+      method:'POST',headers:{authorization:`Bearer ${owner.token}`,'content-type':'application/json'},
+      body:JSON.stringify({shop:'club',clubId:club.id,itemId:'club-kit-home',purchaseId})
+    });
+    assert.equal(purchase.status,200);
+    assert.equal((await purchase.json()).ok,true);
+    const afterPurchase = await fetch(base+`/api/shop?shop=club&clubId=${encodeURIComponent(club.id)}`,{
+      headers:{authorization:`Bearer ${owner.token}`}
+    });
+    const purchasedShop = await afterPurchase.json();
+    assert.equal(purchasedShop.balance,balanceBeforePurchase-8000);
+    assert.ok(purchasedShop.inventory.some(item=>item.itemId==='club-kit-home'&&item.status==='owned'));
+
+    // Ownership moves, but the club inventory and treasury do not.
+    club.managerId = outsider.identity.accountId;
+    const formerOwnerResale = await fetch(base+'/api/shop/resale',{
+      method:'POST',headers:{authorization:`Bearer ${owner.token}`,'content-type':'application/json'},
+      body:JSON.stringify({shop:'club',clubId:club.id,itemId:'club-kit-home',resaleId:randomUUID()})
+    });
+    assert.equal(formerOwnerResale.status,403);
+    const newOwnerSnapshot = await fetch(base+`/api/shop?shop=club&clubId=${encodeURIComponent(club.id)}`,{
+      headers:{authorization:`Bearer ${outsider.token}`}
+    });
+    assert.equal(newOwnerSnapshot.status,200);
+    const inheritedShop = await newOwnerSnapshot.json();
+    assert.equal(inheritedShop.balance,balanceBeforePurchase-8000);
+    assert.ok(inheritedShop.inventory.some(item=>item.itemId==='club-kit-home'&&item.status==='owned'));
+
+    const resale = await fetch(base+'/api/shop/resale',{
+      method:'POST',headers:{authorization:`Bearer ${outsider.token}`,'content-type':'application/json'},
+      body:JSON.stringify({shop:'club',clubId:club.id,itemId:'club-kit-home',resaleId:randomUUID()})
+    });
+    assert.equal(resale.status,200);
+    assert.equal((await resale.json()).resale.amount,4000);
+    const afterResale = await fetch(base+`/api/shop?shop=club&clubId=${encodeURIComponent(club.id)}`,{
+      headers:{authorization:`Bearer ${outsider.token}`}
+    });
+    const resoldShop = await afterResale.json();
+    assert.equal(resoldShop.balance,balanceBeforePurchase-4000);
+    assert.ok(resoldShop.inventory.some(item=>item.itemId==='club-kit-home'&&item.status==='resold'));
+
     // When club ownership changes, the former owner loses shop access immediately.
     club.managerId = outsider.identity.accountId;
     const formerOwnerSnapshot = await fetch(base+`/api/shop?shop=club&clubId=${encodeURIComponent(club.id)}`,{
