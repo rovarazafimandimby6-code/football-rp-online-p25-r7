@@ -148,3 +148,12 @@ test('P27 catalogues : les tris numériques placent les valeurs absentes à la f
   assert.equal((main.match(/const aValid=Number\.isFinite\(av\),bValid=Number\.isFinite\(bv\);/g)||[]).length, 2);
   assert.equal((main.match(/return a\.dataset\.name\.localeCompare\(b\.dataset\.name,'fr'\);/g)||[]).length >= 4, true);
 });
+
+
+test('P27 archives résultats : pagination et entrées serveur sont normalisées', () => {
+  assert.ok(main.includes("payload.results.filter(result => result && typeof result === 'object')"));
+  assert.ok(main.includes("rawPage.hasMore === true && nextOffset !== null && nextOffset > pageOffset"));
+  assert.ok(main.includes("const roomId = typeof result.roomId === 'string' ? result.roomId.trim() : ''"));
+  assert.ok(main.includes("Feuille de match indisponible"));
+  assert.ok(main.includes("date.toLocaleString('fr-FR'"));
+});
