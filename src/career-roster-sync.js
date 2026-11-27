@@ -19,7 +19,7 @@ const profilePlayer = (profile, target, career) => {
   const role = ['GK','DEF','MID','FWD'].includes(profile.identity?.role) ? profile.identity.role : 'MID';
   const rating = averageRating(attributes);
   const careerContract = career.contract?.status === 'active' ? {
-    clubId:career.clubId,
+    clubId:career.contract.clubId,
     status:'active',
     salary:Math.max(0, Math.floor(Number(career.contract.salary) || 0)),
     weeklyWage:Math.max(0, Math.floor(Number(career.contract.salary) || 0)),
@@ -51,8 +51,9 @@ export function syncCareerPlayerRoster({ clubs, career, profile, playerId = CARE
   const id = String(playerId || '').trim().slice(0, 48);
   if (!id) return { ok:false, reason:'invalid-player' };
 
-  const targetId = career.contract?.status === 'active' && career.clubId && !career.getContractStatus?.()?.expired
-    ? String(career.clubId)
+  const contractClubId = career.contract?.clubId;
+  const targetId = career.contract?.status === 'active' && contractClubId && !career.getContractStatus?.()?.expired
+    ? String(contractClubId)
     : null;
   const locations = clubs.listClubs().filter(club => club.roster.some(player => player.id === id));
   if (!targetId) {
