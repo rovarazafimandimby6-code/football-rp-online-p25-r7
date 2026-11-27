@@ -42,7 +42,21 @@ export function mapDls19StatsToGameplay(stats) {
 
 // Empty until archived DLS 19 card records with source/version evidence are
 // individually validated. The adapter is ready for accurate imports.
-export const DLS19_REFERENCE_PROFILES = Object.freeze([]);
+export const DLS19_REFERENCE_PROFILES = Object.freeze([
+  // Historical DLS19 rating row preserved by a community wiki.
+  // Player identity is not carried into generated P27 players.
+  normalizeDls19Profile({
+    sourceRecordId: 'community-wiki-varane-dls19-row',
+    version: 'DLS19-historical-row',
+    position: 'CB',
+    overall: 83,
+    heightCm: 191,
+    preferredFoot: 'right',
+    source: 'https://dls-wiki.fandom.com/wiki/Raphael_Varane',
+    verification: 'community-historical-record',
+    stats: { SPE:81, ACC:79, STA:72, STR:80, CON:67, PAS:71, SHO:46, TAC:83, CRO:72, HEA:82 }
+  })
+]);
 
 export function normalizeDls19Profile(record) {
   if (!record || typeof record !== 'object') throw new TypeError('DLS19 profile record required');
@@ -81,6 +95,6 @@ export function normalizeDls19Profile(record) {
     stats: Object.freeze(stats),
     source: sourceUrl.href,
     sourceRecordId,
-    verification: 'archived-card-record'
+    verification: record.verification || 'source-record'
   });
 }
