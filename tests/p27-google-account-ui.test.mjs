@@ -25,9 +25,10 @@ test('Google association stays optional and the linked recovery actions are wire
   assert.match(accountPage, /L'association est un choix, pas une condition d'accès au jeu/);
   assert.match(accountPage, /Tant que Google n'est pas associé, les données restent sur cet appareil/);
 });
-test('Google protection entry points are present on player page and settings', () => {
+test('Google protection stays on the player/account path while Settings remains a simple entry point', () => {
   assert.match(source, /renderGoogleProtectionCard\(\{ compact: true \}\)/);
-  assert.match(source, /Compte et synchronisation/);
+  assert.match(source, /page === 'settings'/);
+  assert.match(source, /Les options détaillées seront ajoutées après la finalisation des écrans principaux/);
   assert.match(source, /data-page="account"/);
 });
 
