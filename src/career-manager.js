@@ -230,6 +230,7 @@ export class CareerManager {
 
   signContract({ clubId, salary = 0, durationDays = 30, signedAt = new Date().toISOString() } = {}) {
     const club = idOf(clubId);
+    if (!Number.isFinite(Number(salary))) return { ok:false, reason:'invalid-salary' };
     const wage = nonNegativeInt(salary);
     const days = Math.max(1, Math.min(3650, nonNegativeInt(durationDays, 30) || 30));
     const startMs = timestamp(signedAt);
@@ -286,6 +287,7 @@ export class CareerManager {
     if (!offer || offer.status !== 'pending') return { ok: false, reason: 'offer-unavailable' };
     const now = timestamp(at);
     if (now === null) return { ok: false, reason: 'invalid-date' };
+    if (!this.contract || this.getContractStatus(now).expired) return { ok:false, reason:'contract-expired' };
     if (offer.expiresAt && timestamp(offer.expiresAt) <= now) {
       const before = this.captureState();
       offer.status = 'expired';
@@ -327,13 +329,13 @@ export class CareerManager {
       return { ok: false, reason: 'offer-expired' };
     }
     if (offer.fromClubId === this.clubId) return { ok: false, reason: 'same-club' };
-    if (this.wallet < offer.fee) return { ok: false, reason: 'insufficient-funds' };
+    const accrual = calculateSalaryAccrual(this.contract, this.wallet, now);
+    if (!accrual.ok) return { ok:false, reason:accrual.reason };
+    if (this.wallet + accrual.paid < offer.fee) return { ok: false, reason: 'insufficient-funds' };
 
     const before = this.captureState();
     const previousClub = this.clubId;
     const signedAt = new Date(now).toISOString();
-    const accrual = calculateSalaryAccrual(this.contract, this.wallet, now);
-    if (!accrual.ok) return { ok:false, reason:accrual.reason };
     this.wallet += accrual.paid;
     if (accrual.periods > 0 && accrual.paid > 0) this.history.push({ type:'salary', salary:this.contract.salary, periods:accrual.periods, amount:accrual.paid, date:new Date(accrual.paidThrough).toISOString(), paidAt:signedAt });
     this.wallet -= offer.fee;
@@ -347,6 +349,12 @@ export class CareerManager {
       status: 'active'
     };
     offer.status = 'accepted';
+    for (const other of this.offers.values()) {
+      if (other.id !== offer.id && other.status === 'pending') {
+        other.status = 'cancelled';
+        this.history.push({ type:'offer-cancelled', offerId:other.id, clubId:other.fromClubId, date:signedAt });
+      }
+    }
     this.history.push({ type: 'transfer', from: previousClub, to: this.clubId, fee: offer.fee, date: signedAt });
     if (!this.saveState()) {
       this.restoreState(before);
@@ -360,13 +368,18 @@ export class CareerManager {
     const now = timestamp(at);
     if (!offer || offer.status !== 'pending' || now === null) return false;
     const before = this.captureState();
-    offer.status = 'rejected';
-    this.history.push({ type:'offer-rejected', offerId:offer.id, clubId:offer.fromClubId, date:new Date(now).toISOString() });
+    if (offer.expiresAt && timestamp(offer.expiresAt) <= now) {
+      offer.status = 'expired';
+      this.history.push({ type:'offer-expired', offerId:offer.id, clubId:offer.fromClubId, date:new Date(now).toISOString() });
+    } else {
+      offer.status = 'rejected';
+      this.history.push({ type:'offer-rejected', offerId:offer.id, clubId:offer.fromClubId, date:new Date(now).toISOString() });
+    }
     if (!this.saveState()) {
       this.restoreState(before);
       return false;
     }
-    return true;
+    return offer.status === 'rejected';
   }
 
   recordMatch({ result, goals = 0, assists = 0, cleanSheet = false, matchId = null } = {}) {
