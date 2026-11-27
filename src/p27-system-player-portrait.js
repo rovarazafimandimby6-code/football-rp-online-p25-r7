@@ -1,4 +1,9 @@
-import { renderSystemPlayerPortrait3D } from './p27-system-player-portrait-3d.js';
+let rendererModulePromise = null;
+async function renderSystemPlayerPortrait3D(player) {
+  rendererModulePromise ||= import('./p27-system-player-portrait-3d.js');
+  const module = await rendererModulePromise;
+  return module.renderSystemPlayerPortrait3D(player);
+}
 const SKIN = Object.freeze({ light:'#efc6a1', tan:'#d99d70', medium:'#b97850', brown:'#8b543a', dark:'#623b2d', deep:'#45291f', olive:'#c69a70' });
 const HAIR = Object.freeze({ dark:'#211b1a', black:'#171515', brown:'#493027', blond:'#b58a4d' });
 const SAFE_HEX = /^#[0-9a-f]{6}$/i;
