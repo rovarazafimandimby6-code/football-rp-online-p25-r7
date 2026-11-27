@@ -50,6 +50,8 @@ test('system portraits upgrade to the existing 3D humanoid model lazily', async 
   assert.match(renderer, /Hair_SimpleParted|Hair_Buzzed/);
   assert.match(renderer, /powerPreference: 'low-power'/);
   assert.match(renderer, /MAX_CACHE = 180/);
+  assert.match(renderer, /p27PortraitOwnedGeometry/);
+  assert.match(renderer, /if \(node\.userData\?\.p27PortraitOwnedGeometry\) node\.geometry/);
   assert.match(integration, /IntersectionObserver/);
   assert.match(integration, /systemPlayerPortraitDataUri\(p\)/);
   assert.match(integration, /module\.renderSystemPlayerPortrait3D\(player\)/);
