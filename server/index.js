@@ -724,6 +724,13 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       return json(res, status, result);
     }
     const rpClubMessageMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/messages$/i);
+    if (req.method === 'GET' && rpClubMessageMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const messages = rpClubStore.getMessages(rpClubMessageMatch[1], account.id, 60);
+      if (!messages) return json(res, 403, { error:'RP_CLUB_MEMBERSHIP_REQUIRED' });
+      return json(res, 200, { messages });
+    }
     if (req.method === 'POST' && rpClubMessageMatch) {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
