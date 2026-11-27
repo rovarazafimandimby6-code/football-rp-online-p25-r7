@@ -396,7 +396,7 @@ export class FieldBuilder {
     const hw = PITCH.GOAL_W / 2;
     const h = PITCH.GOAL_H;
 
-    const postMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const postMat = this.goalPostMaterial || (this.goalPostMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff }));
     const postGeo = this.getSharedGeometry('goal-front-post', () => new THREE.CylinderGeometry(0.085, 0.085, h, 10));
 
     const leftPost = new THREE.Mesh(postGeo, postMat);
