@@ -32,6 +32,9 @@ test('P27 gestion équipe : le choix de formation avant match met à jour la feu
   assert.match(main, /selectedFormation = event.target.value/);
   assert.match(main, /createMatchSquad\('blue',selectedFormation,home.roster,'career-player'\)/);
   assert.match(main, /formation: selectedFormation/);
+  assert.match(main, /id="pre-match-bench-size"/);
+  assert.match(main, /selectedBenchSize = size/);
+  assert.match(main, /benchSize: selectedBenchSize/);
   assert.match(game, /const formation = \['2-2','1-2-1','2-1-1'\]\.includes\(callbacks\.formation\) \? callbacks\.formation : '2-2'/);
   assert.match(game, /createTeamRoster\('blue', formation, callbacks\.homeRoster, callbacks\.careerPlayerId\)/);
   assert.match(game, /createMatchSquad\('blue', formation, callbacks\.homeRoster, callbacks\.careerPlayerId\)/);
@@ -42,7 +45,19 @@ test('P27 gestion équipe : le joueur personnel reste titulaire avec son poste e
   const player = lineup.find(item => item.id === 'career-player');
   assert.equal(player.role, 'MID');
   assert.equal(player.number, 17);
-  const squad = createMatchSquad('blue', '1-2-1', roster, 'career-player');
+  const squad = createMatchSquad('blue', '1-2-1', roster, 'career-player', 3);
   assert.ok(squad.starters.some(item => item.id === 'career-player'));
   assert.ok(!squad.substitutes.some(item => item.id === 'career-player'));
+});
+
+test('P27 gestion équipe : la feuille de match accepte un banc réglable de trois à sept réservistes', () => {
+  const fullRoster = [...roster, ...Array.from({length:6}, (_, index) => ({
+    id:`reserve-${index+2}`, name:`Réserve ${index+2}`, role:index%2?'DEF':'MID', rating:60+index, number:20+index
+  }))];
+  for (const size of [3,4,5,6,7]) {
+    const squad = createMatchSquad('blue','2-2',fullRoster,'career-player',size);
+    assert.equal(squad.starters.length,5);
+    assert.equal(squad.substitutes.length,size);
+    assert.equal(new Set([...squad.starters,...squad.substitutes].map(player=>player.id)).size,5+size);
+  }
 });
