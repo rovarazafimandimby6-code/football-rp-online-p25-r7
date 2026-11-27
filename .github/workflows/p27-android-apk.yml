@@ -1,10 +1,6 @@
 name: P27 Android test APK
 
 on:
-  push:
-    branches: [p27-dev, p27-apk-build, p27-dls-inspired-redesign, p27-home-navigation-refit, p27-dls19-ui-rebuild, p27-dls26-global-adaptation]
-  pull_request:
-    branches: [p27-dev, p27-dls-inspired-redesign]
   workflow_dispatch:
 
 permissions:
