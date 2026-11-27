@@ -29,7 +29,7 @@ test('P27 gameplay: les tirages restent distribués sur une population de joueur
 test('P27 gameplay: décisions de terrain sans Math.random non reproductible', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/ai.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(source, /Math\\.random\\(/);
+  assert.equal(source.includes('Math.random('), false);
   assert.match(source, /aiDecisionRoll\\(p, 'shoot-trigger'\\)/);
   assert.match(source, /aiDecisionRoll\\(p, 'pressed-pass'\\)/);
   assert.match(source, /aiDecisionRoll\\(p, 'tackle-trigger'\\)/);
