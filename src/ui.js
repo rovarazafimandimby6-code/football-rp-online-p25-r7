@@ -403,12 +403,12 @@ export class UIManager {
 Cette fiche décrit uniquement le footballeur contrôlé par vous.`;
       this.pauseActionsEl.innerHTML = back;
     } else if (section === 'substitutions') {
-      const data = this.callbacks.getSubstitutionOptions?.() || { pairs: [], used: 0, limit: 3 };
+      const data = this.callbacks.getSubstitutionOptions?.() || { pairs: [], used: 0, limit: Infinity };
       const safe = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
       const role = { GK:'Gardien', DEF:'Défenseur', MID:'Milieu', FWD:'Attaquant' };
       const pairs = data.pairs || [];
       this.overlayTitle.textContent = 'Remplacements';
-      this.overlayText.textContent = `Remplacements utilisés : ${data.used}/${data.limit}. Votre joueur de carrière reste toujours sur le terrain. Les remplaçants doivent occuper le même poste.`;
+      this.overlayText.textContent = `Rotations illimitées · ${data.used} changement(s) effectué(s). Votre joueur carrière reste contrôlé par vous et ne peut pas être remplacé dans ce match local. Les remplaçants peuvent occuper un autre poste : ils reprennent le rôle tactique du joueur sortant.`;
       this.pauseActionsEl.innerHTML = `${pairs.length ? pairs.map(({outgoing,incoming}) => `<button type="button" class="pause-menu-button" data-pause-action="substitute" data-out-id="${safe(outgoing.id)}" data-in-id="${safe(incoming.id)}">${safe(outgoing.name)} #${safe(outgoing.number)} → ${safe(incoming.name)} #${safe(incoming.number)} · ${safe(role[outgoing.role] || outgoing.role)}</button>`).join('') : '<p class="pause-empty">Aucun remplacement disponible pour le moment.</p>'}${back}`;
     } else if (section === 'events') {
       const events = (this.pauseMatch?.events || []).slice().reverse().slice(0, 8);
