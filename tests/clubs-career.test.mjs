@@ -730,3 +730,15 @@ test('mercato : refuse deux offres simultanées du même club', () => {
   assert.equal(career.makeOffer({ fromClubId: 'club-b', salary: 45 }).reason, 'duplicate-pending-offer');
   assert.equal(career.makeOffer({ fromClubId: 'club-c', salary: 45 }).ok, true);
 });
+
+test('carrière : restaure le club depuis le contrat actif si le clubId sauvegardé diverge', () => {
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const career = new CareerManager({ storage, storageKey: 'career-contract-club-normalization' });
+  assert.equal(career.signContract({ clubId: 'contract-club', durationDays: 365, signedAt: '2033-01-01T00:00:00Z' }).ok, true);
+  career.clubId = 'stale-club';
+  assert.equal(career.saveState(), true);
+  const restored = new CareerManager({ storage, storageKey: 'career-contract-club-normalization' });
+  assert.equal(restored.clubId, 'contract-club');
+  assert.equal(restored.contract.clubId, 'contract-club');
+});
