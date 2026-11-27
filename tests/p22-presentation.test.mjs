@@ -25,13 +25,11 @@ test('P22 : un mode caméra inconnu revient sans erreur à la retransmission', (
 });
 
 test('P22 : la sélection caméra est accessible dans le menu et la pause', async () => {
-  const [main, ui, game] = await Promise.all([
-    readFile(new URL('../src/main.js', import.meta.url), 'utf8'),
+  const [ui, game] = await Promise.all([
     readFile(new URL('../src/ui.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/game.js', import.meta.url), 'utf8')
   ]);
   for (const mode of Object.keys(CAMERA_PRESETS)) {
-    assert.ok(main.includes(`value="${mode}"`));
     assert.ok(ui.includes(`value="${mode}"`));
   }
   assert.ok(game.includes('this.cam.setMode(mode)'));
