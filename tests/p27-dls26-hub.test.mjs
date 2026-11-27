@@ -128,3 +128,10 @@ test("P27 fiche joueur : le libellé de retour correspond à la page d’origine
   assert.ok(main.includes("playerProfileReturnPage === 'clubs' ? 'RETOUR À L’EFFECTIF' : 'RETOUR À LA BIBLIOTHÈQUE'"));
   assert.ok(main.includes("renderPage(playerProfileReturnPage)"));
 });
+
+
+test('P27 catalogue clubs : une recherche sans résultat affiche un état vide explicite', () => {
+  assert.ok(main.includes('id="club-empty-state"'));
+  assert.ok(main.includes("if(emptyState) emptyState.hidden=matchedTotal>0"));
+  assert.ok(main.includes('Aucun club ne correspond à ces critères.'));
+});
