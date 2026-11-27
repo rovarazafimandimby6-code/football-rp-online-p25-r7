@@ -543,3 +543,21 @@ test('P27 salaire : une panne de sauvegarde ne crédite pas deux fois une éché
   assert.equal(career.history.some(item=>item.type==='salary'),false);
   assert.equal(values.get('career-salary-atomic-p27'),saved);
 });
+
+test('P27 mercato : une panne de sauvegarde conserve les offres et contrats non expirés',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+  const career=new CareerManager({storage,storageKey:'career-expiry-atomic-p27'});
+  assert.equal(career.signContract({clubId:'club-a',durationDays:1,signedAt:'2035-01-01T00:00:00Z'}).ok,true);
+  const offer=career.makeOffer({fromClubId:'club-b',expiresAt:'2035-01-02T00:00:00Z'});
+  const saved=values.get('career-expiry-atomic-p27');
+  failWrites=true;
+  assert.deepEqual(career.refreshOfferStatuses('2035-01-03T00:00:00Z'),{ok:false,reason:'persistence-failed',updated:0});
+  assert.equal(career.offers.get(offer.offer.id).status,'pending');
+  const expired=career.refreshContractStatus('2035-01-03T00:00:00Z');
+  assert.equal(expired.persistenceFailed,true);
+  assert.equal(career.clubId,'club-a');
+  assert.equal(career.contract.status,'active');
+  assert.equal(values.get('career-expiry-atomic-p27'),saved);
+});
