@@ -370,12 +370,16 @@ test("finalized match outbox resumes at a failed player without duplicating earl
   });
   const careerLedger = new Map();
   const rewardLedger = new Map();
+  const duplicateCareerCalls = [];
+  const duplicateRewardCalls = [];
   let failSecondOnce = true;
   object.careerRepository = {
     async recordFinalizedMatch(account, player, match) {
       const key = account + ":" + match.matchId;
-      if (!careerLedger.has(key)) careerLedger.set(key, { player, match });
-      return { duplicate: careerLedger.has(key) };
+      const duplicate = careerLedger.has(key);
+      if (duplicate) duplicateCareerCalls.push(key);
+      else careerLedger.set(key, { player, match });
+      return { duplicate };
     },
   };
   object.progressionRepository = {
@@ -385,8 +389,10 @@ test("finalized match outbox resumes at a failed player without duplicating earl
         throw new Error("SECOND_PLAYER_REWARD_TEMPORARY_FAILURE");
       }
       const key = account + ":" + reward.matchId;
-      if (!rewardLedger.has(key)) rewardLedger.set(key, reward);
-      return { duplicate: rewardLedger.has(key) };
+      const duplicate = rewardLedger.has(key);
+      if (duplicate) duplicateRewardCalls.push(key);
+      else rewardLedger.set(key, reward);
+      return { duplicate };
     },
   };
   object.repository = { async recordFinalizedResult() {} };
@@ -400,6 +406,8 @@ test("finalized match outbox resumes at a failed player without duplicating earl
   await object._syncFinalizedResult();
   assert.equal(careerLedger.size, 2);
   assert.equal(rewardLedger.size, 2);
+  assert.equal(duplicateCareerCalls.length, 2);
+  assert.equal(duplicateRewardCalls.length, 1);
   assert.equal(state.backing.get("career-outbox-complete"), true);
   assert.equal(state.backing.get("finalized-result-synced"), true);
   assert.equal(state.backing.has("career-outbox"), false);
