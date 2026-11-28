@@ -50,7 +50,7 @@ export function createPlayerDataBackup({ directories = defaultDirectories(proces
   for (const [key, spec] of Object.entries(STORES)) {
     const source = path.join(path.resolve(directories[key] || path.join(process.cwd(), 'data', spec.directory)), spec.file);
     const content = readAndValidate(key, source);
-    files[key] = { file: spec.file, sha256: digest(content), content };
+    files[key] = { file: spec.file, sha256: digest(content), sourceMtimeMs: existsSync(source) ? statSync(source).mtimeMs : null, content };
   }
   const bundle = { format: 'football-rp-online-player-data', version: 1, createdAt: now().toISOString(), files };
   const destination = path.resolve(outputFile);
@@ -69,7 +69,7 @@ export function verifyPlayerDataBackup(backupFile) {
   if (bundle?.format !== 'football-rp-online-player-data' || bundle.version !== 1 || !bundle.files || typeof bundle.files !== 'object') throw new Error('BACKUP_FORMAT_INVALID');
   for (const [key, spec] of Object.entries(STORES)) {
     const entry = bundle.files[key];
-    if (!entry || entry.file !== spec.file || typeof entry.content !== 'string' || entry.sha256 !== digest(entry.content)) throw new Error(`BACKUP_CHECKSUM_INVALID:${key}`);
+    if (!entry || entry.file !== spec.file || typeof entry.content !== 'string' || entry.sha256 !== digest(entry.content) || !(entry.sourceMtimeMs === null || (typeof entry.sourceMtimeMs === 'number' && Number.isFinite(entry.sourceMtimeMs) && entry.sourceMtimeMs >= 0))) throw new Error(`BACKUP_CHECKSUM_INVALID:${key}`);
     let parsed;
     try { parsed = JSON.parse(entry.content); } catch { throw new Error(`BACKUP_STORE_INVALID_JSON:${key}`); }
     if (!spec.validate(parsed)) throw new Error(`BACKUP_STORE_INVALID_SCHEMA:${key}`);
@@ -89,7 +89,8 @@ export function restorePlayerDataBackup({
   dryRun = true,
   apply = false,
   stores,
-  overwriteExisting = false
+  overwriteExisting = false,
+  allowNewer = false
 } = {}) {
   if (dryRun === false && apply !== true) throw new Error('RESTORE_APPLY_CONFIRMATION_REQUIRED');
   if (dryRun === true && apply === true) throw new Error('RESTORE_MODE_CONFLICT');
@@ -108,9 +109,17 @@ export function restorePlayerDataBackup({
     const spec = STORES[key];
     const directory = path.resolve(directories[key] || path.join(process.cwd(), 'data', spec.directory));
     const destination = path.join(directory, spec.file);
-    return { key, destination, exists: existsSync(destination), backupSha256: bundle.files[key].sha256 };
+    const exists = existsSync(destination);
+    const destinationMtimeMs = exists ? statSync(destination).mtimeMs : null;
+    const sourceMtimeMs = bundle.files[key].sourceMtimeMs;
+    const newer = exists && (sourceMtimeMs === null || destinationMtimeMs > sourceMtimeMs);
+    return { key, destination, exists, destinationMtimeMs, sourceMtimeMs, newer, backupSha256: bundle.files[key].sha256 };
   });
   const existing = plan.filter(item => item.exists);
+  const newer = plan.filter(item => item.newer);
+  if (!dryRun && newer.length && !allowNewer) {
+    throw new Error(`RESTORE_NEWER_DATA_PROTECTED:${newer.map(item => item.key).join(',')}`);
+  }
   if (!dryRun && existing.length && !overwriteExisting) {
     throw new Error(`RESTORE_OVERWRITE_CONFIRMATION_REQUIRED:${existing.map(item => item.key).join(',')}`);
   }
@@ -120,7 +129,8 @@ export function restorePlayerDataBackup({
       dryRun: true,
       applied: false,
       createdAt: bundle.createdAt,
-      planned: plan.map(({ key, exists, backupSha256 }) => ({ key, exists, backupSha256 })),
+      planned: plan.map(({ key, exists, newer, sourceMtimeMs, destinationMtimeMs, backupSha256 }) => ({ key, exists, newer, sourceMtimeMs, destinationMtimeMs, backupSha256 })),
+      protectedNewer: newer.map(item => item.key),
       requiresOverwriteConfirmation: existing.map(item => item.key),
       archivedOnly: Object.keys(STORES).filter(key => STORES[key].restore === false)
     };
