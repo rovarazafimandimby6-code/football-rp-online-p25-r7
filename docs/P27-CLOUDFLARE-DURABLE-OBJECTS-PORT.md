@@ -55,6 +55,17 @@ Un Durable Object peut maintenir une boucle de simulation à 50 ms tant que le m
 
 Le tick doit utiliser un accumulateur basé sur le temps écoulé, plafonner le rattrapage après une pause d'exécution et exécuter des sous-pas déterministes de 50 ms. Il faut mesurer la dérive, le temps CPU et les coûts sur des matchs de 3 à 5 minutes, avec plusieurs salons simultanés. Le mode HTTP polling actuel ne doit pas être présenté comme du temps réel fiable sur Cloudflare sans ces mesures.
 
+## État d'implémentation au 28 novembre 2026
+
+- La classe `P27MatchRoomDurableObject` est ajoutée et utilise le `RoomManager` existant comme moteur autoritaire d'un salon.
+- Le binding Wrangler `P27_MATCH_ROOMS` et la migration de classe SQLite sont déclarés ; le Worker exporte la classe.
+- Le Worker route les routes HTTP de salons vers l'objet : création, liste D1, entrée invitée, commandes, heartbeat, reconnexion, abandon, rotation, état/delta et résultat.
+- Le checkpoint du salon est écrit dans le stockage du Durable Object ; les jetons bruts sont retirés par le sérialiseur existant et leur hash est conservé. Les résultats en attente sont réessayés après reprise.
+- Le registre D1 autorise jusqu'à 7 humains par équipe (14 au total) et l'archive de résultat est idempotente.
+- La simulation active tourne par timer de 50 ms ; une alarme sert de mécanisme de reprise. Le point d'accès WebSocket n'est pas encore implémenté : le client reste sur HTTP polling.
+- Les comptes authentifiés sont temporairement refusés à l'entrée (`MATCH_CAREER_INGEST_NOT_READY`) tant que l'ingestion idempotente de carrière et de récompenses n'est pas branchée. Les matchs compétition/RP ne sont pas activés.
+- Les tests CI doivent encore valider l'ensemble de cette tranche. Aucun déploiement Worker, aucune application distante de 0013 et aucun basculement de production n'ont été effectués.
+
 ## Séquence de réalisation
 
 ### Étape A — extraction testable
@@ -63,9 +74,10 @@ Le tick doit utiliser un accumulateur basé sur le temps écoulé, plafonner le 
 - Ajouter un générateur d'identifiant injectable afin que le nom du Durable Object et l'identifiant de salon soient identiques.
 
 ### Étape B — Durable Object isolé
-- Ajouter la classe de salon, son binding Wrangler et le routage Worker.
-- Couvrir création, entrée, authentification, commande, état/delta, heartbeat, reconnexion, abandon et rotation.
-- Tester les courses entre commandes, la reprise, l'expiration et l'absence de fuite de secrets.
+- [x] Ajouter la classe de salon, son binding Wrangler et le routage HTTP Worker.
+- [x] Couvrir la création, l'entrée invitée, l'authentification par jeton de match, les commandes, l'état/delta, heartbeat, reconnexion, abandon et rotation.
+- [ ] Ajouter le WebSocket hibernable et les tests multi-clients.
+- [ ] Tester les courses concurrentes, l'expiration et la reprise après éviction sur l'émulateur Durable Objects.
 
 ### Étape C — résultats et monde
 - Ajouter une outbox persistante de finalisation.
