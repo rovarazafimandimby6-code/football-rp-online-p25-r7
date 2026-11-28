@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -77,5 +77,5 @@ const result = {
 };
 
 // Deliberately emit counts and statuses only; never print account, identity, career or finance records.
-process.stdout.write(JSON.stringify(result, null, 2) + '\\n');
+process.stdout.write(JSON.stringify(result, null, 2) + String.fromCharCode(10));
 if (invalid > 0 || (process.argv.includes('--require-all') && missing > 0)) process.exitCode = 1;
