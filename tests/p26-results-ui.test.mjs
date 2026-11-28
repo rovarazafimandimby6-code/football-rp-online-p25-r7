@@ -11,7 +11,7 @@ const [html, main, css] = await Promise.all([
 test('P26 : le menu expose un espace dédié aux résultats serveur', () => {
   assert.match(main, /data-page="results"/);
   assert.match(main, /page === 'results'/);
-  assert.match(main, /fetch\(`\/api\/results\?limit=10&offset=/);
+  assert.match(main, /p27ApiFetch\(`\/api\/results\?limit=10&offset=/);
 });
 
 test('P26 : la liste des résultats utilise les métadonnées de pagination du serveur', () => {
