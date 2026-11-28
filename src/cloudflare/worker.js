@@ -9,6 +9,7 @@ import { verifyGoogleWorkerIdToken } from "./google-id-token-verifier.js";
 import { D1PlayerProfileRepository } from "./player-profile-repository.js";
 import { D1PlayerProgressionRepository } from "./player-progression-repository.js";
 import { D1PlayerCareerRepository } from "./player-career-repository.js";
+import { D1AccountSnapshotRepository } from "./account-snapshot-repository.js";
 import { D1PlayerShopRepository } from "./player-shop-repository.js";
 import { verifyCareerIngestSignature } from "./career-ingest-auth.js";
 import { D1MatchRoomRepository } from "./match-room-repository.js";
@@ -529,6 +530,19 @@ const worker = {
         });
         if (!identity) return json(401, { error: "LOCAL_PROFILE_PROOF_INVALID" });
         return json(200, { verified: true, accountId: identity.accountId, playerId: identity.playerId });
+      } catch (error) { return errorResponse(error); }
+    }
+
+    if (url.pathname === "/api/account/snapshot") {
+      if (request.method !== "GET") return json(405, { error: "METHOD_NOT_ALLOWED" });
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+      const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionTokenFromRequest(request));
+      if (!account) return json(401, { error: "SESSION_EXPIRED" });
+      try {
+        const snapshot = await new D1AccountSnapshotRepository(env.P27_DB).get(account);
+        return json(200, snapshot);
       } catch (error) { return errorResponse(error); }
     }
 
