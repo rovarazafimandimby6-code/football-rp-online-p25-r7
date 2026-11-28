@@ -86,6 +86,7 @@ export function restorePlayerDataBackup({ backupFile, directories = defaultDirec
   const replaced = [];
   try {
     for (const [key, spec] of Object.entries(STORES)) {
+      if (spec.restore === false) continue;
       const directory = path.resolve(directories[key] || path.join(process.cwd(), 'data', spec.directory));
       mkdirSync(directory, { recursive: true });
       const destination = path.join(directory, spec.file);
