@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS p27_match_rooms (
   room_name TEXT NOT NULL DEFAULT '' CHECK (length(room_name) <= 64),
   duration_minutes INTEGER NOT NULL DEFAULT 5 CHECK (duration_minutes BETWEEN 3 AND 5),
   blue_humans INTEGER NOT NULL DEFAULT 0 CHECK (blue_humans BETWEEN 0 AND 7),
-  red_humans INTEGER NOT NULL DEFAULT 0 CHECK (red_humans BETWEEN 0 AND 5),
+  red_humans INTEGER NOT NULL DEFAULT 0 CHECK (red_humans BETWEEN 0 AND 7),
   max_humans INTEGER NOT NULL DEFAULT 14 CHECK (max_humans = 14),
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
