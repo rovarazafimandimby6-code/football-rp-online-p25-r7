@@ -1,4 +1,4 @@
-name: P27 Android test APK
+name: P27 Android online test APK
 
 on:
   push:
@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   build-debug-apk:
-    name: Build offline Android test APK
+    name: Build online Android test APK
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -50,7 +50,10 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Run P27 automated tests
         run: npm test
-      - name: Bundle the game and local 3D assets
+      - name: Bundle the game and local 3D assets with Cloudflare API
+        env:
+          P27_OFFLINE_TEST: 'false'
+          VITE_P27_API_BASE_URL: https://football-rp-online-p25-r7.rovarazafimandimby6.workers.dev
         run: npm run build
       - name: Generate the Android project
         run: npx cap add android
@@ -167,7 +170,7 @@ jobs:
       - name: Upload installable test APK
         uses: actions/upload-artifact@v4
         with:
-          name: football-rp-online-p27-test-apk
+          name: football-rp-online-p27-online-test-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
