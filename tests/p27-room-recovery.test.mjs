@@ -314,3 +314,56 @@ test('P27 résultat final : un coup de sifflet non finalisé survit au redémarr
     assert.deepEqual(new JsonRoomStore(roomDirectory).readAll(), []);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+
+test('P27 sécurité des salons : les checkpoints ne conservent que le hash du jeton et permettent la reconnexion après redémarrage', () => {
+  const directory = temporaryDirectory('p27-room-token-hash-');
+  try {
+    let now = 1_000;
+    const store = new JsonRoomStore(directory);
+    const first = new RoomManager({ now: () => now, roomStore: store });
+    const created = first.create({ name: 'Jeton protégé' });
+    const joined = first.join(created.id, { displayName: 'Joueur sécurisé' });
+    const checkpoint = store.readAll().find(room => room.id === created.id);
+    const savedPlayer = checkpoint.players.find(player => player.id === joined.playerId);
+    assert.equal(savedPlayer.token, undefined);
+    assert.match(savedPlayer.tokenHash, /^[a-f0-9]{64}$/);
+    assert.equal(JSON.stringify(checkpoint).includes(joined.token), false);
+
+    now += 1_000;
+    const restarted = new RoomManager({ now: () => now, roomStore: new JsonRoomStore(directory) });
+    const restoredPlayer = restarted.rooms.get(created.id).players.get(joined.playerId);
+    assert.equal(restoredPlayer.token, undefined);
+    assert.equal(restoredPlayer.tokenHash, savedPlayer.tokenHash);
+    const result = restarted.reconnect(created.id, joined.token);
+    assert.equal(result.reconnected, true);
+    const publicPlayer = result.state.players.find(player => player.id === joined.playerId);
+    assert.equal(publicPlayer.token, undefined);
+    assert.equal(publicPlayer.tokenHash, undefined);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('P27 sécurité des salons : un ancien checkpoint avec jeton brut est migré au premier restore', () => {
+  const directory = temporaryDirectory('p27-room-token-legacy-');
+  try {
+    const store = new JsonRoomStore(directory);
+    const token = 'legacy-reconnect-token-1234567890';
+    store.save({
+      id: 'legacy-room', name: 'Ancien format', phase: 'playing', durationMinutes: 5,
+      createdAt: 1, updatedAt: 1, startedAt: 1, elapsedMs: 1_000, sequence: 0,
+      period: 1, score: { blue: 0, red: 0 }, players: [{
+        id: 'legacy-player', token, team: 'blue', slot: 0, isBot: false,
+        connected: true, controlMode: 'human', aiControlled: false,
+        stats: { passes: 0, completedPasses: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
+      }],
+      ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null },
+      events: [], attackDirection: { blue: 1, red: -1 }, teams: { blue: null, red: null },
+      nextEventId: 1, rotationRequests: [],
+    });
+    const restored = new RoomManager({ now: () => 2, roomStore: store });
+    const checkpoint = store.readAll()[0];
+    assert.equal(checkpoint.players[0].token, undefined);
+    assert.match(checkpoint.players[0].tokenHash, /^[a-f0-9]{64}$/);
+    assert.equal(restored.reconnect('legacy-room', token).reconnected, true);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
