@@ -33,7 +33,8 @@ const schemas = {
   completedResults: [],
   rpClubs: { version:1, clubs:[] },
   rpClubChallenges: { version:1, challenges:[] },
-  rpClubSeasons: { version:1, seasons:[] }
+  rpClubSeasons: { version:1, seasons:[] },
+  roomCheckpoints: { version:1, rooms:[{id:'room-archive-1',phase:'playing',players:[{id:'human-1',tokenHash:'a'.repeat(64)}]}] }
 };
 function makeRoot() {
   const root=mkdtempSync(path.join(os.tmpdir(),'p27-player-backup-'));
@@ -41,7 +42,7 @@ function makeRoot() {
   for(const key of Object.keys(schemas)){
     directories[key]=path.join(root,key);
     mkdirSync(directories[key],{recursive:true});
-    const filenames={accounts:'accounts.json',playerIdentities:'player-identities.json',googleIdentities:'google-identities.json',profiles:'player-profiles.json',progression:'progression.json',careers:'careers.json',careerSyncQueue:'pending-career-sync.json',transfers:'transfers.json',clubRosters:'club-rosters.json',clubFinance:'club-finance.json',systemPayroll:'system-payroll-schedule.json',transferFinanceJournal:'transfer-finance-journal.json',systemTransferOutbox:'system-transfer-outbox.json',shopInventory:'shop-inventory.json',competitions:'competitions.json',completedResults:'completed-results.json',rpClubs:'rp-clubs.json',rpClubChallenges:'rp-club-challenges.json',rpClubSeasons:'rp-club-seasons.json'};
+    const filenames={accounts:'accounts.json',playerIdentities:'player-identities.json',googleIdentities:'google-identities.json',profiles:'player-profiles.json',progression:'progression.json',careers:'careers.json',careerSyncQueue:'pending-career-sync.json',transfers:'transfers.json',clubRosters:'club-rosters.json',clubFinance:'club-finance.json',systemPayroll:'system-payroll-schedule.json',transferFinanceJournal:'transfer-finance-journal.json',systemTransferOutbox:'system-transfer-outbox.json',shopInventory:'shop-inventory.json',competitions:'competitions.json',completedResults:'completed-results.json',rpClubs:'rp-clubs.json',rpClubChallenges:'rp-club-challenges.json',rpClubSeasons:'rp-club-seasons.json',roomCheckpoints:'active-rooms.json'};
     const filename=filenames[key];
     writeFileSync(path.join(directories[key],filename),JSON.stringify(schemas[key]));
   }
@@ -107,12 +108,12 @@ test('P27 compte: une source invalide ne déclenche pas la purge des sauvegardes
 test('P27 compte: un store absent est sauvegardé comme état vide conforme à son initialisation',()=>{
   const source=makeRoot(),backup=path.join(source.root,'player-data-empty.json');
   try{
-    const filenames={accounts:'accounts.json',playerIdentities:'player-identities.json',googleIdentities:'google-identities.json',profiles:'player-profiles.json',progression:'progression.json',careers:'careers.json',transfers:'transfers.json',clubRosters:'club-rosters.json',clubFinance:'club-finance.json',systemPayroll:'system-payroll-schedule.json',transferFinanceJournal:'transfer-finance-journal.json',shopInventory:'shop-inventory.json',competitions:'competitions.json',completedResults:'completed-results.json',rpClubs:'rp-clubs.json',rpClubChallenges:'rp-club-challenges.json',rpClubSeasons:'rp-club-seasons.json'};
+    const filenames={accounts:'accounts.json',playerIdentities:'player-identities.json',googleIdentities:'google-identities.json',profiles:'player-profiles.json',progression:'progression.json',careers:'careers.json',transfers:'transfers.json',clubRosters:'club-rosters.json',clubFinance:'club-finance.json',systemPayroll:'system-payroll-schedule.json',transferFinanceJournal:'transfer-finance-journal.json',shopInventory:'shop-inventory.json',competitions:'competitions.json',completedResults:'completed-results.json',rpClubs:'rp-clubs.json',rpClubChallenges:'rp-club-challenges.json',rpClubSeasons:'rp-club-seasons.json',roomCheckpoints:'active-rooms.json'};
     for(const key of ['accounts','completedResults','rpClubs','rpClubChallenges','rpClubSeasons']){
       unlinkSync(path.join(source.directories[key],filenames[key]));
     }
     const result=createPlayerDataBackup({directories:source.directories,outputFile:backup});
-    assert.equal(result.stores.length,19);
+    assert.equal(result.stores.length,20);
     assert.equal(verifyPlayerDataBackup(backup).ok,true);
     const bundle=JSON.parse(readFileSync(backup,'utf8'));
     assert.deepEqual(JSON.parse(bundle.files.accounts.content),{version:1,accounts:[],sessions:[]});
@@ -136,7 +137,7 @@ test('P27 compte: le backup accepte les stores principaux et les instantanés de
     clubRosters:path.join(root,'club-rosters'),
     clubFinance:path.join(root,'club-finance'),systemPayroll:path.join(root,'system-payroll'),transferFinanceJournal:path.join(root,'transfer-finance-journal'),
     systemTransferOutbox:path.join(root,'system-transfers'),shopInventory:path.join(root,'shop-inventory'),competitions:path.join(root,'competitions'),completedResults:path.join(root,'completed-results'),
-    rpClubs:path.join(root,'rp-clubs'),rpClubChallenges:path.join(root,'rp-club-challenges'),rpClubSeasons:path.join(root,'rp-club-seasons')
+    rpClubs:path.join(root,'rp-clubs'),rpClubChallenges:path.join(root,'rp-club-challenges'),rpClubSeasons:path.join(root,'rp-club-seasons'),roomCheckpoints:path.join(root,'rooms')
   };
   try{
     const accountStore=new JsonAccountStore(directories.accounts);
@@ -160,6 +161,36 @@ test('P27 compte: le backup accepte les stores principaux et les instantanés de
     const outputFile=path.join(root,'backups','real-server-stores.json');
     const createdBackup=createPlayerDataBackup({directories,outputFile});
     assert.equal(verifyPlayerDataBackup(outputFile).ok,true);
-    assert.equal(createdBackup.stores.length,19);
+    assert.equal(createdBackup.stores.length,20);
   }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+
+test('P27 sauvegardes : les checkpoints de match sont archivés avec hash seulement et exclus de la restauration automatique', () => {
+  const source=makeRoot(),target=makeRoot(),backup=path.join(source.root,'room-archive.json');
+  try {
+    const roomFile=path.join(target.directories.roomCheckpoints,'active-rooms.json');
+    const protectedCurrent={version:1,rooms:[{id:'newer-room',phase:'playing',players:[]}]};
+    writeFileSync(roomFile,JSON.stringify(protectedCurrent));
+    createPlayerDataBackup({directories:source.directories,outputFile:backup});
+    const bundle=JSON.parse(readFileSync(backup,'utf8'));
+    const archived=JSON.parse(bundle.files.roomCheckpoints.content);
+    assert.equal(archived.rooms[0].id,'room-archive-1');
+    assert.equal(archived.rooms[0].players[0].token,undefined);
+    assert.match(archived.rooms[0].players[0].tokenHash,/^[a-f0-9]{64}$/);
+    const result=restorePlayerDataBackup({backupFile:backup,directories:target.directories});
+    assert.ok(result.archivedOnly.includes('roomCheckpoints'));
+    assert.ok(!result.restored.includes('roomCheckpoints'));
+    assert.deepEqual(JSON.parse(readFileSync(roomFile,'utf8')),protectedCurrent);
+  } finally { rmSync(source.root,{recursive:true,force:true});rmSync(target.root,{recursive:true,force:true}); }
+});
+
+test('P27 sauvegardes : refuse un checkpoint archivé qui contient un jeton brut', () => {
+  const source=makeRoot(),backup=path.join(source.root,'unsafe-room-archive.json');
+  try {
+    const unsafe={version:1,rooms:[{id:'unsafe-room',phase:'playing',players:[{id:'human',token:'raw-bearer-token-123456789'}]}]};
+    writeFileSync(path.join(source.directories.roomCheckpoints,'active-rooms.json'),JSON.stringify(unsafe));
+    assert.throws(()=>createPlayerDataBackup({directories:source.directories,outputFile:backup}),/BACKUP_SOURCE_INVALID_SCHEMA:roomCheckpoints/);
+    assert.equal(existsSync(backup),false);
+  } finally { rmSync(source.root,{recursive:true,force:true}); }
 });
