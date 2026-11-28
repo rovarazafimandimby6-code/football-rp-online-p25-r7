@@ -3,7 +3,7 @@ import { encodeMatchMessage, decodeMatchMessage } from './online-match-protocol.
 const toSocketBase = value => String(value || '').replace(/^https:/i, 'wss:').replace(/^http:/i, 'ws:').replace(/\/$/, '');
 
 export class OnlineMatchSocketTransport {
-  constructor({ baseUrl, roomId, token, playerId, WebSocketImpl = globalThis.WebSocket, onMessage = null, onStatus = null, onError = null, now = () => Date.now() } = {}) {
+  constructor({ baseUrl, roomId, token, playerId, WebSocketImpl = globalThis.WebSocket, onMessage = null, onStatus = null, onError = null, onWelcome = null, now = () => Date.now() } = {}) {
     if (!/^[a-f0-9]{12}$/.test(String(roomId || '')) || typeof token !== 'string' || !token) throw new TypeError('INVALID_MATCH_SOCKET_SESSION');
     if (typeof WebSocketImpl !== 'function') throw new Error('WEBSOCKET_UNAVAILABLE');
     this.url = `${toSocketBase(baseUrl)}/api/rooms/${encodeURIComponent(roomId)}/socket`;
@@ -14,6 +14,7 @@ export class OnlineMatchSocketTransport {
     this.onMessage = onMessage;
     this.onStatus = onStatus;
     this.onError = onError;
+    this.onWelcome = onWelcome;
     this.now = now;
     this.socket = null;
     this.connected = false;
@@ -47,6 +48,7 @@ export class OnlineMatchSocketTransport {
         if (message.type === 'welcome') {
           if (this.playerId && message.playerId !== this.playerId) throw new Error('MATCH_SOCKET_PLAYER_MISMATCH');
           this.connected = true;
+          this.onWelcome?.(message);
           this.onStatus?.('connected');
           const queued = this.pending.splice(0);
           for (const item of queued) this._send(item);
