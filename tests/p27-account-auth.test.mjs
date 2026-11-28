@@ -134,6 +134,6 @@ test('P27 récupération client : refuse une snapshot cloud incomplète avant to
   });
   assert.equal(result.ready, false);
   assert.equal(result.reason, 'SNAPSHOT_INCOMPLETE');
-  assert.deepEqual(result.missingSections, ['profile', 'contract']);
+  assert.deepEqual(result.missingSections, ['profile', 'progression', 'career', 'playerCareer', 'seasonStats', 'contract']);
   assert.equal(Object.hasOwn(result, 'snapshot'), false);
 });
