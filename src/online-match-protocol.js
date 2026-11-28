@@ -15,9 +15,23 @@ const isRecord = value => value !== null && typeof value === 'object' && !Array.
 const isId = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const isSequence = value => Number.isSafeInteger(value) && value >= 0;
 const isResumeSequence = value => Number.isSafeInteger(value) && value >= -1;
+const CLIENT_FIELDS = {
+  hello: new Set(['roomId', 'token', 'afterSequence', 'afterEventId']),
+  input: new Set(['sequence', 'x', 'z', 'sprint', 'action', 'callForPass']),
+  heartbeat: new Set(['lastSequence']),
+  leave: new Set(),
+};
+const SERVER_FIELDS = {
+  welcome: new Set(['playerId', 'nextSequence']),
+  snapshot: new Set(['state']),
+  delta: new Set(['eventCursor', 'events', 'state']),
+  ack: new Set(['sequence']),
+  error: new Set(['code', 'fatal']),
+};
+const hasOnlyFields = (value, allowed) => Object.keys(value).every(key => allowed.has(key));
 
 export function createMatchMessage(type, payload = {}) {
-  if (!CLIENT_TYPES.has(type) || !isRecord(payload)) throw new TypeError('INVALID_MATCH_CLIENT_MESSAGE');
+  if (!CLIENT_TYPES.has(type) || !isRecord(payload) || !hasOnlyFields(payload, CLIENT_FIELDS[type])) throw new TypeError('INVALID_MATCH_CLIENT_MESSAGE');
   const message = { v: MATCH_PROTOCOL_VERSION, type, ...payload };
   if (message.v !== MATCH_PROTOCOL_VERSION || message.type !== type) throw new TypeError('INVALID_MATCH_MESSAGE_FIELDS');
   if (type === 'hello') {
@@ -62,7 +76,7 @@ export function decodeMatchMessage(raw) {
   let message;
   try { message = typeof raw === 'string' ? JSON.parse(raw) : raw; }
   catch { throw new TypeError('INVALID_MATCH_MESSAGE_JSON'); }
-  if (!isRecord(message) || message.v !== MATCH_PROTOCOL_VERSION || !SERVER_TYPES.has(message.type)) {
+  if (!isRecord(message) || message.v !== MATCH_PROTOCOL_VERSION || !SERVER_TYPES.has(message.type) || !hasOnlyFields(message, new Set(['v', 'type', ...SERVER_FIELDS[message.type]]))) {
     throw new TypeError('UNSUPPORTED_MATCH_SERVER_MESSAGE');
   }
   if (message.type === 'welcome' && (!isId(message.playerId) || !isSequence(message.nextSequence))) {
