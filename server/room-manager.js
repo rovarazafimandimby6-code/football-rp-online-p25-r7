@@ -31,7 +31,14 @@ export class RoomManager {
     const { players, halftimeUntil, ...state } = room;
     return {
       ...JSON.parse(JSON.stringify(state)),
-      players: [...players.values()].map(player => JSON.parse(JSON.stringify(player))),
+      players: [...players.values()].map(player => {
+        const saved = JSON.parse(JSON.stringify(player));
+        if (typeof saved.token === 'string' && saved.token.length >= 16) {
+          saved.tokenHash = createHash('sha256').update(saved.token).digest('hex');
+        }
+        delete saved.token;
+        return saved;
+      }),
       halftimeRemainingMs: room.phase === 'halftime' && halftimeUntil !== null ? Math.max(0, halftimeUntil - this.now()) : 0,
     };
   }
@@ -367,7 +374,11 @@ export class RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('ROOM_NOT_FOUND');
     if (typeof token !== 'string' || token.length < 16) throw new Error('UNAUTHORIZED');
-    const player = [...room.players.values()].find(p => typeof p.token === 'string' && p.token.length >= 16 && p.token === token);
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const player = [...room.players.values()].find(p => {
+      if (typeof p.tokenHash === 'string' && /^[a-f0-9]{64}$/.test(p.tokenHash)) return p.tokenHash === tokenHash;
+      return typeof p.token === 'string' && p.token.length >= 16 && p.token === token;
+    });
     if (!player) throw new Error('UNAUTHORIZED');
     return { room, player };
   }
@@ -789,7 +800,7 @@ export class RoomManager {
   }
 
   publicState(room) {
-    const players = [...room.players.values()].map(({ token, accountId, careerPlayerId, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p, ...(p.isBot && typeof careerPlayerId === 'string' ? { careerPlayerId } : {}) }));
+    const players = [...room.players.values()].map(({ token, tokenHash, accountId, careerPlayerId, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p, ...(p.isBot && typeof careerPlayerId === 'string' ? { careerPlayerId } : {}) }));
     return {
       id: room.id, name: room.name, durationMinutes: room.durationMinutes,
       phase: room.phase, period: room.period, halftimeRemainingMs: room.phase === 'halftime' && room.halftimeUntil ? Math.max(0, room.halftimeUntil - this.now()) : 0, attackDirection: { ...room.attackDirection }, elapsedMs: room.elapsedMs, durationMs: room.durationMinutes * 60_000, sequence: room.sequence,
