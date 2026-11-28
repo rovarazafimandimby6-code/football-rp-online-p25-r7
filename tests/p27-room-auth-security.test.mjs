@@ -75,3 +75,26 @@ test('P27 sécurité des salons : une reconnexion valide reprend le même avatar
   assert.equal(original.controlMode, 'human');
   assert.equal(resumed.nextSequence, Math.max(1, original.lastInputSequence + 1));
 });
+
+test('P27 sécurité des salons : un compte ou un joueur de carrière ne peut créer deux avatars dans le même match', () => {
+  const manager = new RoomManager();
+  const room = manager.create({ name: 'Un joueur, un avatar' });
+  const first = manager.join(room.id, {
+    displayName: 'Joueur titulaire',
+    accountId: 'account-unique',
+    careerPlayerId: 'FRP-123456',
+  });
+  assert.throws(() => manager.join(room.id, {
+    displayName: 'Deuxième appareil',
+    accountId: 'account-unique',
+    careerPlayerId: 'FRP-654321',
+  }), /PLAYER_ALREADY_IN_ROOM/);
+  assert.throws(() => manager.join(room.id, {
+    displayName: 'Deuxième compte',
+    accountId: 'account-other',
+    careerPlayerId: 'FRP-123456',
+  }), /PLAYER_ALREADY_IN_ROOM/);
+  const players = [...manager.rooms.get(room.id).players.values()].filter(player => !player.isBot);
+  assert.equal(players.length, 1);
+  assert.equal(players[0].id, first.playerId);
+});
