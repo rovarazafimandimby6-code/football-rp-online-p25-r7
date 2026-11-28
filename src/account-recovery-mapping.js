@@ -102,6 +102,10 @@ export function buildAccountRecoveryPlan(snapshot) {
     }
     seasonIds.add(match.matchId);
   }
+  if (new Set(seasonStats.processedMatchIds).size !== seasonStats.processedMatchIds.length
+    || seasonStats.processedMatchIds.some(id => !seasonIds.has(id))) {
+    throw new Error('INVALID_RECOVERY_SEASON_STATS');
+  }
   const profileProgression = { ...clone(profile), progression: clone(progression), appliedMatchIds: [...new Set([
     ...(Array.isArray(profile.appliedMatchIds) ? profile.appliedMatchIds : []), ...progression.processedMatchIds
   ].filter(id => typeof id === 'string' && id.trim()).map(id => id.slice(0,64)))].slice(-2000) };
