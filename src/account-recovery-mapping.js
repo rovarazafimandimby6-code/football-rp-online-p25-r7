@@ -63,18 +63,20 @@ export function buildAccountRecoveryPlan(snapshot) {
   const { profile, progression, career, playerCareer, seasonStats, contract } = snapshot;
   if (!isObject(profile.identity) || !isObject(profile.appearance)
     || !Number.isSafeInteger(progression.level) || progression.level < 1 || progression.level > 99
-    || !Number.isSafeInteger(progression.experience) || progression.experience < 0
-    || !Number.isSafeInteger(progression.coins) || progression.coins < 0
-    || !Number.isSafeInteger(progression.trainingPoints) || progression.trainingPoints < 0
+    || !Number.isSafeInteger(progression.experience) || progression.experience < 0 || progression.experience > MAX_RESOURCE
+    || !validCount(progression.coins) || !validCount(progression.trainingPoints)
     || !isObject(progression.attributes)
+    || !['pace', 'shooting', 'passing', 'defense', 'stamina', 'control'].every(key =>
+      Number.isSafeInteger(progression.attributes[key]) && progression.attributes[key] >= 1 && progression.attributes[key] <= 99)
     || !Array.isArray(progression.processedMatchIds) || progression.processedMatchIds.length > 2000
     || progression.processedMatchIds.some(id => !validId(id))
+    || new Set(progression.processedMatchIds).size !== progression.processedMatchIds.length
     || !isObject(seasonStats.totals) || !Array.isArray(seasonStats.matches)
     || seasonStats.matches.length > MAX_MATCHES
     || !Array.isArray(seasonStats.processedMatchIds) || seasonStats.processedMatchIds.length > MAX_MATCHES
     || seasonStats.processedMatchIds.some(id => !validId(id))
-    || !Number.isSafeInteger(contract.wallet) || contract.wallet < 0
-    || !(contract.clubId === null || (typeof contract.clubId === 'string' && contract.clubId.length <= 64))
+    || !validCount(contract.wallet)
+    || !(contract.clubId === null || validClubId(contract.clubId))
     || !(contract.contract === null || isObject(contract.contract))
     || !['offers','history','loanOffers','loanHistory'].every(key => Array.isArray(contract[key]) && contract[key].length <= MAX_HISTORY)
     || ['offers','history','loanOffers','loanHistory'].some(key => contract[key].some(row => !isObject(row)))) {
