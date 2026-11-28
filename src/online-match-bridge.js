@@ -4,7 +4,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Applies authoritative room snapshots to the local 3D match objects and forwards only this user's input. */
 export class OnlineMatchBridge {
-  constructor({ client, players, ball, controls, camera = null, onResolveMissingPlayer = null, onState = null, onError = null, now = () => performance.now() } = {}) {
+  constructor({ client, players, ball, controls, camera = null, onResolveMissingPlayer = null, onState = null, onError = null, realtime = true, now = () => performance.now() } = {}) {
     if (!client || !Array.isArray(players) || !ball) throw new TypeError('ONLINE_BRIDGE_DEPENDENCIES_REQUIRED');
     this.client = client;
     this.players = players;
@@ -16,6 +16,9 @@ export class OnlineMatchBridge {
     this.localOnPitch = true;
     this.onState = onState;
     this.onError = onError;
+    this.realtimeEnabled = realtime === true;
+    this.realtimeStatus = 'disconnected';
+    this.lastRealtimeAttemptAt = -Infinity;
     this.now = now;
     this.buffer = new SnapshotBuffer({ maxSnapshots: 8, interpolationDelay: 0.11 });
     this.remoteIds = new Map();
@@ -45,7 +48,30 @@ export class OnlineMatchBridge {
       const local = this.players.find(player => player.team === me.team && player.slotIndex === me.slot);
       if (local) local.isControlled = true;
     }
+    this._connectRealtime(this.now());
     return true;
+  }
+
+  _connectRealtime(at = this.now()) {
+    if (!this.realtimeEnabled || typeof this.client.connectRealtime !== 'function' ||
+        this.client.realtimeConnected || this.realtimeStatus === 'connecting' ||
+        at - this.lastRealtimeAttemptAt < 5_000) return false;
+    this.lastRealtimeAttemptAt = at;
+    try {
+      return this.client.connectRealtime({
+        enabled: true, afterSequence: this.sequence, afterEventId: this.eventCursor,
+        onMessage: update => {
+          if (update?.state) this.applyState(update.state, update.events || []);
+          if (Number.isSafeInteger(update?.eventCursor)) this.eventCursor = Math.max(this.eventCursor, update.eventCursor);
+        },
+        onStatus: status => { this.realtimeStatus = status; },
+        onError: error => this.onError?.(error),
+      });
+    } catch (error) {
+      this.realtimeStatus = 'unavailable';
+      this.onError?.(error);
+      return false;
+    }
   }
 
   setLocalBenchState(benched, team = null) {
@@ -185,6 +211,7 @@ export class OnlineMatchBridge {
   }
 
   async poll(at = this.now()) {
+    if (this.client.realtimeConnected) return false;
     if (this.disposed || this.inFlight || at < this.nextReconnectAt || at - this.lastPollAt < this.pollIntervalMs) return false;
     this.lastPollAt = at;
     this.inFlight = true;
@@ -203,6 +230,7 @@ export class OnlineMatchBridge {
   }
 
   async update(at = this.now()) {
+    if (!this.disposed && this.localServerId && !this.client.realtimeConnected && this.realtimeStatus !== 'connecting') this._connectRealtime(at);
     if (!this.disposed && this.localServerId && at - this.lastHeartbeatAt >= 5000) {
       this.lastHeartbeatAt = at;
       this.client.heartbeat().catch(error => { this.pollErrorCount = Math.min(8, this.pollErrorCount + 1); this.nextReconnectAt = at + Math.min(15000, 500 * (2 ** (this.pollErrorCount - 1))); this.onError?.(error); });
@@ -221,6 +249,7 @@ export class OnlineMatchBridge {
 
   dispose() {
     this.disposed = true;
+    this.client.disconnectRealtime?.();
     this.buffer.clear();
     this.remoteIds.clear();
     for (const player of this.players) delete player._onlineVelocity;
