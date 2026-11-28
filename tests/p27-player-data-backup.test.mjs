@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, unlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createPlayerDataBackup, verifyPlayerDataBackup, restorePlayerDataBackup, createRotatingPlayerDataBackup } from '../server/player-data-backup.js';
@@ -98,6 +98,26 @@ test('P27 compte: une source invalide ne déclenche pas la purge des sauvegardes
     writeFileSync(path.join(source.directories.accounts,'accounts.json'),'not-json');
     assert.throws(()=>createRotatingPlayerDataBackup({directories:source.directories,backupDirectory,keep:2}),/BACKUP_SOURCE_INVALID_JSON:accounts/);
     assert.deepEqual(readdirSync(backupDirectory),before);
+  }finally{rmSync(source.root,{recursive:true,force:true});}
+});
+
+
+test('P27 compte: un store absent est sauvegardé comme état vide conforme à son initialisation',()=>{
+  const source=makeRoot(),backup=path.join(source.root,'player-data-empty.json');
+  try{
+    const filenames={accounts:'accounts.json',playerIdentities:'player-identities.json',googleIdentities:'google-identities.json',profiles:'player-profiles.json',progression:'progression.json',careers:'careers.json',transfers:'transfers.json',clubRosters:'club-rosters.json',clubFinance:'club-finance.json',systemPayroll:'system-payroll-schedule.json',transferFinanceJournal:'transfer-finance-journal.json',shopInventory:'shop-inventory.json',competitions:'competitions.json',completedResults:'completed-results.json',rpClubs:'rp-clubs.json',rpClubChallenges:'rp-club-challenges.json',rpClubSeasons:'rp-club-seasons.json'};
+    for(const key of ['accounts','completedResults','rpClubs','rpClubChallenges','rpClubSeasons']){
+      unlinkSync(path.join(source.directories[key],filenames[key]));
+    }
+    const result=createPlayerDataBackup({directories:source.directories,outputFile:backup});
+    assert.equal(result.stores.length,17);
+    assert.equal(verifyPlayerDataBackup(backup).ok,true);
+    const bundle=JSON.parse(readFileSync(backup,'utf8'));
+    assert.deepEqual(JSON.parse(bundle.files.accounts.content),{version:1,accounts:[],sessions:[]});
+    assert.deepEqual(JSON.parse(bundle.files.completedResults.content),[]);
+    assert.deepEqual(JSON.parse(bundle.files.rpClubs.content),{version:1,clubs:[]});
+    assert.deepEqual(JSON.parse(bundle.files.rpClubChallenges.content),{version:1,challenges:[]});
+    assert.deepEqual(JSON.parse(bundle.files.rpClubSeasons.content),{version:1,seasons:[]});
   }finally{rmSync(source.root,{recursive:true,force:true});}
 });
 
