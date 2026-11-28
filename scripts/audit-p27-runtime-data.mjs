@@ -14,7 +14,7 @@ const stores = [
   ['careerSyncQueue', 'CAREER_SYNC_DIR', 'career-sync', 'pending-career-sync.json', ['pending']],
   ['transfers', 'TRANSFERS_DIR', 'transfers', 'transfers.json', ['careers', 'events', 'clubs', 'rosterSync?']],
   ['clubRosters', 'CLUB_ROSTERS_DIR', 'club-rosters', 'club-rosters.json', ['clubs', 'fixtures']],
-  ['clubFinance', 'FINANCES_DIR', 'finances', 'club-finance.json', ['clubs']],
+  ['clubFinance', 'FINANCES_DIR', 'finances', 'club-finance.json', ['accounts']],
   ['systemPayroll', 'FINANCES_DIR', 'finances', 'system-payroll-schedule.json', ['clubs']],
   ['transferFinanceJournal', 'FINANCES_DIR', 'finances', 'transfer-finance-journal.json', ['transfers', 'playerWages']],
   ['shopInventory', 'SHOP_INVENTORY_DIR', 'shop', 'shop-inventory.json', ['players', 'clubs', 'purchases', 'resales']],
