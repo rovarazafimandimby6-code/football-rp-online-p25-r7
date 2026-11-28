@@ -2,6 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { createMatchMessage } from "../online-match-protocol.js";
 import { RoomManager } from "../../server/room-manager.js";
 import { D1MatchRoomRepository } from "./match-room-repository.js";
+import { D1PlayerCareerRepository } from "./player-career-repository.js";
+import { D1PlayerProgressionRepository } from "./player-progression-repository.js";
 
 const ROOM_ID = /^[a-f0-9]{12}$/;
 const ACTIVE_PHASES = new Set(["lobby", "playing", "halftime"]);
@@ -50,16 +52,24 @@ export class P27MatchRoomDurableObject {
     this.stores = createMemoryStores();
     this.manager = null;
     this.repository = env.P27_DB ? new D1MatchRoomRepository(env.P27_DB) : null;
+    this.careerRepository = env.P27_DB ? new D1PlayerCareerRepository(env.P27_DB) : null;
+    this.progressionRepository = env.P27_DB ? new D1PlayerProgressionRepository(env.P27_DB) : null;
+    this.careerOutbox = null;
+    this.careerOutboxComplete = false;
     this.timer = null;
     this.lastFlushAt = 0;
     this.resultSynced = false;
     this.ready = state.blockConcurrencyWhile(async () => {
-      const [snapshot, result, resultSynced] = await Promise.all([
+      const [snapshot, result, resultSynced, careerOutbox, careerOutboxComplete] = await Promise.all([
         state.storage.get("room-checkpoint"),
         state.storage.get("finalized-result"),
         state.storage.get("finalized-result-synced"),
+        state.storage.get("career-outbox"),
+        state.storage.get("career-outbox-complete"),
       ]);
       this.resultSynced = resultSynced === true;
+      this.careerOutbox = Array.isArray(careerOutbox) ? careerOutbox : null;
+      this.careerOutboxComplete = careerOutboxComplete === true;
       if (snapshot) this.stores.rooms.save(snapshot);
       if (result) this.stores.results.save(result);
       this.manager = new RoomManager({
@@ -106,16 +116,74 @@ export class P27MatchRoomDurableObject {
     });
   }
 
+  _buildCareerOutbox(result) {
+    const room = this.manager.rooms.get(this.roomId);
+    if (!room || !Array.isArray(result?.players)) return [];
+    const score = result.score || { blue: 0, red: 0 };
+    const awardPlayerId = result.awards?.playerOfMatch?.playerId || null;
+    const events = [];
+    for (const playerResult of result.players) {
+      const live = room.players.get(playerResult.playerId);
+      if (!live || live.isBot || typeof live.accountId !== "string" ||
+          !/^FRP-[0-9]{6}$/.test(live.careerPlayerId || "") || playerResult.minutesPlayedMs < 15_000) continue;
+      const teamName = room.teams[live.team]?.name || "";
+      const opponentTeam = live.team === "blue" ? "red" : "blue";
+      const outcome = score.blue === score.red ? "draw" : (live.team === result.outcome ? "win" : "loss");
+      events.push({
+        accountId: live.accountId, playerId: live.careerPlayerId,
+        match: {
+          matchId: room.id, result: outcome, finalizedAt: result.finalizedAt,
+          teamName, opponent: room.teams[opponentTeam]?.name || "", role: playerResult.role,
+          rating: playerResult.rating, minutesPlayedMs: playerResult.minutesPlayedMs,
+          playerOfMatch: awardPlayerId === playerResult.playerId,
+          cleanSheet: (live.team === "blue" ? score.red : score.blue) === 0,
+          stats: playerResult.stats || {}, name: playerResult.name, clubName: teamName,
+        },
+      });
+    }
+    return events;
+  }
+
   async _syncFinalizedResult() {
     const result = this.stores.results.get(this.roomId);
     if (!result) return null;
-    // The result is written to DO storage first, so a D1 outage cannot lose it.
-    await this.state.storage.put("finalized-result", result);
+    if (this.careerOutbox === null) {
+      this.careerOutbox = this._buildCareerOutbox(result);
+      const storage = this.state.storage;
+      if (typeof storage.transaction === "function") {
+        await storage.transaction(async transaction => {
+          await transaction.put("finalized-result", result);
+          await transaction.put("career-outbox", this.careerOutbox);
+          await transaction.delete("room-checkpoint");
+        });
+      } else {
+        await storage.put("career-outbox", this.careerOutbox);
+        await storage.put("finalized-result", result);
+        await storage.delete("room-checkpoint");
+      }
+    } else {
+      await this.state.storage.put("finalized-result", result);
+    }
+    if (!this.careerOutboxComplete) {
+      if (this.careerOutbox.length && (!this.careerRepository || !this.progressionRepository)) {
+        throw new Error("MATCH_CAREER_REPOSITORIES_UNAVAILABLE");
+      }
+      for (const event of this.careerOutbox) {
+        await this.careerRepository.recordFinalizedMatch(event.accountId, event.playerId, event.match);
+        await this.progressionRepository.grantMatchReward(event.accountId, {
+          matchId: event.match.matchId, result: event.match.result,
+          minutesPlayedMs: event.match.minutesPlayedMs, rating: event.match.rating,
+        });
+      }
+      await this.state.storage.put("career-outbox-complete", true);
+      this.careerOutboxComplete = true;
+    }
     if (!this.repository) throw new Error("MATCH_RESULT_REPOSITORY_UNAVAILABLE");
     await this.repository.recordFinalizedResult(this.roomId, result);
     await this.state.storage.put("finalized-result-synced", true);
     this.resultSynced = true;
     await this.state.storage.delete("room-checkpoint");
+    await this.state.storage.delete("career-outbox");
     return result;
   }
 
