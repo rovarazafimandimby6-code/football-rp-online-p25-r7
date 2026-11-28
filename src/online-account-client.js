@@ -268,9 +268,15 @@ export class OnlineAccountClient {
         faceShape: profile.appearance.faceShape, eyeShape: profile.appearance.eyeShape
       } : {}
     };
+    // A previous PUT may have reached the server even if its response was lost.
+    // Treat an identical server profile as an already-applied retry, without
+    // creating another revision or duplicating the write.
+    if (current.profile && JSON.stringify(current.profile) === JSON.stringify(safeProfile)) {
+      return { revision: current.revision, unchanged: true };
+    }
     const saved = await this.request('/api/player-profile/me', { method: 'PUT', auth: true, body: { profile: safeProfile, expectedRevision: current.revision } });
     if (!Number.isSafeInteger(saved?.revision) || saved.revision <= current.revision) throw new Error('INVALID_PLAYER_PROFILE_RESPONSE');
-    return saved;
+    return { ...saved, unchanged: false };
   }
 
   enqueueProfileSnapshot(profile, outbox) {
