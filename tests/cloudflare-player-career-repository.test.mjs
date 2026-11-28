@@ -112,3 +112,13 @@ test("career validates account, player, match, result, and cursor inputs", async
     await assert.rejects(repository.get(accountId, { before: { finalizedAt: -1, matchId: "x" } }), /INVALID_CAREER_CURSOR/);
   } finally { db.close(); }
 });
+
+test("career rejects overlong match IDs instead of silently truncating history identity", async () => {
+  const { db, repository } = createRepository();
+  try {
+    await assert.rejects(
+      repository.recordFinalizedMatch(accountId, playerId, matchInput({ matchId: "x".repeat(65) })),
+      /INVALID_CAREER_MATCH/,
+    );
+  } finally { db.close(); }
+});
