@@ -52,11 +52,14 @@ export class P27MatchRoomDurableObject {
     this.repository = env.P27_DB ? new D1MatchRoomRepository(env.P27_DB) : null;
     this.timer = null;
     this.lastFlushAt = 0;
+    this.resultSynced = false;
     this.ready = state.blockConcurrencyWhile(async () => {
-      const [snapshot, result] = await Promise.all([
+      const [snapshot, result, resultSynced] = await Promise.all([
         state.storage.get("room-checkpoint"),
         state.storage.get("finalized-result"),
+        state.storage.get("finalized-result-synced"),
       ]);
+      this.resultSynced = resultSynced === true;
       if (snapshot) this.stores.rooms.save(snapshot);
       if (result) this.stores.results.save(result);
       this.manager = new RoomManager({
@@ -66,7 +69,7 @@ export class P27MatchRoomDurableObject {
       });
       this.lastFlushAt = Date.now();
       const room = this.manager.rooms.get(this.roomId);
-      if (this.stores.results.get(this.roomId)) {
+      if (this.stores.results.get(this.roomId) && !this.resultSynced) {
         try { await this._syncFinalizedResult(); }
         catch { await state.storage.setAlarm(Date.now() + 1_000); }
       } else if (room && ACTIVE_PHASES.has(room.phase)) {
@@ -108,7 +111,10 @@ export class P27MatchRoomDurableObject {
     if (!result) return null;
     // The result is written to DO storage first, so a D1 outage cannot lose it.
     await this.state.storage.put("finalized-result", result);
-    if (this.repository) await this.repository.recordFinalizedResult(this.roomId, result);
+    if (!this.repository) throw new Error("MATCH_RESULT_REPOSITORY_UNAVAILABLE");
+    await this.repository.recordFinalizedResult(this.roomId, result);
+    await this.state.storage.put("finalized-result-synced", true);
+    this.resultSynced = true;
     await this.state.storage.delete("room-checkpoint");
     return result;
   }
@@ -139,7 +145,7 @@ export class P27MatchRoomDurableObject {
       this.lastBroadcastAt = Date.now();
     }
     if (result) {
-      await this._syncFinalizedResult();
+      if (!this.resultSynced) await this._syncFinalizedResult();
       return;
     }
     if (room && Date.now() - this.lastFlushAt >= 1_000) {
@@ -152,7 +158,7 @@ export class P27MatchRoomDurableObject {
     await this.ready;
     try { await this._tick(); }
     catch (error) { this.lastTickError = String(error?.message || "MATCH_TICK_FAILED").slice(0, 120); }
-    const pendingResult = this.stores.results.get(this.roomId);
+    const pendingResult = this.stores.results.get(this.roomId) && !this.resultSynced;
     const room = this.manager.rooms.get(this.roomId);
     if (pendingResult || (room && ["playing", "halftime"].includes(room.phase))) {
       await this.state.storage.setAlarm(Date.now() + 1_000);
