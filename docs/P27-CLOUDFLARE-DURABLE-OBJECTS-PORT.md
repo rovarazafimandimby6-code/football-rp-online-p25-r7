@@ -47,7 +47,13 @@ Les erreurs métier et codes HTTP du serveur Node doivent rester compatibles ave
 
 ## Cadence de simulation et réseau
 
-Le runtime actuel vise 20 pas de simulation par seconde, alors que le client fait des polls d'état à 12,5 Hz. Un simple `alarm()` à 1 Hz ne remplace pas le tick de 50 ms. Le portage doit donc utiliser un accumulateur temporel et des sous-pas déterministes, puis pousser/servir des snapshots cohérents. Le chemin HTTP peut être conservé pour une première intégration, mais il faut mesurer la dérive de simulation et le coût des lectures. Une évolution WebSocket pourra réduire le polling, mais ne doit pas être introduite sans adapter et tester le client Android.
+Le runtime actuel vise 20 pas de simulation par seconde, le client envoie les commandes à 20 Hz et interroge l'état à 12,5 Hz. Un simple `alarm()` à 1 Hz ne remplace donc pas le tick de 50 ms.
+
+**Décision de transport : WebSocket hibernable pour les matchs actifs, HTTP conservé pour la création/liste et les opérations hors temps réel.** Le client Android devra recevoir une adaptation explicite : connexion WebSocket, authentification initiale, messages d'entrée séquencés, snapshots/deltas et reprise après reconnexion. Les commandes doivent être regroupées par fenêtres de 50 à 100 ms pour limiter le coût des changements de contexte ; les snapshots ne doivent pas être diffusés à chaque pas de simulation si aucun état visible n'a changé.
+
+Un Durable Object peut maintenir une boucle de simulation à 50 ms tant que le match est actif, puis arrêter ses timers quand le match se termine et laisser les connexions WebSocket hibernables au repos. Attention : `setTimeout`/`setInterval` empêchent l'hibernation tant qu'ils sont planifiés ; ils entraînent donc une durée facturée et doivent exister uniquement pendant un match en cours. L'état doit être checkpointé dans le stockage durable avant toute période où l'objet peut être évincé. Les messages entrants réveillent ensuite l'objet sans fermer les WebSockets hibernables.
+
+Le tick doit utiliser un accumulateur basé sur le temps écoulé, plafonner le rattrapage après une pause d'exécution et exécuter des sous-pas déterministes de 50 ms. Il faut mesurer la dérive, le temps CPU et les coûts sur des matchs de 3 à 5 minutes, avec plusieurs salons simultanés. Le mode HTTP polling actuel ne doit pas être présenté comme du temps réel fiable sur Cloudflare sans ces mesures.
 
 ## Séquence de réalisation
 
