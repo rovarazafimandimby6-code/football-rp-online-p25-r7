@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { applyPlayerAction, stepRoomSimulation, resetRoomBall } from './simulation.js';
 import { resolveMatchClub, cloneMatchTeams } from './club-catalog.js';
 import { averageAiShouldAct, averageAiAim, averageAiMovement } from '../src/average-ai.js';
@@ -376,7 +376,7 @@ export class RoomManager {
     if (typeof token !== 'string' || token.length < 16) throw new Error('UNAUTHORIZED');
     const tokenHash = createHash('sha256').update(token).digest('hex');
     const player = [...room.players.values()].find(p => {
-      if (typeof p.tokenHash === 'string' && /^[a-f0-9]{64}$/.test(p.tokenHash)) return p.tokenHash === tokenHash;
+      if (typeof p.tokenHash === 'string' && /^[a-f0-9]{64}$/.test(p.tokenHash)) return timingSafeEqual(Buffer.from(p.tokenHash, 'hex'), Buffer.from(tokenHash, 'hex'));
       return typeof p.token === 'string' && p.token.length >= 16 && p.token === token;
     });
     if (!player) throw new Error('UNAUTHORIZED');
