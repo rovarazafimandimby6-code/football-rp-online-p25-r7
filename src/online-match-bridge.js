@@ -4,7 +4,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Applies authoritative room snapshots to the local 3D match objects and forwards only this user's input. */
 export class OnlineMatchBridge {
-  constructor({ client, players, ball, controls, camera = null, onResolveMissingPlayer = null, onState = null, onError = null, realtime = true, now = () => performance.now() } = {}) {
+  constructor({ client, players, ball, controls, camera = null, onResolveMissingPlayer = null, onState = null, onError = null, realtime = true, WebSocketImpl = globalThis.WebSocket, now = () => performance.now() } = {}) {
     if (!client || !Array.isArray(players) || !ball) throw new TypeError('ONLINE_BRIDGE_DEPENDENCIES_REQUIRED');
     this.client = client;
     this.players = players;
@@ -17,6 +17,7 @@ export class OnlineMatchBridge {
     this.onState = onState;
     this.onError = onError;
     this.realtimeEnabled = realtime === true;
+    this.WebSocketImpl = WebSocketImpl;
     this.realtimeStatus = 'disconnected';
     this.lastRealtimeAttemptAt = -Infinity;
     this.now = now;
@@ -60,6 +61,7 @@ export class OnlineMatchBridge {
     try {
       return this.client.connectRealtime({
         enabled: true, afterSequence: this.sequence, afterEventId: this.eventCursor,
+        WebSocketImpl: this.WebSocketImpl,
         onMessage: update => {
           if (update?.state) this.applyState(update.state, update.events || []);
           if (Number.isSafeInteger(update?.eventCursor)) this.eventCursor = Math.max(this.eventCursor, update.eventCursor);
