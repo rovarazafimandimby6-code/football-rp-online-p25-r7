@@ -126,3 +126,36 @@ test("contract termination stores free-agent state without deleting history", as
     assert.equal((await repository.getHistory(accountId)).events.length, 2);
   } finally { db.close(); }
 });
+
+
+test("contract repository rejects a payload bound to another player identity", async () => {
+  const { db, repository } = createRepository();
+  try {
+    await assert.rejects(repository.applyEvent(accountId, playerId, event({
+      contract: contract({ playerId: "FRP-654321" }),
+    })), /PLAYER_IDENTITY_MISMATCH/);
+    assert.equal(await repository.getCurrent(accountId), null);
+  } finally { db.close(); }
+});
+
+test("contract event identifiers are validated rather than silently sanitized", async () => {
+  const { db, repository } = createRepository();
+  try {
+    await assert.rejects(repository.applyEvent(accountId, playerId, event({ eventId: "event<1>" })), /INVALID_CONTRACT_EVENT/);
+    await assert.rejects(repository.applyEvent(accountId, playerId, event({ eventId: " event-1 " })), /INVALID_CONTRACT_EVENT/);
+    assert.equal(await repository.getCurrent(accountId), null);
+  } finally { db.close(); }
+});
+
+test("contract repository rejects malformed club identifiers and status whitespace", async () => {
+  const { db, repository } = createRepository();
+  try {
+    await assert.rejects(repository.applyEvent(accountId, playerId, event({
+      contract: contract({ clubId: "club<evil>" }),
+    })), /INVALID_PLAYER_CONTRACT/);
+    await assert.rejects(repository.applyEvent(accountId, playerId, event({
+      contract: contract({ status: " active " }),
+    })), /INVALID_PLAYER_CONTRACT/);
+    assert.equal(await repository.getCurrent(accountId), null);
+  } finally { db.close(); }
+});
