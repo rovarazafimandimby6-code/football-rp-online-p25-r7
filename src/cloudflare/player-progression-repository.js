@@ -71,10 +71,11 @@ export class D1PlayerProgressionRepository {
 
   async grantMatchReward(accountId, { matchId, result, minutesPlayedMs = 0, rating = null } = {}) {
     accountIdOrThrow(accountId);
-    const id = typeof matchId === "string" ? matchId.trim().slice(0, 64) : "";
-    if (!id || !["win", "draw", "loss"].includes(result)) throw new Error("INVALID_MATCH_REWARD");
+    const id = typeof matchId === "string" ? matchId.trim() : "";
+    if (!id || id.length > 64 || !["win", "draw", "loss"].includes(result)) throw new Error("INVALID_MATCH_REWARD");
     const minutes = clampInt(minutesPlayedMs, 0, 600_000) / 60_000;
-    const score = Number.isFinite(Number(rating)) ? Math.max(1, Math.min(10, Number(rating))) : 5;
+    const numericRating = rating === null || rating === undefined ? 5 : Number(rating);
+    const score = Number.isFinite(numericRating) ? Math.max(1, Math.min(10, numericRating)) : 5;
     const experience = Math.round(20 + minutes * 12 + score * 3);
     const coins = Math.round(8 + (result === "win" ? 18 : result === "draw" ? 10 : 4) + score * 2);
     await this.ensure(accountId);
