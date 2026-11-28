@@ -11,6 +11,7 @@ class Statement {
 class FakeD1 {
   constructor() { this.rooms = new Map(); }
   prepare(sql) { return new Statement(this, sql); }
+  async batch(statements) { return Promise.all(statements.map(statement => statement.run())); }
   async run(sql, v) {
     if (!sql.startsWith("INSERT INTO p27_match_rooms")) throw new Error("UNSUPPORTED_SQL");
     const [id, objectName, phase, mode, name, duration, blue, red, createdAt, updatedAt, expiresAt] = v;
