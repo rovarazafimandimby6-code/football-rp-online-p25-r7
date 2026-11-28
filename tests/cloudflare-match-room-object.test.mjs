@@ -268,6 +268,7 @@ test("WebSocket size limiting preserves event order and advances only through tr
     v: 1, type: "hello", roomId: "a1b2c3d4e5f6", token: joined.token,
     afterSequence: -1, afterEventId: 0,
   }));
+  stopTimer(object);
   object.manager.get = () => ({
     sequence: 101, eventCursor: 20, phase: "playing", players: [],
     events: Array.from({ length: 20 }, (_, index) => ({ id: index + 1, type: "test", detail: "x".repeat(100) })),
