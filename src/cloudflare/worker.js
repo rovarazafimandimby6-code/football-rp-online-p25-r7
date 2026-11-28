@@ -11,6 +11,7 @@ import { D1PlayerProgressionRepository } from "./player-progression-repository.j
 import { D1PlayerCareerRepository } from "./player-career-repository.js";
 import { D1PlayerShopRepository } from "./player-shop-repository.js";
 import { verifyCareerIngestSignature } from "./career-ingest-auth.js";
+import { D1MatchRoomRepository } from "./match-room-repository.js";
 export { P27MatchRoomDurableObject } from "./match-room-object.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
@@ -363,6 +364,89 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
   return response;
 }
 
+
+async function handleMatchRoomRoute(request, env, url) {
+  const namespace = env.P27_MATCH_ROOMS;
+  const hasD1 = env.P27_DB && typeof env.P27_DB.prepare === "function";
+  const roomRepo = hasD1 ? new D1MatchRoomRepository(env.P27_DB) : null;
+  const roomPath = url.pathname.match(/^\\/api\\/rooms\\/([a-f0-9]{12})(?:\\/(join|input|heartbeat|reconnect|leave|entry-request|rotation|result|socket))?$/);
+  const isRoomCollection = url.pathname === "/api/rooms";
+  if (!isRoomCollection && !roomPath) return null;
+  if (!namespace || typeof namespace.idFromName !== "function" || typeof namespace.get !== "function") {
+    return json(503, { error: "MATCH_ROOM_OBJECTS_NOT_CONFIGURED" });
+  }
+  if (!roomRepo) return json(503, { error: "D1_BINDING_MISSING" });
+
+  if (request.method === "GET" && isRoomCollection) {
+    try { return json(200, { rooms: await roomRepo.listDiscoverable({ limit: 50 }) }); }
+    catch (error) { return json(503, { error: String(error?.message || "MATCH_ROOM_INDEX_UNAVAILABLE") }); }
+  }
+  if (request.method === "POST" && isRoomCollection) {
+    try {
+      const body = await readJson(request);
+      if (body.competitionFixtureId) return json(409, { error: "COMPETITION_MATCH_NOT_MIGRATED" });
+      const bytes = crypto.getRandomValues(new Uint8Array(6));
+      const roomId = [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
+      const stub = namespace.get(namespace.idFromName(roomId));
+      return await stub.fetch("https://match-room.internal/internal/create", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...body, roomId }),
+      });
+    } catch (error) { return errorResponse(error); }
+  }
+
+  const roomId = roomPath[1];
+  const action = roomPath[2] || "state";
+  const stub = namespace.get(namespace.idFromName(roomId));
+  if (action === "socket") return json(501, { error: "MATCH_SOCKET_NOT_READY" });
+
+  if (action === "join" && request.method === "POST") {
+    try {
+      const body = await readJson(request);
+      const sessionToken = sessionTokenFromRequest(request);
+      const account = sessionToken ? await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionToken) : null;
+      if (sessionToken && !account) return json(401, { error: "SESSION_EXPIRED" });
+      let identity = null;
+      if (account) {
+        identity = await new D1PlayerIdentityRepository(env.P27_DB).getByAccountId(account.id);
+        if (!identity || identity.playerId !== account.playerId) return json(403, { error: "PLAYER_IDENTITY_REQUIRED" });
+      }
+      return await stub.fetch("https://match-room.internal/internal/join", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          displayName: body.displayName, preferredTeam: body.preferredTeam, role: body.role,
+          accountId: account?.id || null, careerPlayerId: identity?.playerId || null,
+        }),
+      });
+    } catch (error) { return errorResponse(error); }
+  }
+  if (action === "result" && request.method === "GET") return stub.fetch("https://match-room.internal/internal/result");
+  if (!roomPath[2] && request.method === "GET") {
+    const since = url.searchParams.get("sinceSequence");
+    if (since !== null) {
+      const afterEventId = url.searchParams.get("afterEventId") || "0";
+      return stub.fetch("https://match-room.internal/internal/delta?afterSequence=" +
+        encodeURIComponent(since) + "&afterEventId=" + encodeURIComponent(afterEventId));
+    }
+    return stub.fetch("https://match-room.internal/internal/state");
+  }
+
+  const postActions = new Set(["input", "heartbeat", "reconnect", "leave", "entry-request", "rotation"]);
+  if (request.method !== "POST" || !postActions.has(action)) return json(405, { error: "METHOD_NOT_ALLOWED" });
+  try {
+    const body = await readJson(request);
+    const authorization = request.headers.get("authorization") || "";
+    const token = authorization.match(/^Bearer\\s+(.+)$/i)?.[1]?.trim() || "";
+    const internalBody = action === "input" ? { token, input: body }
+      : action === "rotation" ? { token, outgoingId: body.outgoingId, incomingId: body.incomingId }
+      : { token };
+    return await stub.fetch("https://match-room.internal/internal/" + action, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(internalBody),
+    });
+  } catch (error) { return errorResponse(error); }
+}
+
 const worker = {
   async fetch(request, env = {}) {
     const url = new URL(request.url);
@@ -388,6 +472,9 @@ const worker = {
         return json(503, { ok: false, status: "not-ready", reason: "D1_UNAVAILABLE" });
       }
     }
+
+    const matchRoomResponse = await handleMatchRoomRoute(request, env, url);
+    if (matchRoomResponse) return matchRoomResponse;
 
     if (request.method === "POST" &&
         (url.pathname === "/api/auth/google/login/start" || url.pathname === "/api/auth/google/link/start")) {
