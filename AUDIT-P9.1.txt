@@ -1,0 +1,20 @@
+AUDIT P9.1 — CORRECTIFS APRÈS TEST UTILISATEUR
+
+Correctifs intégrés :
+1. Bouton B contextuel : passe en possession, pression défensive sans possession.
+2. Bouton A inchangé : tir en possession, tacle en défense.
+3. Le contrôle humain reste attaché à un seul avatar ; la pression n'effectue aucun changement de joueur.
+4. Noms sans graisse forte, sans fond ni bordure, taille réduite, casse naturelle.
+5. Caméra 3D : champ de vision ajusté et cadrage un peu plus immersif.
+6. Qualité moyenne : plafond de pixel ratio abaissé pour limiter la charge GPU sur les appareils modestes.
+
+VALIDATION AUTOMATISÉE :
+- 30 tests Node.js réussis (30/30).
+- Vérification syntaxique Node.js effectuée sur les modules JavaScript du projet.
+- Aucun test graphique automatisé disponible dans le projet.
+- Aucune validation sur appareil Android réel effectuée dans cet environnement.
+
+LIMITES :
+- Prototype Three.js 3D avec personnages procéduraux ; pas encore de modèles humanoïdes réalistes GLB/GLTF ni d'animations motion-capture.
+- Pas de backend réseau : les joueurs non contrôlés par l'utilisateur sont simulés par l'IA.
+- Les noms d'effectif actuels sont des noms fictifs de démonstration, pas des identités de comptes humains.

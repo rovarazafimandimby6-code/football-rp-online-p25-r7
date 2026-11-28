@@ -1,0 +1,142 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { generateClubRoster } from '../src/club-roster.js';
+import { renderSystemPlayerPortrait, systemPlayerPortraitDataUri } from '../src/p27-system-player-portrait.js';
+
+const player = {
+  id: 'club-a-ai-01', name: 'Mika Rakoto', role: 'FWD', position: 'AC', number: 9,
+  appearance: {
+    skinTone: 'brown', bodyBuild: 'athletic', hairStyle: 'curly', hairColor: 'black',
+    faceShape: 'angular', eyeShape: 'almond',
+    kitColors: { primary: '#1459a6', secondary: '#f4f4f4' }
+  }
+};
+
+test('system portrait is an offline SVG data URI and stable for the same player', () => {
+  const first = systemPlayerPortraitDataUri(player);
+  const second = systemPlayerPortraitDataUri({ ...player, appearance: { ...player.appearance } });
+  assert.match(first, /^data:image\/svg\+xml;charset=UTF-8,/);
+  assert.equal(first, second);
+  const svg = decodeURIComponent(first.split(',')[1]);
+  assert.match(svg, /Mika Rakoto|viewBox="0 0 224 250"/);
+  assert.match(svg, /#1459a6/);
+});
+
+test('library and profile variants render portrait images with role labels', () => {
+  const card = renderSystemPlayerPortrait(player, 'card');
+  const detail = renderSystemPlayerPortrait(player, 'detail');
+  assert.match(card, /player-card-portrait-system/);
+  assert.match(detail, /player-career-avatar-portrait/);
+  assert.match(card, /<img loading="lazy"/);
+  assert.match(card, /<small>AC<\/small>/);
+  assert.match(detail, /alt="Portrait du joueur Mika Rakoto"/);
+});
+
+test('system portrait uses club kit design and accent colors without trusting raw color input', () => {
+  const vertical = decodeURIComponent(systemPlayerPortraitDataUri({
+    ...player, appearance: { ...player.appearance, kitDesign:'vertical', kitColors:{ primary:'#123456', secondary:'#ffffff', accent:'#f0b429' } }
+  }).split(',')[1]);
+  const sash = decodeURIComponent(systemPlayerPortraitDataUri({
+    ...player, appearance: { ...player.appearance, kitDesign:'sash', kitColors:{ primary:'#123456', secondary:'#ffffff', accent:'url(javascript:alert(1))' } }
+  }).split(',')[1]);
+  assert.match(vertical, /M108 158 L116 158/);
+  assert.match(vertical, /#f0b429/);
+  assert.match(sash, /M65 178 L78 166/);
+  assert.doesNotMatch(sash, /javascript:/);
+  assert.notEqual(vertical, sash);
+});
+
+test('all generated club kit designs have a dedicated portrait pattern', () => {
+  const designs = ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'];
+  for (const kitDesign of designs) {
+    const svg = decodeURIComponent(systemPlayerPortraitDataUri({
+      ...player, appearance: { ...player.appearance, kitDesign }
+    }).split(',')[1]);
+    assert.match(svg, /clipPath id="shirtClip"/, kitDesign);
+    assert.match(svg, /<g clip-path="url\(#shirtClip\)">/, kitDesign);
+  }
+});
+
+test('portrait generation safely falls back when appearance and kit colors are absent', () => {
+  const fallback = systemPlayerPortraitDataUri({ id: 'free-agent-01', name: 'A. Joueur' });
+  const svg = decodeURIComponent(fallback.split(',')[1]);
+  assert.match(svg, /#d99d70/);
+  assert.match(svg, /#2865a8/);
+});
+
+
+test('system player appearance: beard variation is deterministic and age-gated', () => {
+  const club = { id:'portrait-beard-test', name:'Portrait Test', countryCode:'MG', rating:62, division:'D3', colors:['#24558b','#ffffff','#d7aa37'] };
+  const first = generateClubRoster(club, { size:80 });
+  const second = generateClubRoster(club, { size:80 });
+  assert.deepEqual(first.map(player => player.appearance.facialHair), second.map(player => player.appearance.facialHair));
+  assert.ok(first.some(player => player.age >= 20 && player.appearance.facialHair === 'beard'));
+  assert.ok(first.every(player => player.age >= 20 || player.appearance.facialHair === 'none'));
+  assert.ok(first.every(player => ['black','dark','brown','blond','auburn','grey'].includes(player.appearance.hairColor)));
+});
+
+test('system portraits upgrade to the existing 3D humanoid model lazily', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, resolve } = await import('node:path');
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const renderer = await readFile(resolve(root, 'src/p27-system-player-portrait-3d.js'), 'utf8');
+  const integration = await readFile(resolve(root, 'src/p27-system-player-portrait.js'), 'utf8');
+  const main = await readFile(resolve(root, 'src/main.js'), 'utf8');
+  assert.match(renderer, /Superhero_Male_FullBody\.gltf/);
+  assert.match(renderer, /Hair_SimpleParted|Hair_Buzzed/);
+  assert.match(renderer, /Hair_Beard/);
+  assert.match(renderer, /function hairColorHex\(value\)/);
+  assert.ok(renderer.includes('function skinToneHex(value)'));
+  assert.ok(renderer.includes('p27SkinColor'));
+  assert.ok(renderer.includes('p27FaceMask'));
+  assert.ok(renderer.includes('p27NeckMask'));
+  assert.ok(renderer.includes('p27SkinMask * 0.72'));
+  assert.match(renderer, /materials\.forEach\(item => item\.color\?\.set\(color\)\)/);
+  assert.match(renderer, /mat\.color\?\.set\(hairColorHex\(player\?\.appearance\?\.hairColor\)\)/);
+  assert.match(renderer, /a\.eyeShape/);
+  assert.match(renderer, /node\.name === 'Eyes'/);
+  assert.match(renderer, /'deep-set':\[0\.96,0\.92,1\]/);
+  assert.match(renderer, /strong: \{ torso:1\.07, shoulders:1\.055, neck:0\.96 \}/);
+  assert.match(renderer, /lean: \{ torso:0\.95, shoulders:0\.965, neck:1\.035 \}/);
+  assert.match(renderer, /node\.name === 'spine_03'.*bodyShape\.shoulders/);
+  assert.match(renderer, /node\.name === 'neck_01'.*bodyShape\.neck/);
+  assert.match(renderer, /attachHair\(model, beardSource, hairTint\)/);
+  assert.match(integration, /auburn:'#8b3f26', grey:'#777b82'/);
+  assert.match(renderer, /braids:'Hair_Buns', twists:'Hair_Buns'/);
+  assert.match(renderer, /facialHair === 'beard'/);
+  assert.match(renderer, /powerPreference: 'low-power'/);
+  assert.match(renderer, /PerspectiveCamera\(29, WIDTH \/ HEIGHT/);
+  assert.match(renderer, /camera\.position\.set\(0, 1\.53, 2\.45\)/);
+  assert.match(renderer, /camera\.lookAt\(0, 1\.43, 0\)/);
+  assert.match(renderer, /Tight chest-up framing/);
+  assert.match(renderer, /const clubAccent = new THREE\.Color\(safeColor\(player\?\.appearance\?\.kitColors\?\.accent/);
+  assert.match(renderer, /lerp\(clubAccent, 0\.16\)/);
+  assert.match(renderer, /DirectionalLight\(clubAccent, 0\.8\)/);
+  assert.match(renderer, /function applyClubKitShader\(material, appearance = \{\}\)/);
+  assert.match(renderer, /p27KitPrimary/);
+  assert.match(renderer, /p27KitSecondary/);
+  assert.match(renderer, /p27KitAccent/);
+  assert.match(renderer, /p27ShirtMask/);
+  assert.match(renderer, /diffuseColor\.rgb = mix\(diffuseColor\.rgb, p27PatternColor/);
+  assert.match(renderer, /else p27Pattern = smoothstep\(0\.14, 0\.20, abs\(p27X\)\)/);
+  assert.match(renderer, /material\.color\?\.set\('#ffffff'\)/);
+  assert.match(renderer, /applyClubKitShader\(mat, player\?\.appearance\)/);
+  assert.match(renderer, /function addShirtNumber\(model, value\)/);
+  assert.match(renderer, /P27_SystemPortrait_ShirtNumber/);
+  assert.match(renderer, /sprite\.position\.set\(0, 1\.075, 0\.17\)/);
+  assert.match(renderer, /player\.clubId, player\.number/);
+  assert.match(renderer, /p27PortraitOwnedDecal/);
+  assert.match(renderer, /MAX_CACHE = 180/);
+  assert.match(renderer, /p27PortraitOwnedGeometry/);
+  assert.match(renderer, /if \(node\.userData\?\.p27PortraitOwnedGeometry\) node\.geometry/);
+  assert.match(integration, /IntersectionObserver/);
+  assert.match(integration, /variant==='roster'\?'roster-player-portrait'/);
+  assert.match(integration, /a\.facialHair==='beard'/);
+  assert.match(integration, /systemPlayerPortraitDataUri\(p\)/);
+  assert.match(integration, /module\.renderSystemPlayerPortrait3D\(player\)/);
+  assert.match(main, /hasPortrait.*renderSystemPlayerPortrait[(]player,'roster'[)]/);
+
+  assert.match(main, /has-system-portrait/);
+  assert.match(main, /player\.isHuman!==true&&player\.ownerType!=='human'/);
+});

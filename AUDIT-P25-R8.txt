@@ -1,0 +1,23 @@
+FOOTBALL RP ONLINE — AUDIT DE CONSOLIDATION P25 R8
+
+Périmètre : correctif de lancement R7, actions et authentification serveur, reprise de session réseau, simulation et cohérence des salons.
+
+CORRECTIONS
+1. Double déclaration `victim` dans Game.tryTackle() renommée pour restaurer le parsing du module.
+2. Cooldown d'action consommé uniquement après validation de la situation de jeu.
+3. Première action valide disponible immédiatement, sans dépendre de l'horloge système absolue.
+4. Authentification stricte : seuls les jetons humains non vides sont acceptés.
+5. Les joueurs déconnectés ne peuvent pas commander leur avatar avant reconnexion.
+6. Le heartbeat renvoie `nextSequence`; le client sauvegarde et restaure la séquence de commandes.
+7. Les commandes réseau refusent les séquences de type chaîne.
+8. Simulation bornée et collisions contenues dans les limites du terrain.
+9. Remplacement d'un bot de réserve autorisé même si le salon est momentanément à dix entrées.
+
+RÉSULTATS
+- 188 tests automatisés réussis ; 0 échec.
+- Aucune erreur de syntaxe JavaScript/MJS attendue.
+
+LIMITES NON MASQUÉES
+- Le jeu 3D exécuté dans l'APK reste actuellement le mode local/IA.
+- Le serveur Render expose l'API de salon, mais les avatars 3D et les commandes tactiles ne sont pas encore reliés à cette simulation autoritaire de bout en bout.
+- Pas de validation sur appareil Android physique ni de session multi-appareils réelle dans cet audit.

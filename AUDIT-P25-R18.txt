@@ -1,0 +1,26 @@
+FOOTBALL RP ONLINE P25 — AUDIT R18
+Version : 25.18.0
+Base : archive P25 R17 fournie dans la session, ZIP contrôlé avant extraction.
+
+CHANGEMENTS
+- Attribution serveur du but au dernier joueur ayant touché le ballon.
+- Attribution d'une passe décisive au coéquipier précédent lorsque le contact est récent (fenêtre de 12 secondes), sans auto-assistance ni attribution à l'équipe adverse.
+- Ajout des statistiques individuelles assists, saves et interceptions.
+- Interception comptée lorsqu'un joueur de champ récupère un ballon touché par l'adversaire.
+- Arrêt compté lorsqu'un gardien contrôle un tir adverse dans la fenêtre de suivi.
+- Événements réseau goal enrichi, interception et save avec identifiants des joueurs concernés.
+- Agrégats collectifs enrichis avec buts, passes décisives, arrêts et interceptions.
+- Les actions des bots acceptées alimentent également leurs statistiques de passes, tirs et tacles.
+- Version du paquet portée à 25.18.0.
+
+VALIDATION
+- Tests automatisés : 212/212 réussis, 0 échec.
+- 4 tests R18 dédiés : attribution but/passe décisive, interception, arrêt gardien et bilan final.
+- Tous les fichiers JavaScript/MJS passent node --check.
+- Archive ZIP vérifiée avec unzip -t.
+
+LIMITES
+- Les arrêts sont comptés sur une prise de balle du gardien après un tir adverse ; les parades avec déviation, ballon repoussé et arrêts réflexes nécessitent une modélisation physique plus complète.
+- L'interception repose sur un changement de possession sur ballon libre, pas sur un modèle complet de trajectoires de passes.
+- Les salons et résultats restent en mémoire ; aucune persistance après redémarrage n'est revendiquée.
+- Aucun test physique Android multi-appareils, test Render bout en bout ni mesure FPS WebGL n'a été effectué.

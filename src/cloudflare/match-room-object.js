@@ -263,8 +263,7 @@ export class P27MatchRoomDurableObject {
         state: { ...message.state, events: [] },
         ...(Array.isArray(message.events) ? { events: [...message.events] } : {}),
       };
-      // If the state is large, trim only the tail of the pending event batch.
-      // The caller uses the returned cursor, so no event is skipped.
+      // Trim only the tail of the pending event batch; never skip older events.
       while (new TextEncoder().encode(JSON.stringify(message)).byteLength > 16 * 1024 &&
              Array.isArray(message.events) && message.events.length > 0) {
         message.events.pop();

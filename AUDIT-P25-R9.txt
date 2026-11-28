@@ -1,0 +1,22 @@
+FOOTBALL RP ONLINE — RAPPORT DE CONSOLIDATION P25 R9
+
+Base : P25 R8 (archive originale préservée séparément).
+Version du paquet : 25.9.0.
+
+CORRECTIONS INTÉGRÉES
+1. Test de version corrigé : il valide désormais la famille de versions P25 sans figer une ancienne valeur 25.0.0.
+2. Endpoint HTTP POST /api/rooms/:id/heartbeat : renvoie maintenant l'objet complet produit par RoomManager, notamment nextSequence.
+3. Test HTTP de bout en bout ajouté au test API existant : création du salon, arrivée d'un joueur, heartbeat authentifié et vérification de nextSequence.
+4. Interface de menu mise à jour pour afficher P25 R9.
+
+VALIDATION
+- Suite Node.js : 188 tests réussis, 0 échec.
+- Contrôle de syntaxe JavaScript/MJS : exécuté séparément lors de la livraison.
+- Archive ZIP : contrôle CRC effectué sur l'archive source R8 avant extraction.
+
+PORTÉE ET LIMITES
+- Ces tests valident les comportements automatisés locaux, pas une session réelle entre plusieurs appareils.
+- Le rendu WebGL et les performances Android physiques ne sont pas validés par cette livraison.
+- Le serveur autoritaire et le client 3D ne sont pas encore intégrés de bout en bout pour piloter les avatars 3D en ligne.
+- Les ressources humanoïdes et animations restent celles de R8 ; aucun nouveau modèle ni clip n'est inventé dans ce correctif.
+- Aucun changement aux archives sources Base Characters, Hairstyles ou Universal Animation Library.

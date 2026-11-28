@@ -1,0 +1,38 @@
+AUDIT P18 — 22/11/2026
+
+Base
+- Archive P17 récupérée depuis la Library, matérialisée et extraite.
+- 75 fichiers de base inspectés ; architecture et tests P17 conservés.
+
+Changements
+- Ajout de src/role-presentation.js avec profils GK/DEF/MID/FWD, courbes joystick bornées et paramètres caméra/commandes.
+- src/camera.js : cadrage, hauteur, distance et lissage dépendants du rôle du joueur contrôlé.
+- src/controls.js : mise à jour du poste contrôlé, réponse joystick adaptative et libellés tactiles contextualisés.
+- src/game.js et src/main.js : le poste choisi dans le profil détermine le footballeur bleu contrôlé ; identité et numéro du profil sont appliqués au personnage ; le contrôle est conservé après la réinitialisation des positions. Ajout du plongeon/sortie du gardien.
+- src/ui.js : poste du personnage affiché dans le HUD.
+- index.html et package.json : version P18.
+- Ajout de trois tests P18 portant sur les profils, la réponse joystick et le repli des rôles inconnus.
+
+Validation
+- npm test : 84 réussis, 0 échec.
+- node --check sur tous les src/*.js : réussi.
+
+Réserves
+- Pas de test navigateur interactif ni de test sur appareil Android physique dans cette session.
+- La caméra et les commandes nécessitent une vérification visuelle tactile sur appareil réel.
+- Les chantiers graphiques restants de P18 sont explicitement non terminés ; cette archive est une construction P18 en cours consolidée, pas une déclaration d'achèvement de tout le cahier des charges.
+
+Lot de consolidation supplémentaire
+- Les boutons tactiles adoptent désormais une hiérarchie visuelle par poste (gardien, défenseur, milieu, attaquant), sans modifier les actions de contrôle individuel.
+- Les états actifs des boutons sont plus lisibles sur écran tactile ; la disposition est réduite sur les écrans paysage de faible hauteur.
+- Les commandes exposent un libellé d'accessibilité dépendant du rôle ; le HUD colore l'identification du joueur selon son poste.
+- Contrôles syntaxiques et suite de tests relancés après ces modifications.
+
+
+Audit correctif et lot rendu joueur — 22/11/2026
+- Contrôles relancés avant modification : 84/84 tests réussis ; syntaxe de tous les modules src/*.js valide.
+- Incohérence corrigée : le numéro fourni par le profil est maintenant répercuté sur le modèle 3D via Player.setNumber(), avec mise à jour des marquages avant/arrière du maillot.
+- Animation corrigée : la jambe de frappe et le balancement des bras suivent désormais le pied dominant ; ajout d'un test unitaire dédié.
+- Rendu humanoïde enrichi : détails du visage (yeux, nez, bouche, oreilles), variantes simples de coiffure, col et liserés de maillot, numéro visible, semelles et crampons.
+- Les matériaux et textures restent dans la scène Three.js et sont libérés par le parcours de dispose() existant.
+- Validation après modifications : à confirmer par la relance finale des tests et du contrôle ZIP. Aucun rendu navigateur ou appareil Android physique n'a été exécuté.

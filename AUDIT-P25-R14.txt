@@ -1,0 +1,24 @@
+FOOTBALL RP ONLINE P25 — RAPPORT D'AUDIT R14
+Version : 25.14.0
+Base : P25 R13 récupérée depuis la Bibliothèque.
+
+CHANGEMENTS
+- Ajout d'une phase serveur explicite « halftime » de 5 secondes.
+- Blocage des commandes pendant la pause.
+- Arrêt des déplacements et remise à zéro des vitesses pendant la mi-temps.
+- Inversion des côtés et des directions d'attaque à la reprise.
+- Remise au centre du ballon et reprise automatique de la seconde période.
+- Horloge réglementaire qui exclut la durée de la pause.
+- Rattrapage si un tick serveur intervient après la durée complète de la pause.
+- Pont 3D client : état halftime, écran d'information et fermeture automatique à la reprise.
+- Mise à jour de version vers 25.14.0.
+
+VALIDATION
+- npm test : 206/206 réussis, 0 échec.
+- node --check : tous les fichiers JavaScript et MJS contrôlés sans erreur.
+- Archive ZIP : contrôle d'intégrité effectué après création.
+
+LIMITES NON RÉSOLUES
+- Stockage des salons en mémoire volatile : aucun redémarrage serveur tolérant aux coupures n'est revendiqué.
+- Pas de test physique sur deux appareils Android dans cet environnement.
+- Pas de mesure de FPS/WebGL sur appareils modestes dans cet environnement.

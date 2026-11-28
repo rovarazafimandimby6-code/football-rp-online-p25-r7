@@ -1,0 +1,27 @@
+FOOTBALL RP ONLINE — AUDIT P25 R12
+Base : P25 R11
+Version : 25.12.0
+
+Travaux consolidés :
+1. GET /api/rooms et RoomManager.list() : découverte des salons non expirés, métadonnées publiques uniquement, comptes humains par équipe, aucun jeton exposé.
+2. OnlineMatchClient.listRooms() et prise en charge du snapshot initial via sinceSequence=-1.
+3. Menu multijoueur : création de salon, actualisation, liste des salons, jonction par code ou depuis la liste.
+4. Le nom affiché saisi dans le menu est transmis au serveur.
+5. startMatch injecte le client et le résultat de jonction dans Game.
+6. Game active OnlineMatchBridge, attache le joueur humain à son équipe/slot et désactive la simulation locale concurrente en mode en ligne.
+7. Le serveur pilote les positions, le ballon, les commandes, les bots et les événements ; score, période et chronomètre sont reflétés dans le HUD.
+8. Heartbeat périodique, arrêt de l'envoi d'inputs après le coup de sifflet final, sortie du match en ligne et libération du salon.
+9. Les résultats de carrière sont calculés selon l'équipe réellement rejointe ; les statistiques détaillées locales ne sont pas artificiellement incrémentées en ligne.
+10. Le mode local reste inchangé lorsqu'aucune session en ligne n'est injectée.
+
+Validation effectuée :
+- npm test : 200 tests réussis, 0 échec.
+- Vérification syntaxique de tous les fichiers JS/MJS sous src, server et tests : 67 fichiers sans erreur.
+- Smoke tests HTTP : santé, création, découverte, jonction, heartbeat et premier polling.
+- Archive ZIP reconstruite puis contrôlée avec unzip -t.
+
+Limites connues :
+- Les salons sont conservés en mémoire et disparaissent au redémarrage du serveur.
+- Pas encore de persistance, matchmaking régional, WebSocket, anti-triche avancé ni reconnexion automatique après expiration de session.
+- Le changement de période est géré côté serveur, mais la présentation dédiée de mi-temps/reprise et les statistiques de match en ligne restent à finaliser.
+- Aucun test réel à deux appareils Android ni validation WebGL sur appareil physique n'est revendiqué.

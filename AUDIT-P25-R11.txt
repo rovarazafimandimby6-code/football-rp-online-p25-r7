@@ -1,0 +1,20 @@
+FOOTBALL RP ONLINE — RAPPORT DE CONSOLIDATION P25 R11
+
+Base : P25 R10.
+Version : 25.11.0.
+
+Travaux consolidés :
+1. Ajout de src/online-match-bridge.js pour relier les snapshots du serveur aux avatars 3D et au ballon.
+2. Liaison stricte du joueur humain à son avatar d'équipe et de slot ; pas de transfert de contrôle entre coéquipiers.
+3. Interpolation des avatars distants avec SnapshotBuffer et protection contre les séquences réseau anciennes.
+4. Transmission des axes, du sprint et des actions à cadence bornée au client HTTP existant.
+5. Synchronisation du ballon, de son propriétaire et de la dernière équipe en contact.
+6. Transitions d'animation sur buts, passes, tirs et tacles à partir des événements serveur.
+7. Ajout de quatre tests ciblés sur la liaison d'avatar, les snapshots, les entrées et le cycle de vie.
+
+Validation automatisée :
+- npm test : 196 tests réussis, 0 échec.
+- Vérification syntaxique JS/MJS : 67 fichiers contrôlés sans erreur.
+- Archive ZIP : à vérifier après création.
+
+Limites explicites : cette couche constitue l'adaptateur de synchronisation, pas encore l'activation complète du multijoueur depuis le menu. Aucun test réel à deux appareils Android, aucune mesure de latence en production et aucune validation du rendu WebGL sur appareil physique ne sont revendiqués.

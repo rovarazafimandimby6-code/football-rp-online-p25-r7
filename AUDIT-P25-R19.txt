@@ -1,0 +1,22 @@
+FOOTBALL RP ONLINE P25 — AUDIT R19
+Version : 25.19.0
+Base : source P25 R18 réellement présente dans l'espace de travail.
+
+CHANGEMENTS
+- Nouveau module server/result-store.js : stockage JSON des résultats finalisés, validation du contrat, écriture via fichier temporaire puis renommage atomique.
+- Limite configurable du nombre de résultats conservés (500 par défaut, maximum 5000).
+- RoomManager accepte un ResultStore injectable, archive le résultat une seule fois à la finalisation et sait relire un résultat archivé après reconstruction du gestionnaire.
+- Nouvelle route GET /api/results?limit=N, bornée à 100 entrées.
+- Configuration RESULTS_DIR ; valeur par défaut data/results.
+- Aucun jeton, secret ou donnée de session n'est enregistré dans le rapport de match.
+
+TESTS
+- npm test : 215/215 réussis, 0 échec.
+- 70 fichiers JavaScript/MJS contrôlés avec node --check.
+- Archive ZIP vérifiée avec unzip -t.
+
+LIMITES
+- Le stockage JSON local ne remplace pas une base transactionnelle pour une forte charge multi-instance.
+- La conservation après redéploiement exige un volume persistant monté et RESULTS_DIR configuré dessus. Un disque éphémère ne garantit pas la conservation.
+- Pas de test de redémarrage sur Render réel, de test multi-instance, ni de test Android physique.
+- Les salons actifs et états de match en cours restent en mémoire ; seule la sauvegarde des résultats finalisés est persistée.

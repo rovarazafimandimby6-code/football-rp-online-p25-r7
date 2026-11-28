@@ -1,0 +1,20 @@
+node_modules/
+.DS_Store
+*.log
+.env
+/data/
+
+# Runtime snapshots, restore staging files and local platform output
+*.tmp
+*.restore
+*.rollback
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+dist/
+android/
+*.apk
+*.aab
+.gradle/
+local.properties

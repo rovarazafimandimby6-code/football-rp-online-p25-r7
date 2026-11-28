@@ -1,0 +1,10 @@
+P25 R7 — amélioration des touches de conduite
+
+- Les touches de balle en conduite sont désormais calculées selon le pied préféré.
+- Le décalage latéral alterne entre les côtés du joueur et reste borné.
+- Une légère variation longitudinale accompagne la phase de poussée.
+- Le calcul dépend aussi du contrôle et de la vitesse, avec limites de sécurité.
+- Le comportement est partagé par les joueurs humains et IA via PhysicsEngine.
+
+Validation automatisée : 181 tests réussis, 0 échec.
+Limite : la validation visuelle en navigateur/WebGL et sur appareil Android reste à effectuer.

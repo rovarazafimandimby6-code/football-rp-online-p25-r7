@@ -1,0 +1,135 @@
+import { OnlineMatchSocketTransport } from './online-match-socket.js';
+/** Minimal HTTP client for the authoritative match-room API. */
+export class OnlineMatchClient {
+  constructor({ baseUrl = '', fetchImpl = globalThis.fetch, storage = globalThis.sessionStorage, accountTokenProvider = () => null } = {}) {
+    this.baseUrl = String(baseUrl).replace(/\/$/, '');
+    this.fetchImpl = fetchImpl;
+    this.storage = storage || null;
+    this.accountTokenProvider = typeof accountTokenProvider === 'function' ? accountTokenProvider : () => null;
+    this.roomId = null;
+    this.token = null;
+    this.playerId = null;
+    this.sequence = 0;
+    this.realtimeTransport = null;
+  }
+
+  get realtimeConnected() { return this.realtimeTransport?.connected === true; }
+
+  async request(path, { method = 'GET', body, auth = false, accountAuth = false } = {}) {
+    if (typeof this.fetchImpl !== 'function') throw new Error('FETCH_UNAVAILABLE');
+    const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+      method, headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(auth && this.token ? { authorization: `Bearer ${this.token}` } : {}), ...(accountAuth && this.accountTokenProvider() ? { authorization: `Bearer ${this.accountTokenProvider()}` } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (response.status === 204) return null;
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP_${response.status}`);
+    return data;
+  }
+
+  async createRoom(options = {}) { return this.request('/api/rooms', { method: 'POST', body: options }); }
+  async listRooms() { const result = await this.request('/api/rooms'); return Array.isArray(result?.rooms) ? result.rooms : []; }
+
+  persistSession() {
+    if (!this.storage || !this.roomId || !this.token || !this.playerId) return false;
+    try { this.storage.setItem('fpro.match.session', JSON.stringify({ roomId: this.roomId, token: this.token, playerId: this.playerId, sequence: this.sequence })); return true; }
+    catch { return false; }
+  }
+
+  restoreSession() {
+    if (!this.storage) return false;
+    try {
+      const saved = JSON.parse(this.storage.getItem('fpro.match.session') || 'null');
+      if (!saved || !/^[a-f0-9]{12}$/.test(saved.roomId) || typeof saved.token !== 'string' || !saved.token || typeof saved.playerId !== 'string' || !saved.playerId) return false;
+      this.roomId = saved.roomId; this.token = saved.token; this.playerId = saved.playerId;
+      this.sequence = Number.isSafeInteger(saved.sequence) && saved.sequence >= 0 ? saved.sequence : 0;
+      return true;
+    } catch { return false; }
+  }
+  async joinRoom(roomId, options = {}) {
+    const result = await this.request(`/api/rooms/${encodeURIComponent(roomId)}/join`, { method: 'POST', body: options, accountAuth: true });
+    this.roomId = roomId; this.token = result.token; this.playerId = result.playerId; this.sequence = 0;
+    this.persistSession();
+    return result;
+  }
+  connectRealtime({ enabled = false, afterSequence = -1, afterEventId = 0, onMessage = null, onStatus = null, onError = null, WebSocketImpl = globalThis.WebSocket } = {}) {
+    if (!enabled) return false;
+    if (!this.roomId || !this.token || !this.playerId) throw new Error('NOT_JOINED');
+    this.disconnectRealtime();
+    this.realtimeTransport = new OnlineMatchSocketTransport({
+      baseUrl: this.baseUrl, roomId: this.roomId, token: this.token, playerId: this.playerId,
+      WebSocketImpl, onMessage, onStatus, onError,
+      onWelcome: message => {
+        if (Number.isSafeInteger(message?.nextSequence) && message.nextSequence > 0) {
+          this.sequence = Math.max(this.sequence, message.nextSequence - 1);
+          this.persistSession();
+        }
+      },
+    });
+    return this.realtimeTransport.connect({ afterSequence, afterEventId });
+  }
+
+  disconnectRealtime() {
+    this.realtimeTransport?.close();
+    this.realtimeTransport = null;
+  }
+
+  async requestEntry() {
+    if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
+    return this.request(`/api/rooms/${this.roomId}/entry-request`, { method: 'POST', auth: true, body: {} });
+  }
+
+  async rotate({ outgoingId, incomingId } = {}) {
+    if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
+    return this.request(`/api/rooms/${this.roomId}/rotation`, { method: 'POST', auth: true, body: { outgoingId, incomingId } });
+  }
+
+  async sendInput({ x = 0, z = 0, sprint = false, action = null, callForPass = false } = {}) {
+    if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
+    const input = { x, z, sprint, ...(action ? { action } : {}), ...(callForPass === true ? { callForPass: true } : {}), sequence: ++this.sequence };
+    if (this.realtimeConnected) {
+      this.realtimeTransport.sendInput(input);
+      this.persistSession();
+      return { accepted: true, transport: 'websocket', sequence: input.sequence };
+    }
+    const result = await this.request(`/api/rooms/${this.roomId}/input`, { method: 'POST', auth: true, body: input });
+    this.persistSession();
+    return result;
+  }
+  async reconnectSession() {
+    if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
+    const result = await this.request(`/api/rooms/${this.roomId}/reconnect`, { method: 'POST', auth: true });
+    if (Number.isSafeInteger(result?.nextSequence) && result.nextSequence > 0) this.sequence = Math.max(this.sequence, result.nextSequence - 1);
+    this.persistSession();
+    return result;
+  }
+  async heartbeat() {
+    if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
+    if (this.realtimeConnected && this.realtimeTransport.heartbeat()) return { ok: true, transport: 'websocket' };
+    const result = await this.request(`/api/rooms/${this.roomId}/heartbeat`, { method: 'POST', auth: true });
+    if (Number.isSafeInteger(result?.nextSequence) && result.nextSequence > 0) this.sequence = Math.max(this.sequence, result.nextSequence - 1);
+    this.persistSession();
+    return result;
+  }
+  async getState() {
+    if (!this.roomId) throw new Error('NOT_JOINED');
+    return this.request(`/api/rooms/${this.roomId}`);
+  }
+
+  async pollState({ afterSequence = -1, afterEventId = 0 } = {}) {
+    if (!this.roomId) throw new Error('NOT_JOINED');
+    if (this.realtimeConnected) return { state: null, events: [], eventCursor: afterEventId, changed: false, transport: 'websocket' };
+    const params = new URLSearchParams({ sinceSequence: String(Math.max(-1, Math.floor(afterSequence))), afterEventId: String(Math.max(0, Math.floor(afterEventId))) });
+    const delta = await this.request(`/api/rooms/${this.roomId}?${params}`);
+    if (!delta) return { state: null, events: [], eventCursor: afterEventId, changed: false };
+    return { state: delta.state, events: delta.events || [], eventCursor: delta.eventCursor ?? afterEventId, changed: delta.changed === true };
+  }
+  async leave() {
+    if (!this.roomId || !this.token) return false;
+    await this.request(`/api/rooms/${this.roomId}/leave`, { method: 'POST', auth: true });
+    this.disconnectRealtime();
+    this.roomId = null; this.token = null; this.playerId = null;
+    try { this.storage?.removeItem('fpro.match.session'); } catch {}
+    return true;
+  }
+}

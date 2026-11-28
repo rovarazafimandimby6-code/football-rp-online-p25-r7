@@ -1,0 +1,25 @@
+FOOTBALL RP ONLINE P25 — AUDIT R17
+Version : 25.17.0
+Base vérifiée : P25 R14 (25.14.0), récupérée depuis la Bibliothèque.
+
+CHANGEMENTS
+- Compteurs serveur par joueur : passes, tirs, tacles ; incrément uniquement après acceptation de l'action.
+- Agrégats par équipe calculés à la finalisation.
+- Résultat final immuable : score, issue, durée réglementaire, horodatage, lignes statistiques joueurs et agrégats équipe.
+- Événement fulltime ajouté au flux d'événements.
+- État public enrichi du résultat final.
+- Route HTTP GET /api/rooms/:id/result, bloquée avant fulltime.
+- Version du paquet portée à 25.17.0.
+
+VALIDATION
+- npm test : 208/208 réussis, 0 échec.
+- 67 fichiers JavaScript/MJS : node --check sans erreur.
+- Archive ZIP : unzip -t sans erreur.
+
+LIMITES
+- Attribution individuelle des buts et passes décisives non implémentée.
+- Persistance après redémarrage non implémentée ; salons et résultats restent en mémoire.
+- Aucun test physique Android multi-appareils ni mesure FPS WebGL.
+
+CONTINUITÉ
+Les ZIP R15 et R16 annoncés précédemment n'étaient pas présents dans la Bibliothèque. Cette livraison est honnêtement basée sur R14 et n'affirme pas avoir incorporé des modifications dont le code source n'a pas pu être récupéré.
