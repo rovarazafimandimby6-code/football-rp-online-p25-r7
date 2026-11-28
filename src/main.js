@@ -1683,7 +1683,7 @@ menu.addEventListener('click', event => {
         else {
           const identity = localPlayerProfileStore && localPlayerProfileStore.load();
           if (!identity || identity.identityStatus !== 'reserved') throw new Error('LOCAL_IDENTITY_NOT_SERVER_RESERVED');
-          response = await p27ApiFetch('/api/auth/google/link/start', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ localProfileKey: identity.localProfileKey, localProofSecret: identity.localProofSecret }) });
+          response = await p27ApiFetch('/api/auth/google/link/start', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json', accept: 'application/json', ...(accountClient.token ? { authorization: 'Bearer ' + accountClient.token } : {}) }, body: JSON.stringify({ localProfileKey: identity.localProfileKey, localProofSecret: identity.localProofSecret }) });
         }
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'GOOGLE_AUTH_START_FAILED');
