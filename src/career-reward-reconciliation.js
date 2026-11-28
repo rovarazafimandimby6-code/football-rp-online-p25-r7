@@ -1,10 +1,12 @@
 /** Apply match rewards only after the career ledger has durably recorded them. */
+const MATCH_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+
 export function applyCareerMatchReward({ careerReward, profileStore, matchId } = {}) {
   if (!careerReward || careerReward.ok === false) {
     return { ok:false, reason:'career-reward-not-persisted' };
   }
-  const id = typeof matchId === 'string' ? matchId.trim().slice(0,64) : '';
-  if (!id) return { ok:false, reason:'invalid-match-id' };
+  if (typeof matchId !== 'string' || !MATCH_ID_RE.test(matchId)) return { ok:false, reason:'invalid-match-id' };
+  const id = matchId;
   return profileStore.grantMatchRewards({ ...careerReward, matchId:id });
 }
 
