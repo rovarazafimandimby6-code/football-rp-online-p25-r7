@@ -130,14 +130,14 @@ test('P27 compte: le backup accepte les fichiers produits par les vrais stores s
     new JsonTransferStore(directories.transfers).getCareer(accountId);
     const clubManager=new ClubManager(DEFAULT_CLUBS,new JsonClubRosterStorage(directories.clubRosters),'p27-server-club-rosters');
     assert.equal(clubManager.saveSeason(),true);
-    const outputFile=path.join(root,'backups','real-server-stores.json');
-    const createdBackup=createPlayerDataBackup({directories,outputFile});
-    assert.equal(verifyPlayerDataBackup(outputFile).ok,true);
     for(const key of ['clubFinance','systemPayroll','transferFinanceJournal','shopInventory','competitions','completedResults','rpClubs','rpClubChallenges','rpClubSeasons']){
       mkdirSync(directories[key],{recursive:true});
       const filenames={clubFinance:'club-finance.json',systemPayroll:'system-payroll-schedule.json',transferFinanceJournal:'transfer-finance-journal.json',shopInventory:'shop-inventory.json',competitions:'competitions.json',completedResults:'completed-results.json',rpClubs:'rp-clubs.json',rpClubChallenges:'rp-club-challenges.json',rpClubSeasons:'rp-club-seasons.json'};
       writeFileSync(path.join(directories[key],filenames[key]),JSON.stringify(schemas[key]));
     }
+    const outputFile=path.join(root,'backups','real-server-stores.json');
+    const createdBackup=createPlayerDataBackup({directories,outputFile});
+    assert.equal(verifyPlayerDataBackup(outputFile).ok,true);
     assert.equal(createdBackup.stores.length,17);
   }finally{rmSync(root,{recursive:true,force:true});}
 });
