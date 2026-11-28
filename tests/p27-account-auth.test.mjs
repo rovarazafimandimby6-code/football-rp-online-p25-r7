@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -105,4 +106,34 @@ test('P27 compte client : adopte une réplique locale uniquement pour le FRP du 
   assert.equal(adopted.id, 'FRP-675757');
   assert.equal(adopted.accountId, accountId);
   assert.equal((await client.createLocalReplica(local)).id, 'FRP-675757');
+});
+
+
+test('P27 récupération client : refuse une snapshot cloud incomplète avant toute restauration', async () => {
+  const snapshot = {
+    schemaVersion: 1, player: { playerId: 'FRP-675757' },
+    profile: null, progression: null, career: null,
+    playerCareer: null, seasonStats: null,
+    contract: { wallet: null, clubId: null, contract: null, offers: null, history: [], loanOffers: null, loanHistory: [] }
+  };
+  const revision = createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+  const accountId = '123e4567-e89b-42d3-a456-426614174099';
+  const fetchImpl = async url => ({
+    ok: true, status: 200,
+    json: async () => url.endsWith('/api/account/snapshot')
+      ? { snapshot, revision, authority: 'server-confirmed', complete: false, missingSections: ['profile', 'contract'] }
+      : { account: { id: accountId, playerId: 'FRP-675757' } }
+  });
+  const client = new OnlineAccountClient({ baseUrl: 'https://game.example', fetchImpl, storage: null });
+  client.token = 'x'.repeat(43);
+  client.account = { id: accountId, playerId: 'FRP-675757' };
+  const result = await client.previewAccountRecovery({
+    localIdentity: { id: 'FRP-675757', accountId },
+    outbox: { status: () => ({ pending: 0 }) },
+    localState: { profile: false, career: false, progression: false, seasonStats: false, archives: false }
+  });
+  assert.equal(result.ready, false);
+  assert.equal(result.reason, 'SNAPSHOT_INCOMPLETE');
+  assert.deepEqual(result.missingSections, ['profile', 'contract']);
+  assert.equal(Object.hasOwn(result, 'snapshot'), false);
 });
