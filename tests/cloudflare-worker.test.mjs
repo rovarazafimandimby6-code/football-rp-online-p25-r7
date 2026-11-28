@@ -265,3 +265,22 @@ test("default Cloudflare entrypoint rejects untrusted origins before match room 
   assert.equal((await response.json()).error, "ORIGIN_NOT_ALLOWED");
   assert.equal(objectRequested, false);
 });
+
+
+test("account recovery snapshot route is read-only and requires a D1-backed session", async () => {
+  const wrongMethod = await worker.fetch(request("/api/account/snapshot", { method: "POST" }), {});
+  assert.equal(wrongMethod.status, 405);
+  assert.equal((await wrongMethod.json()).error, "METHOD_NOT_ALLOWED");
+
+  const missingDb = await worker.fetch(request("/api/account/snapshot"), {});
+  assert.equal(missingDb.status, 503);
+  assert.equal((await missingDb.json()).error, "D1_BINDING_MISSING");
+
+  const db = {
+    prepare() { return { bind() { return this; }, first: async () => null }; },
+    batch: async () => [],
+  };
+  const anonymous = await worker.fetch(request("/api/account/snapshot"), { P27_DB: db });
+  assert.equal(anonymous.status, 401);
+  assert.equal((await anonymous.json()).error, "SESSION_EXPIRED");
+});
