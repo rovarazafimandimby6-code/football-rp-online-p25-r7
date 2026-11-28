@@ -109,6 +109,34 @@ test("player shop write routes require an authenticated account before processin
     headers: { origin: "https://attacker.example", "content-type": "application/json" },
     body: JSON.stringify({ itemId: "boots-standard", purchaseId: "purchase-1" }),
   }), { P27_DB: { prepare() { return { bind() { return this; }, first: async () => null }; }, batch: async () => [] } });
-  assert.equal(response.status, 401);
-  assert.equal((await response.json()).error, "SESSION_EXPIRED");
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, "ORIGIN_NOT_ALLOWED");
+});
+
+test("Cloudflare API allows the Capacitor Android origin with credentialed CORS", async () => {
+  const response = await worker.fetch(request("/health", { headers: { origin: "capacitor://localhost" } }), {});
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("access-control-allow-origin"), "capacitor://localhost");
+  assert.equal(response.headers.get("access-control-allow-credentials"), "true");
+});
+
+test("Cloudflare API answers Android CORS preflight without reaching D1", async () => {
+  const response = await worker.fetch(request("/api/player-identities/reserve", {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://localhost",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type",
+    },
+  }), {});
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get("access-control-allow-origin"), "https://localhost");
+  assert.match(response.headers.get("access-control-allow-methods") || "", /POST/);
+  assert.match(response.headers.get("access-control-allow-headers") || "", /Authorization/);
+});
+
+test("Cloudflare API rejects unconfigured browser origins", async () => {
+  const response = await worker.fetch(request("/health", { headers: { origin: "https://attacker.example" } }), {});
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, "ORIGIN_NOT_ALLOWED");
 });
