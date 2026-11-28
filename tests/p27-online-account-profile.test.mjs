@@ -524,3 +524,48 @@ test('P27 synchronisation automatique : sérialise deux flush simultanés pour �
   assert.equal(calls.filter(call => call.options.method === 'PUT').length, 1);
   assert.equal(outbox.status().pending, 0);
 });
+
+
+test('P27 synchronisation : une réponse PUT perdue ne crée pas une seconde révision au nouvel essai', async () => {
+  const { PlayerSyncOutbox } = await import('../src/player-sync-outbox.js');
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const outbox = new PlayerSyncOutbox({ storage, operationIdFactory: () => 'profile-sync-lost-response-0001' });
+  const profile = {
+    identity: { displayName: 'Rova', number: 10, preferredFoot: 'both', role: 'MID' },
+    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic', faceShape: 'angular', eyeShape: 'hooded' }
+  };
+  let serverProfile = null;
+  let revision = 0;
+  let putCount = 0;
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example', storage: null,
+    fetchImpl: async (url, options) => {
+      if (options.method === 'PUT') {
+        putCount++;
+        const body = JSON.parse(options.body);
+        assert.equal(body.expectedRevision, revision);
+        serverProfile = body.profile;
+        revision++;
+        if (putCount === 1) throw new Error('NETWORK_RESPONSE_LOST');
+        return { ok: true, status: 200, json: async () => ({ revision }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ profile: serverProfile, revision }) };
+    }
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  client.enqueueProfileSnapshot(profile, outbox);
+  const localIdentity = { accountId: 'account-123', id: 'FRP-123456' };
+
+  await assert.rejects(() => client.syncPendingProfileSnapshots(outbox, { localIdentity }), /NETWORK_RESPONSE_LOST/);
+  assert.equal(outbox.status().pending, 1);
+  assert.equal(outbox.pending()[0].attempts, 1);
+  const retry = await client.syncPendingProfileSnapshots(outbox, { localIdentity });
+
+  assert.deepEqual(retry, { uploaded: 1, remaining: 0, blocked: 0 });
+  assert.equal(putCount, 1);
+  assert.equal(revision, 1);
+  assert.equal(outbox.status().serverVersion, 1);
+  assert.equal(outbox.status().pending, 0);
+});
