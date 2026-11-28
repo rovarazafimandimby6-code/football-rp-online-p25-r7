@@ -35,7 +35,7 @@ function normalizeRoom(input = {}, now) {
   }
   const blueHumans = input.blueHumans ?? 0;
   const redHumans = input.redHumans ?? 0;
-  if (![blueHumans, redHumans].every(value => Number.isSafeInteger(value) && value >= 0 && value <= 5)) {
+  if (![blueHumans, redHumans].every(value => Number.isSafeInteger(value) && value >= 0 && value <= 7)) {
     throw new Error("INVALID_MATCH_ROOM_COUNTS");
   }
   const createdAt = input.createdAt ?? now;
