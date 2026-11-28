@@ -32,10 +32,14 @@ export function getDefensiveRecoveryTarget(player, threat, attackDir = 1) {
   const home = player.homePos;
   const predicted = predictDefensiveThreatPosition(threat, attackDir, 0.85);
   const runSpeed = -attackDir * (Number(threat.vel?.x) || 0);
-  const hasBrokenLine = attackDir * (predicted.x - home.x) < -0.5;
+  // Pour le repli, on projette la course complète sur 0,85 s : le plafond
+  // de l'anticipation générique ne doit pas masquer un franchissement imminent.
+  const recoveryX = clamp(threat.pos.x - attackDir * Math.min(7, runSpeed * 0.85),
+    -PITCH.HALF_L + 1.5, PITCH.HALF_L - 1.5);
+  const hasBrokenLine = attackDir * (recoveryX - home.x) < -0.5;
   if (runSpeed <= 0.8 || !hasBrokenLine) return { x: home.x, z: home.z };
   return {
-    x: clamp(predicted.x - attackDir * 2.2, -PITCH.HALF_L + 1.5, PITCH.HALF_L - 1.5),
+    x: clamp(recoveryX - attackDir * 2.2, -PITCH.HALF_L + 1.5, PITCH.HALF_L - 1.5),
     z: clamp(predicted.z * 0.28 + home.z * 0.72, home.z - 3.8, home.z + 3.8)
   };
 }
