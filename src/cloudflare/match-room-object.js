@@ -264,10 +264,12 @@ export class P27MatchRoomDurableObject {
         ...(Array.isArray(message.events) ? { events: [...message.events] } : {}),
       };
       // Trim only the tail of the pending event batch; never skip older events.
+      const previousCursor = Number.isSafeInteger(message.eventCursor) ? message.eventCursor : 0;
       while (new TextEncoder().encode(JSON.stringify(message)).byteLength > 16 * 1024 &&
              Array.isArray(message.events) && message.events.length > 0) {
         message.events.pop();
-        if (message.events.length) message.eventCursor = message.events[message.events.length - 1].id;
+        message.eventCursor = message.events.length
+          ? message.events[message.events.length - 1].id : previousCursor;
       }
       encoded = JSON.stringify(message);
     }

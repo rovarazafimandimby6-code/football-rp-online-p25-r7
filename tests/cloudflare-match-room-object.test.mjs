@@ -253,6 +253,7 @@ test("WebSocket delta batches preserve event order without advancing past undeli
 test("WebSocket size limiting preserves event order and advances only through transmitted events", async () => {
   const state = makeState();
   const object = new P27MatchRoomDurableObject(state, {});
+  try {
   await object.fetch(request("/internal/create", "POST", { roomId: "a1b2c3d4e5f6" }));
   const joined = await (await object.fetch(request("/internal/join", "POST", {}))).json();
   const sent = [];
@@ -281,5 +282,7 @@ test("WebSocket size limiting preserves event order and advances only through tr
     Array.from({ length: delta.events.length }, (_, index) => index + 1));
   assert.equal(delta.eventCursor, delta.events.at(-1).id);
   assert.equal(socket.attachment.lastEventId, delta.events.at(-1).id);
-  stopTimer(object);
+  } finally {
+    stopTimer(object);
+  }
 });
