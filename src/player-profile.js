@@ -2,6 +2,8 @@ import { readJsonWithBackup, writeJsonWithBackup } from './persistent-json.js';
 
 const STORAGE_KEY = 'football-rp-online.player-profile.v1';
 const clamp = (n, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(n)) ? Number(n) : min));
+const MATCH_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const validMatchId = value => typeof value === 'string' && MATCH_ID_RE.test(value);
 const cleanText = (value, fallback, max = 24) => String(value ?? fallback).replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max) || fallback;
 
 export const DEFAULT_ATTRIBUTES = Object.freeze({ pace: 55, shooting: 50, passing: 50, defense: 45, stamina: 55, control: 50 });
@@ -56,7 +58,7 @@ export function validateProfile(input) {
       trainingPoints: Math.round(clamp(progression.trainingPoints, 0, 100_000)),
       attributes: Object.fromEntries(Object.keys(DEFAULT_ATTRIBUTES).map(k => [k, Math.round(clamp(attrs[k] ?? DEFAULT_ATTRIBUTES[k], 1, 99))]))
     },
-    appliedMatchIds: Array.isArray(p.appliedMatchIds) ? [...new Set(p.appliedMatchIds.filter(id => typeof id === 'string' && id.trim()).map(id => id.slice(0, 64)))].slice(-2000) : [],
+    appliedMatchIds: Array.isArray(p.appliedMatchIds) ? [...new Set(p.appliedMatchIds.filter(validMatchId))].slice(-2000) : [],
     createdAt: typeof p.createdAt === 'string' ? p.createdAt : base.createdAt,
     updatedAt: new Date().toISOString()
   };
@@ -91,7 +93,8 @@ export class PlayerProfileStore {
     return this.save({ ...this.profile, appearance: { ...this.profile.appearance, ...changes } });
   }
   grantMatchRewards({ experience = 0, coins = 0, matchId = null } = {}) {
-    const id = typeof matchId === 'string' ? matchId.trim().slice(0, 64) : '';
+    if (matchId !== null && matchId !== undefined && !validMatchId(matchId)) return { ok: false, reason: 'invalid-match-id', progression: this.profile.progression };
+    const id = matchId ?? '';
     if (id && this.profile.appliedMatchIds.includes(id)) return { ok: true, duplicate: true, progression: this.profile.progression };
     const p = structuredClone(this.profile);
     p.progression.experience += Math.round(clamp(experience, 0, 100_000));
