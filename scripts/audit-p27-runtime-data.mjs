@@ -18,7 +18,7 @@ const stores = [
   ['systemPayroll', 'FINANCES_DIR', 'finances', 'system-payroll-schedule.json', ['clubs']],
   ['transferFinanceJournal', 'FINANCES_DIR', 'finances', 'transfer-finance-journal.json', ['transfers', 'playerWages']],
   ['shopInventory', 'SHOP_INVENTORY_DIR', 'shop', 'shop-inventory.json', ['players', 'clubs', 'purchases', 'resales']],
-  ['systemTransferOutbox', 'SYSTEM_TRANSFERS_DIR', 'system-transfers', 'system-transfer-outbox.json', ['operations']],
+  ['systemTransferOutbox', 'SYSTEM_TRANSFERS_DIR', 'system-transfers', 'system-transfer-outbox.json', ['transfers']],
   ['competitions', 'COMPETITIONS_DIR', 'competitions', 'competitions.json', ['seasons']],
   ['completedResults', 'RESULTS_DIR', 'results', 'completed-results.json', []],
   ['activeRooms', 'ROOMS_DIR', 'rooms', 'active-rooms.json', ['rooms']],
