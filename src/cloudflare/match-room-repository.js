@@ -65,7 +65,7 @@ export class D1MatchRoomRepository {
     const room = normalizeRoom(input, this.now());
     const result = await this.db.prepare(
       "INSERT INTO p27_match_rooms (room_id, object_name, phase, mode, room_name, duration_minutes, blue_humans, red_humans, max_humans, created_at, updated_at, expires_at) " +
-      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 10, ?, ?, ?) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 14, ?, ?, ?) " +
       "ON CONFLICT(room_id) DO UPDATE SET phase=excluded.phase, mode=excluded.mode, room_name=excluded.room_name, " +
       "duration_minutes=excluded.duration_minutes, blue_humans=excluded.blue_humans, red_humans=excluded.red_humans, " +
       "updated_at=excluded.updated_at, expires_at=excluded.expires_at " +
