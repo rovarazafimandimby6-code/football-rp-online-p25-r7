@@ -23,6 +23,7 @@ const DEFAULT_APP_ORIGINS = new Set([
 function isAllowedOrigin(request, env) {
   const origin = request.headers.get("origin");
   if (!origin) return true;
+  try { if (new URL(origin).origin === new URL(request.url).origin) return true; } catch { return false; }
   const configured = typeof env.P27_ALLOWED_ORIGINS === "string"
     ? env.P27_ALLOWED_ORIGINS.split(",").map(value => value.trim()).filter(Boolean)
     : [];
