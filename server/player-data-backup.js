@@ -10,7 +10,16 @@ const STORES = Object.freeze({
   progression: { file: 'progression.json', directory: 'progression', validate: value => value?.version === 1 && Array.isArray(value.players) },
   careers: { file: 'careers.json', directory: 'careers', validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.playerCareers) },
   transfers: { file: 'transfers.json', directory: 'transfers', validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.events) && Array.isArray(value.clubs) && (value.rosterSync === undefined || Array.isArray(value.rosterSync)) },
-  clubRosters: { file: 'club-rosters.json', directory: 'club-rosters', validate: value => value?.version === 8 && Array.isArray(value.clubs) && Array.isArray(value.fixtures) }
+  clubRosters: { file: 'club-rosters.json', directory: 'club-rosters', validate: value => value?.version === 8 && Array.isArray(value.clubs) && Array.isArray(value.fixtures) },
+  clubFinance: { file: 'club-finance.json', directory: 'finances', validate: value => value?.version === 1 && Array.isArray(value.accounts) },
+  systemPayroll: { file: 'system-payroll-schedule.json', directory: 'finances', validate: value => value?.version === 1 && value.clubs && typeof value.clubs === 'object' && !Array.isArray(value.clubs) },
+  transferFinanceJournal: { file: 'transfer-finance-journal.json', directory: 'finances', validate: value => value?.version === 1 && Array.isArray(value.transfers) && Array.isArray(value.playerWages) },
+  shopInventory: { file: 'shop-inventory.json', directory: 'shop', validate: value => value?.version === 1 && Array.isArray(value.players) && Array.isArray(value.clubs) && Array.isArray(value.purchases) && Array.isArray(value.resales) },
+  competitions: { file: 'competitions.json', directory: 'competitions', validate: value => value?.version === 1 && Array.isArray(value.seasons) },
+  completedResults: { file: 'completed-results.json', directory: 'results', validate: value => Array.isArray(value) },
+  rpClubs: { file: 'rp-clubs.json', directory: 'rp-clubs', validate: value => value?.version === 1 && Array.isArray(value.clubs) },
+  rpClubChallenges: { file: 'rp-club-challenges.json', directory: 'rp-club-challenges', validate: value => value?.version === 1 && Array.isArray(value.challenges) },
+  rpClubSeasons: { file: 'rp-club-seasons.json', directory: 'rp-club-seasons', validate: value => value?.version === 1 && Array.isArray(value.seasons) }
 });
 const digest = value => createHash('sha256').update(value).digest('hex');
 const defaultDirectories = root => Object.fromEntries(Object.entries(STORES).map(([key, spec]) => [key, path.join(root, 'data', spec.directory)]));
@@ -23,7 +32,7 @@ function readAndValidate(key, file) {
   return raw;
 }
 
-/** Creates a portable, checksummed snapshot of all six account, career, transfer and club-roster stores. */
+/** Creates a portable, checksummed snapshot of 17 durable player and world stores. */
 export function createPlayerDataBackup({ directories = defaultDirectories(process.cwd()), outputFile, now = () => new Date() } = {}) {
   if (!outputFile) throw new Error('BACKUP_OUTPUT_REQUIRED');
   const files = {};
