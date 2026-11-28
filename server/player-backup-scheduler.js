@@ -24,7 +24,16 @@ export function resolvePlayerBackupConfig({ env = process.env, root = process.cw
       progression: path.resolve(env.PLAYER_PROGRESSION_DIR || `${base}/data/progression`),
       careers: path.resolve(env.CAREERS_DIR || `${base}/data/careers`),
       transfers: path.resolve(env.TRANSFERS_DIR || `${base}/data/transfers`),
-      clubRosters: path.resolve(env.CLUB_ROSTERS_DIR || `${base}/data/club-rosters`)
+      clubRosters: path.resolve(env.CLUB_ROSTERS_DIR || `${base}/data/club-rosters`),
+      clubFinance: path.resolve(env.FINANCES_DIR || `${base}/data/finances`),
+      systemPayroll: path.resolve(env.FINANCES_DIR || `${base}/data/finances`),
+      transferFinanceJournal: path.resolve(env.FINANCES_DIR || `${base}/data/finances`),
+      shopInventory: path.resolve(env.SHOP_INVENTORY_DIR || `${base}/data/shop`),
+      competitions: path.resolve(env.COMPETITIONS_DIR || `${base}/data/competitions`),
+      completedResults: path.resolve(env.RESULTS_DIR || `${base}/data/results`),
+      rpClubs: path.resolve(env.RP_CLUBS_DIR || `${base}/data/rp-clubs`),
+      rpClubChallenges: path.resolve(env.RP_CLUB_CHALLENGES_DIR || `${base}/data/rp-club-challenges`),
+      rpClubSeasons: path.resolve(env.RP_CLUB_SEASONS_DIR || `${base}/data/rp-club-seasons`)
     }
   };
 }
