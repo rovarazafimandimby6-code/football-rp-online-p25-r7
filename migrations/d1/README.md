@@ -56,3 +56,16 @@ node scripts/build-club-d1-import-sql.mjs --bundle /secure/path/p27-club-d1-bund
 Review the generated SQL and apply it only to the intended D1 database after confirming the account table and migrations are present. The SQL uses `INSERT OR IGNORE`; it never overwrites an existing row. This makes retries non-destructive, but it also means pre-existing conflicting rows must be detected by the post-import reconciliation rather than treated as successful imports. Compare all row counts and each club's owner, opening balance, final balance, ledger IDs/balance-after values, sponsor/loan records and scheduler checkpoints against the source bundle. Do not cut over on aggregate counts alone.
 
 The generated SQL ends with two verification queries. The first reports imported table totals. The second compares every expected club against D1 and returns only discrepancies in owner assignment, opening/final balance, ledger-entry count, sponsor count or loan count; it must return zero rows. Keep the source bundle available for a separate detailed ledger/checkpoint comparison before cutover. The exporter and SQL builder both accept the `shop-purchase` and `shop-resale` treasury categories, and reject contradictory transfer checkpoint states (for example, `completed` while a debit or credit is still unposted).\n\nA clean CI run validates the schema and generator against fixtures, not the live 156-club production dataset. The real migration remains pending until the owner supplies an authorized, current export of the server `data/` directory and access to the intended Cloudflare D1 database. Never commit production data, password hashes, session hashes or secrets into the repository.
+
+
+## Match room discovery and finalized results (migration 0013)
+
+Migration `0013_match_room_registry.sql` adds a small D1 discovery index for match rooms and an immutable finalized-result ledger. It does not store live simulation state, player inputs, WebSocket connections or room checkpoints; those belong to the deterministic room Durable Object.
+
+`D1MatchRoomRepository` currently provides:
+- validated room metadata upserts and expiry-aware discovery queries;
+- deterministic room-to-object naming using the validated 12-character room ID;
+- canonical JSON hashing and a 64 KiB cap for finalized results;
+- insert-once result persistence, duplicate acknowledgement and conflict rejection when a room ID is reused with different result data.
+
+The repository is not yet wired to a Durable Object or public Worker route. Migration 0013 is forward-only and has not been applied remotely by this change. CI/local SQLite validation is required before any remote application. Do not enable matchmaking or claim live multiplayer readiness from the presence of these tables alone.
