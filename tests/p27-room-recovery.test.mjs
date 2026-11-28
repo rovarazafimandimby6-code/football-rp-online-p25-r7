@@ -367,3 +367,53 @@ test('P27 sécurité des salons : un ancien checkpoint avec jeton brut est migr�
     assert.equal(restored.reconnect('legacy-room', token).reconnected, true);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+
+test('P27 salons : le checkpoint utilise un schéma versionné et accepte les anciens snapshots', () => {
+  let now = 10_000;
+  const roomStore = {
+    snapshots: [],
+    save(snapshot) { this.snapshots = [snapshot]; },
+    readAll() { return this.snapshots; },
+    delete(id) { this.snapshots = this.snapshots.filter(item => item.id !== id); },
+  };
+  const manager = new RoomManager({
+    now: () => now,
+    roomStore,
+    roomIdFactory: () => 'a1b2c3d4e5f6',
+  });
+  const created = manager.create({ name: 'Identifiant déterministe' });
+  assert.equal(created.id, 'a1b2c3d4e5f6');
+  assert.equal(roomStore.snapshots[0].schemaVersion, 1);
+
+  const legacyStore = {
+    readAll: () => [{ ...roomStore.snapshots[0], schemaVersion: undefined }],
+    delete() {},
+    save() {},
+  };
+  const legacy = new RoomManager({ now: () => now, roomStore: legacyStore });
+  assert.ok(legacy.rooms.has(created.id));
+});
+
+test('P27 salons : refuse un checkpoint issu d une version future inconnue', () => {
+  const roomStore = {
+    readAll: () => [{
+      schemaVersion: 99,
+      id: 'a1b2c3d4e5f6',
+      phase: 'lobby',
+      updatedAt: 10_000,
+      players: [],
+    }],
+    delete() {},
+    save() {},
+  };
+  assert.throws(
+    () => new RoomManager({ now: () => 10_000, roomStore }),
+    /ROOM_STORE_VERSION_UNSUPPORTED/
+  );
+});
+
+test('P27 salons : refuse un générateur d identifiant incompatible avec les routes publiques', () => {
+  const manager = new RoomManager({ roomIdFactory: () => 'not-a-room-id' });
+  assert.throws(() => manager.create(), /INVALID_ROOM_ID_GENERATOR/);
+});
