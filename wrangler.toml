@@ -3,7 +3,7 @@
 # No Cloudflare resource is created or deployed by this file.
 # Configure the server-only HMAC key with: wrangler secret put P27_MATCH_INGEST_SECRET
 
-name = "football-rp-online-p27-api"
+name = "football-rp-online-p25-r7"
 main = "src/cloudflare/worker.js"
 compatibility_date = "2026-11-25"
 compatibility_flags = ["nodejs_compat"]
