@@ -117,11 +117,11 @@ export function restorePlayerDataBackup({
   });
   const existing = plan.filter(item => item.exists);
   const newer = plan.filter(item => item.newer);
-  if (!dryRun && newer.length && !allowNewer) {
-    throw new Error(`RESTORE_NEWER_DATA_PROTECTED:${newer.map(item => item.key).join(',')}`);
-  }
   if (!dryRun && existing.length && !overwriteExisting) {
     throw new Error(`RESTORE_OVERWRITE_CONFIRMATION_REQUIRED:${existing.map(item => item.key).join(',')}`);
+  }
+  if (!dryRun && newer.length && !allowNewer) {
+    throw new Error(`RESTORE_NEWER_DATA_PROTECTED:${newer.map(item => item.key).join(',')}`);
   }
   if (dryRun) {
     return {
