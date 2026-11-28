@@ -87,7 +87,7 @@ export class OnlineAccountClient {
       method,
       headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(auth && this.token ? { authorization: `Bearer ${this.token}` } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
-      credentials: 'same-origin'
+      credentials: 'include'
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || data.reason || `HTTP_${response.status}`);
