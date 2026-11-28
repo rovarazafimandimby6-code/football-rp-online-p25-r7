@@ -248,3 +248,38 @@ test("WebSocket delta batches preserve event order without advancing past undeli
   assert.equal(socket.attachment.lastEventId, 25);
   stopTimer(object);
 });
+
+
+test("WebSocket size limiting preserves event order and advances only through transmitted events", async () => {
+  const state = makeState();
+  const object = new P27MatchRoomDurableObject(state, {});
+  await object.fetch(request("/internal/create", "POST", { roomId: "a1b2c3d4e5f6" }));
+  const joined = await (await object.fetch(request("/internal/join", "POST", {}))).json();
+  const sent = [];
+  const socket = {
+    attachment: null,
+    serializeAttachment(value) { this.attachment = structuredClone(value); },
+    deserializeAttachment() { return this.attachment ? structuredClone(this.attachment) : null; },
+    send(value) { sent.push(JSON.parse(value)); },
+    close(code, reason) { this.closed = { code, reason }; },
+  };
+  await object.webSocketMessage(socket, JSON.stringify({
+    v: 1, type: "hello", roomId: "a1b2c3d4e5f6", token: joined.token,
+    afterSequence: -1, afterEventId: 0,
+  }));
+  object.manager.get = () => ({
+    sequence: 101, eventCursor: 20, phase: "playing", players: [],
+    events: Array.from({ length: 20 }, (_, index) => ({ id: index + 1, type: "test", detail: "x".repeat(100) })),
+    padding: "x".repeat(15000),
+  });
+  state.getWebSockets = () => [socket];
+  await object._broadcastSockets();
+  const delta = sent.at(-1);
+  assert.equal(delta.type, "delta");
+  assert.ok(delta.events.length > 0 && delta.events.length < 20);
+  assert.deepEqual(delta.events.map(event => event.id),
+    Array.from({ length: delta.events.length }, (_, index) => index + 1));
+  assert.equal(delta.eventCursor, delta.events.at(-1).id);
+  assert.equal(socket.attachment.lastEventId, delta.events.at(-1).id);
+  stopTimer(object);
+});

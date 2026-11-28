@@ -258,11 +258,23 @@ export class P27MatchRoomDurableObject {
     let message = { v: 1, type, ...payload };
     let encoded = JSON.stringify(message);
     if (new TextEncoder().encode(encoded).byteLength > 16 * 1024 && message.state) {
-      message = { ...message, state: { ...message.state, events: [] }, events: (message.events || []).slice(-12) };
+      message = {
+        ...message,
+        state: { ...message.state, events: [] },
+        ...(Array.isArray(message.events) ? { events: [...message.events] } : {}),
+      };
+      // If the state is large, trim only the tail of the pending event batch.
+      // The caller uses the returned cursor, so no event is skipped.
+      while (new TextEncoder().encode(JSON.stringify(message)).byteLength > 16 * 1024 &&
+             Array.isArray(message.events) && message.events.length > 0) {
+        message.events.pop();
+        if (message.events.length) message.eventCursor = message.events[message.events.length - 1].id;
+      }
       encoded = JSON.stringify(message);
     }
     if (new TextEncoder().encode(encoded).byteLength > 16 * 1024) throw new Error("MATCH_SOCKET_MESSAGE_TOO_LARGE");
     socket.send(encoded);
+    return message;
   }
 
   _socketPlayer(socket) {
@@ -363,13 +375,13 @@ export class P27MatchRoomDurableObject {
       const events = state.events
         .filter(event => Number.isSafeInteger(event.id) && event.id > (attachment.lastEventId || 0))
         .slice(0, 20);
-      const deliveredCursor = events.length ? events[events.length - 1].id : (attachment.lastEventId || 0);
       try {
-        this._sendSocket(socket, "delta", {
-          eventCursor: deliveredCursor, events,
+        const sent = this._sendSocket(socket, "delta", {
+          eventCursor: attachment.lastEventId || 0, events,
           state: { ...state, events: [] },
         });
-        attachment.lastEventId = deliveredCursor;
+        attachment.lastEventId = Number.isSafeInteger(sent.eventCursor)
+          ? sent.eventCursor : (attachment.lastEventId || 0);
         attachment.lastStateSequence = state.sequence;
         socket.serializeAttachment(attachment);
       } catch {
