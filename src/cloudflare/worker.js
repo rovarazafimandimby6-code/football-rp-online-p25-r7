@@ -367,11 +367,11 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
 
 async function handleMatchRoomRoute(request, env, url) {
   const namespace = env.P27_MATCH_ROOMS;
-  const hasD1 = env.P27_DB && typeof env.P27_DB.prepare === "function";
-  const roomRepo = hasD1 ? new D1MatchRoomRepository(env.P27_DB) : null;
   const roomPath = new RegExp("^/api/rooms/([a-f0-9]{12})(?:/(join|input|heartbeat|reconnect|leave|entry-request|rotation|result|socket))?$").exec(url.pathname);
   const isRoomCollection = url.pathname === "/api/rooms";
   if (!isRoomCollection && !roomPath) return null;
+  const hasD1 = env.P27_DB && typeof env.P27_DB.prepare === "function";
+  const roomRepo = hasD1 ? new D1MatchRoomRepository(env.P27_DB) : null;
   if (!namespace || typeof namespace.idFromName !== "function" || typeof namespace.get !== "function") {
     return json(503, { error: "MATCH_ROOM_OBJECTS_NOT_CONFIGURED" });
   }
