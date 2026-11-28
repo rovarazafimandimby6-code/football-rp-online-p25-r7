@@ -66,3 +66,12 @@ test('P27 sauvegarde: empêche deux exécutions simultanées',()=>{
   assert.equal(result.ok,true);
   assert.equal(scheduler.status().skippedOverlaps,1);
 });
+
+
+test('P27 sauvegardes : les checkpoints actifs sont archivés mais jamais restaurés automatiquement', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'p27-room-archive-'));
+  try {
+    const config = resolvePlayerBackupConfig({ env: { P27_BACKUPS_DIR: path.join(root, 'backups'), ROOMS_DIR: path.join(root, 'rooms') }, root });
+    assert.equal(config.directories.roomCheckpoints, path.join(root, 'rooms'));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
