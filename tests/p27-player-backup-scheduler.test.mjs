@@ -9,6 +9,8 @@ test('P27 sauvegarde: configuration borne l’intervalle et la rétention',()=>{
   assert.equal(config.backupDirectory,'/srv/p27/data/backups');
   assert.equal(config.directories.playerIdentities,'/srv/p27/data/player-identities');
   assert.equal(config.directories.googleIdentities,'/srv/p27/data/google-identities');
+  assert.equal(config.directories.careerSyncQueue,'/srv/p27/data/career-sync');
+  assert.equal(config.directories.systemTransferOutbox,'/srv/p27/data/system-transfers');
   const custom=resolvePlayerBackupConfig({root:'/srv/p27',env:{PLAYER_IDENTITIES_DIR:'/mnt/p27-identities'}});
   assert.equal(custom.directories.playerIdentities,'/mnt/p27-identities');
   const customGoogle=resolvePlayerBackupConfig({root:'/srv/p27',env:{GOOGLE_IDENTITIES_DIR:'/mnt/p27-google-identities'}});
