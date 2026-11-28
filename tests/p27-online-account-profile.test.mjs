@@ -466,3 +466,18 @@ test('P27 synchronisation automatique : ne transmet jamais une file au compte Go
   assert.equal(requests, 0);
   assert.equal(outbox.status().pending, 1);
 });
+
+test('P27 session cloud : efface une session expirée pour permettre une nouvelle réservation passwordless', async () => {
+  const values = new Map([['fpro.account.session', JSON.stringify({ token: 'expired-token-value-that-is-long-enough-123', account: { id: 'account-1' } })]]);
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)), removeItem: key => values.delete(key) };
+  const client = new OnlineAccountClient({
+    storage,
+    fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ error: 'SESSION_EXPIRED' }) })
+  });
+  assert.equal(client.restoreSession(), true);
+  await assert.rejects(() => client.refresh(), /SESSION_EXPIRED/);
+  assert.equal(client.hasSession, false);
+  assert.equal(client.token, null);
+  assert.equal(client.account, null);
+  assert.equal(values.has('fpro.account.session'), false);
+});
