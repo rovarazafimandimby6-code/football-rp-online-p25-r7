@@ -11,6 +11,7 @@ import { D1PlayerProgressionRepository } from "./player-progression-repository.j
 import { D1PlayerCareerRepository } from "./player-career-repository.js";
 import { D1PlayerShopRepository } from "./player-shop-repository.js";
 import { verifyCareerIngestSignature } from "./career-ingest-auth.js";
+export { P27MatchRoomDurableObject } from "./match-room-object.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const DEFAULT_APP_ORIGINS = new Set([
