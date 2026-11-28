@@ -96,11 +96,7 @@ test("D1 account snapshot refuses a mismatched account/player identity", async (
 test("D1 account snapshot does not fabricate legacy contract wallet or offers", async () => {
   const repositories = {
     profile: { get: async () => ({ profile: null }) },
-    progression: { get: async () => ({ progression: {
-      level: 1, experience: 0, coins: 250, trainingPoints: 0,
-      attributes: { pace: 55, shooting: 50, passing: 50, defense: 45, stamina: 55, control: 50 },
-      processedMatchIds: [],
-    } }) },
+    progression: { get: async () => ({ progression: null }) },
     career: {
       get: async () => ({ totals: { matches: 0 }, matches: [], currentForm: [], nextCursor: null }),
       getPlayerCareer: async () => ({ player: null, totals: { matches: 0 }, matches: [], nextCursor: null }),
@@ -114,5 +110,5 @@ test("D1 account snapshot does not fabricate legacy contract wallet or offers", 
   assert.equal(result.snapshot.contract.wallet, null);
   assert.equal(result.snapshot.contract.offers, null);
   assert.equal(result.snapshot.contract.loanOffers, null);
-  assert.deepEqual(result.missingSections, ["profile", "contract"]);
+  assert.deepEqual(result.missingSections, ["profile", "progression", "contract"]);
 });
