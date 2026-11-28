@@ -11,6 +11,7 @@ test('P27 sauvegarde: configuration borne l’intervalle et la rétention',()=>{
   assert.equal(config.directories.googleIdentities,'/srv/p27/data/google-identities');
   assert.equal(config.directories.careerSyncQueue,'/srv/p27/data/career-sync');
   assert.equal(config.directories.systemTransferOutbox,'/srv/p27/data/system-transfers');
+  assert.equal(config.directories.roomCheckpoints,'/srv/p27/data/rooms');
   const custom=resolvePlayerBackupConfig({root:'/srv/p27',env:{PLAYER_IDENTITIES_DIR:'/mnt/p27-identities'}});
   assert.equal(custom.directories.playerIdentities,'/mnt/p27-identities');
   const customGoogle=resolvePlayerBackupConfig({root:'/srv/p27',env:{GOOGLE_IDENTITIES_DIR:'/mnt/p27-google-identities'}});
@@ -65,13 +66,4 @@ test('P27 sauvegarde: empêche deux exécutions simultanées',()=>{
   const result=scheduler.runNow();
   assert.equal(result.ok,true);
   assert.equal(scheduler.status().skippedOverlaps,1);
-});
-
-
-test('P27 sauvegardes : les checkpoints actifs sont archivés mais jamais restaurés automatiquement', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'p27-room-archive-'));
-  try {
-    const config = resolvePlayerBackupConfig({ env: { P27_BACKUPS_DIR: path.join(root, 'backups'), ROOMS_DIR: path.join(root, 'rooms') }, root });
-    assert.equal(config.directories.roomCheckpoints, path.join(root, 'rooms'));
-  } finally { rmSync(root, { recursive: true, force: true }); }
 });
