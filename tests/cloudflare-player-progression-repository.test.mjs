@@ -117,3 +117,18 @@ test("D1 progression grants the same match reward only once under concurrent ret
   assert.equal(current.revision, 2);
   assert.equal(db.events.size, 1);
 });
+
+test("D1 progression rejects overlong match IDs instead of truncating idempotency keys", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  await assert.rejects(
+    repository.grantMatchReward(accountId, { matchId: "x".repeat(65), result: "win" }),
+    /INVALID_MATCH_REWARD/,
+  );
+});
+
+test("D1 progression treats an omitted rating as neutral instead of the minimum score", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  const result = await repository.grantMatchReward(accountId, { matchId: "match-neutral-rating", result: "draw" });
+  assert.equal(result.reward.experience, 35);
+  assert.equal(result.reward.coins, 20);
+});
