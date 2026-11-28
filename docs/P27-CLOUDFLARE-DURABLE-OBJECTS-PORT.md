@@ -63,7 +63,7 @@ Le tick doit utiliser un accumulateur basé sur le temps écoulé, plafonner le 
 - Le checkpoint du salon est écrit dans le stockage du Durable Object ; les jetons bruts sont retirés par le sérialiseur existant et leur hash est conservé. Les résultats en attente sont réessayés après reprise.
 - Le registre D1 autorise jusqu'à 7 humains par équipe (14 au total) et l'archive de résultat est idempotente.
 - La simulation active tourne par timer de 50 ms ; une alarme sert de mécanisme de reprise. Le point d'accès WebSocket n'est pas encore implémenté : le client reste sur HTTP polling.
-- Les comptes authentifiés sont temporairement refusés à l'entrée (`MATCH_CAREER_INGEST_NOT_READY`) tant que l'ingestion idempotente de carrière et de récompenses n'est pas branchée. Les matchs compétition/RP ne sont pas activés.
+- Les matchs liés à un compte sont désormais acceptés : un outbox persistant conserve les événements carrière/récompenses, puis les dépôts D1 idempotents sont exécutés avant l'archive finale du résultat. Les répétitions après panne ne doivent pas doubler les matchs ni les récompenses. Les matchs compétition/RP ne sont pas activés.
 - Les tests CI doivent encore valider l'ensemble de cette tranche. Aucun déploiement Worker, aucune application distante de 0013 et aucun basculement de production n'ont été effectués.
 
 ## Séquence de réalisation
