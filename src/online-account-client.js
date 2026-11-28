@@ -280,7 +280,11 @@ export class OnlineAccountClient {
     // A previous PUT may have reached the server even if its response was lost.
     // Treat an identical server profile as an already-applied retry, without
     // creating another revision or duplicating the write.
-    if (current.profile && stableJson(current.profile) === stableJson(safeProfile)) {
+    const currentEditableProfile = current.profile ? {
+      identity: current.profile.identity,
+      appearance: current.profile.appearance
+    } : null;
+    if (currentEditableProfile && stableJson(currentEditableProfile) === stableJson(safeProfile)) {
       return { revision: current.revision, unchanged: true };
     }
     const saved = await this.request('/api/player-profile/me', { method: 'PUT', auth: true, body: { profile: safeProfile, expectedRevision: current.revision } });
