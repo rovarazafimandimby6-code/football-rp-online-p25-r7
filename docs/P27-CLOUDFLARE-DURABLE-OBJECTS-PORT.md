@@ -76,7 +76,8 @@ Le tick doit utiliser un accumulateur basé sur le temps écoulé, plafonner le 
 ### Étape B — Durable Object isolé
 - [x] Ajouter la classe de salon, son binding Wrangler et le routage HTTP Worker.
 - [x] Couvrir la création, l'entrée invitée, l'authentification par jeton de match, les commandes, l'état/delta, heartbeat, reconnexion, abandon et rotation.
-- [ ] Ajouter le WebSocket hibernable et les tests multi-clients.
+- [x] Ajouter le WebSocket hibernable côté Durable Object et le relais Worker.
+- [ ] Finaliser l'intégration du transport WebSocket dans le bridge de match et les tests multi-clients.
 - [ ] Tester les courses concurrentes, l'expiration et la reprise après éviction sur l'émulateur Durable Objects.
 
 ### Étape C — résultats et monde
