@@ -31,7 +31,9 @@ const SERVER_FIELDS = {
 const hasOnlyFields = (value, allowed) => Object.keys(value).every(key => allowed.has(key));
 
 export function createMatchMessage(type, payload = {}) {
-  if (!CLIENT_TYPES.has(type) || !isRecord(payload) || !hasOnlyFields(payload, CLIENT_FIELDS[type])) throw new TypeError('INVALID_MATCH_CLIENT_MESSAGE');
+  if (!CLIENT_TYPES.has(type) || !isRecord(payload)) throw new TypeError('INVALID_MATCH_CLIENT_MESSAGE');
+  if (Object.hasOwn(payload, 'v') || Object.hasOwn(payload, 'type')) throw new TypeError('INVALID_MATCH_MESSAGE_FIELDS');
+  if (!hasOnlyFields(payload, CLIENT_FIELDS[type])) throw new TypeError('INVALID_MATCH_CLIENT_MESSAGE');
   const message = { v: MATCH_PROTOCOL_VERSION, type, ...payload };
   if (message.v !== MATCH_PROTOCOL_VERSION || message.type !== type) throw new TypeError('INVALID_MATCH_MESSAGE_FIELDS');
   if (type === 'hello') {
@@ -62,6 +64,12 @@ export function createMatchMessage(type, payload = {}) {
 }
 
 export function encodeMatchMessage(type, payload = {}) {
+  if (isRecord(payload)) {
+    const candidate = JSON.stringify({ v: MATCH_PROTOCOL_VERSION, type, ...payload });
+    if (new TextEncoder().encode(candidate).byteLength > MAX_MESSAGE_BYTES) {
+      throw new TypeError('MATCH_MESSAGE_TOO_LARGE');
+    }
+  }
   const encoded = JSON.stringify(createMatchMessage(type, payload));
   if (new TextEncoder().encode(encoded).byteLength > MAX_MESSAGE_BYTES) {
     throw new TypeError('MATCH_MESSAGE_TOO_LARGE');
