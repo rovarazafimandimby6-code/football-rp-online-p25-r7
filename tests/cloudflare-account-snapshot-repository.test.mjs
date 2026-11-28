@@ -88,7 +88,7 @@ test("D1 account snapshot aggregates authoritative stores and paginates every ca
 
 test("D1 account snapshot refuses a mismatched account/player identity", async () => {
   const repository = new D1AccountSnapshotRepository({ prepare() {} }, { repositories: {} });
-  await assert.rejects(() => repository.get({ id: identity.id, playerId: "FRP-000000" }), {
+  await assert.rejects(() => repository.get({ id: identity.id, playerId: "not-a-player-id" }), {
     message: "ACCOUNT_SNAPSHOT_IDENTITY_INVALID",
   });
 });
