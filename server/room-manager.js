@@ -11,7 +11,7 @@ const virtualMatchSeconds = room => Math.min(90 * 60, Math.max(0, Number(room.el
 
 /** Authoritative in-memory 5v5 room manager. One input stream controls one avatar. */
 export class RoomManager {
-  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, roomStore = null, careerStore = null, careerSyncQueue = null, progressionStore = null, competitionStore = null, resolveClubAppearance = () => ({ equippedItemIds:[], stadiumExpansionLevel:0 }) } = {}) {
+  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, roomStore = null, careerStore = null, careerSyncQueue = null, progressionStore = null, competitionStore = null, resolveClubAppearance = () => ({ equippedItemIds:[], stadiumExpansionLevel:0 }), roomIdFactory = () => randomBytes(6).toString('hex') } = {}) {
     this.now = now;
     this.roomTtlMs = roomTtlMs;
     this.disconnectGraceMs = disconnectGraceMs;
@@ -22,6 +22,7 @@ export class RoomManager {
     this.progressionStore = progressionStore;
     this.competitionStore = competitionStore;
     this.resolveClubAppearance = typeof resolveClubAppearance === 'function' ? resolveClubAppearance : () => ({ equippedItemIds:[], stadiumExpansionLevel:0 });
+    this.roomIdFactory = typeof roomIdFactory === 'function' ? roomIdFactory : () => randomBytes(6).toString('hex');
     this.rooms = new Map();
     this.lastCheckpointAt = new Map();
     this.restoreCheckpoints();
@@ -30,6 +31,7 @@ export class RoomManager {
   serializeRoom(room) {
     const { players, halftimeUntil, ...state } = room;
     return {
+      schemaVersion: 1,
       ...JSON.parse(JSON.stringify(state)),
       players: [...players.values()].map(player => {
         const saved = JSON.parse(JSON.stringify(player));
@@ -88,6 +90,8 @@ export class RoomManager {
     if (!this.roomStore) return 0;
     const now = this.now();
     for (const snapshot of this.roomStore.readAll()) {
+      const schemaVersion = snapshot?.schemaVersion ?? 0;
+      if (!Number.isSafeInteger(schemaVersion) || schemaVersion < 0 || schemaVersion > 1) throw new Error('ROOM_STORE_VERSION_UNSUPPORTED');
       if (this.resultStore?.get(snapshot.id)) {
         this.roomStore.delete(snapshot.id);
         continue;
@@ -152,7 +156,8 @@ export class RoomManager {
       const stadiumCapacity = getP27StadiumCapacity(stadiumExpansionLevel);
       return { ...club, shopAppearance:{ equippedItemIds, stadiumExpansionLevel, stadiumCapacity } };
     };
-    const roomId = randomBytes(6).toString('hex');
+    const roomId = this.roomIdFactory();
+    if (typeof roomId !== 'string' || !/^[a-f0-9]{12}$/.test(roomId)) throw new Error('INVALID_ROOM_ID_GENERATOR');
     const room = {
       id: roomId, name: String(name).trim().slice(0, 36) || 'Match rapide', competitionFixtureId: competitionFixture?.id || null,
       durationMinutes: durationMinutes === 3 ? 3 : 5,
