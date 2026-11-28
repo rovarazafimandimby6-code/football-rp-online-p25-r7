@@ -3,29 +3,36 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync, existsS
 import path from 'node:path';
 
 const STORES = Object.freeze({
-  accounts: { file: 'accounts.json', directory: 'accounts', validate: value => value?.version === 1 && Array.isArray(value.accounts) && Array.isArray(value.sessions) },
-  playerIdentities: { file: 'player-identities.json', directory: 'player-identities', validate: value => value?.version === 1 && Array.isArray(value.identities) && value.identities.every(row => row && typeof row.localProfileKey === 'string' && typeof row.accountId === 'string' && typeof row.playerId === 'string' && typeof row.createdAt === 'string' && (row.proofHash === undefined || /^[a-f0-9]{64}$/i.test(row.proofHash))) },
-  googleIdentities: { file: 'google-identities.json', directory: 'google-identities', validate: value => value?.version === 1 && Array.isArray(value.links) && Array.isArray(value.audit) && value.links.every(row => row && typeof row.accountId === 'string' && typeof row.googleSubject === 'string' && typeof row.linkedAt === 'string') && value.audit.every(row => row && typeof row.id === 'string' && typeof row.accountId === 'string' && typeof row.type === 'string' && typeof row.at === 'string') },
-  profiles: { file: 'player-profiles.json', directory: 'player-profiles', validate: value => value?.version === 1 && Array.isArray(value.profiles) },
-  progression: { file: 'progression.json', directory: 'progression', validate: value => value?.version === 1 && Array.isArray(value.players) },
-  careers: { file: 'careers.json', directory: 'careers', validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.playerCareers) },
-  transfers: { file: 'transfers.json', directory: 'transfers', validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.events) && Array.isArray(value.clubs) && (value.rosterSync === undefined || Array.isArray(value.rosterSync)) },
-  clubRosters: { file: 'club-rosters.json', directory: 'club-rosters', validate: value => value?.version === 8 && Array.isArray(value.clubs) && Array.isArray(value.fixtures) },
-  clubFinance: { file: 'club-finance.json', directory: 'finances', validate: value => value?.version === 1 && Array.isArray(value.accounts) },
-  systemPayroll: { file: 'system-payroll-schedule.json', directory: 'finances', validate: value => value?.version === 1 && value.clubs && typeof value.clubs === 'object' && !Array.isArray(value.clubs) },
-  transferFinanceJournal: { file: 'transfer-finance-journal.json', directory: 'finances', validate: value => value?.version === 1 && Array.isArray(value.transfers) && Array.isArray(value.playerWages) },
-  shopInventory: { file: 'shop-inventory.json', directory: 'shop', validate: value => value?.version === 1 && Array.isArray(value.players) && Array.isArray(value.clubs) && Array.isArray(value.purchases) && Array.isArray(value.resales) },
-  competitions: { file: 'competitions.json', directory: 'competitions', validate: value => value?.version === 1 && Array.isArray(value.seasons) },
-  completedResults: { file: 'completed-results.json', directory: 'results', validate: value => Array.isArray(value) },
-  rpClubs: { file: 'rp-clubs.json', directory: 'rp-clubs', validate: value => value?.version === 1 && Array.isArray(value.clubs) },
-  rpClubChallenges: { file: 'rp-club-challenges.json', directory: 'rp-club-challenges', validate: value => value?.version === 1 && Array.isArray(value.challenges) },
-  rpClubSeasons: { file: 'rp-club-seasons.json', directory: 'rp-club-seasons', validate: value => value?.version === 1 && Array.isArray(value.seasons) }
+  accounts: { file: 'accounts.json', directory: 'accounts', empty: { version: 1, accounts: [], sessions: [] }, validate: value => value?.version === 1 && Array.isArray(value.accounts) && Array.isArray(value.sessions) },
+  playerIdentities: { file: 'player-identities.json', directory: 'player-identities', empty: { version: 1, identities: [] }, validate: value => value?.version === 1 && Array.isArray(value.identities) && value.identities.every(row => row && typeof row.localProfileKey === 'string' && typeof row.accountId === 'string' && typeof row.playerId === 'string' && typeof row.createdAt === 'string' && (row.proofHash === undefined || /^[a-f0-9]{64}$/i.test(row.proofHash))) },
+  googleIdentities: { file: 'google-identities.json', directory: 'google-identities', empty: { version: 1, links: [], audit: [] }, validate: value => value?.version === 1 && Array.isArray(value.links) && Array.isArray(value.audit) && value.links.every(row => row && typeof row.accountId === 'string' && typeof row.googleSubject === 'string' && typeof row.linkedAt === 'string') && value.audit.every(row => row && typeof row.id === 'string' && typeof row.accountId === 'string' && typeof row.type === 'string' && typeof row.at === 'string') },
+  profiles: { file: 'player-profiles.json', directory: 'player-profiles', empty: { version: 1, profiles: [] }, validate: value => value?.version === 1 && Array.isArray(value.profiles) },
+  progression: { file: 'progression.json', directory: 'progression', empty: { version: 1, players: [] }, validate: value => value?.version === 1 && Array.isArray(value.players) },
+  careers: { file: 'careers.json', directory: 'careers', empty: { version: 1, careers: [], playerCareers: [], pendingCloudMatches: [] }, validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.playerCareers) },
+  transfers: { file: 'transfers.json', directory: 'transfers', empty: { version: 1, careers: [], events: [], clubs: [], rosterSync: [] }, validate: value => value?.version === 1 && Array.isArray(value.careers) && Array.isArray(value.events) && Array.isArray(value.clubs) && (value.rosterSync === undefined || Array.isArray(value.rosterSync)) },
+  clubRosters: { file: 'club-rosters.json', directory: 'club-rosters', empty: { version: 8, clubs: [], fixtures: [] }, validate: value => value?.version === 8 && Array.isArray(value.clubs) && Array.isArray(value.fixtures) },
+  clubFinance: { file: 'club-finance.json', directory: 'finances', empty: { version: 1, accounts: [] }, validate: value => value?.version === 1 && Array.isArray(value.accounts) },
+  systemPayroll: { file: 'system-payroll-schedule.json', directory: 'finances', empty: { version: 1, clubs: {} }, validate: value => value?.version === 1 && value.clubs && typeof value.clubs === 'object' && !Array.isArray(value.clubs) },
+  transferFinanceJournal: { file: 'transfer-finance-journal.json', directory: 'finances', empty: { version: 1, transfers: [], playerWages: [] }, validate: value => value?.version === 1 && Array.isArray(value.transfers) && Array.isArray(value.playerWages) },
+  shopInventory: { file: 'shop-inventory.json', directory: 'shop', empty: { version: 1, players: [], clubs: [], purchases: [], resales: [] }, validate: value => value?.version === 1 && Array.isArray(value.players) && Array.isArray(value.clubs) && Array.isArray(value.purchases) && Array.isArray(value.resales) },
+  competitions: { file: 'competitions.json', directory: 'competitions', empty: { version: 1, seasons: [] }, validate: value => value?.version === 1 && Array.isArray(value.seasons) },
+  completedResults: { file: 'completed-results.json', directory: 'results', empty: [], validate: value => Array.isArray(value) },
+  rpClubs: { file: 'rp-clubs.json', directory: 'rp-clubs', empty: { version: 1, clubs: [] }, validate: value => value?.version === 1 && Array.isArray(value.clubs) },
+  rpClubChallenges: { file: 'rp-club-challenges.json', directory: 'rp-club-challenges', empty: { version: 1, challenges: [] }, validate: value => value?.version === 1 && Array.isArray(value.challenges) },
+  rpClubSeasons: { file: 'rp-club-seasons.json', directory: 'rp-club-seasons', empty: { version: 1, seasons: [] }, validate: value => value?.version === 1 && Array.isArray(value.seasons) }
 });
 const digest = value => createHash('sha256').update(value).digest('hex');
 const defaultDirectories = root => Object.fromEntries(Object.entries(STORES).map(([key, spec]) => [key, path.join(root, 'data', spec.directory)]));
 
 function readAndValidate(key, file) {
-  const raw = readFileSync(file, 'utf8');
+  let raw;
+  try { raw = readFileSync(file, 'utf8'); }
+  catch (error) {
+    // Several stores intentionally keep their empty state in memory until the
+    // first write. Missing files therefore mean an empty store, not data loss.
+    if (error.code !== 'ENOENT') throw error;
+    raw = JSON.stringify(STORES[key].empty);
+  }
   let parsed;
   try { parsed = JSON.parse(raw); } catch { throw new Error(`BACKUP_SOURCE_INVALID_JSON:${key}`); }
   if (!STORES[key].validate(parsed)) throw new Error(`BACKUP_SOURCE_INVALID_SCHEMA:${key}`);
