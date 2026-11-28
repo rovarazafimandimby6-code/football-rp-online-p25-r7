@@ -158,6 +158,8 @@ test('P27 outbox : un identifiant de commande suffixé ne clôture pas une entr�
   f.store.signContract('strict-outbox-id',{clubId:'antananarivo-fc',salary:1000,durationDays:180});
   const command=f.store.pendingRosterSync()[0];
   assert.equal(f.store.completeRosterSync(command.id+'x').reason,'sync-not-found');
+  assert.equal(f.store.failRosterSync(command.id+'x','forged failure').reason,'sync-not-found');
+  assert.equal(f.store.pendingRosterSync()[0].attempts,0);
   assert.equal(f.store.pendingRosterSync().length,1);
   assert.equal(f.store.completeRosterSync(command.id).ok,true);
   assert.equal(f.store.pendingRosterSync().length,0);
