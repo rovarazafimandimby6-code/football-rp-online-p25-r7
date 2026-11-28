@@ -336,7 +336,7 @@ const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 async function reserveLocalPlayerIdentity() {
-  if (P27_OFFLINE_TEST || !localPlayerProfileStore || !localPlayerIdentity || localPlayerIdentity.identityStatus === 'reserved') return;
+  if (P27_OFFLINE_TEST || !localPlayerProfileStore || !localPlayerIdentity || (localPlayerIdentity.identityStatus === 'reserved' && accountClient.hasSession)) return;
   try {
     localPlayerIdentity = await localPlayerProfileStore.reserveWithServer({
       endpoint: p27ApiUrl('/api/player-identities/reserve'),
