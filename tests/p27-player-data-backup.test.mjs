@@ -21,13 +21,13 @@ const schemas = {
   profiles: { version:1, profiles:[{accountId:'account-1',profile:{identity:{displayName:'Test'}}}] },
   progression: { version:1, players:[{accountId:'account-1',progression:{level:4}}] },
   careers: { version:1, careers:[{accountId:'account-1',totals:{matches:2},matches:[]}], playerCareers:[] },
-  careerSyncQueue: { version:1, pending:[] },
+  careerSyncQueue: { version:1, pending:[{accountId:'123e4567-e89b-42d3-a456-426614174099',playerId:'FRP-675757',matchId:'backup-match-1',queuedAt:1000,attempts:0,nextAttemptAt:0,payload:{matchId:'backup-match-1',result:'win'}}] },
   transfers: { version:1, careers:[{accountId:'account-1',playerId:'human-1',wallet:2500,clubId:null,contract:null,offers:[],history:[],loanOffers:[],loanHistory:[]}], events:[], clubs:[], rosterSync:[] },
   clubRosters: { version:8, clubs:[], fixtures:[] },
   clubFinance: { version:1, accounts:[] },
   systemPayroll: { version:1, clubs:{} },
   transferFinanceJournal: { version:1, transfers:[], playerWages:[] },
-  systemTransferOutbox: { version:1, transfers:[] },
+  systemTransferOutbox: { version:1, transfers:[{id:'transfer-001',playerId:'system-player-1',fromClubId:'club-a',toClubId:'club-b',fee:2500,createdAt:1000,status:'completed',attempts:0,lastError:null,completedAt:2000}] },
   shopInventory: { version:1, players:[], clubs:[], purchases:[], resales:[] },
   competitions: { version:1, seasons:[] },
   completedResults: [],
@@ -123,7 +123,7 @@ test('P27 compte: un store absent est sauvegardé comme état vide conforme à s
   }finally{rmSync(source.root,{recursive:true,force:true});}
 });
 
-test('P27 compte: le backup accepte les fichiers produits par les vrais stores serveur',()=>{
+test('P27 compte: le backup accepte les stores principaux et les instantanés de schéma des stores monde',()=>{
   const root=mkdtempSync(path.join(os.tmpdir(),'p27-real-stores-'));
   const directories={
     accounts:path.join(root,'accounts'),
