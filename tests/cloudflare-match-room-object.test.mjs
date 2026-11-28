@@ -344,6 +344,68 @@ test("finalized match outbox retries a reward failure without losing career or d
   stopTimer(object);
 });
 
+
+test("finalized match outbox resumes at a failed player without duplicating earlier rewards", async () => {
+  const state = makeState();
+  const object = new P27MatchRoomDurableObject(state, {});
+  await object.fetch(request("/internal/create", "POST", { roomId: "a1b2c3d4e5f6" }));
+  const firstAccount = "123e4567-e89b-42d3-a456-426614174010";
+  const secondAccount = "123e4567-e89b-42d3-a456-426614174011";
+  const firstPlayer = await (await object.fetch(request("/internal/join", "POST", {
+    accountId: firstAccount, careerPlayerId: "FRP-100001", displayName: "Joueur un",
+  }))).json();
+  const secondPlayer = await (await object.fetch(request("/internal/join", "POST", {
+    accountId: secondAccount, careerPlayerId: "FRP-100002", displayName: "Joueur deux",
+    preferredTeam: "red",
+  }))).json();
+  object.stores.results.save({
+    roomId: "a1b2c3d4e5f6", phase: "fulltime", finalizedAt: 1_700_000_000_002,
+    score: { blue: 2, red: 1 }, outcome: "blue", awards: {},
+    players: [
+      { playerId: firstPlayer.playerId, team: "blue", role: "MID", name: "Joueur un",
+        rating: 7.2, minutesPlayedMs: 90_000, stats: { goals: 1 } },
+      { playerId: secondPlayer.playerId, team: "red", role: "FWD", name: "Joueur deux",
+        rating: 6.8, minutesPlayedMs: 80_000, stats: { goals: 1 } },
+    ],
+  });
+  const careerLedger = new Map();
+  const rewardLedger = new Map();
+  let failSecondOnce = true;
+  object.careerRepository = {
+    async recordFinalizedMatch(account, player, match) {
+      const key = account + ":" + match.matchId;
+      if (!careerLedger.has(key)) careerLedger.set(key, { player, match });
+      return { duplicate: careerLedger.has(key) };
+    },
+  };
+  object.progressionRepository = {
+    async grantMatchReward(account, reward) {
+      if (account === secondAccount && failSecondOnce) {
+        failSecondOnce = false;
+        throw new Error("SECOND_PLAYER_REWARD_TEMPORARY_FAILURE");
+      }
+      const key = account + ":" + reward.matchId;
+      if (!rewardLedger.has(key)) rewardLedger.set(key, reward);
+      return { duplicate: rewardLedger.has(key) };
+    },
+  };
+  object.repository = { async recordFinalizedResult() {} };
+
+  await assert.rejects(object._syncFinalizedResult(), /SECOND_PLAYER_REWARD_TEMPORARY_FAILURE/);
+  assert.equal(careerLedger.size, 2);
+  assert.equal(rewardLedger.size, 1);
+  assert.equal(state.backing.get("career-outbox-complete"), undefined);
+  assert.equal(state.backing.get("career-outbox").length, 2);
+
+  await object._syncFinalizedResult();
+  assert.equal(careerLedger.size, 2);
+  assert.equal(rewardLedger.size, 2);
+  assert.equal(state.backing.get("career-outbox-complete"), true);
+  assert.equal(state.backing.get("finalized-result-synced"), true);
+  assert.equal(state.backing.has("career-outbox"), false);
+  stopTimer(object);
+});
+
 test("finalized match outbox survives Durable Object restart and retries pending progression", async () => {
   const storage = new Map();
   const accountId = "123e4567-e89b-42d3-a456-426614174001";
