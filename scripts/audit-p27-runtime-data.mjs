@@ -10,9 +10,9 @@ const stores = [
   ['googleOidcTransactions', 'GOOGLE_OIDC_TRANSACTIONS_DIR', 'google-oidc-transactions', 'google-oidc-transactions.json', ['transactions']],
   ['playerProfiles', 'PLAYER_PROFILES_DIR', 'player-profiles', 'player-profiles.json', ['profiles']],
   ['progression', 'PLAYER_PROGRESSION_DIR', 'progression', 'progression.json', ['players']],
-  ['careers', 'CAREERS_DIR', 'careers', 'careers.json', ['careers', 'playerCareers']],
+  ['careers', 'CAREERS_DIR', 'careers', 'careers.json', ['careers', 'playerCareers', 'pendingCloudMatches']],
   ['careerSyncQueue', 'CAREER_SYNC_DIR', 'career-sync', 'pending-career-sync.json', ['pending']],
-  ['transfers', 'TRANSFERS_DIR', 'transfers', 'transfers.json', ['careers', 'events', 'clubs', 'rosterSync']],
+  ['transfers', 'TRANSFERS_DIR', 'transfers', 'transfers.json', ['careers', 'events', 'clubs', 'rosterSync?']],
   ['clubRosters', 'CLUB_ROSTERS_DIR', 'club-rosters', 'club-rosters.json', ['clubs', 'fixtures']],
   ['clubFinance', 'FINANCES_DIR', 'finances', 'club-finance.json', ['clubs']],
   ['systemPayroll', 'FINANCES_DIR', 'finances', 'system-payroll-schedule.json', ['clubs']],
@@ -39,10 +39,13 @@ for (const [name, envName, defaultDirectory, filename, collections] of stores) {
     const parsed = JSON.parse(raw);
     const collectionCounts = {};
     let schemaOk = parsed !== null && typeof parsed === 'object';
-    for (const key of collections) {
+    for (const field of collections) {
+      const optional = field.endsWith('?');
+      const key = optional ? field.slice(0, -1) : field;
       const value = parsed?.[key];
       if (Array.isArray(value)) collectionCounts[key] = value.length;
       else if (value && typeof value === 'object') collectionCounts[key] = Object.keys(value).length;
+      else if (optional && value === undefined) collectionCounts[key] = 0;
       else {
         collectionCounts[key] = null;
         schemaOk = false;
