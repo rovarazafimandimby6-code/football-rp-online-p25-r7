@@ -120,6 +120,13 @@ export class D1AccountSnapshotRepository {
     }));
     const loanHistory = contractHistory.filter(event => event.type === "loan" || event.type === "loan-return");
 
+    const chronological = (left, right) =>
+      (Number(left.finalizedAt) || 0) - (Number(right.finalizedAt) || 0)
+      || String(left.matchId).localeCompare(String(right.matchId));
+    careerMatches.sort(chronological);
+    playerCareerMatches.sort(chronological);
+    seasonMatches.sort(chronological);
+
     const snapshot = {
       schemaVersion: 1,
       player: { playerId: account.playerId },
