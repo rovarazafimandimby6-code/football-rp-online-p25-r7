@@ -189,7 +189,8 @@ export class P27SystemTransferService {
           if (Number.isFinite(available) && available < fee) continue;
           const gap = Math.max(0, (Number(buyer.rating)||0)-(Number(seller.rating)||0));
           const score = (2-buyerRoleCount)*1000 + gap*10 + rating;
-          const identityHash = createHash('sha256').update(`${window}\\0${player.id}\\0${buyer.id}`).digest('hex').slice(0,32);\n          const id = `ai-market-${window}-${identityHash}`;
+          const identityHash = createHash('sha256').update(`${window}\\0${player.id}\\0${buyer.id}`).digest('hex').slice(0,32);
+          const id = `ai-market-${window}-${identityHash}`;
           candidates.push({ id, playerId:player.id, fromClubId:seller.id, toClubId:buyer.id, fee, score, rating, role });
         }
       }
