@@ -49,11 +49,22 @@ export class D1PlayerProgressionRepository {
     ).bind(accountId, JSON.stringify(ATTRIBUTES), new Date(this.now()).toISOString()).run();
   }
 
-  async hasMatchEvent(accountId, matchId) {
-    const row = await this.db.prepare(
-      "SELECT 1 AS applied FROM p27_progression_match_events WHERE account_id = ? AND match_id = ?"
+  async getMatchEvent(accountId, matchId) {
+    return this.db.prepare(
+      "SELECT experience_awarded, coins_awarded FROM p27_progression_match_events WHERE account_id = ? AND match_id = ?"
     ).bind(accountId, matchId).first();
-    return Boolean(row);
+  }
+
+  async hasMatchEvent(accountId, matchId) {
+    return Boolean(await this.getMatchEvent(accountId, matchId));
+  }
+
+  matchRewardDuplicate(event, experience, coins) {
+    if (!event) return false;
+    if (Number(event.experience_awarded) !== experience || Number(event.coins_awarded) !== coins) {
+      throw new Error("MATCH_REWARD_ID_CONFLICT");
+    }
+    return true;
   }
 
   async get(accountId) {
@@ -71,18 +82,28 @@ export class D1PlayerProgressionRepository {
 
   async grantMatchReward(accountId, { matchId, result, minutesPlayedMs = 0, rating = null } = {}) {
     accountIdOrThrow(accountId);
-    const id = typeof matchId === "string" ? matchId.trim() : "";
-    if (!id || id.length > 64 || !["win", "draw", "loss"].includes(result)) throw new Error("INVALID_MATCH_REWARD");
-    const minutes = clampInt(minutesPlayedMs, 0, 600_000) / 60_000;
-    const numericRating = rating === null || rating === undefined ? 5 : Number(rating);
-    const score = Number.isFinite(numericRating) ? Math.max(1, Math.min(10, numericRating)) : 5;
+    const id = typeof matchId === "string" ? matchId : "";
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(id) || !["win", "draw", "loss"].includes(result)) {
+      throw new Error("INVALID_MATCH_REWARD");
+    }
+    if (!Number.isSafeInteger(minutesPlayedMs) || minutesPlayedMs < 0 || minutesPlayedMs > 600_000) {
+      throw new Error("INVALID_MATCH_REWARD");
+    }
+    const numericRating = rating === null || rating === undefined ? 5 : rating;
+    if (typeof numericRating !== "number" || !Number.isFinite(numericRating) || numericRating < 1 || numericRating > 10) {
+      throw new Error("INVALID_MATCH_REWARD");
+    }
+    const minutes = minutesPlayedMs / 60_000;
+    const score = numericRating;
     const experience = Math.round(20 + minutes * 12 + score * 3);
     const coins = Math.round(8 + (result === "win" ? 18 : result === "draw" ? 10 : 4) + score * 2);
     await this.ensure(accountId);
 
     for (let attempt = 0; attempt < 4; attempt++) {
       const current = await this.get(accountId);
-      if (current.progression.processedMatchIds.includes(id) || await this.hasMatchEvent(accountId, id)) {
+      const priorEvent = await this.getMatchEvent(accountId, id);
+      if (current.progression.processedMatchIds.includes(id) || priorEvent) {
+        if (priorEvent) this.matchRewardDuplicate(priorEvent, experience, coins);
         return { duplicate: true, progression: current.progression, reward: { experience: 0, coins: 0 }, revision: current.revision };
       }
       const next = structuredClone(current.progression);
@@ -105,7 +126,9 @@ export class D1PlayerProgressionRepository {
       }
     }
     const latest = await this.get(accountId);
-    if (latest.progression.processedMatchIds.includes(id) || await this.hasMatchEvent(accountId, id)) {
+    const priorEvent = await this.getMatchEvent(accountId, id);
+    if (latest.progression.processedMatchIds.includes(id) || priorEvent) {
+      if (priorEvent) this.matchRewardDuplicate(priorEvent, experience, coins);
       return { duplicate: true, progression: latest.progression, reward: { experience: 0, coins: 0 }, revision: latest.revision };
     }
     throw new Error("PROGRESSION_CONCURRENT_UPDATE");
@@ -114,8 +137,12 @@ export class D1PlayerProgressionRepository {
   async spend(accountId, attribute, amount = 1, mode = "training") {
     accountIdOrThrow(accountId);
     if (!Object.hasOwn(ATTRIBUTES, attribute)) throw new Error("INVALID_ATTRIBUTE");
-    const points = clampInt(amount, 1, mode === "practice" ? 3 : 5, 1);
     if (!(["training", "practice"].includes(mode))) throw new Error("INVALID_PROGRESSION_MODE");
+    const maximum = mode === "practice" ? 3 : 5;
+    const points = amount === undefined ? 1 : amount;
+    if (!Number.isSafeInteger(points) || points < 1 || points > maximum) {
+      throw new Error("INVALID_PROGRESSION_AMOUNT");
+    }
     await this.ensure(accountId);
     const cost = points * (mode === "practice" ? 80 : 40);
     for (let attempt = 0; attempt < 4; attempt++) {
