@@ -21,7 +21,9 @@ const STORES = Object.freeze({
   completedResults: { file: 'completed-results.json', directory: 'results', empty: [], validate: value => Array.isArray(value) },
   rpClubs: { file: 'rp-clubs.json', directory: 'rp-clubs', empty: { version: 1, clubs: [] }, validate: value => value?.version === 1 && Array.isArray(value.clubs) },
   rpClubChallenges: { file: 'rp-club-challenges.json', directory: 'rp-club-challenges', empty: { version: 1, challenges: [] }, validate: value => value?.version === 1 && Array.isArray(value.challenges) },
-  rpClubSeasons: { file: 'rp-club-seasons.json', directory: 'rp-club-seasons', empty: { version: 1, seasons: [] }, validate: value => value?.version === 1 && Array.isArray(value.seasons) }
+  rpClubSeasons: { file: 'rp-club-seasons.json', directory: 'rp-club-seasons', empty: { version: 1, seasons: [] }, validate: value => value?.version === 1 && Array.isArray(value.seasons) },
+  // Archived for forensic recovery only: never auto-restore live matches from an older generation.
+  roomCheckpoints: { file: 'active-rooms.json', directory: 'rooms', restore: false, empty: { version: 1, rooms: [] }, validate: value => value?.version === 1 && Array.isArray(value.rooms) && value.rooms.every(room => room && typeof room.id === 'string' && room.id.length > 0 && ['lobby','playing','halftime','fulltime'].includes(room.phase) && Array.isArray(room.players) && room.players.every(player => player && typeof player.id === 'string' && player.token === undefined && (player.tokenHash === undefined || /^[a-f0-9]{64}$/i.test(player.tokenHash)))) }
 });
 const digest = value => createHash('sha256').update(value).digest('hex');
 const defaultDirectories = root => Object.fromEntries(Object.entries(STORES).map(([key, spec]) => [key, path.join(root, 'data', spec.directory)]));
@@ -41,7 +43,7 @@ function readAndValidate(key, file) {
   return raw;
 }
 
-/** Creates a portable, checksummed snapshot of 19 durable player and world stores. */
+/** Creates a portable, checksummed snapshot of durable player and world stores, including non-restorable live-room archives. */
 export function createPlayerDataBackup({ directories = defaultDirectories(process.cwd()), outputFile, now = () => new Date() } = {}) {
   if (!outputFile) throw new Error('BACKUP_OUTPUT_REQUIRED');
   const files = {};
@@ -110,7 +112,7 @@ export function restorePlayerDataBackup({ backupFile, directories = defaultDirec
   } finally {
     for (const item of staged) { try { unlinkSync(item.temporary); } catch {} }
   }
-  return { ok: true, restored: Object.keys(STORES), createdAt: bundle.createdAt };
+  return { ok: true, restored: Object.keys(STORES).filter(key => STORES[key].restore !== false), archivedOnly: Object.keys(STORES).filter(key => STORES[key].restore === false), createdAt: bundle.createdAt };
 }
 
 /**
