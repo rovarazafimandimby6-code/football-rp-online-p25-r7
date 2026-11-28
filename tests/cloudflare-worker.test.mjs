@@ -208,3 +208,60 @@ test("match room gateway creates a server-generated room ID and ignores client i
   assert.match(forwarded[0].body.roomId, /^[a-f0-9]{12}$/);
   assert.equal(forwarded[0].body.name, "Match amical");
 });
+
+test("match room gateway rejects expired authenticated sessions before joining", async () => {
+  let objectRequested = false;
+  const env = {
+    P27_DB: { prepare() { return { bind() { return this; }, first: async () => null }; }, batch: async () => [] },
+    P27_MATCH_ROOMS: {
+      idFromName(name) { return name; },
+      get() { objectRequested = true; throw new Error("SHOULD_NOT_REACH_MATCH_ROOM"); },
+    },
+  };
+  const response = await worker.fetch(request("/api/rooms/a1b2c3d4e5f6/join", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer expired-session-token",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ displayName: "Joueur" }),
+  }), env);
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error, "SESSION_EXPIRED");
+  assert.equal(objectRequested, false);
+});
+
+test("match room routes fail closed when the D1 binding is missing", async () => {
+  const response = await worker.fetch(request("/api/rooms"), {
+    P27_MATCH_ROOMS: {
+      idFromName(name) { return name; },
+      get() { throw new Error("SHOULD_NOT_REACH_MATCH_ROOM"); },
+    },
+  });
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "D1_BINDING_MISSING");
+});
+
+test("default Cloudflare entrypoint rejects untrusted origins before match room mutations", async () => {
+  let objectRequested = false;
+  const response = await (await import("../src/cloudflare/worker.js")).default.fetch(
+    request("/api/rooms", {
+      method: "POST",
+      headers: {
+        origin: "https://attacker.example",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ name: "Match hostile" }),
+    }),
+    {
+      P27_DB: { prepare() { return { bind() { return this; }, first: async () => null }; }, batch: async () => [] },
+      P27_MATCH_ROOMS: {
+        idFromName(name) { return name; },
+        get() { objectRequested = true; throw new Error("SHOULD_NOT_REACH_MATCH_ROOM"); },
+      },
+    },
+  );
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, "ORIGIN_NOT_ALLOWED");
+  assert.equal(objectRequested, false);
+});
