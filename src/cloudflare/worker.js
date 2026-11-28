@@ -398,7 +398,7 @@ async function handleMatchRoomRoute(request, env, url) {
   const roomId = roomPath[1];
   const action = roomPath[2] || "state";
   const stub = namespace.get(namespace.idFromName(roomId));
-  if (action === "socket") return json(501, { error: "MATCH_SOCKET_NOT_READY" });
+  if (action === "socket") return stub.fetch(request);
 
   if (action === "join" && request.method === "POST") {
     try {
