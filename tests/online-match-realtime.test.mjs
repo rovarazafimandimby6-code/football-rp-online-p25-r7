@@ -118,7 +118,7 @@ test('online match bridge starts realtime on join and stops HTTP polling after W
     vel: { set() {} },
   };
   const bridge = new OnlineMatchBridge({
-    client, players: [], ball, realtime: true,
+    client, players: [], ball, realtime: true, WebSocketImpl: FakeWebSocket,
     now: () => 10_000,
   });
   bridge.bindJoin({ playerId: 'player-1' });
