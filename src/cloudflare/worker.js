@@ -161,6 +161,7 @@ function errorResponse(error) {
     code === "INVALID_ATTRIBUTE" ||
     code === "INVALID_PROGRESSION_MODE" ||
     code === "INVALID_PROGRESSION_AMOUNT" ||
+    code === "INVALID_MATCH_REWARD" ||
     code === "INVALID_PLAYER_ID" ||
     code === "INVALID_CAREER_CURSOR" ||
     code === "INVALID_JSON" ||
