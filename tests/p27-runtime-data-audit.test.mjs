@@ -19,7 +19,7 @@ const specs = [
   ['CAREER_SYNC_DIR','career-sync','pending-career-sync.json',{version:1,pending:[]}],
   ['TRANSFERS_DIR','transfers','transfers.json',{version:1,careers:[],events:[],clubs:[]}],
   ['CLUB_ROSTERS_DIR','club-rosters','club-rosters.json',{version:8,clubs:[],fixtures:[]}],
-  ['FINANCES_DIR','finances','club-finance.json',{version:1,clubs:[]}],
+  ['FINANCES_DIR','finances','club-finance.json',{version:1,accounts:[]}],
   ['FINANCES_DIR','finances','system-payroll-schedule.json',{version:1,clubs:{}}],
   ['FINANCES_DIR','finances','transfer-finance-journal.json',{version:1,transfers:[],playerWages:[]}],
   ['SHOP_INVENTORY_DIR','shop','shop-inventory.json',{version:1,players:[],clubs:[],purchases:[],resales:[]}],
