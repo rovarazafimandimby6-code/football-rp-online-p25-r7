@@ -550,7 +550,10 @@ test('P27 synchronisation : une réponse PUT perdue ne crée pas une seconde ré
         if (putCount === 1) throw new Error('NETWORK_RESPONSE_LOST');
         return { ok: true, status: 200, json: async () => ({ revision }) };
       }
-      return { ok: true, status: 200, json: async () => ({ profile: serverProfile, revision }) };
+      return { ok: true, status: 200, json: async () => ({
+        profile: serverProfile ? { schemaVersion: 1, ...serverProfile, updatedAt: '2026-11-28T00:00:00.000Z' } : null,
+        revision
+      }) };
     }
   });
   client.token = 'account-token-with-more-than-32-characters';
