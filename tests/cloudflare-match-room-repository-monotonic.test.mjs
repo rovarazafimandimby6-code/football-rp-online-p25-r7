@@ -36,13 +36,7 @@ class FakeD1 {
   async first(sql, v) {
     if (!sql.includes("FROM p27_match_rooms WHERE room_id")) throw new Error("UNSUPPORTED_SQL");
     const row = this.rooms.get(v[0]);
-    return row ? {
-      roomId: row.room_id, objectName: row.object_name, phase: row.phase, mode: row.mode,
-      name: row.room_name, durationMinutes: row.duration_minutes,
-      humanCounts: { blue: row.blue_humans, red: row.red_humans },
-      maxHumans: row.max_humans, createdAt: row.created_at,
-      updatedAt: row.updated_at, expiresAt: row.expires_at,
-    } : null;
+    return row || null;
   }
 }
 const id = "a1b2c3d4e5f6";
