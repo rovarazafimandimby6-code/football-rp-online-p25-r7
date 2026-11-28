@@ -314,7 +314,7 @@ test('P27 session Google : reprend une session HttpOnly via cookie sans exposer 
   assert.equal(client.hasSession, true);
   assert.equal(client.token, null);
   assert.equal(calls[0].url, 'https://game.example/api/accounts/me');
-  assert.equal(calls[0].options.credentials, 'same-origin');
+  assert.equal(calls[0].options.credentials, 'include');
   assert.equal(calls[0].options.headers.authorization, undefined);
 });
 
@@ -349,7 +349,7 @@ test('P27 session Google : les lectures et écritures de compte acceptent la ses
   await client.getProgression();
   assert.equal(calls.length, 7);
   for (const call of calls.slice(1)) {
-    assert.equal(call.options.credentials, 'same-origin');
+    assert.equal(call.options.credentials, 'include');
     assert.equal(call.options.headers.authorization, undefined);
   }
 });
@@ -395,7 +395,7 @@ test('P27 session Google : logout révoque aussi une session portée par cookie'
   assert.equal(await client.logout(), true);
   assert.equal(calls[1].url, 'https://game.example/api/accounts/logout');
   assert.equal(calls[1].options.method, 'POST');
-  assert.equal(calls[1].options.credentials, 'same-origin');
+  assert.equal(calls[1].options.credentials, 'include');
   assert.equal(client.hasSession, false);
 });
 
@@ -442,7 +442,7 @@ test('P27 synchronisation automatique : conserve les changements hors ligne puis
   assert.equal(calls.length, 2);
   assert.equal(calls[1].options.method, 'PUT');
   assert.equal(JSON.parse(calls[1].options.body).expectedRevision, 0);
-  assert.equal(calls[1].options.credentials, 'same-origin');
+  assert.equal(calls[1].options.credentials, 'include');
   assert.equal(JSON.parse(calls[1].options.body).profile.progression, undefined);
 });
 
