@@ -1,21 +1,8 @@
 name: P27 Android online test APK
 
+# APK generation is intentionally paused until core P27 systems are complete.
+# Resume manually with workflow_dispatch after the game is ready for device validation.
 on:
-  push:
-    branches:
-      - p27-dls26-global-adaptation
-    paths:
-      - 'src/**'
-      - 'assets/**'
-      - 'tests/**'
-      - 'scripts/**'
-      - 'public/**'
-      - 'index.html'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'capacitor.config.json'
-      - 'vite.config.js'
-      - '.github/workflows/p27-android-apk.yml'
   workflow_dispatch:
 
 permissions:
