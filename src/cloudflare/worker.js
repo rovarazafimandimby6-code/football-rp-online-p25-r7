@@ -160,6 +160,7 @@ function errorResponse(error) {
     code === "PLAYER_PROFILE_TOO_LARGE" ||
     code === "INVALID_ATTRIBUTE" ||
     code === "INVALID_PROGRESSION_MODE" ||
+    code === "INVALID_PROGRESSION_AMOUNT" ||
     code === "INVALID_PLAYER_ID" ||
     code === "INVALID_CAREER_CURSOR" ||
     code === "INVALID_JSON" ||
@@ -174,7 +175,8 @@ function errorResponse(error) {
     code === "LOCAL_PROFILE_REPLICA_LIMIT" ||
     code === "GOOGLE_IDENTITY_ALREADY_LINKED" ||
     code === "PROFILE_REVISION_CONFLICT" ||
-    code === "PROGRESSION_CONCURRENT_UPDATE" ? 409 :
+    code === "PROGRESSION_CONCURRENT_UPDATE" ||
+    code === "MATCH_REWARD_ID_CONFLICT" ? 409 :
     code === "PLAYER_IDENTITY_NOT_FOUND" ||
     code === "GOOGLE_ACCOUNT_NOT_LINKED" ? 404 :
     code === "PLAYER_IDENTITY_MISMATCH" ? 409 :
