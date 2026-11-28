@@ -64,11 +64,16 @@ export class P27MatchRoomDurableObject {
       });
       this.lastFlushAt = Date.now();
       const room = this.manager.rooms.get(this.roomId);
-      if (room && ACTIVE_PHASES.has(room.phase)) this._scheduleTick(50);
+      if (room && ACTIVE_PHASES.has(room.phase)) {
+        await state.storage.setAlarm(Date.now() + 1_000);
+        this._scheduleTick(50);
+      }
     });
   }
 
   async _flush() {
+    const room = this.manager?.rooms.get(this.roomId);
+    if (room && ACTIVE_PHASES.has(room.phase)) this.manager.persistRoom(room);
     const snapshot = this.stores.rooms.readAll().find(item => item.id === this.roomId);
     const result = this.stores.results.get(this.roomId);
     if (snapshot) await this.state.storage.put("room-checkpoint", snapshot);
@@ -136,9 +141,11 @@ export class P27MatchRoomDurableObject {
 
   async alarm() {
     await this.ready;
-    await this._tick();
+    try { await this._tick(); }
+    catch (error) { this.lastTickError = String(error?.message || "MATCH_TICK_FAILED").slice(0, 120); }
+    const pendingResult = this.stores.results.get(this.roomId);
     const room = this.manager.rooms.get(this.roomId);
-    if (room && ["playing", "halftime"].includes(room.phase)) {
+    if (pendingResult || (room && ["playing", "halftime"].includes(room.phase))) {
       await this.state.storage.setAlarm(Date.now() + 1_000);
       this._scheduleTick(50);
     }
@@ -146,7 +153,7 @@ export class P27MatchRoomDurableObject {
 
   async _persistMutation() {
     await this._flush();
-    await this._syncRegistry();
+    try { await this._syncRegistry(); } catch (error) { this.registrySyncError = String(error?.message || "MATCH_ROOM_INDEX_WRITE_FAILED").slice(0, 120); }
     const room = this.manager.rooms.get(this.roomId);
     if (room && ["playing", "halftime"].includes(room.phase)) {
       await this.state.storage.setAlarm(Date.now() + 1_000);
