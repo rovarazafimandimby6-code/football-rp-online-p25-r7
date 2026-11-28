@@ -101,3 +101,19 @@ test("D1 progression concurrent commands use compare-and-swap and never overwrit
   assert.equal(current.progression.experience, 75);
   assert.equal(current.revision, 4);
 });
+
+test("D1 progression grants the same match reward only once under concurrent retries", async () => {
+  const db = new ProgressionD1();
+  const repository = new D1PlayerProgressionRepository(db, { now: fixedNow });
+  const attempts = await Promise.all([
+    repository.grantMatchReward(accountId, { matchId: "match-concurrent", result: "win", minutesPlayedMs: 90_000, rating: 7 }),
+    repository.grantMatchReward(accountId, { matchId: "match-concurrent", result: "win", minutesPlayedMs: 90_000, rating: 7 }),
+  ]);
+  assert.equal(attempts.filter(item => item.duplicate === false).length, 1);
+  assert.equal(attempts.filter(item => item.duplicate === true).length, 1);
+  const current = await repository.get(accountId);
+  assert.equal(current.progression.coins, 290);
+  assert.equal(current.progression.experience, 59);
+  assert.equal(current.revision, 2);
+  assert.equal(db.events.size, 1);
+});
