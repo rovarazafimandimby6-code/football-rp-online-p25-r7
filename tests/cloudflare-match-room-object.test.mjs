@@ -288,3 +288,58 @@ test("WebSocket size limiting preserves event order and advances only through tr
     stopTimer(object);
   }
 });
+
+
+test("finalized match outbox retries a reward failure without losing career or duplicating reward", async () => {
+  const state = makeState();
+  const object = new P27MatchRoomDurableObject(state, {});
+  await object.fetch(request("/internal/create", "POST", { roomId: "a1b2c3d4e5f6" }));
+  const accountId = "123e4567-e89b-42d3-a456-426614174000";
+  const joined = await (await object.fetch(request("/internal/join", "POST", {
+    accountId, careerPlayerId: "FRP-123456", displayName: "Reprise outbox",
+  }))).json();
+  const result = {
+    roomId: "a1b2c3d4e5f6", phase: "fulltime", finalizedAt: 1_700_000_000_000,
+    score: { blue: 1, red: 0 }, outcome: "blue", awards: {},
+    players: [{
+      playerId: joined.playerId, team: "blue", role: "MID", name: "Reprise outbox",
+      rating: 7.4, minutesPlayedMs: 90_000,
+      stats: { goals: 0, assists: 0, shots: 1, passes: 10, completedPasses: 8, tackles: 1 },
+    }],
+  };
+  object.stores.results.save(result);
+  const careerMatches = new Map();
+  const rewardLedger = new Map();
+  let rewardAttempts = 0;
+  object.careerRepository = {
+    async recordFinalizedMatch(account, player, match) {
+      careerMatches.set(account + ":" + match.matchId, { player, match });
+      return { duplicate: careerMatches.size > 1 };
+    },
+  };
+  object.progressionRepository = {
+    async grantMatchReward(account, reward) {
+      rewardAttempts++;
+      if (rewardAttempts === 1) throw new Error("TEMPORARY_D1_FAILURE");
+      const key = account + ":" + reward.matchId;
+      if (!rewardLedger.has(key)) rewardLedger.set(key, reward);
+      return { duplicate: rewardLedger.size > 1 };
+    },
+  };
+  object.repository = { async recordFinalizedResult() {} };
+
+  await assert.rejects(object._syncFinalizedResult(), /TEMPORARY_D1_FAILURE/);
+  assert.equal(careerMatches.size, 1);
+  assert.equal(rewardLedger.size, 0);
+  assert.equal(state.backing.get("career-outbox-complete"), undefined);
+  assert.ok(state.backing.has("career-outbox"));
+
+  await object._syncFinalizedResult();
+  assert.equal(careerMatches.size, 1);
+  assert.equal(rewardAttempts, 2);
+  assert.equal(rewardLedger.size, 1);
+  assert.equal(state.backing.get("career-outbox-complete"), true);
+  assert.equal(state.backing.get("finalized-result-synced"), true);
+  assert.equal(state.backing.has("career-outbox"), false);
+  stopTimer(object);
+});
