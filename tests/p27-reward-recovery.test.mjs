@@ -152,3 +152,27 @@ test('P27 récompenses : réconcilie automatiquement les gains carrière après 
   const repeated = reconcileCareerProfileRewards({ career:restoredCareer, profileStore:restoredProfile });
   assert.deepEqual(repeated, { ok:true, recovered:0 });
 });
+
+
+test('P27 récompenses : la réconciliation rejette un identifiant long sans le tronquer', () => {
+  let calls = 0;
+  const result = applyCareerMatchReward({
+    careerReward: { experience: 100, coins: 20 },
+    profileStore: { grantMatchRewards: () => { calls++; return { ok:true }; } },
+    matchId: 'm'.repeat(64) + 'different'
+  });
+  assert.deepEqual(result, { ok:false, reason:'invalid-match-id' });
+  assert.equal(calls, 0);
+});
+
+test('P27 récompenses : la réconciliation conserve exactement les identifiants valides', () => {
+  const matchId = 'm'.repeat(63) + 'Z';
+  let received = null;
+  const result = applyCareerMatchReward({
+    careerReward: { experience: 100, coins: 20 },
+    profileStore: { grantMatchRewards: value => { received = value; return { ok:true, duplicate:false }; } },
+    matchId
+  });
+  assert.equal(result.ok, true);
+  assert.equal(received.matchId, matchId);
+});
