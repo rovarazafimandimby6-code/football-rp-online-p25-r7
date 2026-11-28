@@ -69,8 +69,9 @@ export class D1PlayerCareerRepository {
   }
   normalizeMatch(input = {}) {
     if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("INVALID_CAREER_MATCH");
-    const matchId = clean(input.matchId, 64);
-    if (!matchId || !RESULTS.has(input.result)) throw new Error("INVALID_CAREER_MATCH");
+    const rawMatchId = typeof input.matchId === "string" ? input.matchId.trim() : "";
+    const matchId = clean(rawMatchId, 64);
+    if (!matchId || rawMatchId.length > 64 || !RESULTS.has(input.result)) throw new Error("INVALID_CAREER_MATCH");
     const finalizedAt = Number.isSafeInteger(input.finalizedAt) && input.finalizedAt >= 0 ? input.finalizedAt : this.now();
     const stats = Object.fromEntries(Object.keys(STAT_COLUMNS).map(field => [field, safeCount(input.stats?.[field])]));
     stats.completedPasses = Math.min(stats.passes, stats.completedPasses);
