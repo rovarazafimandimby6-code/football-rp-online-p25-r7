@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, unlinkSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, unlinkSync, existsSync, utimesSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createPlayerDataBackup, verifyPlayerDataBackup, restorePlayerDataBackup, createRotatingPlayerDataBackup } from '../server/player-data-backup.js';
@@ -56,7 +56,7 @@ test('P27 compte: sauvegarde portable vérifiée et restauration des données jo
     assert.equal(verifyPlayerDataBackup(backup).ok,true);
     const changed={...schemas.progression,players:[{accountId:'account-1',progression:{level:1}}]};
     writeFileSync(path.join(target.directories.progression,'progression.json'),JSON.stringify(changed));
-    const result=restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true});
+    const result=restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true,allowNewer:true});
     assert.equal(result.ok,true);
     assert.deepEqual(JSON.parse(readFileSync(path.join(target.directories.progression,'progression.json'),'utf8')),schemas.progression);
     assert.deepEqual(JSON.parse(readFileSync(path.join(target.directories.accounts,'accounts.json'),'utf8')),schemas.accounts);
@@ -71,7 +71,7 @@ test('P27 compte: refuse un backup modifié avant toute restauration',()=>{
     const bundle=JSON.parse(readFileSync(backup,'utf8'));
     bundle.files.progression.content=bundle.files.progression.content.replace('"level":4','"level":99');
     writeFileSync(backup,JSON.stringify(bundle));
-    assert.throws(()=>restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true}),/BACKUP_CHECKSUM_INVALID:progression/);
+    assert.throws(()=>restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true,allowNewer:true}),/BACKUP_CHECKSUM_INVALID:progression/);
     assert.deepEqual(JSON.parse(readFileSync(path.join(target.directories.progression,'progression.json'),'utf8')),schemas.progression);
   }finally{rmSync(source.root,{recursive:true,force:true});rmSync(target.root,{recursive:true,force:true});}
 });
@@ -179,7 +179,7 @@ test('P27 sauvegardes : les checkpoints de match sont archivés avec hash seulem
     assert.equal(archived.rooms[0].players[0].token,undefined);
     assert.match(archived.rooms[0].players[0].tokenHash,/^[a-f0-9]{64}$/);
     assert.ok(verifyPlayerDataBackup(backup).stores.includes('roomCheckpoints'));
-    const result=restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true});
+    const result=restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true,allowNewer:true});
     assert.ok(result.archivedOnly.includes('roomCheckpoints'));
     assert.ok(!result.restored.includes('roomCheckpoints'));
     assert.deepEqual(JSON.parse(readFileSync(roomFile,'utf8')),protectedCurrent);
@@ -216,11 +216,11 @@ test('P27 sauvegardes : exige une confirmation explicite avant remplacement et a
   try{
     createPlayerDataBackup({directories:source.directories,outputFile:backup});
     assert.throws(()=>restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,stores:['progression']}),/RESTORE_OVERWRITE_CONFIRMATION_REQUIRED:progression/);
-    const result=restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,stores:['progression'],overwriteExisting:true});
+    const result=restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,stores:['progression'],overwriteExisting:true,allowNewer:true});
     assert.deepEqual(result.restored,['progression']);
     assert.deepEqual(JSON.parse(readFileSync(path.join(target.directories.progression,'progression.json'),'utf8')),schemas.progression);
     assert.deepEqual(JSON.parse(readFileSync(path.join(target.directories.accounts,'accounts.json'),'utf8')),schemas.accounts);
-    assert.throws(()=>restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,stores:['roomCheckpoints'],overwriteExisting:true}),/RESTORE_STORE_NOT_ALLOWED:roomCheckpoints/);
+    assert.throws(()=>restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,stores:['roomCheckpoints'],overwriteExisting:true,allowNewer:true}),/RESTORE_STORE_NOT_ALLOWED:roomCheckpoints/);
   }finally{rmSync(source.root,{recursive:true,force:true});rmSync(target.root,{recursive:true,force:true});}
 });
 
@@ -231,4 +231,22 @@ test('P27 sauvegardes : refuse les options de restauration contradictoires',()=>
     assert.throws(()=>restorePlayerDataBackup({backupFile:backup,dryRun:false}),/RESTORE_APPLY_CONFIRMATION_REQUIRED/);
     assert.throws(()=>restorePlayerDataBackup({backupFile:backup,dryRun:true,apply:true}),/RESTORE_MODE_CONFLICT/);
   }finally{rmSync(source.root,{recursive:true,force:true});}
+});
+
+test('P27 sauvegardes : bloque les fichiers plus récents que la source du backup',()=>{
+  const source=makeRoot(),target=makeRoot(),backup=path.join(source.root,'newer-protection.json');
+  try{
+    createPlayerDataBackup({directories:source.directories,outputFile:backup});
+    const currentFile=path.join(target.directories.progression,'progression.json');
+    const current={version:1,players:[{accountId:'account-1',progression:{level:99}}]};
+    writeFileSync(currentFile,JSON.stringify(current));
+    const future=new Date(Date.now()+60000);
+    utimesSync(currentFile,future,future);
+    const dry=restorePlayerDataBackup({backupFile:backup,directories:target.directories});
+    assert.ok(dry.protectedNewer.includes('progression'));
+    assert.throws(()=>restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true}),/RESTORE_NEWER_DATA_PROTECTED:progression/);
+    assert.deepEqual(JSON.parse(readFileSync(currentFile,'utf8')),current);
+    const forced=restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true,allowNewer:true,stores:['progression']});
+    assert.deepEqual(forced.restored,['progression']);
+  }finally{rmSync(source.root,{recursive:true,force:true});rmSync(target.root,{recursive:true,force:true});}
 });
