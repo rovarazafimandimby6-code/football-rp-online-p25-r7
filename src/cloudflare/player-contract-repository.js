@@ -8,7 +8,7 @@ function validateIdentity(accountId, playerId) {
   if (typeof accountId !== "string" || !UUID_RE.test(accountId)) throw new Error("INVALID_ACCOUNT_ID");
   if (typeof playerId !== "string" || !PLAYER_ID_RE.test(playerId)) throw new Error("INVALID_PLAYER_ID");
 }
-function normalizeContract(input) {
+function normalizeContract(input, playerId) {
   if (input === null || input === undefined) return { status: "free-agent", clubId: null, json: null };
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("INVALID_PLAYER_CONTRACT");
   const contract = structuredClone(input);
