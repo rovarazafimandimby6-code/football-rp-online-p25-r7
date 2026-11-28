@@ -17,6 +17,7 @@ const DEFAULT_APP_ORIGINS = new Set([
   "capacitor://localhost",
   "http://localhost",
   "https://localhost",
+  "https://football-rp-online-p25-r7.onrender.com",
 ]);
 
 function isAllowedOrigin(request, env) {
