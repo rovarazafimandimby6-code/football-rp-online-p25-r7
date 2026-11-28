@@ -1,3 +1,12 @@
+function stableJson(value) {
+  if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).filter(key => value[key] !== undefined).sort()
+      .map(key => JSON.stringify(key) + ':' + stableJson(value[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+
 /** HTTP client for persistent player accounts; separate from short-lived match-room tokens. */
 function recoverySnapshotMissingSections(snapshot) {
   const missing = [];
@@ -271,7 +280,7 @@ export class OnlineAccountClient {
     // A previous PUT may have reached the server even if its response was lost.
     // Treat an identical server profile as an already-applied retry, without
     // creating another revision or duplicating the write.
-    if (current.profile && JSON.stringify(current.profile) === JSON.stringify(safeProfile)) {
+    if (current.profile && stableJson(current.profile) === stableJson(safeProfile)) {
       return { revision: current.revision, unchanged: true };
     }
     const saved = await this.request('/api/player-profile/me', { method: 'PUT', auth: true, body: { profile: safeProfile, expectedRevision: current.revision } });
