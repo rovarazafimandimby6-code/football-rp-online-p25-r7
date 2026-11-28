@@ -397,8 +397,6 @@ async function handleMatchRoomRoute(request, env, url) {
 
   const roomId = roomPath[1];
   const action = roomPath[2] || "state";
-  const stub = namespace.get(namespace.idFromName(roomId));
-  if (action === "socket") return stub.fetch(request);
 
   if (action === "join" && request.method === "POST") {
     try {
@@ -411,6 +409,7 @@ async function handleMatchRoomRoute(request, env, url) {
         identity = await new D1PlayerIdentityRepository(env.P27_DB).getByAccountId(account.id);
         if (!identity || identity.playerId !== account.playerId) return json(403, { error: "PLAYER_IDENTITY_REQUIRED" });
       }
+      const stub = namespace.get(namespace.idFromName(roomId));
       return await stub.fetch("https://match-room.internal/internal/join", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -420,6 +419,9 @@ async function handleMatchRoomRoute(request, env, url) {
       });
     } catch (error) { return errorResponse(error); }
   }
+
+  const stub = namespace.get(namespace.idFromName(roomId));
+  if (action === "socket") return stub.fetch(request);
   if (action === "result" && request.method === "GET") return stub.fetch("https://match-room.internal/internal/result");
   if (!roomPath[2] && request.method === "GET") {
     const since = url.searchParams.get("sinceSequence");
