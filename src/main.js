@@ -173,7 +173,7 @@ void accountClient.resumeCookieSession().then(async () => {
   void profileSyncCoordinator.flush();
   const button = document.querySelector('[data-action="account-recovery-preview"]');
   if (button) button.disabled = false;
-}).catch(() => {});
+}).catch(() => { void reserveLocalPlayerIdentity(); });
 }
 if (!P27_OFFLINE_TEST) {
   window.addEventListener('online', () => { void profileSyncCoordinator.flush().catch(() => {}); });
