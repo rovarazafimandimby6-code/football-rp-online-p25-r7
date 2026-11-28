@@ -405,6 +405,7 @@ async function handleMatchRoomRoute(request, env, url) {
       const body = await readJson(request);
       const sessionToken = sessionTokenFromRequest(request);
       const account = sessionToken ? await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionToken) : null;
+      if (account) return json(409, { error: "MATCH_CAREER_INGEST_NOT_READY" });
       if (sessionToken && !account) return json(401, { error: "SESSION_EXPIRED" });
       let identity = null;
       if (account) {
