@@ -178,6 +178,7 @@ test('P27 sauvegardes : les checkpoints de match sont archivés avec hash seulem
     assert.equal(archived.rooms[0].id,'room-archive-1');
     assert.equal(archived.rooms[0].players[0].token,undefined);
     assert.match(archived.rooms[0].players[0].tokenHash,/^[a-f0-9]{64}$/);
+    assert.ok(verifyPlayerDataBackup(backup).stores.includes('roomCheckpoints'));
     const result=restorePlayerDataBackup({backupFile:backup,directories:target.directories});
     assert.ok(result.archivedOnly.includes('roomCheckpoints'));
     assert.ok(!result.restored.includes('roomCheckpoints'));
