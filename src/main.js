@@ -24,6 +24,11 @@ import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from '.
 import * as THREE from 'three';
 
 const P27_OFFLINE_TEST = typeof __P27_OFFLINE_TEST__ !== 'undefined' && __P27_OFFLINE_TEST__;
+const P27_API_BASE_URL = typeof __P27_API_BASE_URL__ !== 'undefined' && /^https:\/\//.test(__P27_API_BASE_URL__)
+  ? __P27_API_BASE_URL__.replace(/\/$/, '')
+  : location.origin;
+const p27ApiUrl = path => new URL(path, P27_API_BASE_URL + '/').toString();
+const p27ApiFetch = (input, init = {}) => globalThis.fetch(p27ApiUrl(input), { ...init, credentials: 'include' });
 const COUNTRY_NAME_CODES = Object.freeze({
   MADAGASCAR:'MG', FRANCE:'FR', COLOMBIE:'CO', CAMEROUN:'CM', 'RD CONGO':'CD',
   'RÉPUBLIQUE DÉMOCRATIQUE DU CONGO':'CD', 'REPUBLIQUE DEMOCRATIQUE DU CONGO':'CD',
@@ -132,7 +137,7 @@ if (!careerRewardRecovery.ok) console.warn('[Football RP Online] Récompenses en
 syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
 let game = null;
 let pendingOnlineMatch = null;
-const accountClient = new OnlineAccountClient({ baseUrl: location.origin });
+const accountClient = new OnlineAccountClient({ baseUrl: P27_API_BASE_URL });
 let pendingAccountRecoveryPreview = null;
 if (!P27_OFFLINE_TEST) accountClient.restoreSession();
 const profileSyncOutbox = new PlayerSyncOutbox();
@@ -176,7 +181,7 @@ if (!P27_OFFLINE_TEST) {
     if (document.visibilityState === 'visible') void profileSyncCoordinator.flush().catch(() => {});
   });
 }
-const onlineClient = new OnlineMatchClient({ baseUrl: location.origin, accountTokenProvider: () => accountClient.token });
+const onlineClient = new OnlineMatchClient({ baseUrl: P27_API_BASE_URL, accountTokenProvider: () => accountClient.token });
 let avatarPreview = null;
 function disposeAvatarPreview() {
   if (!avatarPreview) return;
@@ -333,8 +338,12 @@ const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':
 async function reserveLocalPlayerIdentity() {
   if (P27_OFFLINE_TEST || !localPlayerProfileStore || !localPlayerIdentity || localPlayerIdentity.identityStatus === 'reserved') return;
   try {
-    localPlayerIdentity = await localPlayerProfileStore.reserveWithServer();
-    await accountClient.resumeCookieSession().catch(() => null);
+    localPlayerIdentity = await localPlayerProfileStore.reserveWithServer({
+      endpoint: p27ApiUrl('/api/player-identities/reserve'),
+      onSession: session => accountClient.acceptSession(session)
+    });
+    if (accountClient.token) await accountClient.refresh().catch(() => null);
+    else await accountClient.resumeCookieSession().catch(() => null);
     document.querySelectorAll('[data-player-id]').forEach(node => { node.textContent = localPlayerIdentity.id; });
     void profileSyncCoordinator?.flush().catch(() => {});
   } catch (_) {
@@ -367,7 +376,7 @@ async function loadPlayerCareer(player) {
     return;
   }
   try {
-    const response = await fetch(`/api/players/${encodeURIComponent(playerId)}/career`, { headers: { accept: 'application/json' }, cache: 'no-store' });
+    const response = await p27ApiFetch(`/api/players/${encodeURIComponent(playerId)}/career`, { headers: { accept: 'application/json' }, cache: 'no-store' });
     if (sequence !== playerCareerRequestSequence || selectedPlayerProfile !== player) return;
     if (response.status === 404) {
       target.innerHTML = '<b>Aucun match enregistré</b><p>Ce joueur n’a pas encore participé à un match enregistré sur le serveur.</p>';
@@ -413,7 +422,7 @@ async function loadPublicClubDirectory() {
   if(status) status.textContent='Synchronisation du catalogue de la saison active…';
   try {
     const fetchPage=async offset=>{
-      const response=await fetch('/api/clubs?limit=100&offset='+offset,{headers:{Accept:'application/json'}});
+      const response=await p27ApiFetch('/api/clubs?limit=100&offset='+offset,{headers:{Accept:'application/json'}});
       if(!response.ok) throw new Error('CATALOGUE_HTTP_'+response.status);
       return response.json();
     };
@@ -466,7 +475,7 @@ async function loadServerCompetitionOverview() {
   const host=document.getElementById('menu-content');
   if(!host || !host.querySelector('.competition-layout')) return;
   try {
-    const response=await fetch('/api/competitions',{headers:{Accept:'application/json'}});
+    const response=await p27ApiFetch('/api/competitions',{headers:{Accept:'application/json'}});
     if(!response.ok) throw new Error('COMPETITIONS_HTTP_'+response.status);
     const snapshot=await response.json();
     if(requestId!==publicCompetitionRequest || !document.getElementById('menu-content')?.querySelector('.competition-layout')) return;
@@ -514,7 +523,7 @@ async function loadServerCompetitionOverview() {
 async function rpClubApi(path, options = {}) {
   if (!accountClient.hasSession && path !== '') { try { await accountClient.resumeCookieSession(); } catch {} }
   const headers = Object.assign({ Accept:'application/json' }, options.body ? { 'content-type':'application/json' } : {}, accountClient.token ? { authorization:'Bearer ' + accountClient.token } : {}, options.headers || {});
-  const response = await fetch('/api/rp-clubs' + path, Object.assign({}, options, { credentials:'same-origin', headers }));
+  const response = await p27ApiFetch('/api/rp-clubs' + path, Object.assign({}, options, { credentials:'include', headers }));
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || payload.reason || ('RP_CLUB_HTTP_' + response.status));
   return payload;
@@ -1041,7 +1050,7 @@ async function renderResultsPage(offset = 0, selectedRoomId = null) {
   const requestId = ++resultsRequestSequence;
   content.innerHTML = '<section class="competition-panel results-panel"><p class="notice">Chargement de l’historique des rencontres…</p></section>';
   try {
-    const response = await fetch(`/api/results?limit=10&offset=${Math.max(0, Math.min(5000, Math.floor(offset)))}`, { headers: { accept: 'application/json' }, cache: 'no-store' });
+    const response = await p27ApiFetch(`/api/results?limit=10&offset=${Math.max(0, Math.min(5000, Math.floor(offset)))}`, { headers: { accept: 'application/json' }, cache: 'no-store' });
     if (!response.ok) throw new Error(response.status === 404 ? 'Le serveur ne propose pas encore l’historique des résultats.' : `Serveur indisponible (${response.status}).`);
     const payload = await response.json();
     if (requestId !== resultsRequestSequence || !document.getElementById('menu-content')) return;
@@ -1078,7 +1087,7 @@ async function renderRankingsPage() {
   const requestId = ++publicCompetitionRequest;
   host.innerHTML = '<section class="competition-panel ranking-screen"><p class="notice">Chargement des classements officiels…</p></section>';
   try {
-    const response = await fetch('/api/competitions', { headers: { accept: 'application/json' }, cache: 'no-store' });
+    const response = await p27ApiFetch('/api/competitions', { headers: { accept: 'application/json' }, cache: 'no-store' });
     if (!response.ok) throw new Error('Le service des compétitions est indisponible.');
     const snapshot = await response.json();
     if (requestId !== publicCompetitionRequest || !document.getElementById('menu-content')) return;
@@ -1108,7 +1117,7 @@ async function renderResultDetail(roomId, requestId = resultsRequestSequence) {
   if (!host || !/^[a-f0-9]{12}$/.test(roomId)) return;
   host.innerHTML = '<p class="notice">Chargement de la feuille de match…</p>';
   try {
-    const response = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/result`, { cache: 'no-store' });
+    const response = await p27ApiFetch(`/api/rooms/${encodeURIComponent(roomId)}/result`, { cache: 'no-store' });
     if (!response.ok) throw new Error('La feuille de match n’est plus disponible sur le serveur.');
     const result = await response.json();
     if (requestId !== resultsRequestSequence || !document.getElementById('result-detail')) return;
@@ -1670,11 +1679,11 @@ menu.addEventListener('click', event => {
     void (async () => {
       try {
         let response;
-        if (action === 'google-login') response = await fetch('/api/auth/google/login/start', { method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' } });
+        if (action === 'google-login') response = await p27ApiFetch('/api/auth/google/login/start', { method: 'POST', credentials: 'include', headers: { accept: 'application/json' } });
         else {
           const identity = localPlayerProfileStore && localPlayerProfileStore.load();
           if (!identity || identity.identityStatus !== 'reserved') throw new Error('LOCAL_IDENTITY_NOT_SERVER_RESERVED');
-          response = await fetch('/api/auth/google/link/start', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ localProfileKey: identity.localProfileKey, localProofSecret: identity.localProofSecret }) });
+          response = await p27ApiFetch('/api/auth/google/link/start', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ localProfileKey: identity.localProfileKey, localProofSecret: identity.localProofSecret }) });
         }
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'GOOGLE_AUTH_START_FAILED');
