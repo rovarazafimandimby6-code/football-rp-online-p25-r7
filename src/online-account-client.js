@@ -133,21 +133,39 @@ export class OnlineAccountClient {
     return Boolean(this.token || (this.cookieSession && this.account?.id));
   }
 
+  clearLocalSession() {
+    this.token = null;
+    this.account = null;
+    this.cookieSession = false;
+    try { this.storage?.removeItem('fpro.account.session'); } catch {}
+    return true;
+  }
+
   async resumeCookieSession() {
     if (this.token) return this.refresh();
-    const result = await this.request('/api/accounts/me');
-    if (!result?.account || typeof result.account.id !== 'string') throw new Error('INVALID_ACCOUNT_SESSION');
-    this.account = result.account;
-    this.cookieSession = true;
-    return this.account;
+    try {
+      const result = await this.request('/api/accounts/me');
+      if (!result?.account || typeof result.account.id !== 'string') throw new Error('INVALID_ACCOUNT_SESSION');
+      this.account = result.account;
+      this.cookieSession = true;
+      return this.account;
+    } catch (error) {
+      if (error?.message === 'SESSION_EXPIRED') this.clearLocalSession();
+      throw error;
+    }
   }
 
   async refresh() {
     if (!this.hasSession) return this.resumeCookieSession();
-    const result = await this.request('/api/accounts/me', { auth: true });
-    this.account = result.account;
-    this.persist();
-    return this.account;
+    try {
+      const result = await this.request('/api/accounts/me', { auth: true });
+      this.account = result.account;
+      this.persist();
+      return this.account;
+    } catch (error) {
+      if (error?.message === 'SESSION_EXPIRED') this.clearLocalSession();
+      throw error;
+    }
   }
 
   async createLocalReplica(localProfileStore) {
@@ -412,12 +430,7 @@ export class OnlineAccountClient {
   async logout() {
     if (!this.hasSession) return false;
     try { await this.request('/api/accounts/logout', { method: 'POST', auth: true }); }
-    finally {
-      this.token = null;
-      this.account = null;
-      this.cookieSession = false;
-      try { this.storage?.removeItem('fpro.account.session'); } catch {}
-    }
+    finally { this.clearLocalSession(); }
     return true;
   }
 }
