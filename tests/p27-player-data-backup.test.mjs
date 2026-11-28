@@ -244,7 +244,7 @@ test('P27 sauvegardes : bloque les fichiers plus récents que la source du backu
     utimesSync(currentFile,future,future);
     const dry=restorePlayerDataBackup({backupFile:backup,directories:target.directories});
     assert.ok(dry.protectedNewer.includes('progression'));
-    assert.throws(()=>restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true}),/RESTORE_NEWER_DATA_PROTECTED:progression/);
+    assert.throws(()=>restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,stores:['progression'],overwriteExisting:true}),/RESTORE_NEWER_DATA_PROTECTED:progression/);
     assert.deepEqual(JSON.parse(readFileSync(currentFile,'utf8')),current);
     const forced=restorePlayerDataBackup({backupFile:backup,directories:target.directories,dryRun:false,apply:true,overwriteExisting:true,allowNewer:true,stores:['progression']});
     assert.deepEqual(forced.restored,['progression']);
