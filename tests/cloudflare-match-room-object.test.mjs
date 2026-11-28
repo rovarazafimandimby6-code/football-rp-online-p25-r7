@@ -343,3 +343,61 @@ test("finalized match outbox retries a reward failure without losing career or d
   assert.equal(state.backing.has("career-outbox"), false);
   stopTimer(object);
 });
+
+test("finalized match outbox survives Durable Object restart and retries pending progression", async () => {
+  const storage = new Map();
+  const accountId = "123e4567-e89b-42d3-a456-426614174001";
+  const careerLedger = new Set();
+  const rewardLedger = new Set();
+  const first = new P27MatchRoomDurableObject(makeState(storage), {});
+  await first.fetch(request("/internal/create", "POST", { roomId: "a1b2c3d4e5f6" }));
+  const joined = await (await first.fetch(request("/internal/join", "POST", {
+    accountId, careerPlayerId: "FRP-654321", displayName: "Reprise après crash",
+  }))).json();
+  let failReward = true;
+  first.careerRepository = {
+    async recordFinalizedMatch(account, player, match) {
+      careerLedger.add(match.matchId);
+      return { duplicate: careerLedger.has(match.matchId) };
+    },
+  };
+  first.progressionRepository = {
+    async grantMatchReward(account, reward) {
+      if (failReward) { failReward = false; throw new Error("TEMPORARY_REWARD_FAILURE"); }
+      rewardLedger.add(reward.matchId);
+    },
+  };
+  first.repository = { async recordFinalizedResult() {} };
+  const result = {
+    roomId: "a1b2c3d4e5f6", phase: "fulltime", finalizedAt: 1_700_000_000_001,
+    score: { blue: 1, red: 0 }, outcome: "blue",
+    players: [{
+      playerId: joined.playerId, team: "blue", role: "FWD", name: "Reprise après crash",
+      rating: 7.5, minutesPlayedMs: 90_000,
+      stats: { goals: 1, assists: 0, shots: 1, passes: 2, completedPasses: 2, tackles: 0 },
+    }],
+  };
+  first.stores.results.save(result);
+  await assert.rejects(first._syncFinalizedResult(), /TEMPORARY_REWARD_FAILURE/);
+  assert.equal(storage.get("career-outbox-complete"), undefined);
+  assert.ok(Array.isArray(storage.get("career-outbox")));
+  stopTimer(first);
+
+  const second = new P27MatchRoomDurableObject(makeState(storage), {});
+  await second.ready;
+  second.careerRepository = {
+    async recordFinalizedMatch(account, player, match) { careerLedger.add(match.matchId); },
+  };
+  second.progressionRepository = {
+    async grantMatchReward(account, reward) { rewardLedger.add(reward.matchId); },
+  };
+  second.repository = { async recordFinalizedResult() {} };
+  await second._syncFinalizedResult();
+  assert.equal(careerLedger.size, 1);
+  assert.equal(rewardLedger.size, 1);
+  assert.equal(storage.get("career-outbox-complete"), true);
+  assert.equal(storage.get("finalized-result-synced"), true);
+  assert.equal(storage.has("career-outbox"), false);
+  stopTimer(second);
+});
+
