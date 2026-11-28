@@ -140,3 +140,71 @@ test("Cloudflare API rejects unconfigured browser origins", async () => {
   assert.equal(response.status, 403);
   assert.equal((await response.json()).error, "ORIGIN_NOT_ALLOWED");
 });
+
+test("match room gateway never trusts client-supplied account or career identity", async () => {
+  const forwarded = [];
+  const stub = {
+    async fetch(input, init = {}) {
+      const url = typeof input === "string" ? input : input.url;
+      const body = init.body ? JSON.parse(init.body) : null;
+      forwarded.push({ url, method: init.method || "GET", body });
+      return new Response(JSON.stringify({ ok: true, url, body }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    },
+  };
+  const env = {
+    P27_DB: { prepare() { return { bind() { return this; }, first: async () => null }; }, batch: async () => [] },
+    P27_MATCH_ROOMS: {
+      idFromName(name) { return name; },
+      get(name) { assert.match(name, /^[a-f0-9]{12}$/); return stub; },
+    },
+  };
+  const response = await worker.fetch(request("/api/rooms/a1b2c3d4e5f6/join", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      displayName: "Joueur test",
+      accountId: "attacker-controlled-account",
+      careerPlayerId: "FRP-999999",
+    }),
+  }), env);
+  assert.equal(response.status, 200);
+  const call = forwarded.at(-1);
+  assert.equal(call.url, "https://match-room.internal/internal/join");
+  assert.equal(call.body.accountId, null);
+  assert.equal(call.body.careerPlayerId, null);
+  assert.equal(call.body.displayName, "Joueur test");
+});
+
+test("match room gateway creates a server-generated room ID and ignores client identity fields", async () => {
+  const forwarded = [];
+  const stub = {
+    async fetch(input, init = {}) {
+      const body = init.body ? JSON.parse(init.body) : null;
+      forwarded.push({ url: typeof input === "string" ? input : input.url, body });
+      return new Response(JSON.stringify({ ok: true }), { status: 201 });
+    },
+  };
+  const env = {
+    P27_DB: { prepare() { return { bind() { return this; }, first: async () => null }; }, batch: async () => [] },
+    P27_MATCH_ROOMS: {
+      idFromName(name) { return name; },
+      get(name) { assert.match(name, /^[a-f0-9]{12}$/); return stub; },
+    },
+  };
+  const response = await worker.fetch(request("/api/rooms", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: "Match amical",
+      accountId: "forged-account",
+      careerPlayerId: "FRP-000000",
+    }),
+  }), env);
+  assert.equal(response.status, 201);
+  assert.equal(forwarded.length, 1);
+  assert.equal(forwarded[0].url, "https://match-room.internal/internal/create");
+  assert.match(forwarded[0].body.roomId, /^[a-f0-9]{12}$/);
+  assert.equal(forwarded[0].body.name, "Match amical");
+});
