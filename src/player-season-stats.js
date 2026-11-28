@@ -1,5 +1,7 @@
 import { readJsonWithBackup, writeJsonWithBackup } from './persistent-json.js';
 
+const MATCH_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const validMatchId = value => typeof value === 'string' && MATCH_ID_RE.test(value);
 const KEY = 'football-rp-online.player-season-stats.v1';
 const FIELDS = ['matches','minutesPlayedMs','goals','assists','shots','passes','completedPasses','tackles','interceptions','saves','cleanSheets','wins','draws','losses','playerOfMatch'];
 const count = value => Number.isFinite(Number(value)) ? Math.max(0, Math.min(1_000_000_000, Math.floor(Number(value)))) : 0;
@@ -26,7 +28,7 @@ const normalizeMatch = match => {
     ...stats, result: match.result, rating: ratingValue(match.rating) ?? calculateMatchRating(stats, match.result),
     minutesPlayedMs: count(match.minutesPlayedMs), role: ['GK','DEF','MID','FWD'].includes(match.role) ? match.role : 'MID',
     cleanSheet: match.cleanSheet === true, playerOfMatch: match.playerOfMatch === true,
-    ...(typeof match.matchId === 'string' ? { matchId: match.matchId.slice(0,64) } : {}),
+    ...(validMatchId(match.matchId) ? { matchId: match.matchId } : {}),
     opponent: typeof match.opponent === 'string' ? match.opponent.replace(/[<>\u0000-\u001f]/g,'').slice(0,48) : '',
     date: Number.isFinite(Date.parse(match.date)) ? new Date(match.date).toISOString() : new Date(0).toISOString()
   };
@@ -36,7 +38,7 @@ const normalizeSeason = data => {
   return {
     totals: { ...blank(), ...Object.fromEntries(FIELDS.map(field => [field, count(data.totals?.[field])])) },
     matches: Array.isArray(data.matches) ? data.matches.map(normalizeMatch).filter(Boolean).slice(-200) : [],
-    processedMatchIds: Array.isArray(data.processedMatchIds) ? [...new Set(data.processedMatchIds.filter(id => typeof id === 'string' && id.trim()).map(id => id.slice(0,64)))].slice(-2000) : []
+    processedMatchIds: Array.isArray(data.processedMatchIds) ? [...new Set(data.processedMatchIds.filter(validMatchId))].slice(-2000) : []
   };
 };
 
@@ -62,7 +64,8 @@ export class PlayerSeasonStats {
   save() { return writeJsonWithBackup(this.storage, this.key, this.snapshot(), normalizeSeason); }
   recordMatch({ result = 'draw', stats = {}, date = new Date().toISOString(), matchId = null, minutesPlayedMs = 0, role = 'MID', rating = null, playerOfMatch = false, opponent = '' } = {}) {
     if (!['win','draw','loss'].includes(result)) return { ok: false, reason: 'invalid-result' };
-    const id = typeof matchId === 'string' ? matchId.trim().slice(0,64) : '';
+    if (matchId !== null && matchId !== undefined && !validMatchId(matchId)) return { ok:false, reason:'invalid-match-id' };
+    const id = matchId ?? '';
     if (id && this.processedMatchIds.includes(id)) return { ok: true, duplicate: true, totals: { ...this.totals } };
     const entry = Object.fromEntries(['goals','assists','shots','passes','completedPasses','tackles','interceptions','saves'].map(field => [field, count(stats[field])]));
     Object.assign(entry, {
