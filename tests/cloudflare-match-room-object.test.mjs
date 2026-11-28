@@ -103,3 +103,62 @@ test("Durable Object restores its checkpoint and requires reconnect before human
   assert.equal((await reconnect.json()).reconnected, true);
   stopTimer(second);
 });
+
+
+test("Durable Object WebSocket authenticates once and accepts sequenced player input", async () => {
+  const state = makeState();
+  const object = new P27MatchRoomDurableObject(state, {});
+  await object.fetch(request("/internal/create", "POST", { roomId: "a1b2c3d4e5f6" }));
+  const joined = await (await object.fetch(request("/internal/join", "POST", {}))).json();
+  const sent = [];
+  const socket = {
+    attachment: null,
+    serializeAttachment(value) { this.attachment = structuredClone(value); },
+    deserializeAttachment() { return this.attachment ? structuredClone(this.attachment) : null; },
+    send(value) { sent.push(JSON.parse(value)); },
+    close(code, reason) { this.closed = { code, reason }; },
+  };
+  await object.webSocketMessage(socket, JSON.stringify({
+    v: 1, type: "hello", roomId: "a1b2c3d4e5f6", token: joined.token,
+    afterSequence: -1, afterEventId: 0,
+  }));
+  assert.equal(sent[0].type, "welcome");
+  assert.equal(sent[0].playerId, joined.playerId);
+  assert.equal(sent[1].type, "snapshot");
+  assert.equal(JSON.stringify(sent).includes(joined.token), false);
+  const before = object.manager.rooms.get("a1b2c3d4e5f6").players.get(joined.playerId).lastInputSequence;
+  await object.webSocketMessage(socket, JSON.stringify({
+    v: 1, type: "input", sequence: before + 1, x: 0.1, z: 0.2,
+    sprint: false, action: null,
+  }));
+  assert.equal(sent.at(-1).type, "ack");
+  assert.equal(sent.at(-1).sequence, before + 1);
+  stopTimer(object);
+});
+
+test("Durable Object WebSocket rejects a reused input sequence", async () => {
+  const state = makeState();
+  const object = new P27MatchRoomDurableObject(state, {});
+  await object.fetch(request("/internal/create", "POST", { roomId: "a1b2c3d4e5f6" }));
+  const joined = await (await object.fetch(request("/internal/join", "POST", {}))).json();
+  const sent = [];
+  const socket = {
+    attachment: null,
+    serializeAttachment(value) { this.attachment = structuredClone(value); },
+    deserializeAttachment() { return this.attachment ? structuredClone(this.attachment) : null; },
+    send(value) { sent.push(JSON.parse(value)); },
+    close(code, reason) { this.closed = { code, reason }; },
+  };
+  await object.webSocketMessage(socket, JSON.stringify({
+    v: 1, type: "hello", roomId: "a1b2c3d4e5f6", token: joined.token,
+    afterSequence: -1, afterEventId: 0,
+  }));
+  const input = { v: 1, type: "input", sequence: 0, x: 0, z: 0, sprint: false, action: null };
+  await object.webSocketMessage(socket, JSON.stringify(input));
+  await object.webSocketMessage(socket, JSON.stringify(input));
+  assert.equal(sent.at(-1).type, "error");
+  assert.equal(sent.at(-1).code, "STALE_INPUT");
+  assert.equal(sent.at(-1).fatal, true);
+  assert.equal(socket.closed.code, 1008);
+  stopTimer(object);
+});
