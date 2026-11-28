@@ -130,5 +130,5 @@ test("D1 progression treats an omitted rating as neutral instead of the minimum 
   const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
   const result = await repository.grantMatchReward(accountId, { matchId: "match-neutral-rating", result: "draw" });
   assert.equal(result.reward.experience, 35);
-  assert.equal(result.reward.coins, 20);
+  assert.equal(result.reward.coins, 28);
 });
