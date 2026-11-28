@@ -162,3 +162,50 @@ test("Durable Object WebSocket rejects a reused input sequence", async () => {
   assert.equal(socket.closed.code, 1008);
   stopTimer(object);
 });
+
+
+test("finalized account match writes idempotent career and progression outbox events", async () => {
+  const state = makeState();
+  const object = new P27MatchRoomDurableObject(state, {});
+  await object.fetch(request("/internal/create", "POST", { roomId: "a1b2c3d4e5f6" }));
+  const accountId = "123e4567-e89b-42d3-a456-426614174000";
+  const joined = await (await object.fetch(request("/internal/join", "POST", {
+    accountId, careerPlayerId: "FRP-123456", displayName: "Carrière test",
+  }))).json();
+  const careerWrites = [];
+  const progressionWrites = [];
+  const resultWrites = [];
+  object.careerRepository = {
+    async recordFinalizedMatch(account, player, match) { careerWrites.push({ account, player, match }); },
+  };
+  object.progressionRepository = {
+    async grantMatchReward(account, reward) { progressionWrites.push({ account, reward }); },
+  };
+  object.repository = {
+    async recordFinalizedResult(roomId, result) { resultWrites.push({ roomId, result }); },
+  };
+  const result = {
+    roomId: "a1b2c3d4e5f6", phase: "fulltime", finalizedAt: 1_700_000_000_000,
+    score: { blue: 2, red: 0 }, outcome: "blue",
+    awards: { playerOfMatch: { playerId: joined.playerId } },
+    players: [{
+      playerId: joined.playerId, team: "blue", role: "FWD", name: "Carrière test",
+      rating: 8.2, minutesPlayedMs: 120_000,
+      stats: { goals: 1, assists: 0, shots: 2, passes: 4, completedPasses: 3, tackles: 0 },
+    }],
+  };
+  object.stores.results.save(result);
+  await object._syncFinalizedResult();
+  await object._syncFinalizedResult();
+  assert.equal(careerWrites.length, 1);
+  assert.equal(progressionWrites.length, 1);
+  assert.equal(resultWrites.length, 2);
+  assert.equal(careerWrites[0].account, accountId);
+  assert.equal(careerWrites[0].player, "FRP-123456");
+  assert.equal(careerWrites[0].match.result, "win");
+  assert.equal(careerWrites[0].match.playerOfMatch, true);
+  assert.equal(progressionWrites[0].reward.matchId, result.roomId);
+  assert.equal(state.backing.get("career-outbox-complete"), true);
+  assert.equal(state.backing.get("finalized-result-synced"), true);
+  stopTimer(object);
+});
