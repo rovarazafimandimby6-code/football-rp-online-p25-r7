@@ -65,3 +65,32 @@ test('P27 mapping : refuse les sections absentes ou les structures de store inco
   malformed.progression.processedMatchIds = null;
   assert.throws(() => buildAccountRecoveryPlan(malformed), { message: 'INVALID_RECOVERY_STORE_MAPPING' });
 });
+
+
+test('P27 mapping : refuse les historiques de carrière tronqués, dupliqués ou mal typés', () => {
+  const duplicateCareer = snapshot();
+  duplicateCareer.career.matches.push({ matchId: 'account-career-match', result: 'win' });
+  assert.throws(() => buildAccountRecoveryPlan(duplicateCareer), { message: 'INVALID_RECOVERY_CAREER' });
+
+  const malformedPlayerCareer = snapshot();
+  malformedPlayerCareer.playerCareer.matches = [{ matchId: 'player-career-match', result: 'abandoned' }];
+  assert.throws(() => buildAccountRecoveryPlan(malformedPlayerCareer), { message: 'INVALID_RECOVERY_PLAYER_CAREER' });
+
+  const malformedSeason = snapshot();
+  malformedSeason.seasonStats.matches = [{ matchId: '', result: 'win' }];
+  assert.throws(() => buildAccountRecoveryPlan(malformedSeason), { message: 'INVALID_RECOVERY_SEASON_STATS' });
+});
+
+test('P27 mapping : refuse les ressources et historiques contractuels incohérents', () => {
+  const negativeWallet = snapshot();
+  negativeWallet.contract.wallet = -1;
+  assert.throws(() => buildAccountRecoveryPlan(negativeWallet), { message: 'INVALID_RECOVERY_STORE_MAPPING' });
+
+  const malformedOffer = snapshot();
+  malformedOffer.contract.offers = [null];
+  assert.throws(() => buildAccountRecoveryPlan(malformedOffer), { message: 'INVALID_RECOVERY_STORE_MAPPING' });
+
+  const invalidProgression = snapshot();
+  invalidProgression.progression.level = 0;
+  assert.throws(() => buildAccountRecoveryPlan(invalidProgression), { message: 'INVALID_RECOVERY_STORE_MAPPING' });
+});
