@@ -13,6 +13,34 @@ import { D1PlayerShopRepository } from "./player-shop-repository.js";
 import { verifyCareerIngestSignature } from "./career-ingest-auth.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
+const DEFAULT_APP_ORIGINS = new Set([
+  "capacitor://localhost",
+  "http://localhost",
+  "https://localhost",
+]);
+
+function isAllowedOrigin(request, env) {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  const configured = typeof env.P27_ALLOWED_ORIGINS === "string"
+    ? env.P27_ALLOWED_ORIGINS.split(",").map(value => value.trim()).filter(Boolean)
+    : [];
+  return DEFAULT_APP_ORIGINS.has(origin) || configured.includes(origin);
+}
+
+function withCors(response, request) {
+  const origin = request.headers.get("origin");
+  if (!origin) return response;
+  const headers = new Headers(response.headers);
+  headers.set("access-control-allow-origin", origin);
+  headers.set("access-control-allow-credentials", "true");
+  headers.set("access-control-allow-methods", "GET, POST, PUT, DELETE, OPTIONS");
+  headers.set("access-control-allow-headers", "Accept, Authorization, Content-Type, X-P27-Signature");
+  headers.set("access-control-max-age", "86400");
+  headers.append("vary", "Origin");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 const OIDC_BINDING_COOKIE = "p27_google_oidc_binding";
 const ACCOUNT_SESSION_COOKIE = "p27_account_session";
 const ACCOUNT_SESSION_MAX_AGE = 30 * 24 * 60 * 60;
@@ -156,7 +184,7 @@ async function startGoogleAuthorization(request, env, purpose) {
   const origin = request.headers.get("origin");
   if (origin) {
     try {
-      if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+      if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
     } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
   }
   if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
@@ -332,7 +360,7 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
   return response;
 }
 
-export default {
+const worker = {
   async fetch(request, env = {}) {
     const url = new URL(request.url);
 
@@ -400,6 +428,7 @@ export default {
             playerId: reservation.playerId,
             reserved: true,
             alreadyReserved: reservation.alreadyReserved,
+            session: { token: session.token, account: session.account, expiresAt: session.expiresAt },
           }, { "set-cookie": accountSessionCookie(session.token) });
         }
         const identity = await identities.verifyLocalProof({
@@ -428,7 +457,7 @@ export default {
       const origin = request.headers.get("origin");
       if (origin) {
         try {
-          if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+          if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
         } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
       }
       try {
@@ -465,7 +494,7 @@ export default {
       if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") return json(503, { error: "D1_BINDING_MISSING" });
       const origin = request.headers.get("origin");
       if (origin) {
-        try { if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error:"ORIGIN_NOT_ALLOWED" }); }
+        try { if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
         catch { return json(403, { error:"ORIGIN_NOT_ALLOWED" }); }
       }
       const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionTokenFromRequest(request));
@@ -495,7 +524,7 @@ export default {
         const origin = request.headers.get("origin");
         if (origin) {
           try {
-            if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+            if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
           } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
         }
       }
@@ -541,7 +570,7 @@ export default {
       const origin = request.headers.get("origin");
       if (origin) {
         try {
-          if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+          if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
         } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
       }
       try {
@@ -638,5 +667,17 @@ export default {
       error: "CLOUDFLARE_API_NOT_MIGRATED",
       message: "Cette entrée Cloudflare ne contient pas encore toutes les routes P27.",
     });
+  },
+};
+
+export default {
+  async fetch(request, env = {}) {
+    if (request.headers.has("origin") && !isAllowedOrigin(request, env)) {
+      return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+    }
+    if (request.method === "OPTIONS") {
+      return withCors(new Response(null, { status: 204 }), request);
+    }
+    return withCors(await worker.fetch(request, env), request);
   },
 };
