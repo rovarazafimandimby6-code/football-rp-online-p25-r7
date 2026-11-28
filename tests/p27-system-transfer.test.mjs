@@ -525,3 +525,16 @@ test('P27 transferts système : ne confond pas deux identifiants partageant un p
   assert.equal(service.state.transfers.length,0);
  }finally{f.cleanup();}
 });
+
+test('P27 mercato : les identifiants déterministes de transfert restent bornés sans tronquer les identités',()=>{
+ const a=mkdtempSync(path.join(os.tmpdir(),'p27-market-id-a-'));
+ const b=mkdtempSync(path.join(os.tmpdir(),'p27-market-id-b-'));
+ try{
+  const first=marketFixture(a).simulateMarket({windowId:'long-but-valid-market-window-2028-01',maxTransfers:1,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  const second=marketFixture(b).simulateMarket({windowId:'long-but-valid-market-window-2028-01',maxTransfers:1,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  assert.equal(first.processed,1);
+  assert.equal(first.transfers[0].id.length<=96,true);
+  assert.match(first.transfers[0].id,/^ai-market-long-but-valid-market-window-2028-01-[a-f0-9]{32}$/);
+  assert.equal(first.transfers[0].id,second.transfers[0].id);
+ }finally{rmSync(a,{recursive:true,force:true});rmSync(b,{recursive:true,force:true});}
+});
