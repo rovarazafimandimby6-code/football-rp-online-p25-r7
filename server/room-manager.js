@@ -176,6 +176,11 @@ export class RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('ROOM_NOT_FOUND');
     if (room.phase === 'fulltime') throw new Error('MATCH_ALREADY_FINISHED');
+    const duplicateIdentity = [...room.players.values()].some(player => !player.isBot && (
+      (typeof accountId === 'string' && accountId.length > 0 && player.accountId === accountId) ||
+      (typeof careerPlayerId === 'string' && careerPlayerId.length > 0 && player.careerPlayerId === careerPlayerId)
+    ));
+    if (duplicateIdentity) throw new Error('PLAYER_ALREADY_IN_ROOM');
     const humans = { blue: 0, red: 0 };
     for (const player of room.players.values()) if (!player.isBot) humans[player.team]++;
     let team = preferredTeam === 'blue' || preferredTeam === 'red' ? preferredTeam : (humans.blue <= humans.red ? 'blue' : 'red');
