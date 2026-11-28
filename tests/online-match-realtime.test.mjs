@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OnlineMatchClient } from '../src/online-client.js';
+import { OnlineMatchBridge } from '../src/online-match-bridge.js';
 
 class FakeWebSocket {
   constructor(url) {
@@ -103,4 +104,35 @@ test('online match client falls back to HTTP when WebSocket is disconnected', as
   assert.equal(calls.length, 1);
   assert.match(calls[0].url, /\/api\/rooms\/a1b2c3d4e5f6\/input$/);
   client.disconnectRealtime();
+});
+
+test('online match bridge starts realtime on join and stops HTTP polling after WebSocket welcome', async () => {
+  FakeWebSocket.instances.length = 0;
+  let httpCalls = 0;
+  const client = createClient(async () => {
+    httpCalls += 1;
+    throw new Error('HTTP_POLL_SHOULD_BE_PAUSED');
+  });
+  const ball = {
+    pos: { set() {} },
+    vel: { set() {} },
+  };
+  const bridge = new OnlineMatchBridge({
+    client, players: [], ball, realtime: true,
+    now: () => 10_000,
+  });
+  bridge.bindJoin({ playerId: 'player-1' });
+  const socket = FakeWebSocket.instances[0];
+  assert.ok(socket, 'join should start the WebSocket transport');
+  socket.emit('open');
+  socket.emit('message', { data: JSON.stringify({
+    v: 1, type: 'welcome', playerId: 'player-1', nextSequence: 1,
+  }) });
+  socket.emit('message', { data: JSON.stringify({
+    v: 1, type: 'snapshot', state: { sequence: 0, players: [], ball: null },
+  }) });
+  assert.equal(bridge.lastState.sequence, 0);
+  assert.equal(await bridge.poll(10_100), false);
+  assert.equal(httpCalls, 0);
+  bridge.dispose();
 });
