@@ -499,3 +499,29 @@ test('P27 clubs : une prise de contrôle non sauvegardée restaure le club ouver
  assert.equal(club.managerId,null);
  assert.equal(storage.value,before);
 });
+
+test('P27 transferts système : refuse les identifiants de club ou joueur trop longs sans les tronquer',()=>{
+ const f=setup();try{
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService});
+  const valid={id:'ai-transfer-id-boundary',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:900};
+  for(const field of ['fromClubId','toClubId','playerId']){
+   const result=service.transfer({...valid,[field]:'x'.repeat(49)});
+   assert.deepEqual(result,{ok:false,reason:'invalid-request'});
+  }
+  assert.equal(f.manager.getClub('club-a').roster.some(player=>player.id==='system-player-1'),true);
+  assert.equal(f.manager.getClub('club-b').roster.some(player=>player.id==='system-player-1'),false);
+  assert.equal(service.state.transfers.length,0);
+ }finally{f.cleanup();}
+});
+
+test('P27 transferts système : ne confond pas deux identifiants partageant un préfixe tronqué',()=>{
+ const f=setup();try{
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService});
+  const result=service.transfer({
+   id:'ai-transfer-long-player-key',fromClubId:'club-a',toClubId:'club-b',
+   playerId:'system-player-1'.padEnd(49,'x'),fee:900
+  });
+  assert.deepEqual(result,{ok:false,reason:'invalid-request'});
+  assert.equal(service.state.transfers.length,0);
+ }finally{f.cleanup();}
+});
