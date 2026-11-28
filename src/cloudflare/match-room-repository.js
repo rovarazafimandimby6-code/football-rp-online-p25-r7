@@ -11,11 +11,6 @@ function roomIdOrThrow(value) {
   return value;
 }
 
-function safeInteger(value, fallback, min, max, code) {
-  if (!Number.isSafeInteger(value) || value < min || value > max) throw new Error(code);
-  return value ?? fallback;
-}
-
 function canonicalJson(value) {
   if (value === null || typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
   if (typeof value === "number") {
@@ -122,12 +117,12 @@ export class D1MatchRoomRepository {
     if (!result || typeof result !== "object" || Array.isArray(result) || result.roomId !== roomId ||
         result.phase !== "fulltime") throw new Error("INVALID_MATCH_RESULT");
     const resultJson = canonicalJson(result);
-    if (Buffer.byteLength(resultJson, "utf8") > MAX_RESULT_BYTES) throw new Error("MATCH_RESULT_TOO_LARGE");
+    if (new TextEncoder().encode(resultJson).byteLength > MAX_RESULT_BYTES) throw new Error("MATCH_RESULT_TOO_LARGE");
     const hash = createHash("sha256").update(resultJson).digest("hex");
     const finalizedAt = Number.isSafeInteger(result.finalizedAt) && result.finalizedAt >= 0
       ? result.finalizedAt : this.now();
     const now = this.now();
-    await this.db.batch([
+    const batchResults = await this.db.batch([
       this.db.prepare(
         "INSERT INTO p27_match_results (room_id, result_hash, result_json, finalized_at, created_at) " +
         "VALUES (?, ?, ?, ?, ?) ON CONFLICT(room_id) DO NOTHING"
@@ -142,7 +137,7 @@ export class D1MatchRoomRepository {
     if (!stored) throw new Error("MATCH_RESULT_PERSIST_FAILED");
     if (stored.result_hash !== hash) throw new Error("MATCH_RESULT_IDEMPOTENCY_CONFLICT");
     return {
-      accepted: true, duplicate: stored.result_json !== resultJson,
+      accepted: true, duplicate: Number(batchResults?.[0]?.meta?.changes) !== 1,
       finalizedAt: Number(stored.finalized_at), result: JSON.parse(stored.result_json),
     };
   }
