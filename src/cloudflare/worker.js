@@ -369,7 +369,7 @@ async function handleMatchRoomRoute(request, env, url) {
   const namespace = env.P27_MATCH_ROOMS;
   const hasD1 = env.P27_DB && typeof env.P27_DB.prepare === "function";
   const roomRepo = hasD1 ? new D1MatchRoomRepository(env.P27_DB) : null;
-  const roomPath = url.pathname.match(/^\\/api\\/rooms\\/([a-f0-9]{12})(?:\\/(join|input|heartbeat|reconnect|leave|entry-request|rotation|result|socket))?$/);
+  const roomPath = new RegExp("^/api/rooms/([a-f0-9]{12})(?:/(join|input|heartbeat|reconnect|leave|entry-request|rotation|result|socket))?$").exec(url.pathname);
   const isRoomCollection = url.pathname === "/api/rooms";
   if (!isRoomCollection && !roomPath) return null;
   if (!namespace || typeof namespace.idFromName !== "function" || typeof namespace.get !== "function") {
@@ -437,7 +437,7 @@ async function handleMatchRoomRoute(request, env, url) {
   try {
     const body = await readJson(request);
     const authorization = request.headers.get("authorization") || "";
-    const token = authorization.match(/^Bearer\\s+(.+)$/i)?.[1]?.trim() || "";
+    const token = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7).trim() : "";
     const internalBody = action === "input" ? { token, input: body }
       : action === "rotation" ? { token, outgoingId: body.outgoingId, incomingId: body.incomingId }
       : { token };
