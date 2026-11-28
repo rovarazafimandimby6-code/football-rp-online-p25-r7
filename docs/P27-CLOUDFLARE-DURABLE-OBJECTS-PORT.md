@@ -62,7 +62,7 @@ Le tick doit utiliser un accumulateur basé sur le temps écoulé, plafonner le 
 - Le Worker route les routes HTTP de salons vers l'objet : création, liste D1, entrée invitée, commandes, heartbeat, reconnexion, abandon, rotation, état/delta et résultat.
 - Le checkpoint du salon est écrit dans le stockage du Durable Object ; les jetons bruts sont retirés par le sérialiseur existant et leur hash est conservé. Les résultats en attente sont réessayés après reprise.
 - Le registre D1 autorise jusqu'à 7 humains par équipe (14 au total) et l'archive de résultat est idempotente.
-- La simulation active tourne par timer de 50 ms ; une alarme sert de mécanisme de reprise. Le point d'accès WebSocket n'est pas encore implémenté : le client reste sur HTTP polling.
+- La simulation active tourne par timer de 50 ms ; une alarme sert de mécanisme de reprise. Le Durable Object expose un point d'accès WebSocket hibernable, authentifie le jeton du joueur une seule fois et diffuse snapshots/deltas. Le client Android utilise désormais WebSocket pour les commandes, heartbeats et états dès que la connexion est établie, avec repli HTTP en cas de déconnexion.
 - Les matchs liés à un compte sont désormais acceptés : un outbox persistant conserve les événements carrière/récompenses, puis les dépôts D1 idempotents sont exécutés avant l'archive finale du résultat. Les répétitions après panne ne doivent pas doubler les matchs ni les récompenses. Les matchs compétition/RP ne sont pas activés.
 - Les tests CI doivent encore valider l'ensemble de cette tranche. Aucun déploiement Worker, aucune application distante de 0013 et aucun basculement de production n'ont été effectués.
 
@@ -77,7 +77,8 @@ Le tick doit utiliser un accumulateur basé sur le temps écoulé, plafonner le 
 - [x] Ajouter la classe de salon, son binding Wrangler et le routage HTTP Worker.
 - [x] Couvrir la création, l'entrée invitée, l'authentification par jeton de match, les commandes, l'état/delta, heartbeat, reconnexion, abandon et rotation.
 - [x] Ajouter le WebSocket hibernable côté Durable Object et le relais Worker.
-- [ ] Finaliser l'intégration du transport WebSocket dans le bridge de match et les tests multi-clients.
+- [x] Intégrer le transport WebSocket au client et au bridge de match, avec repli HTTP automatique.
+- [ ] Valider les sessions WebSocket multi-clients sur un Worker réellement déployé.
 - [ ] Tester les courses concurrentes, l'expiration et la reprise après éviction sur l'émulateur Durable Objects.
 
 ### Étape C — résultats et monde
@@ -88,6 +89,7 @@ Le tick doit utiliser un accumulateur basé sur le temps écoulé, plafonner le 
 
 ### Étape D — validation et activation
 - Tests unitaires, tests d'intégration sur émulateur Durable Objects et tests multi-clients.
+- [ ] Mesurer la latence, les pertes de connexion et la reprise sur appareils Android réels.
 - Comparaison des mêmes scénarios entre RoomManager Node et Durable Object.
 - Tests de charge, de dérive temporelle, de coupure réseau et de reprise.
 - Déploiement progressif uniquement après validation et approbation explicite ; aucun basculement automatique de la production.
