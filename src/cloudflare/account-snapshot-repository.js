@@ -152,7 +152,20 @@ export class D1AccountSnapshotRepository {
       },
     };
     const missingSections = [];
-    if (!snapshot.profile) missingSections.push("profile");
+    if (!isObject(snapshot.profile) || !isObject(snapshot.profile.identity) || !isObject(snapshot.profile.appearance)) {
+      missingSections.push("profile");
+    }
+    if (!isObject(snapshot.progression) || !isObject(snapshot.progression.attributes)
+      || !Array.isArray(snapshot.progression.processedMatchIds)) missingSections.push("progression");
+    if (!isObject(snapshot.career) || !isObject(snapshot.career.totals) || !Array.isArray(snapshot.career.matches)) {
+      missingSections.push("career");
+    }
+    if (!isObject(snapshot.playerCareer) || !isObject(snapshot.playerCareer.totals)
+      || !Array.isArray(snapshot.playerCareer.matches)) missingSections.push("playerCareer");
+    if (!isObject(snapshot.seasonStats) || !isObject(snapshot.seasonStats.totals)
+      || !Array.isArray(snapshot.seasonStats.matches) || !Array.isArray(snapshot.seasonStats.processedMatchIds)) {
+      missingSections.push("seasonStats");
+    }
     if (snapshot.contract.wallet === null || snapshot.contract.offers === null || snapshot.contract.loanOffers === null) {
       missingSections.push("contract");
     }
