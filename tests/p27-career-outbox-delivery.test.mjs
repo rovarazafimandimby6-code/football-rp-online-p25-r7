@@ -94,3 +94,60 @@ test("integrated career outbox retains the event and persists retry metadata whe
     f.cleanup();
   }
 });
+
+test("cloud commit with lost acknowledgement is safely retried after restart without duplicate career totals", async () => {
+  const f = fixture();
+  try {
+    let clock = now;
+    const remoteMatches = new Map();
+    let deliveries = 0;
+    const firstService = new CareerSyncService(f.queue, {
+      url: "https://p27.example/internal/matches/career",
+      secret,
+      now: () => clock,
+      fetchImpl: async (_url, options) => {
+        deliveries++;
+        const body = JSON.parse(options.body);
+        const key = body.accountId + ":" + body.match.matchId;
+        remoteMatches.set(key, remoteMatches.get(key) || structuredClone(body));
+        // Simulate D1 commit followed by a lost response / connection reset.
+        throw new Error("ACKNOWLEDGEMENT_LOST");
+      },
+    });
+
+    const first = await firstService.flush();
+    assert.deepEqual(first, { sent: 0, failed: 1, remaining: 1 });
+    assert.equal(remoteMatches.size, 1);
+    assert.equal(f.queue.pendingCount, 1);
+    assert.equal(f.queue.listPending()[0].attempts, 1);
+
+    clock += 30_000;
+    const restartedStore = new JsonCareerStore(f.directory);
+    const restartedQueue = new CareerStoreSyncQueue(restartedStore, { now: () => clock });
+    const retryService = new CareerSyncService(restartedQueue, {
+      url: "https://p27.example/internal/matches/career",
+      secret,
+      now: () => clock,
+      fetchImpl: async (_url, options) => {
+        deliveries++;
+        const body = JSON.parse(options.body);
+        const key = body.accountId + ":" + body.match.matchId;
+        const duplicate = remoteMatches.has(key);
+        if (!duplicate) remoteMatches.set(key, structuredClone(body));
+        return new Response(JSON.stringify({ accepted: true, duplicate, revision: 1 }), { status: 200 });
+      },
+    });
+
+    const retry = await retryService.flush();
+    assert.deepEqual(retry, { sent: 1, failed: 0, remaining: 0 });
+    assert.equal(deliveries, 2);
+    assert.equal(remoteMatches.size, 1);
+    assert.deepEqual(remoteMatches.get(accountId + ":" + match.matchId).match, match);
+    assert.equal(restartedQueue.pendingCount, 0);
+    assert.equal(new JsonCareerStore(f.directory).pendingCloudMatchCount, 0);
+    assert.equal(restartedStore.getPlayerCareer(playerId).totals.matches, 1);
+    assert.equal(restartedStore.get(accountId).totals.matches, 1);
+  } finally {
+    f.cleanup();
+  }
+});

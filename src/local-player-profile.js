@@ -52,7 +52,7 @@ export class LocalPlayerProfile {
     this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, profile }));
     return structuredClone(profile);
   }
-  async reserveWithServer({ fetchImpl = globalThis.fetch, endpoint = '/api/player-identities/reserve' } = {}) {
+  async reserveWithServer({ fetchImpl = globalThis.fetch, endpoint = '/api/player-identities/reserve', onSession = null } = {}) {
     const current = this.load();
     if (!current) throw new Error('LOCAL_PROFILE_NOT_FOUND');
     if (typeof fetchImpl !== 'function') throw new Error('PLAYER_ID_SERVER_UNAVAILABLE');
@@ -64,6 +64,7 @@ export class LocalPlayerProfile {
     let payload = {};
     try { payload = await response.json(); } catch {}
     if (!response.ok || typeof payload.playerId !== 'string' || !/^FRP-\d{6}$/.test(payload.playerId) || typeof payload.accountId !== 'string' || !/^[0-9a-f-]{36}$/i.test(payload.accountId) || payload.reserved !== true) throw new Error(payload.error || 'PLAYER_ID_RESERVATION_FAILED');
+    if (payload.session && typeof onSession === 'function') await onSession(payload.session);
     const next = { ...current, id: payload.playerId, accountId: payload.accountId, identityStatus: 'reserved', updatedAt: this.now() };
     this.storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, profile: next }));
     return structuredClone(next);

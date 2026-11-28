@@ -16,6 +16,25 @@ test('P23 avatar : le profil propose cinq coiffures et trois morphologies contr�
   assert.equal(createDefaultProfile().appearance.bodyBuild, 'athletic');
 });
 
+test('P27 joueur : le pied préféré accepte droit, gauche et ambidextre', () => {
+  assert.equal(validateProfile({ identity:{ preferredFoot:'right' } }).identity.preferredFoot, 'right');
+  assert.equal(validateProfile({ identity:{ preferredFoot:'left' } }).identity.preferredFoot, 'left');
+  assert.equal(validateProfile({ identity:{ preferredFoot:'both' } }).identity.preferredFoot, 'both');
+  assert.equal(validateProfile({ identity:{ preferredFoot:'invalid' } }).identity.preferredFoot, 'right');
+  assert.match(mainSource, /value:'both',label:'Ambidextre'/);
+});
+
+test('P27 studio joueur : formes du visage et des yeux sauvegardées et validées', () => {
+  const p = validateProfile({ appearance:{ faceShape:'square', eyeShape:'hooded' } });
+  assert.equal(p.appearance.faceShape, 'square');
+  assert.equal(p.appearance.eyeShape, 'hooded');
+  const fallback = validateProfile({ appearance:{ faceShape:'invalid', eyeShape:'invalid' } });
+  assert.equal(fallback.appearance.faceShape, 'oval');
+  assert.equal(fallback.appearance.eyeShape, 'almond');
+  assert.match(mainSource, /value:'square',label:'Carré'/);
+  assert.match(mainSource, /value:'hooded',label:'Tombant'/);
+});
+
 test('P23 avatar : silhouette humanoïde anatomique avec torse profilé, mâchoire et membres articulés', () => {
   assert.match(playerSource, /new THREE\.LatheGeometry\(torsoProfile, 20\)/);
   assert.match(playerSource, /const jaw = new THREE\.Mesh/);
@@ -31,9 +50,12 @@ test('P23 avatar : coiffures afro et dégradé et chaussures arrondies sont gén
 });
 
 test('P23 avatar : transitions articulaires amorties pour les poses et actions', () => {
-  assert.match(playerSource, /const previousPose = poseNodes\.map/);
+  assert.match(playerSource, /snapshots: nodes\.map/);
+  assert.match(playerSource, /startPosition: new THREE\.Vector3\(\)/);
+  assert.match(playerSource, /targetRotation: new THREE\.Euler\(\)/);
   assert.match(playerSource, /const blend = 1 - Math\.exp/);
-  assert.match(playerSource, /node\.rotation\.x = previousPose\[index\]\.rotation\.x/);
+  assert.match(playerSource, /snapshot\.startRotation\.x \+ \(snapshot\.targetRotation\.x - snapshot\.startRotation\.x\) \* blend/);
+  assert.match(playerSource, /node\.position\.lerpVectors\(snapshot\.startPosition, snapshot\.targetPosition, blend\)/);
 });
 
 test('P23 avatar : aperçu 3D interactif du profil monté puis nettoyé à la navigation', () => {
@@ -46,6 +68,13 @@ test('P23 avatar : aperçu 3D interactif du profil monté puis nettoyé à la na
   assert.match(htmlSource, /three@0\.170\.0/);
 });
 
+
+test('P27 studio joueur : les choix actualisent l’aperçu 3D sans accumuler les rendus', () => {
+  assert.match(mainSource, /mountAvatarPreview\(profileStore\.profile\)/);
+  const mountIndex = mainSource.indexOf('function mountAvatarPreview(profile)');
+  assert.ok(mainSource.indexOf('disposeAvatarPreview();', mountIndex) > mountIndex);
+  assert.match(mainSource, /'faceShape','eyeShape'/);
+});
 
 test('P23 avatar : rotation tactile/souris réellement câblée et reprise automatique', () => {
   assert.match(mainSource, /addEventListener\('pointerdown'/);

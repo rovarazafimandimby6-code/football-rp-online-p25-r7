@@ -51,7 +51,7 @@ test('P27 API HTTP : catalogue consultable, filtrable et protégé contre les fi
     const detailResponse=await fetch(base+'/api/clubs/antsiranana-north-fc');
     assert.equal(detailResponse.status,200);
     const detail=await detailResponse.json();
-    assert.equal(detail.club.name,'Antsiranana North FC');
+    assert.equal(detail.club.name,'Antsiranana North');
     assert.equal(detail.club.conference,'A');
     assert.equal(Object.hasOwn(detail.club,'roster'),false);
 

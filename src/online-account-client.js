@@ -1,3 +1,12 @@
+function stableJson(value) {
+  if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).filter(key => value[key] !== undefined).sort()
+      .map(key => JSON.stringify(key) + ':' + stableJson(value[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+
 /** HTTP client for persistent player accounts; separate from short-lived match-room tokens. */
 function recoverySnapshotMissingSections(snapshot) {
   const missing = [];
@@ -14,13 +23,15 @@ function recoverySnapshotMissingSections(snapshot) {
   if (!isObject(identity) || !isObject(appearance)
     || typeof identity.displayName !== 'string' || !identity.displayName.trim() || identity.displayName.length > 20
     || !Number.isSafeInteger(identity.number) || identity.number < 1 || identity.number > 99
-    || !['left','right'].includes(identity.preferredFoot)
+    || !['left','right','both'].includes(identity.preferredFoot)
     || !['GK','DEF','MID','FWD'].includes(identity.role)
     || !['emerald','crimson','gold','violet','monochrome'].includes(appearance.kit)
     || !['light','medium','dark'].includes(appearance.skinTone)
     || !['short','curly','shaved','fade','afro'].includes(appearance.hairStyle)
     || !['dark','brown','blond'].includes(appearance.hairColor)
-    || !['lean','athletic','strong'].includes(appearance.bodyBuild)) missing.push('profile');
+    || !['lean','athletic','strong'].includes(appearance.bodyBuild)
+    || !['oval','round','angular','long','square'].includes(appearance.faceShape)
+    || !['almond','round','hooded'].includes(appearance.eyeShape)) missing.push('profile');
 
   const progression = snapshot?.progression;
   const attributes = progression?.attributes;
@@ -85,10 +96,10 @@ export class OnlineAccountClient {
       method,
       headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(auth && this.token ? { authorization: `Bearer ${this.token}` } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
-      credentials: 'same-origin'
+      credentials: 'include'
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `HTTP_${response.status}`);
+    if (!response.ok) throw new Error(data.error || data.reason || `HTTP_${response.status}`);
     return data;
   }
 
@@ -131,21 +142,39 @@ export class OnlineAccountClient {
     return Boolean(this.token || (this.cookieSession && this.account?.id));
   }
 
+  clearLocalSession() {
+    this.token = null;
+    this.account = null;
+    this.cookieSession = false;
+    try { this.storage?.removeItem('fpro.account.session'); } catch {}
+    return true;
+  }
+
   async resumeCookieSession() {
     if (this.token) return this.refresh();
-    const result = await this.request('/api/accounts/me');
-    if (!result?.account || typeof result.account.id !== 'string') throw new Error('INVALID_ACCOUNT_SESSION');
-    this.account = result.account;
-    this.cookieSession = true;
-    return this.account;
+    try {
+      const result = await this.request('/api/accounts/me');
+      if (!result?.account || typeof result.account.id !== 'string') throw new Error('INVALID_ACCOUNT_SESSION');
+      this.account = result.account;
+      this.cookieSession = true;
+      return this.account;
+    } catch (error) {
+      if (error?.message === 'SESSION_EXPIRED') this.clearLocalSession();
+      throw error;
+    }
   }
 
   async refresh() {
     if (!this.hasSession) return this.resumeCookieSession();
-    const result = await this.request('/api/accounts/me', { auth: true });
-    this.account = result.account;
-    this.persist();
-    return this.account;
+    try {
+      const result = await this.request('/api/accounts/me', { auth: true });
+      this.account = result.account;
+      this.persist();
+      return this.account;
+    } catch (error) {
+      if (error?.message === 'SESSION_EXPIRED') this.clearLocalSession();
+      throw error;
+    }
   }
 
   async createLocalReplica(localProfileStore) {
@@ -244,12 +273,23 @@ export class OnlineAccountClient {
       appearance: profile?.appearance && typeof profile.appearance === 'object' ? {
         kit: profile.appearance.kit, skinTone: profile.appearance.skinTone,
         hairStyle: profile.appearance.hairStyle, hairColor: profile.appearance.hairColor,
-        bodyBuild: profile.appearance.bodyBuild
+        bodyBuild: profile.appearance.bodyBuild,
+        faceShape: profile.appearance.faceShape, eyeShape: profile.appearance.eyeShape
       } : {}
     };
+    // A previous PUT may have reached the server even if its response was lost.
+    // Treat an identical server profile as an already-applied retry, without
+    // creating another revision or duplicating the write.
+    const currentEditableProfile = current.profile ? {
+      identity: current.profile.identity,
+      appearance: current.profile.appearance
+    } : null;
+    if (currentEditableProfile && stableJson(currentEditableProfile) === stableJson(safeProfile)) {
+      return { revision: current.revision, unchanged: true };
+    }
     const saved = await this.request('/api/player-profile/me', { method: 'PUT', auth: true, body: { profile: safeProfile, expectedRevision: current.revision } });
     if (!Number.isSafeInteger(saved?.revision) || saved.revision <= current.revision) throw new Error('INVALID_PLAYER_PROFILE_RESPONSE');
-    return saved;
+    return { ...saved, unchanged: false };
   }
 
   enqueueProfileSnapshot(profile, outbox) {
@@ -263,7 +303,8 @@ export class OnlineAccountClient {
       appearance: profile.appearance && typeof profile.appearance === 'object' ? {
         kit: profile.appearance.kit, skinTone: profile.appearance.skinTone,
         hairStyle: profile.appearance.hairStyle, hairColor: profile.appearance.hairColor,
-        bodyBuild: profile.appearance.bodyBuild
+        bodyBuild: profile.appearance.bodyBuild,
+        faceShape: profile.appearance.faceShape, eyeShape: profile.appearance.eyeShape
       } : {}
     };
     return outbox.enqueue('profile_snapshot', snapshot);
@@ -311,15 +352,104 @@ export class OnlineAccountClient {
     return this.request('/api/progression/me', { method: 'POST', auth: true, body: { action: 'practice', attribute, amount } });
   }
 
+  async getShopSnapshot(shop = 'player', clubId = null) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!['player','club'].includes(shop)) throw new Error('INVALID_SHOP');
+    if (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim())) throw new Error('INVALID_CLUB_ID');
+    const query = new URLSearchParams({ shop, ...(shop === 'club' ? { clubId:clubId.trim() } : {}) });
+    const result = await this.request('/api/shop?' + query.toString(), { auth:true });
+    const currency = shop === 'player' ? 'player-coins' : 'club-coins';
+    if (result?.shop !== shop || result.currency !== currency
+      || !Number.isSafeInteger(result.balance) || result.balance < 0
+      || !Array.isArray(result.catalog) || !result.catalog.every(item =>
+        item && item.shop === shop && typeof item.id === 'string'
+        && Number.isSafeInteger(item.price) && item.price > 0
+        && Number.isSafeInteger(item.basePrice) && item.basePrice > 0
+        && Number.isInteger(item.discountPercent) && item.discountPercent >= 0 && item.discountPercent <= 50
+        && item.currency === currency)
+      || !Array.isArray(result.inventory) || !result.inventory.every(item =>
+        item && typeof item.itemId === 'string' && typeof item.purchaseId === 'string'
+        && ['owned','resold'].includes(item.status) && typeof item.equipped === 'boolean'
+        && typeof item.resellable === 'boolean')) throw new Error('INVALID_SHOP_RESPONSE');
+    return result;
+  }
+
+  async getShopHistory(shop = 'player', clubId = null) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!['player','club'].includes(shop)) throw new Error('INVALID_SHOP');
+    if (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim())) throw new Error('INVALID_CLUB_ID');
+    const query = new URLSearchParams({ shop, ...(shop === 'club' ? { clubId:clubId.trim() } : {}) });
+    const result = await this.request('/api/shop/history?' + query.toString(), { auth:true });
+    if (!Array.isArray(result?.purchases) || !Array.isArray(result?.resales)
+      || !result.purchases.every(row => row && row.shop === shop && typeof row.id === 'string'
+        && typeof row.itemId === 'string' && Number.isSafeInteger(row.paidPrice) && row.paidPrice >= 0
+        && typeof row.status === 'string')
+      || !result.resales.every(row => row && row.shop === shop && typeof row.id === 'string'
+        && typeof row.itemId === 'string' && Number.isSafeInteger(row.amount) && row.amount >= 0
+        && typeof row.status === 'string')) throw new Error('INVALID_SHOP_HISTORY_RESPONSE');
+    return result;
+  }
+
+  async getOwnedShopClubs() {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    const result = await this.request('/api/shop/clubs', { auth:true });
+    if (!Array.isArray(result?.clubs) || !result.clubs.every(club =>
+      club && typeof club.id === 'string' && typeof club.name === 'string'
+      && Number.isSafeInteger(club.balance) && club.balance >= 0)) throw new Error('INVALID_OWNED_CLUBS_RESPONSE');
+    return result.clubs;
+  }
+
+  async purchaseShopItem(shop, itemId, purchaseId, clubId = null) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!['player','club'].includes(shop) || typeof itemId !== 'string' || !itemId.trim()
+      || typeof purchaseId !== 'string' || !purchaseId.trim() || purchaseId.length > 64
+      || (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim()))) throw new Error('INVALID_SHOP_PURCHASE');
+    return this.request('/api/shop/purchase', { method:'POST', auth:true,
+      body:{ shop, itemId:itemId.trim(), purchaseId:purchaseId.trim(), ...(shop === 'club' ? { clubId:clubId.trim() } : {}) } });
+  }
+
+  async resellShopItem(shop, itemId, resaleId, clubId = null) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!['player','club'].includes(shop) || typeof itemId !== 'string' || !itemId.trim()
+      || typeof resaleId !== 'string' || !resaleId.trim() || resaleId.length > 64
+      || (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim()))) throw new Error('INVALID_SHOP_RESALE');
+    return this.request('/api/shop/resale', { method:'POST', auth:true,
+      body:{ shop, itemId:itemId.trim(), resaleId:resaleId.trim(), ...(shop === 'club' ? { clubId:clubId.trim() } : {}) } });
+  }
+
+  async equipShopItem(shop, itemId, equipped = true, clubId = null) {
+    if (!this.hasSession) throw new Error('NOT_AUTHENTICATED');
+    if (!['player','club'].includes(shop) || typeof itemId !== 'string' || !itemId.trim()
+      || typeof equipped !== 'boolean'
+      || (shop === 'club' && (typeof clubId !== 'string' || !clubId.trim()))) throw new Error('INVALID_SHOP_EQUIPMENT');
+    return this.request('/api/shop/equip', { method:'POST', auth:true,
+      body:{ shop, itemId:itemId.trim(), equipped, ...(shop === 'club' ? { clubId:clubId.trim() } : {}) } });
+  }
+
+  async getPlayerShopCatalog() {
+    return (await this.getShopSnapshot('player')).catalog;
+  }
+
+  async getPlayerShopInventory() {
+    return (await this.getShopSnapshot('player')).inventory;
+  }
+
+  async purchasePlayerShopItem(itemId, purchaseId) {
+    return this.purchaseShopItem('player', itemId, purchaseId);
+  }
+
+  async resellPlayerShopItem(itemId, resaleId) {
+    return this.resellShopItem('player', itemId, resaleId);
+  }
+
+  async equipPlayerShopItem(itemId, equipped = true) {
+    return this.equipShopItem('player', itemId, equipped);
+  }
+
   async logout() {
     if (!this.hasSession) return false;
     try { await this.request('/api/accounts/logout', { method: 'POST', auth: true }); }
-    finally {
-      this.token = null;
-      this.account = null;
-      this.cookieSession = false;
-      try { this.storage?.removeItem('fpro.account.session'); } catch {}
-    }
+    finally { this.clearLocalSession(); }
     return true;
   }
 }

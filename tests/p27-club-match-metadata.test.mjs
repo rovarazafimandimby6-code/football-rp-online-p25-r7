@@ -135,9 +135,21 @@ test('P27: les kits 3D des deux équipes utilisent les palettes des clubs sélec
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   const player = await readFile(new URL('../src/player.js', import.meta.url), 'utf8');
   assert.match(game, /cfg\.team === 'blue' \? callbacks\.homeKitColors : callbacks\.awayKitColors/);
-  assert.match(game, /kitColors \}/);
-  assert.match(main, /homeKitColors: kitPalette\(homeClub\)/);
-  assert.match(main, /awayKitColors: kitPalette\(awayClub\)/);
+  assert.match(game, /callbacks\.homeKitAppearance/);
+  assert.match(game, /callbacks\.awayKitAppearance/);
+  assert.match(game, /cfg\.role === 'GK'/);
+  assert.match(game, /homeGoalkeeperKitAppearance/);
+  assert.match(game, /awayGoalkeeperKitAppearance/);
+  assert.match(game, /kitAppearance && typeof kitAppearance === 'object'/);
+  assert.match(main, /getP27ClubShopKit/);
+  assert.match(main, /getShopSnapshot\('club', club\.id\)/);
+  assert.match(main, /getP27ClubShopAppearance/);
+  assert.match(main, /homeClubAppearance:/);
+  assert.match(main, /crestStyle:homeKits\.appearance/);
+  assert.match(game, /applyClubAppearance\(callbacks\.homeClubAppearance/);
+
+  assert.match(main, /homeKitAppearance,/);
+  assert.match(main, /awayKitAppearance,/);
   assert.match(player, /kitColors/);
 });
 
@@ -163,4 +175,39 @@ test('P27: les bots des clubs utilisent une identité stable reliée aux fiches 
   assert.equal(blueBot.careerPlayerId, `club-fianarantsoa-athletic-${rosterPlayer.id}`);
   assert.equal(blueBot.role, rosterPlayer.role);
   assert.equal(state.teams.blue.roster, undefined);
+});
+
+
+test('P27 match : les apparences publiques des clubs sont jointes au salon sans inventaire privé',()=>{
+ const manager=new RoomManager({
+  resolveClubAppearance:clubId=>clubId==='antananarivo-fc'
+   ? {equippedItemIds:['club-crest-custom','club-supporter-flags'],stadiumExpansionLevel:3,stadiumCapacity:999999,ownerId:'must-not-leak',balance:999999}
+   : {equippedItemIds:[],stadiumExpansionLevel:0}
+ });
+ const created=manager.create({blueClubId:'antananarivo-fc',redClubId:'fianarantsoa-athletic'});
+ assert.deepEqual(created.teams.blue.shopAppearance,{equippedItemIds:['club-crest-custom','club-supporter-flags'],stadiumExpansionLevel:3,stadiumCapacity:12500});
+ assert.deepEqual(created.teams.red.shopAppearance,{equippedItemIds:[],stadiumExpansionLevel:0,stadiumCapacity:5000});
+ assert.equal(JSON.stringify(created.teams).includes('must-not-leak'),false);
+ assert.equal(JSON.stringify(created.teams).includes('999999'),false);
+});
+
+
+test('P27 match : les extensions du club pilotent des niveaux de tribunes supplémentaires',async()=>{
+ const field=await readFile(new URL('../src/field.js',import.meta.url),'utf8');
+ const main=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
+ assert.match(main,/stadiumExpansionLevel/);
+ assert.match(field,/expansionLevel/);
+ assert.match(field,/clubExpansionGroup/);
+ assert.match(field,/PITCH\.HALF_W - 12\.0 - offset/);
+});
+
+
+test('P27 match : le serveur diffuse les seuls cosmétiques publics et le client applique les deux clubs',async()=>{
+ const server=await readFile(new URL('../server/index.js',import.meta.url),'utf8');
+ const main=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
+ assert.match(server,/resolveClubAppearance:clubId => shopService\.publicAppearance\(clubId\)/);
+ assert.match(main,/onlineTeams\?\.\[teamKey\]\?\.shopAppearance/);
+ assert.match(main,/loadClubKits\(homeClub, 'home', 'blue'\)/);
+ assert.match(main,/loadClubKits\(awayClub, 'away', 'red'\)/);
+ assert.match(main,/publicTeamAppearance\.equippedItemIds/);
 });

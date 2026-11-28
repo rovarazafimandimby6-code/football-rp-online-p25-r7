@@ -1,15 +1,17 @@
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { applyPlayerAction, stepRoomSimulation, resetRoomBall } from './simulation.js';
 import { resolveMatchClub, cloneMatchTeams } from './club-catalog.js';
 import { averageAiShouldAct, averageAiAim, averageAiMovement } from '../src/average-ai.js';
 import { validateRotation } from '../src/rotation-rules.js';
 import { buildMatchPerformance } from './player-rating.js';
+import { getP27StadiumCapacity } from '../src/p27-shop-catalog.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const virtualMatchSeconds = room => Math.min(90 * 60, Math.max(0, Number(room.elapsedMs) || 0) / (Math.max(1, Number(room.durationMinutes) || 5) * 60_000) * 90 * 60);
 
 /** Authoritative in-memory 5v5 room manager. One input stream controls one avatar. */
 export class RoomManager {
-  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, roomStore = null, careerStore = null, careerSyncQueue = null, progressionStore = null, competitionStore = null } = {}) {
+  constructor({ now = () => Date.now(), roomTtlMs = 30 * 60_000, disconnectGraceMs = 20_000, resultStore = null, roomStore = null, careerStore = null, careerSyncQueue = null, progressionStore = null, competitionStore = null, resolveClubAppearance = () => ({ equippedItemIds:[], stadiumExpansionLevel:0 }), roomIdFactory = () => randomBytes(6).toString('hex') } = {}) {
     this.now = now;
     this.roomTtlMs = roomTtlMs;
     this.disconnectGraceMs = disconnectGraceMs;
@@ -19,6 +21,8 @@ export class RoomManager {
     this.careerSyncQueue = careerSyncQueue;
     this.progressionStore = progressionStore;
     this.competitionStore = competitionStore;
+    this.resolveClubAppearance = typeof resolveClubAppearance === 'function' ? resolveClubAppearance : () => ({ equippedItemIds:[], stadiumExpansionLevel:0 });
+    this.roomIdFactory = typeof roomIdFactory === 'function' ? roomIdFactory : () => randomBytes(6).toString('hex');
     this.rooms = new Map();
     this.lastCheckpointAt = new Map();
     this.restoreCheckpoints();
@@ -27,8 +31,16 @@ export class RoomManager {
   serializeRoom(room) {
     const { players, halftimeUntil, ...state } = room;
     return {
+      schemaVersion: 1,
       ...JSON.parse(JSON.stringify(state)),
-      players: [...players.values()].map(player => JSON.parse(JSON.stringify(player))),
+      players: [...players.values()].map(player => {
+        const saved = JSON.parse(JSON.stringify(player));
+        if (typeof saved.token === 'string' && saved.token.length >= 16) {
+          saved.tokenHash = createHash('sha256').update(saved.token).digest('hex');
+        }
+        delete saved.token;
+        return saved;
+      }),
       halftimeRemainingMs: room.phase === 'halftime' && halftimeUntil !== null ? Math.max(0, halftimeUntil - this.now()) : 0,
     };
   }
@@ -48,7 +60,7 @@ export class RoomManager {
   }
 
   persistRooms(rooms) {
-    const active = rooms.filter(room => ['lobby', 'playing', 'halftime'].includes(room.phase));
+    const active = rooms.filter(room => ['lobby', 'playing', 'halftime'].includes(room.phase) || (room.phase === 'fulltime' && !room.result));
     if (!active.length) return { saved: 0, failed: [] };
     if (!this.roomStore) return { saved: active.length, failed: [] };
     try {
@@ -78,6 +90,8 @@ export class RoomManager {
     if (!this.roomStore) return 0;
     const now = this.now();
     for (const snapshot of this.roomStore.readAll()) {
+      const schemaVersion = snapshot?.schemaVersion ?? 0;
+      if (!Number.isSafeInteger(schemaVersion) || schemaVersion < 0 || schemaVersion > 1) throw new Error('ROOM_STORE_VERSION_UNSUPPORTED');
       if (this.resultStore?.get(snapshot.id)) {
         this.roomStore.delete(snapshot.id);
         continue;
@@ -130,14 +144,27 @@ export class RoomManager {
       if (!['scheduled','replay-required'].includes(competitionFixture.status)) throw new Error('COMPETITION_FIXTURE_NOT_READY');
       if (!blueClub || blueClub.id !== competitionFixture.homeClubId || redClub.id !== competitionFixture.awayClubId) throw new Error('COMPETITION_FIXTURE_MISMATCH');
     }
-    const roomId = randomBytes(6).toString('hex');
+    const publicTeam = club => {
+      if (!club) return null;
+      let source = {};
+      try { source = this.resolveClubAppearance(club.id) || {}; } catch (_) { source = {}; }
+      const equippedItemIds = Array.isArray(source.equippedItemIds)
+        ? [...new Set(source.equippedItemIds.filter(id => typeof id === 'string' && /^[a-z0-9-]{1,64}$/i.test(id)))].slice(0, 24)
+        : [];
+      const stadiumExpansionLevel = Number.isInteger(source.stadiumExpansionLevel)
+        ? clamp(source.stadiumExpansionLevel, 0, 4) : 0;
+      const stadiumCapacity = getP27StadiumCapacity(stadiumExpansionLevel);
+      return { ...club, shopAppearance:{ equippedItemIds, stadiumExpansionLevel, stadiumCapacity } };
+    };
+    const roomId = this.roomIdFactory();
+    if (typeof roomId !== 'string' || !/^[a-f0-9]{12}$/.test(roomId)) throw new Error('INVALID_ROOM_ID_GENERATOR');
     const room = {
       id: roomId, name: String(name).trim().slice(0, 36) || 'Match rapide', competitionFixtureId: competitionFixture?.id || null,
       durationMinutes: durationMinutes === 3 ? 3 : 5,
       phase: 'lobby', createdAt: this.now(), updatedAt: this.now(),
       startedAt: null, elapsedMs: 0, sequence: 0, players: new Map(),
       period: 1, halftimeUntil: null, halftimeDurationMs: 5_000, goalPauseMs: 0, lastTickAt: this.now(), attackDirection: { blue: 1, red: -1 },
-      teams: { blue: blueClub, red: redClub },
+      teams: { blue: publicTeam(blueClub), red: publicTeam(redClub) },
       nextEventId: 1, result: null, rotationRequests: [], score: { blue: 0, red: 0 }, ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null }, events: [],
     };
     this.rooms.set(roomId, room);
@@ -149,17 +176,24 @@ export class RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('ROOM_NOT_FOUND');
     if (room.phase === 'fulltime') throw new Error('MATCH_ALREADY_FINISHED');
+    const duplicateIdentity = [...room.players.values()].some(player => !player.isBot && (
+      (typeof accountId === 'string' && accountId.length > 0 && player.accountId === accountId) ||
+      (typeof careerPlayerId === 'string' && careerPlayerId.length > 0 && player.careerPlayerId === careerPlayerId)
+    ));
+    if (duplicateIdentity) throw new Error('PLAYER_ALREADY_IN_ROOM');
     const humans = { blue: 0, red: 0 };
-    for (const player of room.players.values()) if (!player.isBot && player.connected) humans[player.team]++;
+    for (const player of room.players.values()) if (!player.isBot) humans[player.team]++;
     let team = preferredTeam === 'blue' || preferredTeam === 'red' ? preferredTeam : (humans.blue <= humans.red ? 'blue' : 'red');
-    if (humans[team] >= 5) team = team === 'blue' ? 'red' : 'blue';
-    if (humans[team] >= 5) throw new Error('ROOM_FULL');
+    if (humans[team] >= 7) team = team === 'blue' ? 'red' : 'blue';
+    if (humans[team] >= 7) throw new Error('ROOM_FULL');
 
-    // Human arrivals take the place of a reserve bot first, preserving the 5-player cap.
-    const reserve = [...room.players.values()].find(p => p.isBot && p.team === team && p.isOnPitch !== false);
+    // Five players start on the pitch; up to two additional humans join as substitutes, within the seven-human club cap.
+    const isStarter = humans[team] < 5;
+    const reserve = [...room.players.values()].find(p => p.isBot && p.team === team && (isStarter ? p.isOnPitch !== false : p.isOnPitch === false));
     const usedSlots = new Set([...room.players.values()].filter(p => p.team === team && p !== reserve).map(p => p.slot));
-    const slot = reserve?.slot ?? [0,1,2,3,4].find(value => !usedSlots.has(value));
-    if (slot === undefined || (!reserve && room.players.size >= 10)) throw new Error('ROOM_FULL');
+    const allowedSlots = isStarter ? [0,1,2,3,4] : [5,6,7,8,9,10,11];
+    const slot = reserve?.slot ?? allowedSlots.find(value => !usedSlots.has(value));
+    if (slot === undefined || (!reserve && room.players.size >= 24)) throw new Error('ROOM_FULL');
     if (reserve) room.players.delete(reserve.id);
     const token = randomBytes(24).toString('base64url');
     const player = {
@@ -170,9 +204,9 @@ export class RoomManager {
       team, slot, x: team === 'blue' ? -18 + slot * 2 : 18 - slot * 2,
       z: -12 + slot * 6, vx: 0, vz: 0, facing: team === 'blue' ? Math.PI / 2 : -Math.PI / 2,
       role: ['GK','DEF','MID','FWD'].includes(role) ? role : (['GK','DEF','MID','FWD','FWD'][slot] || 'FWD'), isBot: false,
-      isOnPitch: true, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
+      isOnPitch: isStarter, matchTimePlayedMs: 0, lastSubstitutedOutAt: null,
       input: { x: 0, z: 0, sprint: false }, lastInputSequence: -1, lastActionAt: 0, lastCallForPassAt: -Infinity, callForPassUntil: 0,
-      connected: true, controlMode: 'human', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
+      connected: true, controlMode: isStarter ? 'human' : 'bench', aiControlled: false, lastSeen: this.now(), disconnectedAt: null,
       stats: { passes: 0, completedPasses: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
     };
     room.players.set(player.id, player);
@@ -187,7 +221,7 @@ export class RoomManager {
     if (room.phase === 'fulltime') return;
     for (const team of ['blue', 'red']) {
       let count = [...room.players.values()].filter(p => p.team === team && p.isOnPitch !== false && (p.connected || p.aiControlled)).length;
-      while (count < 5 && room.players.size < 20) {
+      while (count < 5 && room.players.size < 24) {
         const usedSlots = new Set([...room.players.values()].filter(p => p.team === team).map(p => p.slot));
         const slot = [0,1,2,3,4].find(value => !usedSlots.has(value)) ?? count;
         const club = room.teams[team];
@@ -206,7 +240,7 @@ export class RoomManager {
         count++;
       }
       let benchCount = [...room.players.values()].filter(p => p.team === team && p.isOnPitch === false).length;
-      while (benchCount < 2 && room.players.size < 20) {
+      while (benchCount < 7 && room.players.size < 24) {
         const slot = 5 + benchCount;
         const id = `bench-${team}-${randomBytes(5).toString('hex')}`;
         room.players.set(id, {
@@ -350,13 +384,24 @@ export class RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('ROOM_NOT_FOUND');
     if (typeof token !== 'string' || token.length < 16) throw new Error('UNAUTHORIZED');
-    const player = [...room.players.values()].find(p => typeof p.token === 'string' && p.token.length >= 16 && p.token === token);
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const player = [...room.players.values()].find(p => {
+      if (typeof p.tokenHash === 'string' && /^[a-f0-9]{64}$/.test(p.tokenHash)) return timingSafeEqual(Buffer.from(p.tokenHash, 'hex'), Buffer.from(tokenHash, 'hex'));
+      return typeof p.token === 'string' && p.token.length >= 16 && p.token === token;
+    });
     if (!player) throw new Error('UNAUTHORIZED');
     return { room, player };
   }
 
   submitInput(roomId, token, payload = {}) {
-    const { room, player } = this.authenticate(roomId, token);
+    const { player } = this.authenticate(roomId, token);
+    return this.submitInputForPlayer(roomId, player.id, payload);
+  }
+
+  submitInputForPlayer(roomId, playerId, payload = {}) {
+    const room = this.rooms.get(roomId);
+    const player = room?.players.get(playerId);
+    if (!room || !player || player.isBot) throw new Error('UNAUTHORIZED');
     if (room.phase !== 'playing') throw new Error('MATCH_NOT_PLAYING');
     if (!player.connected) throw new Error('PLAYER_DISCONNECTED');
     if (player.isOnPitch === false) throw new Error('PLAYER_ON_BENCH');
@@ -394,7 +439,7 @@ export class RoomManager {
     for (const [id, room] of this.rooms) {
       const pendingOfficialResult = room.phase === 'fulltime' && !room.result;
       const roomExpired = now - room.updatedAt > this.roomTtlMs && room.phase !== 'playing' && room.phase !== 'halftime' && !pendingOfficialResult;
-      const allPlayersExpired = !pendingOfficialResult && room.phase !== 'playing' && room.phase !== 'halftime' && room.players.size > 0 && [...room.players.values()].every(p => !p.connected && p.disconnectedAt && now - p.disconnectedAt > this.disconnectGraceMs);
+      const allPlayersExpired = !pendingOfficialResult && room.phase !== 'playing' && room.phase !== 'halftime' && room.players.size > 0 && [...room.players.values()].every(p => !p.connected && Number.isFinite(p.disconnectedAt) && now - p.disconnectedAt > this.disconnectGraceMs);
       if (roomExpired || allPlayersExpired) {
         this.rooms.delete(id); this.lastCheckpointAt.delete(id);
         if (this.roomStore) this.roomStore.delete(id);
@@ -508,6 +553,12 @@ export class RoomManager {
       return true;
     } catch (error) {
       room.finalizationError = String(error?.message || 'RESULT_FINALIZATION_FAILED').slice(0, 160);
+      // Keep one durable fulltime checkpoint until every finalization step succeeds.
+      // Do not rewrite the checkpoint on every server tick while storage is failing.
+      if (room.phase === 'fulltime' && !room.result && !room.finalizationCheckpointed) {
+        room.finalizationCheckpointed = true;
+        if (!this.persistRoom(room)) delete room.finalizationCheckpointed;
+      }
       return false;
     }
   }
@@ -527,7 +578,13 @@ export class RoomManager {
       outcome: blue === red ? 'draw' : blue > red ? 'blue' : 'red',
       durationMs: room.elapsedMs, durationMinutes: room.durationMinutes,
       awards: Object.freeze(performance.awards),
-      finalizedAt: this.now(), players: Object.freeze(performance.players.map(player => Object.freeze({ ...player, stats: Object.freeze({ ...player.stats }) }))),
+      finalizedAt: this.now(),
+      ...(room.rpClubChallenge ? { rpClubChallenge:{
+        challengeId:room.rpClubChallenge.challengeId,
+        challengerClubId:room.rpClubChallenge.challengerClubId,
+        targetClubId:room.rpClubChallenge.targetClubId
+      } } : {}),
+      players: Object.freeze(performance.players.map(player => Object.freeze({ ...player, stats: Object.freeze({ ...player.stats }) }))),
       teamStats: Object.freeze({
         blue: Object.freeze({ passes: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.passes,0), completedPasses: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.completedPasses,0), shots: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'blue').reduce((n,p) => n+p.stats.interceptions,0) }),
         red: Object.freeze({ passes: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.passes,0), completedPasses: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.completedPasses,0), shots: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.shots,0), tackles: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.tackles,0), goals: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.goals,0), assists: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.assists,0), saves: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.saves,0), interceptions: players.filter(p => p.team === 'red').reduce((n,p) => n+p.stats.interceptions,0) }),
@@ -568,6 +625,15 @@ export class RoomManager {
       this.progressionStore?.grantMatchReward(livePlayer.accountId, { matchId: room.id, result: outcome, minutesPlayedMs: player.minutesPlayedMs, rating: player.rating });
     }
     this.resultStore?.save(committedResult);
+    if (room.rpClubChallenge && typeof this.onResultFinalized === 'function') {
+      try {
+        const linked = this.onResultFinalized(committedResult, room);
+        if (!linked?.ok) room.rpClubChallenge.finalizationError = linked?.reason || 'RP_CLUB_RESULT_LINK_FAILED';
+        else delete room.rpClubChallenge.finalizationError;
+      } catch (error) {
+        room.rpClubChallenge.finalizationError = String(error?.message || 'RP_CLUB_RESULT_LINK_FAILED').slice(0, 120);
+      }
+    }
     room.result = committedResult;
     if (this.roomStore) this.roomStore.delete(room.id);
     this.lastCheckpointAt.delete(room.id);
@@ -627,7 +693,7 @@ export class RoomManager {
       const outgoing = outgoingCandidates.find(candidate => {
         const result = validateRotation({
           phase: room.phase === 'halftime' ? 'halftime' : 'stoppage',
-          elapsedMatchSeconds: room.elapsedMs / 1000,
+          elapsedMatchSeconds: virtualMatchSeconds(room),
           outgoing: candidate,
           incoming,
           teamPlayers: [...room.players.values()],
@@ -663,7 +729,7 @@ export class RoomManager {
     if (outgoing.isOnPitch === false || incoming.isOnPitch !== false) throw new Error('PLAYER_NOT_IN_EXPECTED_LIST');
     if (!outgoing.isBot && !outgoing.connected && !outgoing.aiControlled) throw new Error('OUTGOING_UNAVAILABLE');
     if (!incoming.isBot && !incoming.connected && !incoming.aiControlled) throw new Error('INCOMING_UNAVAILABLE');
-    const elapsedMatchSeconds = room.elapsedMs / 1000;
+    const elapsedMatchSeconds = virtualMatchSeconds(room);
     const validation = validateRotation({ phase: room.phase === 'halftime' ? 'halftime' : 'stoppage', elapsedMatchSeconds, outgoing, incoming, teamPlayers: [...room.players.values()] });
     if (!validation.ok) throw new Error(validation.code === 'return-cooldown' ? 'RETURN_COOLDOWN' : 'ROTATION_NOT_ALLOWED');
     const slot = outgoing.slot;
@@ -681,6 +747,46 @@ export class RoomManager {
     return { rotated: true, state: this.publicState(room) };
   }
 
+
+  reconnectForPlayer(roomId, playerId) {
+    const room = this.rooms.get(roomId);
+    const player = room?.players.get(playerId);
+    if (!room || !player || player.isBot || room.phase === 'fulltime') throw new Error('UNAUTHORIZED');
+    const now = this.now();
+    const wasAiControlled = player.aiControlled === true;
+    player.lastSeen = now; player.connected = true; player.controlMode = 'human'; player.aiControlled = false; player.disconnectedAt = null;
+    player.input = { x: 0, z: 0, sprint: false };
+    if (wasAiControlled) room.events.push({ type: 'control-restored', controller: 'human', playerId: player.id, at: room.elapsedMs });
+    room.updatedAt = now;
+    this.persistRoom(room);
+    return { alive: true, reconnected: true, nextSequence: Math.max(1, player.lastInputSequence + 1), state: this.publicState(room) };
+  }
+
+  heartbeatForPlayer(roomId, playerId) {
+    const room = this.rooms.get(roomId);
+    const player = room?.players.get(playerId);
+    if (!room || !player || player.isBot || room.phase === 'fulltime') throw new Error('UNAUTHORIZED');
+    if (!player.connected || player.aiControlled || player.controlMode !== 'human') return this.reconnectForPlayer(roomId, playerId);
+    const now = this.now();
+    player.lastSeen = now;
+    room.updatedAt = now;
+    this.persistRoom(room);
+    return { alive: true, nextSequence: Math.max(1, player.lastInputSequence + 1) };
+  }
+
+  leaveForPlayer(roomId, playerId) {
+    const room = this.rooms.get(roomId);
+    const player = room?.players.get(playerId);
+    if (!room || !player || player.isBot) throw new Error('UNAUTHORIZED');
+    player.connected = false; player.controlMode = 'ai'; player.aiControlled = true;
+    player.disconnectedAt = this.now(); player.input = { x: 0, z: 0, sprint: false };
+    player.callForPassUntil = 0;
+    room.events.push({ type: 'control-takeover', controller: 'ai', skill: 'average', playerId: player.id, at: room.elapsedMs });
+    room.updatedAt = this.now();
+    this.persistRoom(room);
+    return true;
+  }
+
   reconnect(roomId, token) {
     const { room, player } = this.authenticate(roomId, token);
     if (player.isBot || room.phase === 'fulltime') throw new Error('UNAUTHORIZED');
@@ -694,7 +800,21 @@ export class RoomManager {
     return { alive: true, reconnected: true, nextSequence: Math.max(1, player.lastInputSequence + 1), state: this.publicState(room) };
   }
 
-  heartbeat(roomId, token) { const result = this.reconnect(roomId, token); return { alive: result.alive, nextSequence: result.nextSequence }; }
+  heartbeat(roomId, token) {
+    const { room, player } = this.authenticate(roomId, token);
+    if (player.isBot || room.phase === 'fulltime') throw new Error('UNAUTHORIZED');
+
+    // A live heartbeat must never clear movement input. Only a genuinely
+    // disconnected player needs the reconnect path to reclaim AI control.
+    if (!player.connected || player.aiControlled || player.controlMode !== 'human')
+      return this.reconnect(roomId, token);
+
+    const now = this.now();
+    player.lastSeen = now;
+    room.updatedAt = now;
+    this.persistRoom(room);
+    return { alive: true, nextSequence: Math.max(1, player.lastInputSequence + 1) };
+  }
 
   leave(roomId, token) {
     const { room, player } = this.authenticate(roomId, token);
@@ -737,7 +857,7 @@ export class RoomManager {
   }
 
   publicState(room) {
-    const players = [...room.players.values()].map(({ token, accountId, careerPlayerId, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p, ...(p.isBot && typeof careerPlayerId === 'string' ? { careerPlayerId } : {}) }));
+    const players = [...room.players.values()].map(({ token, tokenHash, accountId, careerPlayerId, input, lastInputSequence, lastSeen, disconnectedAt, lastActionAt, ...p }) => ({ ...p, ...(p.isBot && typeof careerPlayerId === 'string' ? { careerPlayerId } : {}) }));
     return {
       id: room.id, name: room.name, durationMinutes: room.durationMinutes,
       phase: room.phase, period: room.period, halftimeRemainingMs: room.phase === 'halftime' && room.halftimeUntil ? Math.max(0, room.halftimeUntil - this.now()) : 0, attackDirection: { ...room.attackDirection }, elapsedMs: room.elapsedMs, durationMs: room.durationMinutes * 60_000, sequence: room.sequence,

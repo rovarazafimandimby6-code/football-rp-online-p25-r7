@@ -1,10 +1,8 @@
-name: P27 Android test APK
+name: P27 Android online test APK
 
+# APK generation is intentionally paused until core P27 systems are complete.
+# Resume manually with workflow_dispatch after the game is ready for device validation.
 on:
-  push:
-    branches: [p27-dev, p27-apk-build, p27-dls-inspired-redesign, p27-home-navigation-refit, p27-dls19-ui-rebuild]
-  pull_request:
-    branches: [p27-dev, p27-dls-inspired-redesign]
   workflow_dispatch:
 
 permissions:
@@ -12,7 +10,7 @@ permissions:
 
 jobs:
   build-debug-apk:
-    name: Build offline Android test APK
+    name: Build online Android test APK
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -39,7 +37,10 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Run P27 automated tests
         run: npm test
-      - name: Bundle the game and local 3D assets
+      - name: Bundle the game and local 3D assets with Cloudflare API
+        env:
+          P27_OFFLINE_TEST: 'false'
+          VITE_P27_API_BASE_URL: https://football-rp-online-p25-r7.rovarazafimandimby6.workers.dev
         run: npm run build
       - name: Generate the Android project
         run: npx cap add android
@@ -136,14 +137,27 @@ jobs:
               raise SystemExit('Landscape orientation not enforced in AndroidManifest.xml.')
           print('P27 Android app: landscape locked, system bars hidden, edge-to-edge cutout layout enabled.')
           PY
-      - name: Build debug APK
-        run: cd android && ./gradlew --no-daemon assembleDebug
+      - name: Build debug APK (retry transient Maven rate limits)
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            echo "Android build attempt $attempt/3"
+            if (cd android && ./gradlew --no-daemon --max-workers=2 assembleDebug); then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Gradle dependency resolution failed; waiting before retry."
+              sleep $((attempt * 30))
+            fi
+          done
+          echo "Android build failed after three attempts."
+          exit 1
       - name: Verify APK output
         run: test -s android/app/build/outputs/apk/debug/app-debug.apk
       - name: Upload installable test APK
         uses: actions/upload-artifact@v4
         with:
-          name: football-rp-online-p27-test-apk
+          name: football-rp-online-p27-online-test-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14

@@ -28,8 +28,12 @@ test('P23 : les variations de morphologie, de peau et de coiffure sont détermin
 
 test('P23 : les spectateurs utilisent des silhouettes instanciées avec têtes séparées', () => {
   assert.match(field, /crowdHeads/);
-  assert.match(field, /SphereGeometry\(0\.5, 10, 8\)/);
+  assert.match(field, /new THREE\.SphereGeometry\(0\.5, lowEndCrowd \? 8 : 10, lowEndCrowd \? 6 : 8\)/);
+  assert.match(field, /new THREE\.SphereGeometry\(0\.5, lowEndCrowd \? 6 : 8, lowEndCrowd \? 5 : 6\)/);
+  assert.match(field, /new THREE\.InstancedMesh\(torsoGeo, torsoMat, count\)/);
   assert.match(field, /addSpectator/);
+  assert.match(field, /const cheering = idx % 11 === 0/);
+  assert.match(field, /cheering \? 0\.92/);
   assert.match(field, /crowd\.count = idx/);
 });
 
@@ -83,6 +87,9 @@ test('P23 consolidation : la personnalisation du profil est appliquée au footba
   assert.match(player, /appearance\?\.hairStyle === 'curly'/);
   assert.match(player, /appearance\?\.hairStyle === 'shaved'/);
   assert.match(game, /cfg === controlledConfig \? \(callbacks\.playerAppearance \|\| \{\}\) : \{\}/);
+  assert.match(game, /shopCosmeticsEnabled:true/);
+  assert.match(game, /callbacks\.homeKitAppearance/);
+  assert.match(game, /callbacks\.awayKitAppearance/);
   assert.match(game, /attributes: callbacks\.playerAttributes/);
   assert.match(game, /preferredFoot: callbacks\.preferredFoot/);
   assert.match(main, /playerAppearance: profileStore\.profile\.appearance/);

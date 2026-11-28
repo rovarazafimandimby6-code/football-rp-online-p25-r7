@@ -8,8 +8,8 @@ const completeRecoverySnapshot = () => ({
   player: { playerId: 'FRP-123456', createdAt: '2026-01-01T00:00:00.000Z' },
   profile: {
     schemaVersion: 1,
-    identity: { displayName: 'Rova', number: 10, preferredFoot: 'right', role: 'MID' },
-    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic' }
+    identity: { displayName: 'Rova', number: 10, preferredFoot: 'both', role: 'MID' },
+    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic', faceShape: 'angular', eyeShape: 'hooded' }
   },
   progression: {
     level: 4, experience: 20, coins: 500, trainingPoints: 2,
@@ -24,7 +24,7 @@ const completeRecoverySnapshot = () => ({
 
 import { OnlineAccountClient } from '../src/online-account-client.js';
 
-test('P27 profil cloud : GET et PUT utilisent uniquement la session persistante', async () => {
+test('P27 profil cloud : GET et PUT conservent le pied ambidextre et les formes DLS19', async () => {
   const calls = [];
   const client = new OnlineAccountClient({
     baseUrl: 'https://game.example',
@@ -36,12 +36,15 @@ test('P27 profil cloud : GET et PUT utilisent uniquement la session persistante'
   });
   client.token = 'account-token-with-more-than-32-characters';
   await client.getProfile();
-  await client.saveProfile({ identity: { displayName: 'Rova' }, appearance: { kit: 'crimson' }, progression: { coins: 999 } });
+  await client.saveProfile({ identity: { displayName: 'Rova', preferredFoot: 'both' }, appearance: { kit: 'crimson', faceShape: 'angular', eyeShape: 'hooded' }, progression: { coins: 999 } });
   assert.equal(calls[0].options.headers.authorization, `Bearer ${client.token}`);
   assert.equal(calls[2].options.headers.authorization, `Bearer ${client.token}`);
   assert.equal(calls[2].url, 'https://game.example/api/player-profile/me');
   assert.equal(JSON.parse(calls[2].options.body).expectedRevision, 0);
   assert.equal(JSON.parse(calls[2].options.body).profile.progression, undefined);
+  assert.equal(JSON.parse(calls[2].options.body).profile.identity.preferredFoot, 'both');
+  assert.equal(JSON.parse(calls[2].options.body).profile.appearance.faceShape, 'angular');
+  assert.equal(JSON.parse(calls[2].options.body).profile.appearance.eyeShape, 'hooded');
 });
 
 test('P27 profil cloud : refuse la synchronisation sans compte connecté', async () => {
@@ -104,6 +107,8 @@ test('P27 récupération cloud : prévisualise sans écrire quand le nouvel appa
   assert.equal(preview.reason, 'EXPLICIT_RESTORE_CONFIRMATION_REQUIRED');
   assert.equal(preview.playerId, 'FRP-123456');
   assert.equal(preview.snapshot.career.totals.matches, 3);
+  assert.equal(preview.snapshot.profile.identity.preferredFoot, 'both');
+  assert.equal(preview.snapshot.profile.appearance.faceShape, 'angular');
 });
 
 
@@ -237,8 +242,8 @@ test('P27 synchronisation : met en file uniquement identité et apparence, puis 
   client.account = { id: 'account-123', playerId: 'FRP-123456' };
   const localIdentity = { accountId: 'account-123', id: 'FRP-123456' };
   const operation = client.enqueueProfileSnapshot({
-    identity: { displayName: 'Rova', role: 'FWD' },
-    appearance: { kit: 'crimson' },
+    identity: { displayName: 'Rova', role: 'FWD', preferredFoot: 'both' },
+    appearance: { kit: 'crimson', faceShape: 'angular', eyeShape: 'hooded' },
     progression: { level: 99, coins: 999999 }
   }, outbox);
   assert.equal(operation.type, 'profile_snapshot');
@@ -249,6 +254,9 @@ test('P27 synchronisation : met en file uniquement identité et apparence, puis 
   assert.equal(calls[1].url, 'https://game.example/api/player-profile/me');
   assert.equal(calls[1].options.method, 'PUT');
   assert.equal(JSON.parse(calls[1].options.body).expectedRevision, 0);
+  assert.equal(JSON.parse(calls[1].options.body).profile.identity.preferredFoot, 'both');
+  assert.equal(JSON.parse(calls[1].options.body).profile.appearance.faceShape, 'angular');
+  assert.equal(JSON.parse(calls[1].options.body).profile.appearance.eyeShape, 'hooded');
   assert.equal(calls[1].options.headers.authorization, `Bearer ${client.token}`);
   assert.equal(outbox.status().state, 'synced');
 });
@@ -306,7 +314,7 @@ test('P27 session Google : reprend une session HttpOnly via cookie sans exposer 
   assert.equal(client.hasSession, true);
   assert.equal(client.token, null);
   assert.equal(calls[0].url, 'https://game.example/api/accounts/me');
-  assert.equal(calls[0].options.credentials, 'same-origin');
+  assert.equal(calls[0].options.credentials, 'include');
   assert.equal(calls[0].options.headers.authorization, undefined);
 });
 
@@ -341,7 +349,7 @@ test('P27 session Google : les lectures et écritures de compte acceptent la ses
   await client.getProgression();
   assert.equal(calls.length, 7);
   for (const call of calls.slice(1)) {
-    assert.equal(call.options.credentials, 'same-origin');
+    assert.equal(call.options.credentials, 'include');
     assert.equal(call.options.headers.authorization, undefined);
   }
 });
@@ -387,7 +395,7 @@ test('P27 session Google : logout révoque aussi une session portée par cookie'
   assert.equal(await client.logout(), true);
   assert.equal(calls[1].url, 'https://game.example/api/accounts/logout');
   assert.equal(calls[1].options.method, 'POST');
-  assert.equal(calls[1].options.credentials, 'same-origin');
+  assert.equal(calls[1].options.credentials, 'include');
   assert.equal(client.hasSession, false);
 });
 
@@ -434,7 +442,7 @@ test('P27 synchronisation automatique : conserve les changements hors ligne puis
   assert.equal(calls.length, 2);
   assert.equal(calls[1].options.method, 'PUT');
   assert.equal(JSON.parse(calls[1].options.body).expectedRevision, 0);
-  assert.equal(calls[1].options.credentials, 'same-origin');
+  assert.equal(calls[1].options.credentials, 'include');
   assert.equal(JSON.parse(calls[1].options.body).profile.progression, undefined);
 });
 
@@ -457,4 +465,110 @@ test('P27 synchronisation automatique : ne transmet jamais une file au compte Go
   assert.deepEqual(await coordinator.flush(), { uploaded: 0, remaining: 1, blocked: 1, skipped: true, reason: 'ACCOUNT_LOCAL_IDENTITY_MISMATCH' });
   assert.equal(requests, 0);
   assert.equal(outbox.status().pending, 1);
+});
+
+test('P27 session cloud : efface une session expirée pour permettre une nouvelle réservation passwordless', async () => {
+  const values = new Map([['fpro.account.session', JSON.stringify({ token: 'expired-token-value-that-is-long-enough-123', account: { id: 'account-1' } })]]);
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)), removeItem: key => values.delete(key) };
+  const client = new OnlineAccountClient({
+    storage,
+    fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ error: 'SESSION_EXPIRED' }) })
+  });
+  assert.equal(client.restoreSession(), true);
+  await assert.rejects(() => client.refresh(), /SESSION_EXPIRED/);
+  assert.equal(client.hasSession, false);
+  assert.equal(client.token, null);
+  assert.equal(client.account, null);
+  assert.equal(values.has('fpro.account.session'), false);
+});
+
+
+test('P27 synchronisation automatique : sérialise deux flush simultanés pour éviter les PUT en double', async () => {
+  const { PlayerSyncOutbox } = await import('../src/player-sync-outbox.js');
+  const { ProfileSyncCoordinator } = await import('../src/profile-sync-coordinator.js');
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const outbox = new PlayerSyncOutbox({ storage, operationIdFactory: () => 'profile-concurrent-flush-0001' });
+  let releasePut;
+  const putGate = new Promise(resolve => { releasePut = resolve; });
+  const calls = [];
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example', storage: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      if (options.method === 'PUT') await putGate;
+      return { ok: true, status: 200, json: async () => ({
+        profile: { identity: { displayName: options.method === 'PUT' ? 'Rova' : 'Previous' }, appearance: {} },
+        revision: options.method === 'PUT' ? 1 : 0
+      }) };
+    }
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  const coordinator = new ProfileSyncCoordinator({
+    accountClient: client,
+    outbox,
+    getProfile: () => ({ identity: { displayName: 'Rova' }, appearance: {} }),
+    getLocalIdentity: () => ({ accountId: 'account-123', id: 'FRP-123456' })
+  });
+  coordinator.enqueueCurrentProfile();
+
+  const first = coordinator.flush();
+  const second = coordinator.flush();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls.length, 2);
+  releasePut();
+  const [a, b] = await Promise.all([first, second]);
+  assert.deepEqual(a, { uploaded: 1, remaining: 0, blocked: 0 });
+  assert.deepEqual(b, { uploaded: 1, remaining: 0, blocked: 0 });
+  assert.equal(calls.filter(call => call.options.method === 'PUT').length, 1);
+  assert.equal(outbox.status().pending, 0);
+});
+
+
+test('P27 synchronisation : une réponse PUT perdue ne crée pas une seconde révision au nouvel essai', async () => {
+  const { PlayerSyncOutbox } = await import('../src/player-sync-outbox.js');
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const outbox = new PlayerSyncOutbox({ storage, operationIdFactory: () => 'profile-sync-lost-response-0001' });
+  const profile = {
+    identity: { displayName: 'Rova', number: 10, preferredFoot: 'both', role: 'MID' },
+    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic', faceShape: 'angular', eyeShape: 'hooded' }
+  };
+  let serverProfile = null;
+  let revision = 0;
+  let putCount = 0;
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example', storage: null,
+    fetchImpl: async (url, options) => {
+      if (options.method === 'PUT') {
+        putCount++;
+        const body = JSON.parse(options.body);
+        assert.equal(body.expectedRevision, revision);
+        serverProfile = body.profile;
+        revision++;
+        if (putCount === 1) throw new Error('NETWORK_RESPONSE_LOST');
+        return { ok: true, status: 200, json: async () => ({ revision }) };
+      }
+      return { ok: true, status: 200, json: async () => ({
+        profile: serverProfile ? { schemaVersion: 1, ...serverProfile, updatedAt: '2026-11-28T00:00:00.000Z' } : null,
+        revision
+      }) };
+    }
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  client.enqueueProfileSnapshot(profile, outbox);
+  const localIdentity = { accountId: 'account-123', id: 'FRP-123456' };
+
+  await assert.rejects(() => client.syncPendingProfileSnapshots(outbox, { localIdentity }), /NETWORK_RESPONSE_LOST/);
+  assert.equal(outbox.status().pending, 1);
+  assert.equal(outbox.pending()[0].attempts, 1);
+  const retry = await client.syncPendingProfileSnapshots(outbox, { localIdentity });
+
+  assert.deepEqual(retry, { uploaded: 1, remaining: 0, blocked: 0 });
+  assert.equal(putCount, 1);
+  assert.equal(revision, 1);
+  assert.equal(outbox.status().serverVersion, 1);
+  assert.equal(outbox.status().pending, 0);
 });

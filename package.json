@@ -10,7 +10,8 @@
     "preflight": "node server/deployment-preflight.js",
     "cloudflare:dev": "npx --yes wrangler@4 dev --config wrangler.toml",
     "build": "vite build && node scripts/copy-static-assets.mjs",
-    "android:sync": "cap sync android"
+    "android:sync": "cap sync android",
+    "audit:p27:data": "node scripts/audit-p27-runtime-data.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

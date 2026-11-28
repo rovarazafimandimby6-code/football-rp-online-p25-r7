@@ -103,3 +103,66 @@ test('P27 contrats IA : recrutement d’un joueur libre persiste après redémar
  assert.equal(audit.errors.length,0,JSON.stringify(audit.errors));
  assert.equal(audit.warnings.some(item=>item.code==='FREE_AGENT_ARCHIVE_DUPLICATE_SNAPSHOTS'),false);
 });
+
+test('P27 contrats système : les mutations et expirations sont annulées si la sauvegarde échoue',()=>{
+ const values=new Map();
+ let failWrites=false;
+ const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+ const key='p27-system-contract-atomic';
+ const manager=new ClubManager(undefined,storage,key);
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster.find(item=>item.playerType==='system');
+ assert.ok(player);
+ const original=player.contract;
+ failWrites=true;
+ const term=manager.setSystemPlayerContractTerm(club.id,player.id,{signedAt:Date.UTC(2035,0,1),durationWeeks:4});
+ assert.equal(term.ok,false);
+ assert.equal(term.reason,'roster-persistence-failed');
+ assert.deepEqual(manager.getClub(club.id).roster.find(item=>item.id===player.id).contract,original);
+ failWrites=false;
+ assert.equal(manager.setSystemPlayerContractTerm(club.id,player.id,{signedAt:Date.UTC(2035,0,1),durationWeeks:4}).ok,true);
+ const beforeExpiry=manager.getClub(club.id).roster.find(item=>item.id===player.id).contract;
+ failWrites=true;
+ const expired=manager.expireSystemPlayerContracts({now:Date.UTC(2035,0,1)+28*24*60*60*1000});
+ assert.equal(expired.ok,false);
+ assert.equal(expired.reason,'roster-persistence-failed');
+ const afterFailure=manager.getClub(club.id);
+ assert.ok(afterFailure.roster.some(item=>item.id===player.id));
+ assert.equal(afterFailure.roster.find(item=>item.id===player.id).contract.status,'active');
+ assert.equal(afterFailure.releasedPlayers.some(entry=>entry.player.id===player.id),false);
+ assert.equal(beforeExpiry.status,'active');
+});
+
+test('P27 contrats système : un renouvellement non persisté ne modifie pas le contrat en mémoire',()=>{
+ const values=new Map();
+ let failWrites=false;
+ const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+ const manager=new ClubManager(undefined,storage,'p27-system-renewal-atomic');
+ const club=manager.getClub('antananarivo-fc');
+ const player=club.roster.find(item=>item.playerType==='system');
+ const now=Date.now();
+ assert.equal(manager.setSystemPlayerContractTerm(club.id,player.id,{signedAt:now,durationWeeks:8}).ok,true);
+ const before=manager.getClub(club.id).roster.find(item=>item.id===player.id).contract;
+ failWrites=true;
+ const result=manager.renewSystemPlayerContract(club.id,player.id,{now:now+1,durationWeeks:12,weeklyWage:before.weeklyWage});
+ assert.equal(result.ok,false);
+ assert.equal(result.reason,'roster-persistence-failed');
+ assert.deepEqual(manager.getClub(club.id).roster.find(item=>item.id===player.id).contract,before);
+});
+
+test('P27 effectifs système : le recrutement de remplacement est annulé si la sauvegarde échoue',()=>{
+ const values=new Map();
+ let failWrites=false;
+ const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+ const manager=new ClubManager(undefined,storage,'p27-system-recruitment-atomic');
+ const club=manager.getClub('antananarivo-fc');
+ const departing=club.roster.find(item=>item.playerType==='system');
+ assert.ok(departing);
+ assert.equal(manager.removePlayer(club.id,departing.id),true);
+ const rosterBefore=manager.getClub(club.id).roster.map(item=>item.id);
+ failWrites=true;
+ const result=manager.replenishSystemRosterVacancies({clubIds:[club.id],now:Date.UTC(2036,0,1)});
+ assert.equal(result.ok,false);
+ assert.equal(result.reason,'roster-persistence-failed');
+ assert.deepEqual(manager.getClub(club.id).roster.map(item=>item.id),rosterBefore);
+});

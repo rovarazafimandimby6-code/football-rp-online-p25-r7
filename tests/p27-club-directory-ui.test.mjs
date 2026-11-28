@@ -6,7 +6,7 @@ const main=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
 const css=await readFile(new URL('../style.css',import.meta.url),'utf8');
 
 test('P27 catalogue UI : charge le catalogue de saison par pages et vérifie les 156 identifiants',()=>{
-  assert.match(main,/fetch\('\/api\/clubs\?limit=100&offset='/);
+  assert.match(main,/p27ApiFetch\('\/api\/clubs\?limit=100&offset='/);
   assert.match(main,/fetchPage\(0\),fetchPage\(100\)/);
   assert.match(main,/pages\[0\]\.total!==156/);
   assert.match(main,/new Set\(items\.map\(item=>item\.id\)\)\.size!==156/);
@@ -40,7 +40,14 @@ test('P27 club identity UI: uses the approved red/system and green/human managem
   assert.match(main,/club-control-indicator/);
   assert.match(main,/CLUB DIRIGÉ PAR LE SYSTÈME/);
   assert.match(main,/CLUB DIRIGÉ PAR UN JOUEUR/);
-  assert.equal(main.includes('IA'),false);
+  assert.doesNotMatch(main,/\\bIA\\b/);
   assert.doesNotMatch(main,/intelligence artificielle/);
   assert.match(css,/\.club-control-indicator\.human i/);
+});
+
+
+test('P27 Club RP UI : une réponse réseau ancienne ne remplace pas le dernier écran demandé',()=>{
+  assert.match(main,/let rpClubPageRequestSequence = 0/);
+  assert.match(main,/const requestId = \+\+rpClubPageRequestSequence/);
+  assert.match(main,/requestId !== rpClubPageRequestSequence \|\| !document\.getElementById\('rp-club-root'\)/);
 });

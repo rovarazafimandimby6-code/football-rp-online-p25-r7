@@ -33,3 +33,15 @@ test('P27: la fatigue et la vitesse continuent de moduler la foulée', () => {
   assert.equal(fresh.strideRate, tired.strideRate);
   assert.ok(tired.strideAmplitude < fresh.strideAmplitude);
 });
+
+test('P27: les paramètres de foulée peuvent être réutilisés sans allocation', () => {
+  const buffer = {};
+  const first = gaitProfile(7, 0.9, 1, 4, 2, buffer);
+  const second = gaitProfile(3, 0.4, -2, -5, -4, buffer);
+  assert.equal(first, buffer);
+  assert.equal(second, buffer);
+  assert.equal(second.running, false);
+  assert.ok(second.lateralLean < 0);
+  assert.ok(second.accelerationLean < 0);
+  assert.ok(second.turnLean < 0);
+});

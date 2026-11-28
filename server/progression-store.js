@@ -4,11 +4,11 @@ import path from 'node:path';
 
 const ATTRIBUTES = Object.freeze({ pace:55, shooting:50, passing:50, defense:45, stamina:55, control:50 });
 const clampInt = (value, min, max, fallback=min) => Number.isFinite(Number(value)) ? Math.max(min, Math.min(max, Math.round(Number(value)))) : fallback;
-const emptyProgression = () => ({ level:1, experience:0, coins:250, trainingPoints:0, attributes:{...ATTRIBUTES}, processedMatchIds:[] });
+const emptyProgression = () => ({ level:1, experience:0, coins:250, trainingPoints:0, attributes:{...ATTRIBUTES}, processedMatchIds:[], coinTransactions:[] });
 function normalize(value = {}) {
   const attrs = value.attributes && typeof value.attributes === 'object' ? value.attributes : {};
   const level = clampInt(value.level,1,99,1);
-  return { level, experience: level >= 99 ? 0 : clampInt(value.experience,0,1_000_000_000), coins:clampInt(value.coins,0,1_000_000_000,250), trainingPoints:clampInt(value.trainingPoints,0,100_000), attributes:Object.fromEntries(Object.keys(ATTRIBUTES).map(key=>[key,clampInt(attrs[key],1,99,ATTRIBUTES[key])])), processedMatchIds:Array.isArray(value.processedMatchIds)?[...new Set(value.processedMatchIds.filter(id=>typeof id==='string'&&id.trim()).map(id=>id.slice(0,64)))].slice(-2000):[] };
+  return { level, experience: level >= 99 ? 0 : clampInt(value.experience,0,1_000_000_000), coins:clampInt(value.coins,0,1_000_000_000,250), trainingPoints:clampInt(value.trainingPoints,0,100_000), attributes:Object.fromEntries(Object.keys(ATTRIBUTES).map(key=>[key,clampInt(attrs[key],1,99,ATTRIBUTES[key])])), processedMatchIds:Array.isArray(value.processedMatchIds)?[...new Set(value.processedMatchIds.filter(id=>typeof id==='string'&&id.trim()).map(id=>id.slice(0,64)))].slice(-2000):[], coinTransactions:Array.isArray(value.coinTransactions)?value.coinTransactions.filter(tx=>tx&&typeof tx.id==='string'&&tx.id.trim()&&['spend','credit'].includes(tx.direction)&&Number.isSafeInteger(tx.amount)&&tx.amount>0).slice(-2000).map(tx=>({id:tx.id.slice(0,100),direction:tx.direction,amount:tx.amount})):[] };
 }
 function addExperience(state, amount) {
   state.experience = Math.min(1_000_000_000,state.experience+amount);
@@ -44,6 +44,31 @@ export class JsonProgressionStore {
       addExperience(p,experience);p.coins=Math.min(1_000_000_000,p.coins+coins);p.processedMatchIds.push(id);p.processedMatchIds=p.processedMatchIds.slice(-2000);
       return {value:{duplicate:false,progression:this.get(accountId),reward:{experience,coins}}};
     });
+  }
+  adjustCoins(accountId,{transactionId,amount,direction}={}){
+    const id=String(transactionId||'').trim().slice(0,100);
+    if(!id||!Number.isSafeInteger(amount)||amount<=0||!['spend','credit'].includes(direction))return {ok:false,reason:'invalid-coin-transaction',progression:this.get(accountId)};
+    return this.transaction(()=>{
+      const row=this.row(accountId),p=row.progression;
+      const prior=p.coinTransactions.find(tx=>tx.id===id);
+      if(prior){
+        if(prior.direction!==direction||prior.amount!==amount)return {persist:false,value:{ok:false,reason:'transaction-conflict',progression:this.get(accountId)}};
+        return {persist:false,value:{ok:true,duplicate:true,progression:this.get(accountId)}};
+      }
+      const next=direction==='spend'?p.coins-amount:p.coins+amount;
+      if(next<0)return {persist:false,value:{ok:false,reason:'insufficient-coins',progression:this.get(accountId)}};
+      if(next>1_000_000_000)return {persist:false,value:{ok:false,reason:'coin-balance-limit',progression:this.get(accountId)}};
+      p.coins=next;
+      p.coinTransactions.push({id,direction,amount});
+      p.coinTransactions=p.coinTransactions.slice(-2000);
+      return {value:{ok:true,duplicate:false,progression:this.get(accountId)}};
+    });
+  }
+  spendCoins(accountId,{transactionId,amount}={}){
+    return this.adjustCoins(accountId,{transactionId,amount,direction:'spend'});
+  }
+  creditCoins(accountId,{transactionId,amount}={}){
+    return this.adjustCoins(accountId,{transactionId,amount,direction:'credit'});
   }
   train(accountId,attribute,amount=1){
     if(!Object.hasOwn(ATTRIBUTES,attribute))throw new Error('INVALID_ATTRIBUTE');

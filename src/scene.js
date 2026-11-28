@@ -1,5 +1,6 @@
 import { chooseRenderProfile, resolveRenderProfile } from './performance-tuning.js';
 import * as THREE from 'three';
+import { RenderFramePacer } from './render-frame-pacer.js';
 
 export class SceneManager {
   constructor(container) {
@@ -37,11 +38,17 @@ export class SceneManager {
     this.renderer.sortObjects = true;
     this.renderer.useLegacyLights = false;
     this.renderer.setSize(w, h);
+    this.lastSize = { width: w, height: h };
     this.renderer.domElement.setAttribute('aria-label', 'Vue 3D du match de football');
     container.appendChild(this.renderer.domElement);
     this.contextLost = false;
     this._onContextLost = (event) => { event.preventDefault(); this.contextLost = true; };
-    this._onContextRestored = () => { this.contextLost = false; this.resize(); };
+    this._onContextRestored = () => {
+      this.contextLost = false;
+      this.framePacer?.reset();
+      this.lastSize = null;
+      this.resize();
+    };
     this.renderer.domElement.addEventListener('webglcontextlost', this._onContextLost, false);
     this.renderer.domElement.addEventListener('webglcontextrestored', this._onContextRestored, false);
 
@@ -67,6 +74,7 @@ export class SceneManager {
 
     this.quality = 'auto';
     this.targetFps = initialProfile.targetFps || 30;
+    this.framePacer = new RenderFramePacer(this.targetFps);
     this.setQuality('auto');
 
     this._onResize = () => this.resize();
@@ -87,8 +95,12 @@ export class SceneManager {
       pixelRatio: window.devicePixelRatio || 1
     });
     this.quality = profile.quality;
+    // Stadium construction reads this once to select a crowd budget suited
+    // to the device without changing match simulation or player counts.
+    this.scene.userData.renderQuality = profile.quality;
     this.requestedQuality = level;
     this.targetFps = profile.targetFps || 30;
+    this.framePacer?.setTargetFps(this.targetFps);
     this.renderer.setPixelRatio(profile.pixelRatio);
     this.renderer.shadowMap.enabled = profile.shadows;
     this.sunLight.castShadow = profile.shadows;
@@ -104,14 +116,20 @@ export class SceneManager {
     const h = Math.round(bounds?.height || this.container.clientHeight || window.innerHeight);
     // Ignore transient zero-size layouts while the menu and match shell switch visibility.
     if (w <= 0 || h <= 0) return;
+    if (this.lastSize?.width === w && this.lastSize?.height === h) return;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
+    this.lastSize = { width: w, height: h };
   }
 
-  render() {
-    if (!this.renderer || this.contextLost || this.renderer.getContext().isContextLost()) return;
+  render(nowMs = performance.now()) {
+    // The WebGL context events maintain this flag; avoid querying the GL context on every frame.
+    if (!this.renderer || this.contextLost) return false;
+    // Cap GPU work to the selected device profile while simulation/input remain RAF-driven.
+    if (this.framePacer && !this.framePacer.shouldRender(nowMs)) return false;
     this.renderer.render(this.scene, this.camera);
+    return true;
   }
 
   dispose() {

@@ -1,3 +1,4 @@
+import { OnlineMatchSocketTransport } from './online-match-socket.js';
 /** Minimal HTTP client for the authoritative match-room API. */
 export class OnlineMatchClient {
   constructor({ baseUrl = '', fetchImpl = globalThis.fetch, storage = globalThis.sessionStorage, accountTokenProvider = () => null } = {}) {
@@ -9,7 +10,10 @@ export class OnlineMatchClient {
     this.token = null;
     this.playerId = null;
     this.sequence = 0;
+    this.realtimeTransport = null;
   }
+
+  get realtimeConnected() { return this.realtimeTransport?.connected === true; }
 
   async request(path, { method = 'GET', body, auth = false, accountAuth = false } = {}) {
     if (typeof this.fetchImpl !== 'function') throw new Error('FETCH_UNAVAILABLE');
@@ -48,6 +52,28 @@ export class OnlineMatchClient {
     this.persistSession();
     return result;
   }
+  connectRealtime({ enabled = false, afterSequence = -1, afterEventId = 0, onMessage = null, onStatus = null, onError = null, WebSocketImpl = globalThis.WebSocket } = {}) {
+    if (!enabled) return false;
+    if (!this.roomId || !this.token || !this.playerId) throw new Error('NOT_JOINED');
+    this.disconnectRealtime();
+    this.realtimeTransport = new OnlineMatchSocketTransport({
+      baseUrl: this.baseUrl, roomId: this.roomId, token: this.token, playerId: this.playerId,
+      WebSocketImpl, onMessage, onStatus, onError,
+      onWelcome: message => {
+        if (Number.isSafeInteger(message?.nextSequence) && message.nextSequence > 0) {
+          this.sequence = Math.max(this.sequence, message.nextSequence - 1);
+          this.persistSession();
+        }
+      },
+    });
+    return this.realtimeTransport.connect({ afterSequence, afterEventId });
+  }
+
+  disconnectRealtime() {
+    this.realtimeTransport?.close();
+    this.realtimeTransport = null;
+  }
+
   async requestEntry() {
     if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
     return this.request(`/api/rooms/${this.roomId}/entry-request`, { method: 'POST', auth: true, body: {} });
@@ -60,7 +86,13 @@ export class OnlineMatchClient {
 
   async sendInput({ x = 0, z = 0, sprint = false, action = null, callForPass = false } = {}) {
     if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
-    const result = await this.request(`/api/rooms/${this.roomId}/input`, { method: 'POST', auth: true, body: { x, z, sprint, ...(action ? { action } : {}), ...(callForPass === true ? { callForPass: true } : {}), sequence: ++this.sequence } });
+    const input = { x, z, sprint, ...(action ? { action } : {}), ...(callForPass === true ? { callForPass: true } : {}), sequence: ++this.sequence };
+    if (this.realtimeConnected) {
+      this.realtimeTransport.sendInput(input);
+      this.persistSession();
+      return { accepted: true, transport: 'websocket', sequence: input.sequence };
+    }
+    const result = await this.request(`/api/rooms/${this.roomId}/input`, { method: 'POST', auth: true, body: input });
     this.persistSession();
     return result;
   }
@@ -73,6 +105,7 @@ export class OnlineMatchClient {
   }
   async heartbeat() {
     if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
+    if (this.realtimeConnected && this.realtimeTransport.heartbeat()) return { ok: true, transport: 'websocket' };
     const result = await this.request(`/api/rooms/${this.roomId}/heartbeat`, { method: 'POST', auth: true });
     if (Number.isSafeInteger(result?.nextSequence) && result.nextSequence > 0) this.sequence = Math.max(this.sequence, result.nextSequence - 1);
     this.persistSession();
@@ -85,6 +118,7 @@ export class OnlineMatchClient {
 
   async pollState({ afterSequence = -1, afterEventId = 0 } = {}) {
     if (!this.roomId) throw new Error('NOT_JOINED');
+    if (this.realtimeConnected) return { state: null, events: [], eventCursor: afterEventId, changed: false, transport: 'websocket' };
     const params = new URLSearchParams({ sinceSequence: String(Math.max(-1, Math.floor(afterSequence))), afterEventId: String(Math.max(0, Math.floor(afterEventId))) });
     const delta = await this.request(`/api/rooms/${this.roomId}?${params}`);
     if (!delta) return { state: null, events: [], eventCursor: afterEventId, changed: false };
@@ -93,6 +127,7 @@ export class OnlineMatchClient {
   async leave() {
     if (!this.roomId || !this.token) return false;
     await this.request(`/api/rooms/${this.roomId}/leave`, { method: 'POST', auth: true });
+    this.disconnectRealtime();
     this.roomId = null; this.token = null; this.playerId = null;
     try { this.storage?.removeItem('fpro.match.session'); } catch {}
     return true;

@@ -126,3 +126,87 @@ test('P27 finance : le versement sponsor et son compteur sont atomiques en cas d
  assert.equal(restored.getAccount('club').balance,700);
  assert.equal(restored.getAccount('club').sponsors[0].paidWeeks,1);
 });
+
+test('P27 finance : un identifiant de journal ne peut pas être réutilisé avec un contenu différent',()=>{
+ const f=new ClubFinanceStore(null,'finance-id-conflict');f.openAccount('club',1000);
+ const original={id:'immutable-entry',category:'ticketing',amount:250,direction:'income',description:'Billetterie',createdAt:100,referenceId:'match-1'};
+ assert.equal(f.post('club',original).ok,true);
+ assert.equal(f.post('club',{...original}).duplicate,true);
+ const changed=f.post('club',{...original,amount:900,direction:'expense'});
+ assert.deepEqual(changed,{ok:false,reason:'transaction-id-conflict'});
+ assert.equal(f.balance('club'),1250);
+ assert.equal(f.getAccount('club').entries.length,1);
+});
+
+test('P27 finance : un lot contenant un identifiant rejoué avec un autre montant est entièrement refusé',()=>{
+ const f=new ClubFinanceStore(null,'finance-batch-id-conflict');f.openAccount('club',1000);
+ f.post('club',{id:'existing-entry',category:'wages',amount:100,direction:'expense'});
+ const result=f.postBatch('club',[
+  {id:'new-entry',category:'ticketing',amount:500,direction:'income'},
+  {id:'existing-entry',category:'wages',amount:999,direction:'expense'}
+ ]);
+ assert.deepEqual(result,{ok:false,reason:'transaction-id-conflict'});
+ assert.equal(f.balance('club'),900);
+ assert.equal(f.getAccount('club').entries.length,1);
+});
+
+test('P27 finance : un prêt ne peut pas réutiliser un identifiant déjà présent dans le journal',()=>{
+ const f=new ClubFinanceStore(null,'loan-ledger-collision');f.openAccount('club',1000);
+ f.post('club',{id:'loan-collision',category:'other',amount:200,direction:'income'});
+ const result=f.issueLoan('club',{id:'collision',lender:'Banque',principal:500,totalRepayment:600,durationWeeks:3,issuedAt:100});
+ assert.deepEqual(result,{ok:false,reason:'loan-transaction-id-conflict'});
+ assert.equal(f.balance('club'),1200);
+ assert.equal(f.getAccount('club').loans.length,0);
+ assert.equal(f.getAccount('club').entries.length,1);
+});
+
+test('P27 finance : un prêt refuse des échéances qui ne peuvent pas toutes être positives',()=>{
+ const f=new ClubFinanceStore(null,'loan-installment-minimum');f.openAccount('club',0);
+ const result=f.issueLoan('club',{id:'tiny-loan',lender:'Caisse',principal:1,totalRepayment:2,durationWeeks:3,issuedAt:100});
+ assert.deepEqual(result,{ok:false,reason:'invalid-loan'});
+ assert.equal(f.balance('club'),0);
+ assert.equal(f.getAccount('club').loans.length,0);
+});
+
+
+test('P27 finance : refuse de charger un historique corrompu au lieu de supprimer des écritures',()=>{
+ const cases=[
+  {version:1,accounts:[{clubId:'club',openingBalance:100,entries:[{id:'bad',category:'invalid',amount:5,direction:'income'}]}]},
+  {version:1,accounts:[{clubId:'club',openingBalance:100,entries:[
+   {id:'same',category:'other',amount:5,direction:'income'},
+   {id:'same',category:'other',amount:7,direction:'income'}
+  ]}]},
+  {version:1,accounts:[{clubId:'club',openingBalance:100,entries:[],sponsors:[{id:'bad'}]}]},
+  {version:1,accounts:[{clubId:'club',openingBalance:100,entries:[]},{clubId:'club',openingBalance:200,entries:[]}]}
+ ];
+ for(const value of cases) {
+  const storage={getItem:()=>JSON.stringify(value),setItem:()=>{}};
+  assert.throws(()=>new ClubFinanceStore(storage,'corrupt-finance'),{message:'FINANCE_STORAGE_CORRUPT'});
+ }
+ const malformed={getItem:()=>'{broken',setItem:()=>{}};
+ assert.throws(()=>new ClubFinanceStore(malformed,'corrupt-json'),{message:'FINANCE_STORAGE_CORRUPT'});
+});
+
+test('P27 finance : un versement sponsor refuse un identifiant d’échéance déjà utilisé avec un contenu différent',()=>{
+ const f=new ClubFinanceStore(null,'sponsor-installment-conflict');f.openAccount('club',100);
+ const start=Date.UTC(2026,0,1);
+ f.signSponsorContract('club',{id:'sponsor-conflict',name:'Partenaire',weeklyPayment:700,durationWeeks:2,signedAt:start});
+ f.post('club',{id:'sponsor-sponsor-conflict-1',category:'sponsorship',amount:999,direction:'income',
+  description:'Écriture étrangère',createdAt:start+7*86400000,referenceId:'sponsor-conflict'});
+ const result=f.settleSponsorPayments('club',start+8*86400000);
+ assert.deepEqual(result,{ok:false,reason:'transaction-id-conflict'});
+ assert.equal(f.getAccount('club').sponsors[0].paidWeeks,0);
+ assert.equal(f.getAccount('club').balance,1099);
+});
+
+test('P27 finance : un remboursement refuse un identifiant d’échéance déjà utilisé avec un contenu différent',()=>{
+ const f=new ClubFinanceStore(null,'loan-installment-conflict');f.openAccount('club',0);
+ const start=Date.UTC(2026,0,1);
+ f.issueLoan('club',{id:'loan-conflict',lender:'Banque',principal:1000,totalRepayment:1200,durationWeeks:2,issuedAt:start});
+ f.post('club',{id:'loan-payment-loan-conflict-1',category:'loan',amount:50,direction:'expense',
+  description:'Écriture étrangère',createdAt:start+7*86400000,referenceId:'loan-conflict'});
+ const result=f.settleLoanRepayments('club',start+8*86400000);
+ assert.deepEqual(result,{ok:false,reason:'transaction-id-conflict'});
+ assert.equal(f.getAccount('club').loans[0].paidInstallments,0);
+ assert.equal(f.getAccount('club').balance,950);
+});

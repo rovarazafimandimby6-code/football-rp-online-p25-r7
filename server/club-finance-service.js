@@ -63,11 +63,16 @@ export class JsonClubFinanceService {
     }
     const valid = {};
     for (const [clubId, at] of Object.entries(parsed.clubs)) {
-      if (this.clubs.has(clubId) && Number.isSafeInteger(at) && at >= 0) valid[clubId] = at;
+      // Never replace a malformed known-club checkpoint with "now": doing so
+      // would silently erase payroll arrears from the schedule.
+      if (this.clubs.has(clubId) && (!Number.isSafeInteger(at) || at < 0)) {
+        throw new Error('PAYROLL_SCHEDULE_CORRUPT');
+      }
+      if (this.clubs.has(clubId)) valid[clubId] = at;
     }
     let changed = false;
     for (const clubId of this.clubs.keys()) {
-      if (!Number.isSafeInteger(valid[clubId])) { valid[clubId] = this.now(); changed = true; }
+      if (!Object.hasOwn(valid, clubId)) { valid[clubId] = this.now(); changed = true; }
     }
     if (changed && !this.persistPayrollSchedule(valid)) throw new Error('PAYROLL_SCHEDULE_MIGRATION_FAILED');
     return valid;
@@ -348,6 +353,210 @@ export class JsonClubFinanceService {
       }
     }
     return { ok: failures.length === 0, at: now, systemWages, wages, transferFees, sponsors, loans, failures };
+  }
+
+
+  /**
+   * Read-only reconciliation across club accounts, ledgers and recovery journals.
+   * It deliberately reports discrepancies instead of repairing financial history.
+   */
+  auditReconciliation() {
+    const issues = [];
+    const sourceEvents = this.transferStore?.state?.events;
+    if (Array.isArray(sourceEvents)) {
+      const eventIds = new Set();
+      for (const event of sourceEvents) {
+        if (!event || !['transfer', 'salary-payment'].includes(event.type)) continue;
+        const eventId = String(event.id ?? '').trim();
+        if (!eventId || eventIds.has(`${event.type}:${eventId}`)) {
+          issues.push({ type: 'source-finance-event-duplicate-or-missing-id', eventType: event.type, eventId: eventId || null });
+        }
+        if (eventId) eventIds.add(`${event.type}:${eventId}`);
+        if (event.type === 'transfer') {
+          const fee = safeAmount(event.fee);
+          if (fee === null || fee === 0 || !this.clubs.has(event.fromClubId) ||
+              !this.clubs.has(event.toClubId) || event.fromClubId === event.toClubId) {
+            issues.push({ type: 'source-transfer-event-invalid', eventId: eventId || null });
+          }
+        } else if (!this.clubs.has(event.clubId) || safeAmount(event.amount) === null ||
+            event.amount === 0) {
+          issues.push({ type: 'source-player-wage-event-invalid', eventId: eventId || null });
+        }
+      }
+    }
+    const clubIds = new Set(this.clubs.keys());
+    const accountIds = new Set(this.store.accounts.keys());
+    const missingAccounts = [...clubIds].filter(id => !accountIds.has(id)).sort();
+    const orphanAccounts = [...accountIds].filter(id => !clubIds.has(id)).sort();
+    for (const clubId of missingAccounts) issues.push({ type: 'missing-account', clubId });
+    for (const clubId of orphanAccounts) issues.push({ type: 'orphan-account', clubId });
+
+    let openingBalance = 0, totalIncome = 0, totalExpenses = 0, totalBalance = 0;
+    for (const [clubId, raw] of this.store.accounts) {
+      let ledgerBalance = raw.openingBalance;
+      for (const entry of raw.entries) {
+        ledgerBalance += entry.direction === 'income' ? entry.amount : -entry.amount;
+        if (!Number.isSafeInteger(ledgerBalance) || ledgerBalance < 0 || ledgerBalance > 1_000_000_000_000) {
+          issues.push({ type: 'invalid-ledger-balance', clubId, entryId: entry.id });
+          break;
+        }
+      }
+      const account = this.store.getAccount(clubId);
+      if (!account || account.balance !== ledgerBalance) {
+        issues.push({ type: 'balance-ledger-mismatch', clubId });
+      }
+      openingBalance += raw.openingBalance;
+      totalIncome += account?.totalIncome || 0;
+      totalExpenses += account?.totalExpenses || 0;
+      totalBalance += account?.balance || 0;
+      for (const sponsor of raw.sponsors || []) {
+        const prefix = `sponsor-${sponsor.id}-`;
+        const sponsorEntries = raw.entries.filter(entry => entry.id.startsWith(prefix));
+        if (sponsorEntries.length !== sponsor.paidWeeks) issues.push({ type: 'sponsor-checkpoint-mismatch', clubId, sponsorId: sponsor.id, checkpoint: sponsor.paidWeeks, ledgerPayments: sponsorEntries.length });
+        const expectedIds = new Set();
+        for (let installment = 1; installment <= sponsor.paidWeeks; installment++) {
+          const entryId = prefix + installment;
+          expectedIds.add(entryId);
+          const entry = sponsorEntries.find(item => item.id === entryId);
+          const expectedAt = sponsor.signedAt + installment * 7 * 86400000;
+          if (!entry) issues.push({ type: 'sponsor-installment-missing', clubId, sponsorId: sponsor.id, installment, entryId });
+          else if (entry.category !== 'sponsorship' || entry.direction !== 'income' ||
+              entry.amount !== sponsor.weeklyPayment || entry.referenceId !== sponsor.id ||
+              entry.createdAt !== expectedAt) {
+            issues.push({ type: 'sponsor-installment-invalid', clubId, sponsorId: sponsor.id, installment, entryId });
+          }
+        }
+        for (const entry of sponsorEntries) if (!expectedIds.has(entry.id)) {
+          issues.push({ type: 'sponsor-installment-unexpected', clubId, sponsorId: sponsor.id, entryId: entry.id });
+        }
+      }
+      for (const loan of raw.loans || []) {
+        const prefix = `loan-payment-${loan.id}-`;
+        const loanEntries = raw.entries.filter(entry => entry.id.startsWith(prefix));
+        if (loanEntries.length !== loan.paidInstallments) issues.push({ type: 'loan-checkpoint-mismatch', clubId, loanId: loan.id, checkpoint: loan.paidInstallments, ledgerPayments: loanEntries.length });
+        const expectedIds = new Set();
+        const installmentAmount = Math.ceil(loan.totalRepayment / loan.durationWeeks);
+        for (let installment = 1; installment <= loan.paidInstallments; installment++) {
+          const entryId = prefix + installment;
+          expectedIds.add(entryId);
+          const entry = loanEntries.find(item => item.id === entryId);
+          const expectedAmount = installment === loan.durationWeeks
+            ? loan.totalRepayment - installmentAmount * (loan.durationWeeks - 1)
+            : installmentAmount;
+          const expectedAt = loan.issuedAt + installment * 7 * 86400000;
+          if (!entry) issues.push({ type: 'loan-installment-missing', clubId, loanId: loan.id, installment, entryId });
+          else if (entry.category !== 'loan' || entry.direction !== 'expense' ||
+              entry.amount !== expectedAmount || entry.referenceId !== loan.id ||
+              entry.createdAt !== expectedAt) {
+            issues.push({ type: 'loan-installment-invalid', clubId, loanId: loan.id, installment, entryId });
+          }
+        }
+        for (const entry of loanEntries) if (!expectedIds.has(entry.id)) {
+          issues.push({ type: 'loan-installment-unexpected', clubId, loanId: loan.id, entryId: entry.id });
+        }
+      }
+    }
+
+    const checkJournalEntry = (clubId, entryId, expected, checkpoint, kind) => {
+      const account = this.store.getAccount(clubId);
+      const actual = account?.entries.find(entry => entry.id === entryId);
+      if (checkpoint && !actual) issues.push({ type: `${kind}-checkpoint-without-entry`, clubId, entryId });
+      if (!checkpoint && actual) issues.push({ type: `${kind}-entry-without-checkpoint`, clubId, entryId });
+      if (actual && (actual.amount !== expected.amount || actual.direction !== expected.direction ||
+          actual.category !== expected.category || actual.referenceId !== expected.referenceId)) {
+        issues.push({ type: `${kind}-entry-conflict`, clubId, entryId });
+      }
+    };
+    const transferIds = new Set();
+    for (const transfer of this.transferJournal.transfers || []) {
+      if (!transfer?.id || transferIds.has(transfer.id)) {
+        issues.push({ type: 'transfer-journal-duplicate-or-missing-id', transferId: transfer?.id || null });
+      }
+      if (transfer?.id) transferIds.add(transfer.id);
+      if (!this.clubs.has(transfer?.fromClubId) || !this.clubs.has(transfer?.toClubId) ||
+          transfer?.fromClubId === transfer?.toClubId) {
+        issues.push({ type: 'transfer-journal-invalid-club-reference', transferId: transfer?.id || null });
+      }
+      if (!Number.isSafeInteger(transfer?.fee) || transfer.fee <= 0 ||
+          typeof transfer?.debitPosted !== 'boolean' || typeof transfer?.creditPosted !== 'boolean' ||
+          !['pending', 'completed'].includes(transfer?.status)) {
+        issues.push({ type: 'transfer-journal-invalid-state', transferId: transfer?.id || null });
+      }
+      if (transfer?.status === 'completed' && (!transfer.debitPosted || !transfer.creditPosted) ||
+          transfer?.status === 'pending' && transfer.debitPosted && transfer.creditPosted) {
+        issues.push({ type: 'transfer-journal-status-checkpoint-mismatch', transferId: transfer?.id || null });
+      }
+    }
+    const wageIds = new Set();
+    for (const wage of this.transferJournal.playerWages || []) {
+      if (!wage?.id || wageIds.has(wage.id)) {
+        issues.push({ type: 'player-wage-journal-duplicate-or-missing-id', wageId: wage?.id || null });
+      }
+      if (wage?.id) wageIds.add(wage.id);
+      if (!this.clubs.has(wage?.clubId) || !Number.isSafeInteger(wage?.amount) ||
+          wage.amount <= 0 || typeof wage?.posted !== 'boolean') {
+        issues.push({ type: 'player-wage-journal-invalid-state', wageId: wage?.id || null });
+      }
+    }
+    for (const transfer of this.transferJournal.transfers || []) {
+      const outId = `transfer-fee-out-${transfer.id}`, inId = `transfer-fee-in-${transfer.id}`;
+      checkJournalEntry(transfer.fromClubId, outId, { amount: transfer.fee, direction: 'expense', category: 'transfer-expense', referenceId: transfer.id }, transfer.debitPosted, 'transfer-debit');
+      checkJournalEntry(transfer.toClubId, inId, { amount: transfer.fee, direction: 'income', category: 'transfer-income', referenceId: transfer.id }, transfer.creditPosted, 'transfer-credit');
+      if (transfer.status === 'completed' && (!transfer.debitPosted || !transfer.creditPosted)) {
+        issues.push({ type: 'transfer-completion-checkpoint-mismatch', transferId: transfer.id });
+      }
+    }
+    for (const wage of this.transferJournal.playerWages || []) {
+      checkJournalEntry(wage.clubId, `player-wage-${wage.id}`,
+        { amount: wage.amount, direction: 'expense', category: 'wages', referenceId: wage.id }, wage.posted, 'player-wage');
+    }
+
+    // Validate every system-player payroll ledger entry against the club's retained contract history.
+    for (const [clubId, club] of this.clubs) {
+      const contracts = new Map();
+      const roster = (club.roster || []).map(player => ({ player, releasedAt: null }));
+      const released = (club.releasedPlayers || []).map(item => ({
+        player: item?.player, releasedAt: Date.parse(item?.releasedAt)
+      }));
+      for (const { player, releasedAt } of [...roster, ...released]) {
+        const contract = player?.contract;
+        if (player?.playerType !== 'system' || !contract?.id ||
+            contract.clubId !== clubId || contract.playerId !== player.id) continue;
+        const wage = safeAmount(contract.weeklyWage ?? contract.salary);
+        if (wage === null || wage === 0) continue;
+        const signedAt = Date.parse(contract.signedAt);
+        const expiresAt = Date.parse(contract.expiresAt);
+        const endAt = Number.isFinite(releasedAt)
+          ? (Number.isFinite(expiresAt) ? Math.min(releasedAt, expiresAt) : releasedAt)
+          : (Number.isFinite(expiresAt) ? expiresAt : Number.POSITIVE_INFINITY);
+        contracts.set(String(contract.id), {
+          wage, signedAt: Number.isFinite(signedAt) ? signedAt : Number.NEGATIVE_INFINITY, endAt
+        });
+      }
+      const account = this.store.accounts.get(clubId);
+      for (const entry of account?.entries || []) {
+        if (!entry.id.startsWith('system-wage-')) continue;
+        const match = entry.id.match(/^system-wage-(.+)-(\\d{13})$/);
+        const contract = match ? contracts.get(match[1]) : null;
+        const dueAt = match ? Number(match[2]) : NaN;
+        if (!contract || !Number.isSafeInteger(dueAt) || entry.category !== 'wages' ||
+            entry.direction !== 'expense' || entry.amount !== contract.wage ||
+            entry.referenceId !== match[1] || entry.createdAt !== dueAt ||
+            dueAt <= contract.signedAt || dueAt > contract.endAt) {
+          issues.push({ type: 'system-wage-entry-invalid', clubId, entryId: entry.id });
+        }
+      }
+    }
+
+    const totalsSafe = [openingBalance, totalIncome, totalExpenses, totalBalance].every(Number.isSafeInteger);
+    if (!totalsSafe) issues.push({ type: 'aggregate-overflow' });
+    return {
+      ok: issues.length === 0,
+      clubs: this.clubs.size,
+      accounts: accountIds.size,
+      openingBalance, totalIncome, totalExpenses, totalBalance,
+      missingAccounts, orphanAccounts, issueCount: issues.length, issues
+    };
   }
 
   getClubFinance(clubId, { weeklyMaintenance = 0 } = {}) {

@@ -7,11 +7,54 @@ import { mountHumanoidPlayer } from './player-models.js';
  * Fabrique de personnage humanoïde articulé 3D (prête pour remplacement GLB/GLTF futur).
  * Orientation locale : l'avant du joueur pointe vers +Z.
  */
+
+function disposeFallbackVisualResources(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+  root.traverse((node) => {
+    if (node.geometry) geometries.add(node.geometry);
+    const list = Array.isArray(node.material) ? node.material : (node.material ? [node.material] : []);
+    for (const material of list) {
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value?.isTexture) textures.add(value);
+      }
+    }
+  });
+  for (const texture of textures) texture.dispose();
+  for (const material of materials) material.dispose();
+  for (const geometry of geometries) geometry.dispose();
+}
+
+const SHOP_COSMETICS_KEY = 'fpro.player-shop-equipped.v1';
+function withEquippedShopAppearance(appearance) {
+  const result = { ...(appearance || {}) };
+  // Personal cosmetics belong only to the account-controlled career player,
+  // never to every system player or the opposing team.
+  if (result.shopCosmeticsEnabled !== true) return result;
+  let equipped = {};
+  try { equipped = JSON.parse(globalThis.localStorage?.getItem(SHOP_COSMETICS_KEY) || '{}') || {}; } catch {}
+  const hair = equipped.hair;
+  result.shopBeardStyle = equipped.beard || null;
+  result.shopBootStyle = equipped.crampons || null;
+  result.shopAccessoryStyle = equipped.accessories || null;
+  result.shopCelebrationStyle = ({
+    'celebration-standard':'standard',
+    'celebration-rare':'rare',
+    'celebration-premium':'premium'
+  })[equipped.celebrations] || 'standard';
+  if (hair === 'hair-standard') result.shopHairStyle = 'short';
+  else if (hair === 'hair-rare') result.shopHairStyle = 'long';
+  else if (hair === 'hair-premium') result.shopHairStyle = 'buns';
+  return result;
+}
 export function createPlayerVisual({ team, isGK, number, appearance = null }) {
   const root = new THREE.Group();
   // Lisibilité à distance : légère augmentation purement visuelle, sans toucher aux collisions.
   root.scale.setScalar(1.08);
 
+  appearance = withEquippedShopAppearance(appearance);
   const customKit = appearance?.kitColors && ['primary','secondary','accent'].every(key => /^#[0-9a-f]{6}$/i.test(appearance.kitColors[key] || '')) ? appearance.kitColors : null;
   const selectedKit = customKit || (appearance && Object.hasOwn(KIT_PALETTES, appearance.kit) ? KIT_PALETTES[appearance.kit] : null);
   const goalkeeperPalette = selectedKit && isGK ? { primary: selectedKit.accent, secondary: selectedKit.primary, accent: selectedKit.secondary } : selectedKit;
@@ -365,7 +408,9 @@ export function createPlayerVisual({ team, isGK, number, appearance = null }) {
       this.disposed = true;
       root.userData.disposed = true;
       this.model?.dispose?.();
-      numberTexture.dispose();
+      // The procedural fallback remains allocated while the GLTF model is active;
+      // release its per-player GPU resources when the visual is finally removed.
+      disposeFallbackVisualResources(root);
     }
   };
   // Chargement asynchrone : le joueur procédural reste visible tant que le GLTF
@@ -404,23 +449,33 @@ export class Player {
     this.isControlled = false;
     this.animState = 'idle'; // idle | walk | run | pass | shoot | control | tackle | celebrate | dive
     this.animTimer = 0;
+    this.animDuration = 0;
+    this.animElapsed = 0;
     this.actionCooldown = 0;
     this.diveDir = 0;
     this.tackleTimer = 0;
     this.stridePhase = Math.random() * Math.PI * 2;
     this.previousVisualSpeed = 0;
+    this.visualAnimationTime = 0;
+    // Réutilise les paramètres d'animation transmis au modèle 3D à chaque image.
+    this.visualGaitCache = {};
+    this.visualModelAction = { progress: 0.5, time: 0, diveDir: 0, preferredFoot: this.preferredFoot, phase: this.dribblePhase, celebrationStyle: this.shopCelebrationStyle };
 
+    const playerAppearance = withEquippedShopAppearance(appearance);
+    this.shopCelebrationStyle = playerAppearance.shopCelebrationStyle || 'standard';
     this.visual = createPlayerVisual({
       team,
       isGK: role === 'GK',
       number,
-      appearance
+      appearance:playerAppearance
     });
   }
 
   triggerAnim(state, duration = 0.32, diveDir = 0) {
     this.animState = state;
-    this.animTimer = duration;
+    this.animDuration = Math.max(0.001, Number.isFinite(duration) ? duration : 0.32);
+    this.animTimer = this.animDuration;
+    this.animElapsed = 0;
     this.diveDir = diveDir;
   }
 
@@ -434,9 +489,27 @@ export class Player {
   updateVisual(dt) {
     dt = Number.isFinite(dt) ? THREE.MathUtils.clamp(dt, 0, 0.05) : 0;
     const v = this.visual;
-    const now = (typeof performance !== 'undefined' && Number.isFinite(performance.now?.())) ? performance.now() : Date.now();
-    const poseNodes = [v.body, v.headGroup, v.leftArm.shoulder, v.leftArm.elbow, v.rightArm.shoulder, v.rightArm.elbow, v.leftLeg.hip, v.leftLeg.knee, v.rightLeg.hip, v.rightLeg.knee];
-    const previousPose = poseNodes.map((node) => ({ position: node.position.clone(), rotation: node.rotation.clone() }));
+    // Horloge locale déterministe : évite un appel d'horloge système par joueur et par frame.
+    this.visualAnimationTime += dt * 1000;
+    const now = this.visualAnimationTime;
+    // Cache les nœuds et les tampons de pose : aucune création de tableau/vecteur par image.
+    if (!this.visualPoseCache) {
+      const nodes = [v.body, v.headGroup, v.leftArm.shoulder, v.leftArm.elbow, v.rightArm.shoulder, v.rightArm.elbow, v.leftLeg.hip, v.leftLeg.knee, v.rightLeg.hip, v.rightLeg.knee];
+      this.visualPoseCache = {
+        nodes,
+        snapshots: nodes.map(() => ({
+          startPosition: new THREE.Vector3(),
+          startRotation: new THREE.Euler(),
+          targetPosition: new THREE.Vector3(),
+          targetRotation: new THREE.Euler()
+        }))
+      };
+    }
+    const { nodes: poseNodes, snapshots: previousPose } = this.visualPoseCache;
+    for (let i = 0; i < poseNodes.length; i++) {
+      previousPose[i].startPosition.copy(poseNodes[i].position);
+      previousPose[i].startRotation.copy(poseNodes[i].rotation);
+    }
     v.root.position.set(this.pos.x, 0, this.pos.z);
     // Rotation amortie : évite les changements d'orientation instantanés.
     const angleDelta = Math.atan2(Math.sin(this.facing - v.root.rotation.y), Math.cos(this.facing - v.root.rotation.y));
@@ -451,10 +524,9 @@ export class Player {
     }
 
     if (this.animTimer > 0) {
-      this.animTimer -= dt;
-      if (this.animTimer <= 0) {
-        this.animState = 'idle';
-      }
+      this.animElapsed += dt;
+      this.animTimer = Math.max(0, this.animTimer - dt);
+      if (this.animTimer <= 0) this.animState = 'idle';
     }
 
     let state = this.animState;
@@ -485,7 +557,7 @@ export class Player {
       v.headGroup.rotation.z = Math.sin(now * 0.0013 + this.number) * 0.025;
     } else if (state === 'walk' || state === 'run') {
       const turnRate = dt > 0.001 ? THREE.MathUtils.clamp(angleDelta / dt, -8, 8) : 0;
-      const gait = gaitProfile(speed, this.stamina, this.vel.x, acceleration, turnRate);
+      const gait = gaitProfile(speed, this.stamina, this.vel.x, acceleration, turnRate, this.visualGaitCache);
       const isRun = gait.running;
       this.stridePhase += dt * gait.strideRate;
       const amp = gait.strideAmplitude;
@@ -558,19 +630,26 @@ export class Player {
 
     // Interpolation des poses pour éviter les cassures lors des transitions d'action.
     const blend = 1 - Math.exp(-Math.max(0, Math.min(dt, 0.05)) * 16);
-    poseNodes.forEach((node, index) => {
-      const targetPosition = node.position.clone();
-      const targetRotation = node.rotation.clone();
-      node.position.copy(previousPose[index].position).lerp(targetPosition, blend);
-      node.rotation.x = previousPose[index].rotation.x + (targetRotation.x - previousPose[index].rotation.x) * blend;
-      node.rotation.y = previousPose[index].rotation.y + (targetRotation.y - previousPose[index].rotation.y) * blend;
-      node.rotation.z = previousPose[index].rotation.z + (targetRotation.z - previousPose[index].rotation.z) * blend;
-    });
-    v.updateModel?.(dt, state, speed, {
-      progress: this.animTimer > 0 ? 1 - this.animTimer / 0.32 : 0.5,
-      diveDir: this.diveDir,
-      preferredFoot: this.preferredFoot,
-      phase: this.dribblePhase
-    });
+    for (let i = 0; i < poseNodes.length; i++) {
+      const node = poseNodes[i];
+      const snapshot = previousPose[i];
+      snapshot.targetPosition.copy(node.position);
+      snapshot.targetRotation.copy(node.rotation);
+      node.position.lerpVectors(snapshot.startPosition, snapshot.targetPosition, blend);
+      node.rotation.set(
+        snapshot.startRotation.x + (snapshot.targetRotation.x - snapshot.startRotation.x) * blend,
+        snapshot.startRotation.y + (snapshot.targetRotation.y - snapshot.startRotation.y) * blend,
+        snapshot.startRotation.z + (snapshot.targetRotation.z - snapshot.startRotation.z) * blend,
+        node.rotation.order
+      );
+    }
+    const modelAction = this.visualModelAction;
+    modelAction.progress = this.animDuration > 0 && this.animTimer > 0 ? THREE.MathUtils.clamp(1 - this.animTimer / this.animDuration, 0, 1) : 0.5;
+    modelAction.time = this.animElapsed;
+    modelAction.diveDir = this.diveDir;
+    modelAction.preferredFoot = this.preferredFoot;
+    modelAction.phase = this.dribblePhase;
+    modelAction.celebrationStyle = this.shopCelebrationStyle;
+    v.updateModel?.(dt, state, speed, modelAction);
   }
 }

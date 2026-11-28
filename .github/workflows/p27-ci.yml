@@ -2,7 +2,7 @@ name: P27 CI
 
 on:
   push:
-    branches: [p27-dev, p27-apk-build, p27-dls-inspired-redesign, p27-home-navigation-refit]
+    branches: [p27-dev, p27-apk-build, p27-dls-inspired-redesign, p27-home-navigation-refit, p27-dls26-global-adaptation]
   pull_request:
     branches: [p27-dev, p27-dls-inspired-redesign]
   workflow_dispatch:
@@ -21,8 +21,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
       - name: Run complete test suite
         run: npm test
+      - name: Build the web game and verify shop UI syntax
+        run: |
+          npm run build
+          node --check src/club-shop-ui.js
+          node --check src/player-shop-ui.js
+          node --check src/online-account-client.js
+          node --check server/index.js
+      - name: Apply all D1 migrations to local SQLite emulator
+        run: npx --yes wrangler@4 d1 migrations apply p27-world --local --config wrangler.toml
       - name: Check Cloudflare Worker syntax
         run: node --check src/cloudflare/worker.js
       - name: Check D1 career repository syntax

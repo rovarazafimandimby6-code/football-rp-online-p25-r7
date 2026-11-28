@@ -11,10 +11,10 @@ import { PhysicsEngine } from './physics.js';
 import { BroadcastCamera } from './camera.js';
 import { TeamAI, createTeamRoster } from './ai.js';
 import { createMatchSquad } from './match-squad.js';
-import { validateSubstitution } from './substitution-manager.js';
+import { validateRotation } from './rotation-rules.js';
 import { selectAISubstitution } from './ai-substitution-manager.js';
 import { ControlsManager } from './controls.js';
-import { MatchState } from './match.js';
+import { MatchState, toVirtualMatchSeconds } from './match.js';
 import { UIManager } from './ui.js';
 import { selectRolePlayer } from './role-presentation.js';
 import { OnlineMatchBridge } from './online-match-bridge.js';
@@ -23,12 +23,15 @@ export class Game {
   constructor(container, callbacks = {}) {
     this.sceneMgr = new SceneManager(container);
     this.field = new FieldBuilder(this.sceneMgr.scene);
+    this.field.applyClubAppearance(callbacks.homeClubAppearance || {});
     this.weather = new WeatherManager(this.sceneMgr);
     this.ball = new Ball(this.sceneMgr.scene);
     this.physics = new PhysicsEngine();
     this.cam = new BroadcastCamera(this.sceneMgr.camera, callbacks.cameraMode || 'player');
     this.cam.setZoom(callbacks.cameraZoom ?? 55);
     this.ai = new TeamAI();
+    const formation = ['2-2','1-2-1','2-1-1'].includes(callbacks.formation) ? callbacks.formation : '2-2';
+    this.ai.formation = formation;
     this.controls = new ControlsManager();
     this.match = new MatchState();
     this.matchResultReported = false;
@@ -40,8 +43,8 @@ export class Game {
     this.onExitMatch = callbacks.onExitMatch || null;
 
     const rosterConfigs = [
-      ...createTeamRoster('blue', '2-2', callbacks.homeRoster, callbacks.careerPlayerId),
-      ...createTeamRoster('red', '2-2', callbacks.awayRoster)
+      ...createTeamRoster('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId, callbacks.homeStarterIds),
+      ...createTeamRoster('red', formation, callbacks.awayRoster)
     ];
     const requestedRole = ['GK', 'DEF', 'MID', 'FWD'].includes(callbacks.playerRole) ? callbacks.playerRole : 'FWD';
     const controlledConfig = rosterConfigs.find((cfg) => cfg.team === 'blue' && cfg.id === callbacks.careerPlayerId)
@@ -50,9 +53,14 @@ export class Game {
       || rosterConfigs.find((cfg) => cfg.team === 'blue');
     this.players = rosterConfigs.map((cfg) => {
       const kitColors = cfg.team === 'blue' ? callbacks.homeKitColors : callbacks.awayKitColors;
+      const kitAppearance = cfg.team === 'blue'
+        ? (cfg.role === 'GK' ? (callbacks.homeGoalkeeperKitAppearance || callbacks.homeKitAppearance) : callbacks.homeKitAppearance)
+        : (cfg.role === 'GK' ? (callbacks.awayGoalkeeperKitAppearance || callbacks.awayKitAppearance) : callbacks.awayKitAppearance);
       const appearance = {
         ...(cfg === controlledConfig ? (callbacks.playerAppearance || {}) : {}),
-        ...(kitColors ? { kitColors } : {})
+        ...(kitAppearance && typeof kitAppearance === 'object' ? kitAppearance : {}),
+        ...(kitColors ? { kitColors } : {}),
+        ...(cfg === controlledConfig ? { shopCosmeticsEnabled:true } : {})
       };
       return new Player({
         ...cfg,
@@ -64,14 +72,15 @@ export class Game {
       });
     });
     const startingIds = new Set(this.players.filter(player => player.team === 'blue').map(player => player.id));
+    this.benchSize = Number.isInteger(callbacks.benchSize) ? Math.max(3, Math.min(7, callbacks.benchSize)) : 5;
     this.benchPlayers = {
-      blue: createMatchSquad('blue', '2-2', callbacks.homeRoster, callbacks.careerPlayerId).substitutes
+      blue: createMatchSquad('blue', formation, callbacks.homeRoster, callbacks.careerPlayerId, this.benchSize, callbacks.homeStarterIds).substitutes.map(player => ({ ...player, team:'blue' }))
         .filter(player => player.id !== null && player.id !== undefined && !startingIds.has(player.id)),
-      red: createMatchSquad('red', '2-2', callbacks.awayRoster).substitutes
+      red: createMatchSquad('red', formation, callbacks.awayRoster, null, this.benchSize).substitutes.map(player => ({ ...player, team:'red' }))
         .filter(player => player.id !== null && player.id !== undefined && !this.players.some(starter => starter.team === 'red' && starter.id === player.id))
     };
     this.substitutionsUsed = { blue: 0, red: 0 };
-    this.substitutionLimit = 3;
+    this.substitutionLimit = Infinity;
     this.aiSubstitutionCheckTimer = 0;
 
     for (const p of this.players) {
@@ -92,7 +101,9 @@ export class Game {
             role: ['GK','DEF','MID','FWD'].includes(remote.role) ? remote.role : 'MID',
             name: String(remote.name || 'Réserviste').slice(0, 20),
             number: Number.isInteger(remote.slot) ? remote.slot + 1 : 12,
-            appearance: remote.team === 'blue' ? { kitColors: callbacks.homeKitColors } : { kitColors: callbacks.awayKitColors }
+            appearance: remote.team === 'blue'
+              ? { ...(remote.role === 'GK' ? (callbacks.homeGoalkeeperKitAppearance || callbacks.homeKitAppearance || {}) : (callbacks.homeKitAppearance || {})), ...(callbacks.homeKitColors ? { kitColors:callbacks.homeKitColors } : {}) }
+              : { ...(remote.role === 'GK' ? (callbacks.awayGoalkeeperKitAppearance || callbacks.awayKitAppearance || {}) : (callbacks.awayKitAppearance || {})), ...(callbacks.awayKitColors ? { kitColors:callbacks.awayKitColors } : {}) }
           });
           reserve.serverPlayerId = remote.id;
           reserve.isOnPitch = remote.isOnPitch !== false;
@@ -252,30 +263,33 @@ export class Game {
   }
 
   getSubstitutionOptions() {
-    if (this.onlineBridge || this.match.phase !== 'paused' || this.substitutionsUsed.blue >= this.substitutionLimit) {
-      return { pairs: [], used: this.substitutionsUsed.blue, limit: this.substitutionLimit };
+    if (this.onlineBridge || this.match.phase !== 'paused') {
+      return { pairs: [], used: this.substitutionsUsed.blue, limit: Infinity };
     }
+    const squad = [...this.players.filter(player => player.team === 'blue'), ...this.benchPlayers.blue];
     const outgoing = this.players.filter(player => player.team === 'blue' && !player.isControlled);
     const pairs = outgoing.flatMap(player => this.benchPlayers.blue
-      .filter(candidate => candidate.role === player.role)
+      .filter(candidate => validateRotation({
+        phase:'paused', elapsedMatchSeconds:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration),
+        outgoing:player, incoming:candidate, teamPlayers:squad
+      }).ok)
       .map(candidate => ({ outgoing: player, incoming: candidate })));
-    return { pairs, used: this.substitutionsUsed.blue, limit: this.substitutionLimit };
+    return { pairs, used: this.substitutionsUsed.blue, limit: Infinity };
   }
 
   applySubstitution(outgoingId, incomingId) {
     const outgoing = this.players.find(player => player.id === outgoingId);
     const incomingIndex = this.benchPlayers.blue.findIndex(player => player.id === incomingId);
     const incoming = incomingIndex >= 0 ? this.benchPlayers.blue[incomingIndex] : null;
-    const validation = validateSubstitution({
+    const validation = validateRotation({
       phase: this.match.phase,
-      online: Boolean(this.onlineBridge),
+      elapsedMatchSeconds: toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration),
       outgoing,
       incoming,
-      activePlayer: this.activePlayer,
-      used: this.substitutionsUsed.blue,
-      limit: this.substitutionLimit
+      teamPlayers: [...this.players.filter(player => player.team === 'blue'), ...this.benchPlayers.blue]
     });
-    if (!validation.ok) return validation;
+    if (!validation.ok) return { ok:false, code:validation.code, message:validation.message };
+    if (outgoing?.isControlled || outgoing?.id === this.activePlayer?.id) return { ok:false, code:'controlled-player-protected', message:'Votre footballeur personnel reste sur le terrain.' };
 
     const replacement = new Player({
       id: incoming.id,
@@ -292,7 +306,7 @@ export class Game {
         stamina: incoming.rating ?? 50, control: incoming.rating ?? 50
       },
       preferredFoot: incoming.preferredFoot || null,
-      appearance: incoming.appearance || null
+      appearance: { ...(incoming.appearance || {}), ...(incoming.role === 'GK' ? (callbacks.homeGoalkeeperKitAppearance || callbacks.homeKitAppearance || {}) : (callbacks.homeKitAppearance || {})), ...(incoming.id === callbacks.careerPlayerId ? { shopCosmeticsEnabled:true } : {}) }
     });
     replacement.pos = { ...outgoing.pos };
     replacement.vel = { x: 0, z: 0 };
@@ -318,7 +332,7 @@ export class Game {
     this.benchPlayers.blue.push({
       id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number,
       attributes, rating: averageRating, specialty: outgoing.specialty,
-      preferredFoot: outgoing.preferredFoot
+      preferredFoot: outgoing.preferredFoot, team:'blue', lastSubstitutedOutAt:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration)
     });
     this.substitutionsUsed.blue += 1;
     this.match.recordEvent('substitution', 'blue', `${outgoing.name} → ${replacement.name}`);
@@ -332,13 +346,17 @@ export class Game {
     const bench = this.benchPlayers[team];
     const incomingIndex = bench.findIndex(player => player.id === incoming.id);
     const playerIndex = this.players.indexOf(outgoing);
-    if (incomingIndex < 0 || playerIndex < 0 || outgoing.isControlled || outgoing.team !== team || incoming.role !== outgoing.role) return false;
+    if (incomingIndex < 0 || playerIndex < 0 || outgoing.isControlled || outgoing.team !== team) return false;
+    const validation = validateRotation({ phase:'stoppage', elapsedMatchSeconds:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration), outgoing, incoming, teamPlayers:[...this.players.filter(player=>player.team===team), ...bench] });
+    if (!validation.ok) return false;
     const replacement = new Player({
       id: incoming.id, team, number: incoming.number, name: incoming.name, role: outgoing.role,
       specialty: incoming.specialty || incoming.archetype || 'balanced', slotIndex: outgoing.slotIndex,
       homePos: { ...outgoing.homePos },
       attributes: incoming.attributes || { pace: incoming.rating ?? 50, shooting: incoming.rating ?? 50, passing: incoming.rating ?? 50, defense: incoming.rating ?? 50, stamina: incoming.rating ?? 50, control: incoming.rating ?? 50 },
-      preferredFoot: incoming.preferredFoot || null, appearance: incoming.appearance || null
+      preferredFoot: incoming.preferredFoot || null, appearance: { ...(incoming.appearance || {}), ...(team === 'blue'
+        ? (incoming.role === 'GK' ? (callbacks.homeGoalkeeperKitAppearance || callbacks.homeKitAppearance || {}) : (callbacks.homeKitAppearance || {}))
+        : (incoming.role === 'GK' ? (callbacks.awayGoalkeeperKitAppearance || callbacks.awayKitAppearance || {}) : (callbacks.awayKitAppearance || {}))), ...(incoming.id === callbacks.careerPlayerId ? { shopCosmeticsEnabled:true } : {}) }
     });
     replacement.pos = { ...outgoing.pos };
     replacement.vel = { x: 0, z: 0 };
@@ -354,14 +372,14 @@ export class Game {
     const attributes = { ...outgoing.attributes };
     const values = Object.values(attributes);
     const averageRating = Math.round(values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length));
-    bench.push({ id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number, attributes, rating: averageRating, specialty: outgoing.specialty, preferredFoot: outgoing.preferredFoot });
+    bench.push({ id: outgoing.id, name: outgoing.name, role: outgoing.role, number: outgoing.number, attributes, rating: averageRating, specialty: outgoing.specialty, preferredFoot: outgoing.preferredFoot, team, lastSubstitutedOutAt:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration) });
     this.substitutionsUsed[team] += 1;
-    this.match.recordEvent('substitution', team, `${outgoing.name} → ${replacement.name} (IA)`);
+    this.match.recordEvent('substitution', team, `${outgoing.name} → ${replacement.name} (système)`);
     return true;
   }
 
   processAISubstitutions(dt) {
-    if (this.onlineBridge || this.match.phase !== 'playing') return;
+    if (this.onlineBridge || this.match.phase !== 'goal') return;
     this.aiSubstitutionCheckTimer -= Math.max(0, dt);
     if (this.aiSubstitutionCheckTimer > 0) return;
     this.aiSubstitutionCheckTimer = 2.5;
@@ -370,11 +388,11 @@ export class Game {
     for (const team of ['blue', 'red']) {
       const pair = selectAISubstitution({
         team, players: this.players, bench: this.benchPlayers[team],
-        used: this.substitutionsUsed[team], limit: this.substitutionLimit,
-        elapsedRatio
+        used: this.substitutionsUsed[team], limit: Infinity,
+        elapsedMatchSeconds:toVirtualMatchSeconds(this.match.elapsedMatchTime, this.match.halfDuration), elapsedRatio
       });
       if (pair && this.applyAISubstitution(team, pair)) {
-        this.ui.setStatus(`REMPLACEMENT IA · ${team === 'blue' ? 'BLEUS' : 'ROUGES'} : ${pair.outgoing.name} → ${pair.incoming.name}`);
+        this.ui.setStatus(`REMPLACEMENT DU SYSTÈME · ${team === 'blue' ? 'BLEUS' : 'ROUGES'} : ${pair.outgoing.name} → ${pair.incoming.name}`);
       }
     }
   }
@@ -813,6 +831,7 @@ export class Game {
           this.ui.showOverlay('Fin du match', `Score final : ${this.match.blueScore} – ${this.match.redScore}`, 'RETOUR');
         }
       } else if (this.match.phase === 'goal') {
+        this.processAISubstitutions(dt);
         this.match.phaseTimer -= dt;
         for (const p of this.players) p.updateVisual(dt);
         const goalPeriodEnd = this.match.stepClock(clockDt, this.ball.owner?.team || this.ball.lastTouchTeam);
@@ -850,8 +869,6 @@ export class Game {
           tryTackle: (p) => this.tryTackle(p),
           requestedReceiver: this.activePlayer?.callTimer > 0 ? this.activePlayer : null
         });
-        this.processAISubstitutions(dt);
-
         this.physics.resolvePlayerCollisions(this.players);
 
         const ballEvent = this.physics.stepBall(

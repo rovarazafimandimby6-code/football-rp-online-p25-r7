@@ -45,3 +45,16 @@ test('adopts a trusted cloud identity on a new device without changing its FRP I
   assert.equal(store.load().localProofSecret, 'b'.repeat(64));
   assert.throws(() => store.adoptFromServer({}), { message: 'LOCAL_PROFILE_ALREADY_EXISTS' });
 });
+
+test('accepts a server-issued account session after reserving the local player identity', async () => {
+  const store = new LocalPlayerProfile({ storage: memoryStorage(), idFactory: () => '111111' });
+  store.create({ displayName: 'Player' });
+  let accepted = null;
+  const session = { token: 'x'.repeat(43), account: { id: '123e4567-e89b-42d3-a456-426614174099', playerId: 'FRP-675757' } };
+  const fetchImpl = async () => ({ ok: true, json: async () => ({
+    accountId: session.account.id, playerId: session.account.playerId, reserved: true, session
+  }) });
+  const profile = await store.reserveWithServer({ fetchImpl, onSession: value => { accepted = value; } });
+  assert.equal(profile.id, 'FRP-675757');
+  assert.deepEqual(accepted, session);
+});

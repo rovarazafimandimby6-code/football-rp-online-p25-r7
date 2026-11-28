@@ -96,7 +96,9 @@ export class PlayerSyncOutbox {
     if (typeof operationId !== 'string' || version === null) return false;
     const state = this.read();
     const index = state.operations.findIndex(x => x.operationId === operationId);
-    if (index < 0 || version < state.serverVersion) return false;
+    // Server revisions are a single ordered stream: acknowledging a later
+    // operation first would advance the revision past earlier pending work.
+    if (index !== 0 || version < state.serverVersion) return false;
     state.operations.splice(index, 1);
     state.serverVersion = version;
     this.write(state);

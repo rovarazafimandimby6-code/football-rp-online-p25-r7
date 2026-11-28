@@ -65,3 +65,79 @@ test('P27 mapping : refuse les sections absentes ou les structures de store inco
   malformed.progression.processedMatchIds = null;
   assert.throws(() => buildAccountRecoveryPlan(malformed), { message: 'INVALID_RECOVERY_STORE_MAPPING' });
 });
+
+
+test('P27 mapping : refuse les historiques de carrière tronqués, dupliqués ou mal typés', () => {
+  const duplicateCareer = snapshot();
+  duplicateCareer.career.matches.push({ matchId: 'account-career-match', result: 'win' });
+  assert.throws(() => buildAccountRecoveryPlan(duplicateCareer), { message: 'INVALID_RECOVERY_CAREER' });
+
+  const malformedPlayerCareer = snapshot();
+  malformedPlayerCareer.playerCareer.matches = [{ matchId: 'player-career-match', result: 'abandoned' }];
+  assert.throws(() => buildAccountRecoveryPlan(malformedPlayerCareer), { message: 'INVALID_RECOVERY_PLAYER_CAREER' });
+
+  const malformedSeason = snapshot();
+  malformedSeason.seasonStats.matches = [{ matchId: '', result: 'win' }];
+  assert.throws(() => buildAccountRecoveryPlan(malformedSeason), { message: 'INVALID_RECOVERY_SEASON_STATS' });
+});
+
+test('P27 mapping : refuse les ressources et historiques contractuels incohérents', () => {
+  const negativeWallet = snapshot();
+  negativeWallet.contract.wallet = -1;
+  assert.throws(() => buildAccountRecoveryPlan(negativeWallet), { message: 'INVALID_RECOVERY_STORE_MAPPING' });
+
+  const malformedOffer = snapshot();
+  malformedOffer.contract.offers = [null];
+  assert.throws(() => buildAccountRecoveryPlan(malformedOffer), { message: 'INVALID_RECOVERY_STORE_MAPPING' });
+
+  const invalidProgression = snapshot();
+  invalidProgression.progression.level = 0;
+  assert.throws(() => buildAccountRecoveryPlan(invalidProgression), { message: 'INVALID_RECOVERY_STORE_MAPPING' });
+});
+
+
+test('P27 mapping : refuse les offres contractuelles dupliquées, incohérentes ou trop nombreuses', () => {
+  const duplicate = snapshot();
+  duplicate.contract.offers = [
+    { id: 'offer-1', fromClubId: 'club-2', salary: 100, fee: 50, status: 'pending' },
+    { id: 'offer-1', fromClubId: 'club-3', salary: 100, fee: 50, status: 'pending' }
+  ];
+  assert.throws(() => buildAccountRecoveryPlan(duplicate), { message: 'INVALID_RECOVERY_OFFERS' });
+
+  const malformed = snapshot();
+  malformed.contract.offers = [{ id: 'offer-2', fromClubId: 'club-2', salary: -1, fee: 0, status: 'pending' }];
+  assert.throws(() => buildAccountRecoveryPlan(malformed), { message: 'INVALID_RECOVERY_OFFERS' });
+
+  const tooMany = snapshot();
+  tooMany.contract.offers = Array.from({ length: 6 }, (_, i) => ({
+    id: `offer-${i}`, fromClubId: `club-${i}`, salary: 100, fee: 0, status: 'pending'
+  }));
+  assert.throws(() => buildAccountRecoveryPlan(tooMany), { message: 'INVALID_RECOVERY_OFFERS' });
+});
+
+test('P27 mapping : refuse un contrat actif désaligné avec le club ou avec des dates invalides', () => {
+  const mismatch = snapshot();
+  mismatch.contract.contract = {
+    clubId: 'club-2', status: 'active', salary: 100,
+    signedAt: '2026-01-01T00:00:00.000Z', expiresAt: '2026-06-01T00:00:00.000Z'
+  };
+  assert.throws(() => buildAccountRecoveryPlan(mismatch), { message: 'INVALID_RECOVERY_CONTRACT' });
+
+  const invalidDate = snapshot();
+  invalidDate.contract.clubId = 'club-2';
+  invalidDate.contract.contract = {
+    clubId: 'club-2', status: 'active', salary: 100,
+    signedAt: 'not-a-date', expiresAt: '2026-06-01T00:00:00.000Z'
+  };
+  assert.throws(() => buildAccountRecoveryPlan(invalidDate), { message: 'INVALID_RECOVERY_CONTRACT' });
+});
+
+test('P27 mapping : borne les attributs et exige la cohérence des identifiants de saison', () => {
+  const invalidAttribute = snapshot();
+  invalidAttribute.progression.attributes.pace = 100;
+  assert.throws(() => buildAccountRecoveryPlan(invalidAttribute), { message: 'INVALID_RECOVERY_STORE_MAPPING' });
+
+  const foreignProcessedId = snapshot();
+  foreignProcessedId.seasonStats.processedMatchIds = ['match-not-in-season'];
+  assert.throws(() => buildAccountRecoveryPlan(foreignProcessedId), { message: 'INVALID_RECOVERY_SEASON_STATS' });
+});

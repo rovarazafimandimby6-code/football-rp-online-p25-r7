@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { resolvePlayerAnimationClip } from '../src/player-animation-map.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = async (relative) => JSON.parse(await readFile(path.join(root, relative), 'utf8'));
@@ -47,14 +48,17 @@ test('P25 humanoïde : les dépendances glTF des modèles et coiffures sont tout
 test('P25 humanoïde : le chargeur GLTF et les animations standard sont raccordés au joueur', async () => {
   const player = await readFile(path.join(root, 'src/player.js'), 'utf8');
   const loader = await readFile(path.join(root, 'src/player-models.js'), 'utf8');
+  const animationMap = await readFile(path.join(root, 'src/player-animation-map.js'), 'utf8');
   assert.match(player, /mountHumanoidPlayer/);
-  assert.ok(player.includes('updateModel?.(dt, state, speed, {'));
+  assert.ok(player.includes('v.updateModel?.(dt, state, speed, modelAction);'));
+  assert.match(player, /const modelAction = this\.visualModelAction/);
+  assert.match(player, /modelAction\.progress = this\.animDuration/);
   assert.match(loader, /GLTFLoader/);
-  assert.match(loader, /Idle_Loop/);
-  assert.match(loader, /Walk_Loop/);
-  assert.match(loader, /Jog_Fwd_Loop/);
-  assert.match(loader, /Sprint_Fwd_Loop/);
-  assert.doesNotMatch(loader, /Sprint_Loop/);
+  for (const clip of ['Idle_Loop','Walk_Loop','Jog_Fwd_Loop','Sprint_Loop']) assert.ok(animationMap.includes(clip), `clip ${clip} doit être reconnu`);
+  assert.match(loader, /createPlayerAnimationClipMap/);
+  assert.match(loader, /resolveCachedPlayerAnimationClip/);
+  assert.match(loader, /const clipMap = createPlayerAnimationClipMap\(clipNames\)/);
+  assert.match(loader, /resolveCachedPlayerAnimationClip\(clipMap, state, speed\)/);
 });
 
 
@@ -96,7 +100,7 @@ test('P25 R7 : les gestes de match sont appliqués au modèle humanoïde sans re
   assert.match(loader, /fallbackBody\.visible = false/);
   for (const state of ['pass', 'shoot', 'control', 'tackle', 'dive', 'celebrate']) assert.ok(loader.includes(`state === '${state}'`), `geste humanoïde manquant : ${state}`);
   for (const bone of ['pelvis', 'spine_02', 'thigh_l', 'calf_l', 'upperarm_l']) assert.ok(loader.includes(`'${bone}'`), `articulation non pilotée : ${bone}`);
-  assert.match(player, /progress: this\.animTimer/);
+  assert.match(player, /modelAction\.progress = this\.animDuration/);
   assert.match(player, /preferredFoot: this\.preferredFoot/);
 });
 
@@ -112,8 +116,49 @@ test('P25 R7 : la conduite de balle humanoïde utilise un cycle alterné piloté
 });
 
 
-test('P25 R7 : la course rapide sélectionne le nom exact du clip de sprint disponible', async () => {
+test('P25 R7 : la course rapide sélectionne le vrai clip Sprint_Loop du GLB', async () => {
+  const glb = await readFile(path.join(root, 'assets/players/animations/UAL1_Standard.glb'));
+  let offset = 12;
+  let document = null;
+  while (offset < glb.length) {
+    const chunkLength = glb.readUInt32LE(offset);
+    const chunkType = glb.toString('ascii', offset + 4, offset + 8);
+    offset += 8;
+    if (chunkType === 'JSON') { document = JSON.parse(glb.toString('utf8', offset, offset + chunkLength)); break; }
+    offset += chunkLength;
+  }
+  const names = document.animations.map((clip) => clip.name);
+  assert.ok(names.includes('Sprint_Loop'));
+  assert.equal(resolvePlayerAnimationClip(names, 'run', 9), 'Sprint_Loop');
+  assert.equal(resolvePlayerAnimationClip(names, 'run', 6), 'Jog_Fwd_Loop');
+});
+
+
+test('P27 humanoïde : la libération d’un joueur ne détruit pas les géométries glTF partagées', async () => {
   const loader = await readFile(path.join(root, 'src/player-models.js'), 'utf8');
-  assert.match(loader, /speed > 7\.5 \? 'Sprint_Fwd_Loop' : 'Jog_Fwd_Loop'/);
-  assert.doesNotMatch(loader, /'Sprint_Loop'/);
+  assert.match(loader, /userData\.p27OwnedGeometry = true/);
+  assert.match(loader, /const ownedGeometries = new Set\(\)/);
+  assert.match(loader, /if \(node\.userData\?\.p27OwnedGeometry && node\.geometry\)/);
+  assert.match(loader, /root\.remove\(model\)/);
+  assert.match(loader, /mixer\.uncacheRoot\(model\)/);
+  assert.match(loader, /for \(const material of materials\) material\.dispose\(\)/);
+  assert.match(loader, /for \(const geometry of ownedGeometries\) geometry\.dispose\(\)/);
+});
+
+
+test('P27 humanoïde : un chargement tardif abandonne proprement un joueur déjà supprimé', async () => {
+  const loader = await readFile(path.join(root, 'src/player-models.js'), 'utf8');
+  assert.match(loader, /if \(root\?\.userData\?\.disposed\) return null/);
+  assert.match(loader, /if \(root\?\.userData\?\.disposed\) \{\s*disposePlayerModelResources\(model\);\s*return null;/);
+  assert.match(loader, /function disposePlayerModelResources\(model\)/);
+  assert.match(loader, /disposePlayerModelResources\(model\);/);
+});
+
+
+test('P27 rendu : la suppression du joueur libère aussi le mannequin procédural et ses textures', async () => {
+  const player = await readFile(path.join(root, 'src/player.js'), 'utf8');
+  assert.match(player, /function disposeFallbackVisualResources\(root\)/);
+  assert.match(player, /if \(node\.geometry\) geometries\.add\(node\.geometry\)/);
+  assert.match(player, /if \(value\?\.isTexture\) textures\.add\(value\)/);
+  assert.match(player, /disposeFallbackVisualResources\(root\)/);
 });

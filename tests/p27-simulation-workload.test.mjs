@@ -25,7 +25,7 @@ test('P27 workload: 32 simultaneous rooms remain coherent for 60 ticks', () => {
     assert.ok(room, `room ${roomId} disappeared`);
     assert.equal(room.phase, 'playing');
     assert.equal(room.sequence, 60);
-    assert.equal(room.players.size, 14);
+    assert.equal(room.players.size, 24);
     assert.ok(Number.isFinite(room.ball.x) && Number.isFinite(room.ball.z));
     for (const player of room.players.values()) {
       assert.ok(Number.isFinite(player.x) && Number.isFinite(player.z));
@@ -33,5 +33,5 @@ test('P27 workload: 32 simultaneous rooms remain coherent for 60 ticks', () => {
     }
   }
 
-  console.log(`P27 workload diagnostic: 32 rooms, 448 player slots, 60 ticks in ${elapsedMs.toFixed(1)} ms on this CI runner`);
+  console.log(`P27 workload diagnostic: 32 rooms, 768 player slots, 60 ticks in ${elapsedMs.toFixed(1)} ms on this CI runner`);
 });

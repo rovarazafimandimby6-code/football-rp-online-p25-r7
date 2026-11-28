@@ -6,7 +6,7 @@ const main=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
 const css=await readFile(new URL('../style.css',import.meta.url),'utf8');
 
 test('P27 compétitions UI : charge les neuf classements depuis le snapshot serveur',()=>{
-  assert.match(main,/fetch\('\/api\/competitions'/);
+  assert.match(main,/p27ApiFetch\('\/api\/competitions'/);
   assert.match(main,/leagues\.length!==9/);
   assert.match(main,/snapshot\.scheduleAudit\?\.ok/);
   assert.match(main,/snapshot\.scheduleAudit\.fixtureCount!==1892/);

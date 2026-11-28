@@ -6,6 +6,7 @@ import {
   validateRotation,
   applyRotation,
 } from '../src/rotation-rules.js';
+import { toVirtualMatchSeconds } from '../src/match.js';
 
 const squad = (team = 'blue') => ({
   starters: Array.from({ length: 5 }, (_, i) => ({ id: `s${i}`, team, slotIndex: i })),
@@ -14,9 +15,12 @@ const squad = (team = 'blue') => ({
 
 test('P27 rotation V1 : feuille 5v5 avec 2 à 5 remplaçants', () => {
   assert.equal(validateMatchSheet(squad()).ok, true);
-  assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: [squad().substitutes[0]] }).code, 'invalid-substitutes-count');
-  assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: Array.from({ length: 6 }, (_, i) => ({ id: `b${i}` })) }).code, 'invalid-substitutes-count');
+  assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: squad().substitutes.slice(0,2) }).code, 'invalid-substitutes-count');
+  assert.equal(validateMatchSheet({ starters: squad().starters, substitutes: Array.from({ length: 8 }, (_, i) => ({ id: `b${i}` })) }).code, 'invalid-substitutes-count');
   assert.equal(ROTATION_RULES_V1.playersOnPitchPerTeam, 5);
+  assert.equal(ROTATION_RULES_V1.minimumSubstitutesPerTeam, 3);
+  assert.equal(ROTATION_RULES_V1.maximumSubstitutesPerTeam, 7);
+  assert.equal(validateMatchSheet({starters:squad().starters,substitutes:Array.from({length:7},(_,i)=>({id:`seven-${i}`}))}).ok,true);
 });
 
 test('P27 rotation V1 : refuse les doublons et les joueurs sans identifiant', () => {
@@ -64,4 +68,14 @@ test('P27 rotation V1 : échange les joueurs sans quota et conserve le poste tac
   assert.equal(result.substitutes[0].id, 's2');
   assert.equal(result.substitutes[0].lastSubstitutedOutAt, 2400);
   assert.equal(result.substitutionsUsed, null);
+});
+
+
+test('P27 rotations : le délai de retour de dix minutes suit l’horloge virtuelle 90 minutes en match de 3 ou 5 minutes', () => {
+  const tenVirtualMinutes = 10 * 60;
+  const realSecondsForFiveMinuteMatch = (tenVirtualMinutes / (90 * 60)) * (5 * 60);
+  const realSecondsForThreeMinuteMatch = (tenVirtualMinutes / (90 * 60)) * (3 * 60);
+  assert.ok(Math.abs(toVirtualMatchSeconds(realSecondsForFiveMinuteMatch, 150) - tenVirtualMinutes) < 1e-9);
+  assert.ok(Math.abs(toVirtualMatchSeconds(realSecondsForThreeMinuteMatch, 90) - tenVirtualMinutes) < 1e-9);
+  assert.equal(toVirtualMatchSeconds(300, 150), 90 * 60);
 });

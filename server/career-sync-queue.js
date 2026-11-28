@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PLAYER_ID_RE = /^FRP-[0-9]{6}$/;
+const MATCH_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const clean = value => [...String(value ?? '').trim()].filter(char => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127 && char !== '<' && char !== '>').join('').slice(0, 64);
 
 /**
@@ -41,7 +42,7 @@ export class JsonCareerSyncQueue {
 
   valid(item) {
     return Boolean(item && UUID_RE.test(item.accountId || '') && PLAYER_ID_RE.test(item.playerId || '') &&
-      typeof item.matchId === 'string' && item.matchId.length > 0 && item.matchId.length <= 64 &&
+      typeof item.matchId === 'string' && MATCH_ID_RE.test(item.matchId) &&
       Number.isSafeInteger(item.queuedAt) && item.queuedAt >= 0 &&
       Number.isSafeInteger(item.attempts ?? 0) && (item.attempts ?? 0) >= 0 &&
       Number.isSafeInteger(item.nextAttemptAt ?? 0) && (item.nextAttemptAt ?? 0) >= 0 &&
@@ -63,7 +64,7 @@ export class JsonCareerSyncQueue {
   }
 
   enqueue({ accountId, playerId, matchId, payload } = {}) {
-    const item = { accountId, playerId, matchId: clean(matchId), queuedAt: this.now(), attempts: 0, nextAttemptAt: 0, payload: structuredClone(payload) };
+    const item = { accountId, playerId, matchId, queuedAt: this.now(), attempts: 0, nextAttemptAt: 0, payload: structuredClone(payload) };
     if (!this.valid(item)) throw new Error('INVALID_CAREER_SYNC_EVENT');
     const key = this.key(item.accountId, item.matchId);
     const existing = this.state.pending.find(entry => this.key(entry.accountId, entry.matchId) === key);

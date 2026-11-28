@@ -49,3 +49,20 @@ test('queue capacity fails closed without dropping pending events', () => withQu
   assert.throws(() => queue.enqueue(event({ matchId: 'overflow', payload: { matchId: 'overflow', result: 'win' } })), /CAREER_SYNC_QUEUE_FULL/);
   assert.equal(queue.pendingCount, 100);
 }));
+
+
+test('outbox rejects overlong, padded and control-character match identifiers without aliasing', () => withQueue(queue => {
+  const valid = 'm'.repeat(64);
+  assert.equal(queue.enqueue(event({ matchId: valid, payload: { matchId: valid, result: 'win' } })).queued, true);
+  assert.throws(() => queue.enqueue(event({ matchId: valid + 'x', payload: { matchId: valid + 'x', result: 'loss' } })), /INVALID_CAREER_SYNC_EVENT/);
+  assert.throws(() => queue.enqueue(event({ matchId: ' room-0002', payload: { matchId: ' room-0002', result: 'draw' } })), /INVALID_CAREER_SYNC_EVENT/);
+  assert.throws(() => queue.enqueue(event({ matchId: 'room-0003\\n', payload: { matchId: 'room-0003\\n', result: 'draw' } })), /INVALID_CAREER_SYNC_EVENT/);
+  assert.equal(queue.pendingCount, 1);
+  assert.equal(queue.listPending()[0].matchId, valid);
+}));
+
+test('outbox keeps valid UUID and generated room identifier formats', () => withQueue(queue => {
+  const ids = ['550e8400-e29b-41d4-a716-446655440000', 'room:season-27.001'];
+  for (const matchId of ids) queue.enqueue(event({ matchId, payload: { matchId, result: 'draw' } }));
+  assert.equal(queue.pendingCount, 2);
+}));

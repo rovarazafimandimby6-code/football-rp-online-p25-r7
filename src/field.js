@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { applyStadiumTint } from './stadium-appearance.js';
 
 export { PITCH } from './pitch.js';
 import { PITCH } from './pitch.js';
@@ -9,15 +10,28 @@ function createGrassTexture() {
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
 
-  const stripes = 20;
+  // Bandes de tonte plus fines, avec une variation lumineuse douce pour
+  // donner de la profondeur sans ajouter de géométrie ni de coût par frame.
+  const stripes = 24;
   const sw = canvas.width / stripes;
   for (let i = 0; i < stripes; i++) {
-    ctx.fillStyle = i % 2 === 0 ? '#267a3d' : '#318b45';
+    const light = i % 2 === 0;
+    const gradient = ctx.createLinearGradient(i * sw, 0, (i + 1) * sw, canvas.height);
+    gradient.addColorStop(0, light ? '#2b8242' : '#246f38');
+    gradient.addColorStop(0.48, light ? '#318b46' : '#2a7b3e');
+    gradient.addColorStop(1, light ? '#287b3d' : '#226b36');
+    ctx.fillStyle = gradient;
     ctx.fillRect(i * sw, 0, sw + 1, canvas.height);
   }
 
+  // Fines traces de tonte transversales, volontairement peu contrastées.
+  for (let row = 0; row < 8; row++) {
+    const y = row * (canvas.height / 8);
+    ctx.fillStyle = row % 2 ? 'rgba(255,255,255,0.012)' : 'rgba(0,0,0,0.018)';
+    ctx.fillRect(0, y, canvas.width, 2);
+  }
+
   // Micro-texture naturelle légère
-  ctx.fillStyle = 'rgba(255,255,255,0.03)';
   for (let i = 0; i < 5200; i++) {
     const x = (i * 193) % 1024;
     const y = (i * 317) % 512;
@@ -33,7 +47,7 @@ function createGrassTexture() {
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = 4;
   return tex;
 }
 
@@ -55,6 +69,19 @@ function createNetTexture() {
   return tex;
 }
 
+function disposeGroupResources(group) {
+  if (!group) return;
+  const geometries = new Set();
+  const materials = new Set();
+  group.traverse((object) => {
+    if (object.geometry) geometries.add(object.geometry);
+    const list = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
+    for (const material of list) materials.add(material);
+  });
+  for (const material of materials) material.dispose();
+  for (const geometry of geometries) geometry.dispose();
+}
+
 export class FieldBuilder {
   constructor(scene) {
     this.scene = scene;
@@ -63,11 +90,98 @@ export class FieldBuilder {
     this.crowdMesh = null;
     this.netPanels = [];
     this.cornerFlags = [];
+    this.stadiumMaterials = [];
+    this.lineGeometryCache = new Map();
+    this.sharedGeometryCache = new Map();
+    this.clubBannerGroup = null;
+    this.clubExpansionGroup = null;
     this.goalPulse = 0;
     this.netAnimating = false;
     this.elapsed = 0;
     this.build();
     scene.add(this.group);
+  }
+
+  applyClubAppearance(appearance = {}) {
+    const grass = appearance.grassSkin || 'default';
+    const grassTint = grass === 'premium' ? 0xc5f4ce : grass === 'standard' ? 0xd7f0d8 : 0xffffff;
+    this.turfMaterial?.color.setHex(grassTint);
+    const outerTint = grass === 'premium' ? 0x2a7040 : grass === 'standard' ? 0x28663a : 0x1e5c31;
+    this.outerMaterial?.color.setHex(outerTint);
+
+    const stadium = appearance.stadiumSkin || 'default';
+    const stadiumTint = stadium === 'premium' ? 0x8aa0b7 : stadium === 'standard' ? 0x687f91 : 0xffffff;
+    applyStadiumTint(this.stadiumMaterials, stadiumTint);
+
+    if (this.clubExpansionGroup) {
+      this.group.remove(this.clubExpansionGroup);
+      disposeGroupResources(this.clubExpansionGroup);
+      this.clubExpansionGroup = null;
+    }
+    const expansionLevel = Number.isInteger(appearance.stadiumExpansionLevel)
+      ? Math.max(0, Math.min(4, appearance.stadiumExpansionLevel)) : 0;
+    if (expansionLevel > 0) {
+      const expansion = new THREE.Group();
+      const seatPalette = [0x526b80,0x607b91,0x708ba0,0x829caf];
+      for (let tier = 1; tier <= expansionLevel; tier++) {
+        const material = new THREE.MeshLambertMaterial({ color:seatPalette[tier - 1] });
+        const offset = tier * 2.15;
+        const y = 4.55 + tier * 0.95;
+        const north = new THREE.Mesh(
+          new THREE.BoxGeometry(PITCH.L + 18 + offset * 2, 0.95, 1.8),
+          material
+        );
+        north.position.set(0, y, -PITCH.HALF_W - 12.0 - offset);
+        const west = new THREE.Mesh(
+          new THREE.BoxGeometry(1.8, 0.95, PITCH.W + 20 + offset * 2),
+          material
+        );
+        west.position.set(-PITCH.HALF_L - 13.0 - offset, y, -1);
+        const east = west.clone();
+        east.position.x *= -1;
+        expansion.add(north, west, east);
+      }
+      this.group.add(expansion);
+      this.clubExpansionGroup = expansion;
+    }
+
+    if (this.clubBannerGroup) {
+      this.group.remove(this.clubBannerGroup);
+      disposeGroupResources(this.clubBannerGroup);
+      this.clubBannerGroup = null;
+    }
+    const supporters = appearance.supporters || {};
+    if (!supporters.flags && !supporters.banners && !supporters.tifo) return;
+    const colors = Array.isArray(appearance.colors) && appearance.colors.length >= 3
+      ? appearance.colors : ['#2865a8','#17365d','#f4f6fb'];
+    const group = new THREE.Group();
+    const primary = new THREE.Color(colors[0]);
+    const accent = new THREE.Color(colors[2]);
+    if (supporters.flags || supporters.banners) {
+      for (let index = 0; index < 9; index++) {
+        const flag = new THREE.Mesh(
+          new THREE.PlaneGeometry(supporters.banners ? 1.35 : 0.72, supporters.banners ? 0.62 : 0.9),
+          new THREE.MeshLambertMaterial({ color: index % 2 ? accent : primary, side: THREE.DoubleSide })
+        );
+        flag.position.set(-PITCH.HALF_L + 4 + index * ((PITCH.L - 8) / 8), supporters.banners ? 3.0 : 3.15, -PITCH.HALF_W - 7.4);
+        group.add(flag);
+      }
+    }
+    if (supporters.tifo) {
+      const tifo = new THREE.Mesh(
+        new THREE.PlaneGeometry(10, 2.4),
+        new THREE.MeshLambertMaterial({ color: primary, side: THREE.DoubleSide })
+      );
+      tifo.position.set(0, 4.1, -PITCH.HALF_W - 7.45);
+      group.add(tifo);
+    }
+    this.group.add(group);
+    this.clubBannerGroup = group;
+  }
+
+  getSharedGeometry(key, create) {
+    if (!this.sharedGeometryCache.has(key)) this.sharedGeometryCache.set(key, create());
+    return this.sharedGeometryCache.get(key);
   }
 
   build() {
@@ -79,6 +193,7 @@ export class FieldBuilder {
     outer.position.y = -0.02;
     outer.receiveShadow = true;
     this.group.add(outer);
+    this.outerMaterial = outerMat;
 
     // Pelouse principale en 3D
     const turfGeo = new THREE.PlaneGeometry(PITCH.L, PITCH.W);
@@ -87,6 +202,7 @@ export class FieldBuilder {
     turf.rotation.x = -Math.PI / 2;
     turf.receiveShadow = true;
     this.group.add(turf);
+    this.turfMaterial = turfMat;
 
     this.buildLines();
     this.buildCornerFlags();
@@ -97,21 +213,27 @@ export class FieldBuilder {
   }
 
   addLineRect(x, z, w, d, thickness = 0.14) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0xf6fff7 });
+    const mat = this.lineMaterial || (this.lineMaterial = new THREE.MeshBasicMaterial({ color: 0xf6fff7 }));
     const y = 0.015;
-    const top = new THREE.Mesh(new THREE.PlaneGeometry(w, thickness), mat);
+    const horizontalKey = `h:${w}:${thickness}`;
+    const verticalKey = `v:${thickness}:${d}`;
+    if (!this.lineGeometryCache.has(horizontalKey)) this.lineGeometryCache.set(horizontalKey, new THREE.PlaneGeometry(w, thickness));
+    if (!this.lineGeometryCache.has(verticalKey)) this.lineGeometryCache.set(verticalKey, new THREE.PlaneGeometry(thickness, d));
+    const horizontalGeometry = this.lineGeometryCache.get(horizontalKey);
+    const verticalGeometry = this.lineGeometryCache.get(verticalKey);
+    const top = new THREE.Mesh(horizontalGeometry, mat);
     top.rotation.x = -Math.PI / 2;
     top.position.set(x, y, z - d / 2);
 
-    const bot = new THREE.Mesh(new THREE.PlaneGeometry(w, thickness), mat);
+    const bot = new THREE.Mesh(horizontalGeometry, mat);
     bot.rotation.x = -Math.PI / 2;
     bot.position.set(x, y, z + d / 2);
 
-    const left = new THREE.Mesh(new THREE.PlaneGeometry(thickness, d), mat);
+    const left = new THREE.Mesh(verticalGeometry, mat);
     left.rotation.x = -Math.PI / 2;
     left.position.set(x - w / 2, y, z);
 
-    const right = new THREE.Mesh(new THREE.PlaneGeometry(thickness, d), mat);
+    const right = new THREE.Mesh(verticalGeometry, mat);
     right.rotation.x = -Math.PI / 2;
     right.position.set(x + w / 2, y, z);
 
@@ -119,25 +241,25 @@ export class FieldBuilder {
   }
 
   buildLines() {
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xf6fff7 });
+    const lineMat = this.lineMaterial || (this.lineMaterial = new THREE.MeshBasicMaterial({ color: 0xf6fff7 }));
     const y = 0.016;
 
     // Lignes extérieures
     this.addLineRect(0, 0, PITCH.L, PITCH.W, 0.16);
 
     // Ligne médiane
-    const mid = new THREE.Mesh(new THREE.PlaneGeometry(0.16, PITCH.W), lineMat);
+    const mid = new THREE.Mesh(this.getSharedGeometry('pitch-midline', () => new THREE.PlaneGeometry(0.16, PITCH.W)), lineMat);
     mid.rotation.x = -Math.PI / 2;
     mid.position.set(0, y, 0);
     this.group.add(mid);
 
     // Cercle central et point d'engagement
-    const ring = new THREE.Mesh(new THREE.RingGeometry(4.75, 4.92, 40), lineMat);
+    const ring = new THREE.Mesh(this.getSharedGeometry('pitch-center-ring', () => new THREE.RingGeometry(4.75, 4.92, 40)), lineMat);
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(0, y, 0);
     this.group.add(ring);
 
-    const spot = new THREE.Mesh(new THREE.CircleGeometry(0.24, 16), lineMat);
+    const spot = new THREE.Mesh(this.getSharedGeometry('pitch-center-spot', () => new THREE.CircleGeometry(0.24, 16)), lineMat);
     spot.rotation.x = -Math.PI / 2;
     spot.position.set(0, y + 0.002, 0);
     this.group.add(spot);
@@ -152,7 +274,7 @@ export class FieldBuilder {
       const sixD = 9.6;
       this.addLineRect(dir * (PITCH.HALF_L - sixW / 2), 0, sixW, sixD);
 
-      const penSpot = new THREE.Mesh(new THREE.CircleGeometry(0.2, 14), lineMat);
+      const penSpot = new THREE.Mesh(this.getSharedGeometry('pitch-penalty-spot', () => new THREE.CircleGeometry(0.2, 14)), lineMat);
       penSpot.rotation.x = -Math.PI / 2;
       penSpot.position.set(dir * (PITCH.HALF_L - 6.6), y + 0.002, 0);
       this.group.add(penSpot);
@@ -160,7 +282,7 @@ export class FieldBuilder {
 
     // Arcs de penalty (9,15 m) orientés vers le centre du terrain.
     for (const dir of [-1, 1]) {
-      const arc = new THREE.Mesh(new THREE.RingGeometry(9.05, 9.18, 48, 1, dir < 0 ? -Math.PI / 2 : Math.PI / 2, Math.PI), lineMat);
+      const arc = new THREE.Mesh(this.getSharedGeometry('pitch-penalty-arc', () => new THREE.RingGeometry(9.05, 9.18, 48, 1, -Math.PI / 2, Math.PI)), lineMat);
       arc.rotation.x = -Math.PI / 2;
       arc.position.set(dir * (PITCH.HALF_L - 6.6), y, 0);
       this.group.add(arc);
@@ -174,7 +296,7 @@ export class FieldBuilder {
       [-PITCH.HALF_L, PITCH.HALF_W, Math.PI / 2]
     ];
     for (const [cx, cz, rot] of corners) {
-      const arc = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.1, 12, 1, 0, Math.PI / 2), lineMat);
+      const arc = new THREE.Mesh(this.getSharedGeometry('pitch-corner-arc', () => new THREE.RingGeometry(0.95, 1.1, 12, 1, 0, Math.PI / 2)), lineMat);
       arc.rotation.x = -Math.PI / 2;
       arc.rotation.z = rot;
       arc.position.set(cx, y, cz);
@@ -187,9 +309,10 @@ export class FieldBuilder {
     const flagMats = [new THREE.MeshLambertMaterial({ color: 0x2878f0 }), new THREE.MeshLambertMaterial({ color: 0xe4473d })];
     const shape = new THREE.Shape();
     shape.moveTo(0, 0); shape.lineTo(0.62, -0.16); shape.lineTo(0, -0.42); shape.closePath();
-    const flagGeo = new THREE.ShapeGeometry(shape);
+    const flagGeo = this.getSharedGeometry('corner-flag', () => new THREE.ShapeGeometry(shape));
+    const poleGeo = this.getSharedGeometry('corner-flag-pole', () => new THREE.CylinderGeometry(0.035, 0.045, 1.35, 6));
     for (const [x, z, colorIndex] of [[-PITCH.HALF_L,-PITCH.HALF_W,0],[-PITCH.HALF_L,PITCH.HALF_W,1],[PITCH.HALF_L,-PITCH.HALF_W,1],[PITCH.HALF_L,PITCH.HALF_W,0]]) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.35, 6), poleMat);
+      const pole = new THREE.Mesh(poleGeo, poleMat);
       pole.position.set(x, 0.675, z);
       const flagPivot = new THREE.Group();
       flagPivot.position.set(x, 1.27, z);
@@ -207,22 +330,22 @@ export class FieldBuilder {
     for (const side of [-1, 1]) {
       const x = side * 8.2;
       const z = side * (PITCH.HALF_W + 5.4);
-      const base = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.28, 2.0), baseMat);
+      const base = new THREE.Mesh(this.getSharedGeometry('technical-base', () => new THREE.BoxGeometry(9.2, 0.28, 2.0)), baseMat);
       base.position.set(x, 0.14, z);
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(9.4, 0.16, 2.15), roofMat);
+      const roof = new THREE.Mesh(this.getSharedGeometry('technical-roof', () => new THREE.BoxGeometry(9.4, 0.16, 2.15)), roofMat);
       roof.position.set(x, 2.05, z);
-      const back = new THREE.Mesh(new THREE.BoxGeometry(9.2, 1.75, 0.12), seatMat);
+      const back = new THREE.Mesh(this.getSharedGeometry('technical-back', () => new THREE.BoxGeometry(9.2, 1.75, 0.12)), seatMat);
       back.position.set(x, 1.05, z - side * 0.92);
       this.group.add(base, roof, back);
       for (let n = -3; n <= 3; n++) {
-        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.22, 0.55), seatMat);
+        const seat = new THREE.Mesh(this.getSharedGeometry('technical-seat', () => new THREE.BoxGeometry(0.82, 0.22, 0.55)), seatMat);
         seat.position.set(x + n * 1.2, 0.62, z);
         this.group.add(seat);
       }
     }
     const lineMat = new THREE.MeshBasicMaterial({ color: 0xdce8e5 });
     for (const side of [-1, 1]) {
-      const line = new THREE.Mesh(new THREE.BoxGeometry(12, 0.025, 0.08), lineMat);
+      const line = new THREE.Mesh(this.getSharedGeometry('technical-touchline', () => new THREE.BoxGeometry(12, 0.025, 0.08)), lineMat);
       line.position.set(0, 0.025, side * (PITCH.HALF_W + 2.8));
       this.group.add(line);
     }
@@ -251,7 +374,6 @@ export class FieldBuilder {
           attr.setZ(i, panel.base[i * 3 + 2] + wave);
         }
         attr.needsUpdate = true;
-        panel.mesh.geometry.computeVertexNormals();
       }
     } else if (this.netAnimating) {
       // Retour exact à la position initiale, une seule fois à la fin de l'impulsion.
@@ -259,7 +381,6 @@ export class FieldBuilder {
         const attr = panel.mesh.geometry.attributes.position;
         attr.array.set(panel.base);
         attr.needsUpdate = true;
-        panel.mesh.geometry.computeVertexNormals();
       }
       this.netAnimating = false;
     }
@@ -276,15 +397,15 @@ export class FieldBuilder {
     const hw = PITCH.GOAL_W / 2;
     const h = PITCH.GOAL_H;
 
-    const postMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    const postGeo = new THREE.CylinderGeometry(0.085, 0.085, h, 10);
+    const postMat = this.goalPostMaterial || (this.goalPostMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    const postGeo = this.getSharedGeometry('goal-front-post', () => new THREE.CylinderGeometry(0.085, 0.085, h, 10));
 
     const leftPost = new THREE.Mesh(postGeo, postMat);
     leftPost.position.set(xLine, h / 2, -hw);
     const rightPost = new THREE.Mesh(postGeo, postMat);
     rightPost.position.set(xLine, h / 2, hw);
 
-    const barGeo = new THREE.CylinderGeometry(0.085, 0.085, PITCH.GOAL_W + 0.16, 10);
+    const barGeo = this.getSharedGeometry('goal-crossbar', () => new THREE.CylinderGeometry(0.085, 0.085, PITCH.GOAL_W + 0.16, 10));
     const crossbar = new THREE.Mesh(barGeo, postMat);
     crossbar.rotation.x = Math.PI / 2;
     crossbar.position.set(xLine, h, 0);
@@ -292,37 +413,43 @@ export class FieldBuilder {
     // Cadre arrière léger
     const supportMat = new THREE.MeshLambertMaterial({ color: side < 0 ? 0x2a76f0 : 0xe0483f });
     for (const sz of [-hw, hw]) {
-      const backPost = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, h, 8), supportMat);
+      const backPost = new THREE.Mesh(this.getSharedGeometry('goal-back-post', () => new THREE.CylinderGeometry(0.055, 0.055, h, 8)), supportMat);
       backPost.position.set(xBack, h / 2, sz);
-      const topSide = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, PITCH.GOAL_D, 8), supportMat);
+      const topSide = new THREE.Mesh(this.getSharedGeometry('goal-top-support', () => new THREE.CylinderGeometry(0.055, 0.055, PITCH.GOAL_D, 8)), supportMat);
       topSide.rotation.z = Math.PI / 2;
       topSide.position.set((xLine + xBack) / 2, h, sz);
       g.add(backPost, topSide);
     }
 
     // Filets
-    const netMat = new THREE.MeshBasicMaterial({
+    // Les deux cages partagent la même texture et le même matériau de filet.
+    // Cela évite de dupliquer une texture Canvas identique pour chaque but.
+    const netMat = this.netMaterial || (this.netMaterial = new THREE.MeshBasicMaterial({
       map: createNetTexture(),
       transparent: true,
       opacity: 0.85,
       side: THREE.DoubleSide,
       depthWrite: false
-    });
+    }));
 
     // Panneau arrière subdivisé : sa maille vibre brièvement après un but.
     const backNetGeo = new THREE.PlaneGeometry(PITCH.GOAL_W, h, 10, 6);
+    // The goal net is animated through vertex positions; use a dynamic GPU buffer.
+    // MeshBasicMaterial is unlit, so recomputing vertex normals on every pulse is unnecessary.
+    backNetGeo.attributes.position.setUsage(THREE.DynamicDrawUsage);
     const backNet = new THREE.Mesh(backNetGeo, netMat);
     backNet.position.set(xBack, h / 2, 0);
     backNet.rotation.y = Math.PI / 2;
     this.netPanels.push({ mesh: backNet, base: backNetGeo.attributes.position.array.slice(), side });
 
-    const topNet = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.GOAL_D, PITCH.GOAL_W), netMat);
+    const topNet = new THREE.Mesh(this.getSharedGeometry('goal-top-net', () => new THREE.PlaneGeometry(PITCH.GOAL_D, PITCH.GOAL_W)), netMat);
     topNet.position.set((xLine + xBack) / 2, h, 0);
     topNet.rotation.x = Math.PI / 2;
 
-    const sideNetL = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.GOAL_D, h), netMat);
+    const sideNetGeometry = this.getSharedGeometry('goal-side-net', () => new THREE.PlaneGeometry(PITCH.GOAL_D, h));
+    const sideNetL = new THREE.Mesh(sideNetGeometry, netMat);
     sideNetL.position.set((xLine + xBack) / 2, h / 2, -hw);
-    const sideNetR = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.GOAL_D, h), netMat);
+    const sideNetR = new THREE.Mesh(sideNetGeometry, netMat);
     sideNetR.position.set((xLine + xBack) / 2, h / 2, hw);
 
     g.add(leftPost, rightPost, crossbar, backNet, topNet, sideNetL, sideNetR);
@@ -332,7 +459,9 @@ export class FieldBuilder {
   buildStadium() {
     // Panneaux publicitaires autour du terrain
     const boardMat = new THREE.MeshLambertMaterial({ color: 0x153024 });
+    this.stadiumMaterials.push(boardMat);
     const accentMat = new THREE.MeshLambertMaterial({ color: 0x26754e });
+    this.stadiumMaterials.push(accentMat);
     const northBoard = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 8, 1.0, 0.35), boardMat);
     northBoard.position.set(0, 0.5, -PITCH.HALF_W - 3.2);
     const northStrip = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 7.5, 0.28, 0.4), accentMat);
@@ -347,31 +476,43 @@ export class FieldBuilder {
 
     // Tribunes nord, ouest et est (sud ouvert pour ne jamais gêner la caméra broadcast)
     const standMat = new THREE.MeshLambertMaterial({ color: 0x2a3540 });
+    this.stadiumMaterials.push(standMat);
     const tierColors = [0x374757, 0x435669, 0x4f647a];
     for (let t = 0; t < 3; t++) {
       const mat = new THREE.MeshLambertMaterial({ color: tierColors[t] });
-      const nTier = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 16, 1.3, 2.4), mat);
+      this.stadiumMaterials.push(mat);
+      const nTier = new THREE.Mesh(this.getSharedGeometry('stand-tier-north', () => new THREE.BoxGeometry(PITCH.L + 16, 1.3, 2.4)), mat);
       nTier.position.set(0, 1.1 + t * 1.25, -PITCH.HALF_W - 5.4 - t * 2.3);
       this.group.add(nTier);
 
-      const wTier = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.3, PITCH.W + 10), mat);
+      const sideTierGeometry = this.getSharedGeometry('stand-tier-side', () => new THREE.BoxGeometry(2.4, 1.3, PITCH.W + 10));
+      const wTier = new THREE.Mesh(sideTierGeometry, mat);
       wTier.position.set(-PITCH.HALF_L - 6.2 - t * 2.3, 1.1 + t * 1.25, -1);
-      const eTier = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.3, PITCH.W + 10), mat);
+      const eTier = new THREE.Mesh(sideTierGeometry, mat);
       eTier.position.set(PITCH.HALF_L + 6.2 + t * 2.3, 1.1 + t * 1.25, -1);
       this.group.add(wTier, eTier);
     }
 
     // Public stylisé en silhouettes humanoïdes instanciées : deux draw calls
     // pour les torses et les têtes, au lieu de 420 blocs rectangulaires.
-    const count = 420;
-    const torsoGeo = new THREE.SphereGeometry(0.5, 10, 8);
+    const lowEndCrowd = this.scene.userData?.renderQuality === 'low';
+    // Instanced spectators retain the stadium atmosphere while trimming
+    // vertex work on entry-level mobile GPUs.
+    const count = lowEndCrowd ? 240 : 420;
+    const torsoGeo = new THREE.SphereGeometry(0.5, lowEndCrowd ? 8 : 10, lowEndCrowd ? 6 : 8);
     const torsoMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     const crowd = new THREE.InstancedMesh(torsoGeo, torsoMat, count);
-    const headGeo = new THREE.SphereGeometry(0.5, 8, 6);
+    const headGeo = new THREE.SphereGeometry(0.5, lowEndCrowd ? 6 : 8, lowEndCrowd ? 5 : 6);
     const headMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     const crowdHeads = new THREE.InstancedMesh(headGeo, headMat, count);
+    // A single instanced arm mesh adds a readable human silhouette without
+    // creating hundreds of individual meshes or draw calls.
+    const armGeo = new THREE.CylinderGeometry(0.075, 0.09, 0.62, lowEndCrowd ? 5 : 6);
+    const armMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const crowdArms = new THREE.InstancedMesh(armGeo, armMat, count * 2);
     const dummy = new THREE.Object3D();
     const headDummy = new THREE.Object3D();
+    const armDummy = new THREE.Object3D();
     const palette = [
       new THREE.Color(0x398bff), new THREE.Color(0xff524a),
       new THREE.Color(0xf6d55c), new THREE.Color(0xeaf4f4),
@@ -389,7 +530,29 @@ export class FieldBuilder {
       dummy.scale.set(0.72, 1.05 + (idx % 3) * 0.08, 0.62);
       dummy.updateMatrix();
       crowd.setMatrixAt(idx, dummy.matrix);
-      crowd.setColorAt(idx, palette[idx % palette.length]);
+      const shirtColor = palette[idx % palette.length];
+      crowd.setColorAt(idx, shirtColor);
+
+      // Most supporters keep their arms relaxed; a small deterministic
+      // cheering pattern adds stadium life without per-frame animation or draw calls.
+      const cheering = idx % 11 === 0;
+      for (const side of [-1, 1]) {
+        armDummy.position.set(
+          x + side * (cheering ? 0.29 : 0.39),
+          y + (cheering ? 0.38 : -0.035),
+          z
+        );
+        armDummy.rotation.set(
+          0,
+          rotation,
+          side * (cheering ? 0.92 : 0.10 + (idx % 4) * 0.025)
+        );
+        armDummy.scale.set(0.92, 0.88 + (idx % 3) * 0.08, 0.92);
+        armDummy.updateMatrix();
+        const armIndex = idx * 2 + (side > 0 ? 1 : 0);
+        crowdArms.setMatrixAt(armIndex, armDummy.matrix);
+        crowdArms.setColorAt(armIndex, shirtColor);
+      }
 
       headDummy.position.set(x, y + 0.59 + (idx % 3) * 0.035, z);
       headDummy.rotation.set(0, rotation, 0);
@@ -430,12 +593,17 @@ export class FieldBuilder {
     crowdHeads.instanceMatrix.needsUpdate = true;
     if (crowd.instanceColor) crowd.instanceColor.needsUpdate = true;
     if (crowdHeads.instanceColor) crowdHeads.instanceColor.needsUpdate = true;
+    crowdArms.count = idx * 2;
+    crowdArms.instanceMatrix.needsUpdate = true;
+    if (crowdArms.instanceColor) crowdArms.instanceColor.needsUpdate = true;
     this.crowdMesh = crowd;
     this.crowdHeads = crowdHeads;
-    this.group.add(crowd, crowdHeads);
+    this.crowdArms = crowdArms;
+    this.group.add(crowd, crowdHeads, crowdArms);
 
     // Liserés de gradins et bandeaux supérieurs pour donner une lecture architecturale au stade.
     const rimMat = new THREE.MeshLambertMaterial({ color: 0x182632 });
+    this.stadiumMaterials.push(rimMat);
     const rimNorth = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 22, 0.42, 0.72), rimMat);
     rimNorth.position.set(0, 5.05, -PITCH.HALF_W - 11.2);
     const rimWest = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.42, PITCH.W + 18), rimMat);
@@ -447,6 +615,7 @@ export class FieldBuilder {
     // Auvent fin au-dessus des tribunes : lecture de stade plus nette sans
     // alourdir le rendu (trois meshes statiques, aucun update par frame).
     const canopyMat = new THREE.MeshStandardMaterial({ color: 0x111d27, roughness: 0.72, metalness: 0.12 });
+    this.stadiumMaterials.push(canopyMat);
     const canopyNorth = new THREE.Mesh(new THREE.BoxGeometry(PITCH.L + 24, 0.32, 3.2), canopyMat);
     canopyNorth.position.set(0, 6.15, -PITCH.HALF_W - 11.6);
     const canopyWest = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.32, PITCH.W + 22), canopyMat);
@@ -464,10 +633,12 @@ export class FieldBuilder {
       [-PITCH.HALF_L - 14, PITCH.HALF_W + 14],
       [PITCH.HALF_L + 14, PITCH.HALF_W + 14]
     ];
+    const pylonGeometry = this.getSharedGeometry('floodlight-pole', () => new THREE.CylinderGeometry(0.13, 0.2, 18, 8));
+    const bulbGeometry = this.getSharedGeometry('floodlight-head', () => new THREE.BoxGeometry(2.1, 0.72, 0.42));
     for (const [px, pz] of pylonPos) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.2, 18, 8), poleMat);
+      const pole = new THREE.Mesh(pylonGeometry, poleMat);
       pole.position.set(px, 9, pz);
-      const head = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.72, 0.42), bulbMat);
+      const head = new THREE.Mesh(bulbGeometry, bulbMat);
       head.position.set(px, 18, pz);
       head.lookAt(0, 0, 0);
       this.floodlightBulbs.push(head);
@@ -475,12 +646,14 @@ export class FieldBuilder {
     }
 
     // Gradins derrière les deux cages : deux niveaux bas ferment l'enceinte.
+    const endStandMaterials = [
+      new THREE.MeshLambertMaterial({ color: 0x354958 }),
+      new THREE.MeshLambertMaterial({ color: 0x43596a })
+    ];
+    const endStandGeometries = [0, 1].map((tier) => this.getSharedGeometry(`end-stand-${tier}`, () => new THREE.BoxGeometry(2.8, 1.0, PITCH.W + 15 + tier * 3)));
     for (const end of [-1, 1]) {
       for (let tier = 0; tier < 2; tier++) {
-        const stand = new THREE.Mesh(
-          new THREE.BoxGeometry(2.8, 1.0, PITCH.W + 15 + tier * 3),
-          new THREE.MeshLambertMaterial({ color: tier === 0 ? 0x354958 : 0x43596a })
-        );
+        const stand = new THREE.Mesh(endStandGeometries[tier], endStandMaterials[tier]);
         stand.position.set(end * (PITCH.HALF_L + 7.2 + tier * 2.2), 1.0 + tier * 1.0, 0);
         this.group.add(stand);
       }

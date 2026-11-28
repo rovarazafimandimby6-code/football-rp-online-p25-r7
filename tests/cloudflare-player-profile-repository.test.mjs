@@ -4,8 +4,8 @@ import { D1PlayerProfileRepository, normalizePlayerProfile } from "../src/cloudf
 
 const accountId = "123e4567-e89b-42d3-a456-426614174000";
 const profileInput = {
-  identity: { displayName: "  Rova <script>", number: 120, preferredFoot: "left", role: "FWD" },
-  appearance: { kit: "crimson", skinTone: "dark", hairStyle: "fade", hairColor: "brown", bodyBuild: "lean" },
+  identity: { displayName: "  Rova <script>", number: 120, preferredFoot: "both", role: "FWD" },
+  appearance: { kit: "crimson", skinTone: "dark", hairStyle: "fade", hairColor: "brown", bodyBuild: "lean", faceShape: "angular", eyeShape: "hooded" },
 };
 
 class ProfileD1 {
@@ -35,7 +35,10 @@ test("profile normalization preserves the existing player-profile schema and cla
   assert.equal(profile.identity.displayName, "Rova script");
   assert.equal(profile.identity.number, 99);
   assert.equal(profile.identity.role, "FWD");
+  assert.equal(profile.identity.preferredFoot, "both");
   assert.equal(profile.appearance.kit, "crimson");
+  assert.equal(profile.appearance.faceShape, "angular");
+  assert.equal(profile.appearance.eyeShape, "hooded");
   assert.equal(profile.updatedAt, "2026-11-25T12:00:00.000Z");
 });
 
@@ -65,4 +68,11 @@ test("D1 profile repository rejects invalid revisions and malformed account iden
   const repository = new D1PlayerProfileRepository(new ProfileD1());
   await assert.rejects(repository.save(accountId, profileInput, -1), /INVALID_PROFILE_REVISION/);
   await assert.rejects(repository.get("not-an-account"), /INVALID_ACCOUNT_ID/);
+});
+
+test("profile normalization uses the default shirt number for null or empty values", () => {
+  for (const number of [null, ""]) {
+    const profile = normalizePlayerProfile({ identity: { number } }, () => Date.parse("2026-11-25T12:00:00.000Z"));
+    assert.equal(profile.identity.number, 10);
+  }
 });

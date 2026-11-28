@@ -9,9 +9,43 @@ import { verifyGoogleWorkerIdToken } from "./google-id-token-verifier.js";
 import { D1PlayerProfileRepository } from "./player-profile-repository.js";
 import { D1PlayerProgressionRepository } from "./player-progression-repository.js";
 import { D1PlayerCareerRepository } from "./player-career-repository.js";
+import { D1AccountSnapshotRepository } from "./account-snapshot-repository.js";
+import { D1PlayerShopRepository } from "./player-shop-repository.js";
 import { verifyCareerIngestSignature } from "./career-ingest-auth.js";
+import { D1MatchRoomRepository } from "./match-room-repository.js";
+export { P27MatchRoomDurableObject } from "./match-room-object.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
+const DEFAULT_APP_ORIGINS = new Set([
+  "capacitor://localhost",
+  "http://localhost",
+  "https://localhost",
+  "https://football-rp-online-p25-r7.onrender.com",
+]);
+
+function isAllowedOrigin(request, env) {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try { if (new URL(origin).origin === new URL(request.url).origin) return true; } catch { return false; }
+  const configured = typeof env.P27_ALLOWED_ORIGINS === "string"
+    ? env.P27_ALLOWED_ORIGINS.split(",").map(value => value.trim()).filter(Boolean)
+    : [];
+  return DEFAULT_APP_ORIGINS.has(origin) || configured.includes(origin);
+}
+
+function withCors(response, request) {
+  const origin = request.headers.get("origin");
+  if (!origin) return response;
+  const headers = new Headers(response.headers);
+  headers.set("access-control-allow-origin", origin);
+  headers.set("access-control-allow-credentials", "true");
+  headers.set("access-control-allow-methods", "GET, POST, PUT, DELETE, OPTIONS");
+  headers.set("access-control-allow-headers", "Accept, Authorization, Content-Type, X-P27-Signature");
+  headers.set("access-control-max-age", "86400");
+  headers.append("vary", "Origin");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 const OIDC_BINDING_COOKIE = "p27_google_oidc_binding";
 const ACCOUNT_SESSION_COOKIE = "p27_account_session";
 const ACCOUNT_SESSION_MAX_AGE = 30 * 24 * 60 * 60;
@@ -126,6 +160,8 @@ function errorResponse(error) {
     code === "PLAYER_PROFILE_TOO_LARGE" ||
     code === "INVALID_ATTRIBUTE" ||
     code === "INVALID_PROGRESSION_MODE" ||
+    code === "INVALID_PROGRESSION_AMOUNT" ||
+    code === "INVALID_MATCH_REWARD" ||
     code === "INVALID_PLAYER_ID" ||
     code === "INVALID_CAREER_CURSOR" ||
     code === "INVALID_JSON" ||
@@ -140,7 +176,8 @@ function errorResponse(error) {
     code === "LOCAL_PROFILE_REPLICA_LIMIT" ||
     code === "GOOGLE_IDENTITY_ALREADY_LINKED" ||
     code === "PROFILE_REVISION_CONFLICT" ||
-    code === "PROGRESSION_CONCURRENT_UPDATE" ? 409 :
+    code === "PROGRESSION_CONCURRENT_UPDATE" ||
+    code === "MATCH_REWARD_ID_CONFLICT" ? 409 :
     code === "PLAYER_IDENTITY_NOT_FOUND" ||
     code === "GOOGLE_ACCOUNT_NOT_LINKED" ? 404 :
     code === "PLAYER_IDENTITY_MISMATCH" ? 409 :
@@ -155,7 +192,7 @@ async function startGoogleAuthorization(request, env, purpose) {
   const origin = request.headers.get("origin");
   if (origin) {
     try {
-      if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+      if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
     } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
   }
   if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
@@ -331,7 +368,92 @@ async function completeGoogleAuthorization(request, env, requestUrl) {
   return response;
 }
 
-export default {
+
+async function handleMatchRoomRoute(request, env, url) {
+  const namespace = env.P27_MATCH_ROOMS;
+  const roomPath = new RegExp("^/api/rooms/([a-f0-9]{12})(?:/(join|input|heartbeat|reconnect|leave|entry-request|rotation|result|socket))?$").exec(url.pathname);
+  const isRoomCollection = url.pathname === "/api/rooms";
+  if (!isRoomCollection && !roomPath) return null;
+  const hasD1 = env.P27_DB && typeof env.P27_DB.prepare === "function";
+  const roomRepo = hasD1 ? new D1MatchRoomRepository(env.P27_DB) : null;
+  if (!namespace || typeof namespace.idFromName !== "function" || typeof namespace.get !== "function") {
+    return json(503, { error: "MATCH_ROOM_OBJECTS_NOT_CONFIGURED" });
+  }
+  if (!roomRepo) return json(503, { error: "D1_BINDING_MISSING" });
+
+  if (request.method === "GET" && isRoomCollection) {
+    try { return json(200, { rooms: await roomRepo.listDiscoverable({ limit: 50 }) }); }
+    catch (error) { return json(503, { error: String(error?.message || "MATCH_ROOM_INDEX_UNAVAILABLE") }); }
+  }
+  if (request.method === "POST" && isRoomCollection) {
+    try {
+      const body = await readJson(request);
+      if (body.competitionFixtureId) return json(409, { error: "COMPETITION_MATCH_NOT_MIGRATED" });
+      const bytes = crypto.getRandomValues(new Uint8Array(6));
+      const roomId = [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
+      const stub = namespace.get(namespace.idFromName(roomId));
+      return await stub.fetch("https://match-room.internal/internal/create", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...body, roomId }),
+      });
+    } catch (error) { return errorResponse(error); }
+  }
+
+  const roomId = roomPath[1];
+  const action = roomPath[2] || "state";
+
+  if (action === "join" && request.method === "POST") {
+    try {
+      const body = await readJson(request);
+      const sessionToken = sessionTokenFromRequest(request);
+      const account = sessionToken ? await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionToken) : null;
+      if (sessionToken && !account) return json(401, { error: "SESSION_EXPIRED" });
+      let identity = null;
+      if (account) {
+        identity = await new D1PlayerIdentityRepository(env.P27_DB).getByAccountId(account.id);
+        if (!identity || identity.playerId !== account.playerId) return json(403, { error: "PLAYER_IDENTITY_REQUIRED" });
+      }
+      const stub = namespace.get(namespace.idFromName(roomId));
+      return await stub.fetch("https://match-room.internal/internal/join", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          displayName: body.displayName, preferredTeam: body.preferredTeam, role: body.role,
+          accountId: account?.id || null, careerPlayerId: identity?.playerId || null,
+        }),
+      });
+    } catch (error) { return errorResponse(error); }
+  }
+
+  const stub = namespace.get(namespace.idFromName(roomId));
+  if (action === "socket") return stub.fetch(request);
+  if (action === "result" && request.method === "GET") return stub.fetch("https://match-room.internal/internal/result");
+  if (!roomPath[2] && request.method === "GET") {
+    const since = url.searchParams.get("sinceSequence");
+    if (since !== null) {
+      const afterEventId = url.searchParams.get("afterEventId") || "0";
+      return stub.fetch("https://match-room.internal/internal/delta?afterSequence=" +
+        encodeURIComponent(since) + "&afterEventId=" + encodeURIComponent(afterEventId));
+    }
+    return stub.fetch("https://match-room.internal/internal/state");
+  }
+
+  const postActions = new Set(["input", "heartbeat", "reconnect", "leave", "entry-request", "rotation"]);
+  if (request.method !== "POST" || !postActions.has(action)) return json(405, { error: "METHOD_NOT_ALLOWED" });
+  try {
+    const body = await readJson(request);
+    const authorization = request.headers.get("authorization") || "";
+    const token = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7).trim() : "";
+    const internalBody = action === "input" ? { token, input: body }
+      : action === "rotation" ? { token, outgoingId: body.outgoingId, incomingId: body.incomingId }
+      : { token };
+    return await stub.fetch("https://match-room.internal/internal/" + action, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(internalBody),
+    });
+  } catch (error) { return errorResponse(error); }
+}
+
+const worker = {
   async fetch(request, env = {}) {
     const url = new URL(request.url);
 
@@ -356,6 +478,9 @@ export default {
         return json(503, { ok: false, status: "not-ready", reason: "D1_UNAVAILABLE" });
       }
     }
+
+    const matchRoomResponse = await handleMatchRoomRoute(request, env, url);
+    if (matchRoomResponse) return matchRoomResponse;
 
     if (request.method === "POST" &&
         (url.pathname === "/api/auth/google/login/start" || url.pathname === "/api/auth/google/link/start")) {
@@ -399,6 +524,7 @@ export default {
             playerId: reservation.playerId,
             reserved: true,
             alreadyReserved: reservation.alreadyReserved,
+            session: { token: session.token, account: session.account, expiresAt: session.expiresAt },
           }, { "set-cookie": accountSessionCookie(session.token) });
         }
         const identity = await identities.verifyLocalProof({
@@ -407,6 +533,19 @@ export default {
         });
         if (!identity) return json(401, { error: "LOCAL_PROFILE_PROOF_INVALID" });
         return json(200, { verified: true, accountId: identity.accountId, playerId: identity.playerId });
+      } catch (error) { return errorResponse(error); }
+    }
+
+    if (url.pathname === "/api/account/snapshot") {
+      if (request.method !== "GET") return json(405, { error: "METHOD_NOT_ALLOWED" });
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+      const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionTokenFromRequest(request));
+      if (!account) return json(401, { error: "SESSION_EXPIRED" });
+      try {
+        const snapshot = await new D1AccountSnapshotRepository(env.P27_DB).get(account);
+        return json(200, snapshot);
       } catch (error) { return errorResponse(error); }
     }
 
@@ -427,7 +566,7 @@ export default {
       const origin = request.headers.get("origin");
       if (origin) {
         try {
-          if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+          if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
         } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
       }
       try {
@@ -443,6 +582,85 @@ export default {
         }
         return response;
       }
+    }
+
+    // Unified player-shop API used by the current in-game shop client.
+    // Club-shop requests remain on the authoritative server until club ownership and treasury are D1-backed.
+    if (url.pathname === "/api/shop" && request.method === "GET" && (url.searchParams.get("shop") || "player") === "player") {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") return json(503, { error: "D1_BINDING_MISSING" });
+      const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionTokenFromRequest(request));
+      if (!account) return json(401, { error: "SESSION_EXPIRED" });
+      try {
+        const shop = new D1PlayerShopRepository(env.P27_DB);
+        const progression = await new D1PlayerProgressionRepository(env.P27_DB).get(account.id);
+        return json(200, {
+          shop:"player", currency:"player-coins", balance:progression.progression.coins,
+          catalog:await shop.catalog(), inventory:await shop.inventory(account.id)
+        });
+      } catch (error) { return errorResponse(error); }
+    }
+    if (["/api/shop/purchase","/api/shop/resale","/api/shop/equip"].includes(url.pathname) && request.method === "POST") {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") return json(503, { error: "D1_BINDING_MISSING" });
+      const origin = request.headers.get("origin");
+      if (origin) {
+        try { if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
+        catch { return json(403, { error:"ORIGIN_NOT_ALLOWED" }); }
+      }
+      const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(sessionTokenFromRequest(request));
+      if (!account) return json(401, { error:"SESSION_EXPIRED" });
+      try {
+        const body = await readJson(request);
+        if (!body || body.shop !== "player") return json(400, { error:"UNSUPPORTED_SHOP" });
+        const shop = new D1PlayerShopRepository(env.P27_DB);
+        const result = url.pathname === "/api/shop/purchase"
+          ? await shop.purchase(account.id, { itemId:body.itemId, purchaseId:body.purchaseId })
+          : url.pathname === "/api/shop/resale"
+            ? await shop.resale(account.id, { itemId:body.itemId, resaleId:body.resaleId })
+            : await shop.setEquipped(account.id, { itemId:body.itemId, equipped:body.equipped });
+        return json(result.ok ? 200 : 409, result);
+      } catch (error) { return errorResponse(error); }
+    }
+
+    const playerShopRoute = url.pathname.startsWith("/api/shop/player/");
+    if (playerShopRoute && ["GET", "POST"].includes(request.method)) {
+      if (!env.P27_DB || typeof env.P27_DB.prepare !== "function") {
+        return json(503, { error: "D1_BINDING_MISSING" });
+      }
+      const token = sessionTokenFromRequest(request);
+      const account = await new D1PasswordlessAccountRepository(env.P27_DB).resolve(token);
+      if (!account) return json(401, { error: "SESSION_EXPIRED" });
+      if (request.method === "POST") {
+        const origin = request.headers.get("origin");
+        if (origin) {
+          try {
+            if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+          } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
+        }
+      }
+      const shop = new D1PlayerShopRepository(env.P27_DB);
+      try {
+        if (request.method === "GET" && url.pathname === "/api/shop/player/catalog") {
+          return json(200, { catalog: await shop.catalog() });
+        }
+        if (request.method === "GET" && url.pathname === "/api/shop/player/inventory") {
+          return json(200, { inventory: await shop.inventory(account.id) });
+        }
+        if (request.method === "POST") {
+          const body = await readJson(request);
+          let result;
+          if (url.pathname === "/api/shop/player/purchase") {
+            result = await shop.purchase(account.id, { itemId: body.itemId, purchaseId: body.purchaseId });
+          } else if (url.pathname === "/api/shop/player/resale") {
+            result = await shop.resale(account.id, { itemId: body.itemId, resaleId: body.resaleId });
+          } else if (url.pathname === "/api/shop/player/equip") {
+            result = await shop.setEquipped(account.id, { itemId: body.itemId, equipped: body.equipped });
+          } else {
+            return json(404, { error: "SHOP_ROUTE_NOT_FOUND" });
+          }
+          return json(result.ok ? 200 : 409, result);
+        }
+        return json(405, { error: "METHOD_NOT_ALLOWED" });
+      } catch (error) { return errorResponse(error); }
     }
 
     if (url.pathname === "/api/progression/me" && ["GET", "POST"].includes(request.method)) {
@@ -461,7 +679,7 @@ export default {
       const origin = request.headers.get("origin");
       if (origin) {
         try {
-          if (new URL(origin).origin !== new URL(request.url).origin) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+          if (!isAllowedOrigin(request, env)) return json(403, { error: "ORIGIN_NOT_ALLOWED" });
         } catch { return json(403, { error: "ORIGIN_NOT_ALLOWED" }); }
       }
       try {
@@ -558,5 +776,17 @@ export default {
       error: "CLOUDFLARE_API_NOT_MIGRATED",
       message: "Cette entrée Cloudflare ne contient pas encore toutes les routes P27.",
     });
+  },
+};
+
+export default {
+  async fetch(request, env = {}) {
+    if (request.headers.has("origin") && !isAllowedOrigin(request, env)) {
+      return json(403, { error: "ORIGIN_NOT_ALLOWED" });
+    }
+    if (request.method === "OPTIONS") {
+      return withCors(new Response(null, { status: 204 }), request);
+    }
+    return withCors(await worker.fetch(request, env), request);
   },
 };

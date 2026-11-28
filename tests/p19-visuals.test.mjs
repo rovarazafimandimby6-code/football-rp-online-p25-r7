@@ -21,7 +21,8 @@ test('P19 : les zones techniques et les gradins derrière les cages sont intégr
 test('P19 : les filets arrière sont subdivisés et animés après un but', () => {
   assert.match(fieldSource, /PlaneGeometry\(PITCH\.GOAL_W, h, 10, 6\)/);
   assert.match(fieldSource, /triggerGoal\(\)/);
-  assert.match(fieldSource, /computeVertexNormals\(\)/);
+  assert.match(fieldSource, /backNetGeo\.attributes\.position\.setUsage\(THREE\.DynamicDrawUsage\)/);
+  assert.doesNotMatch(fieldSource, /computeVertexNormals\(\)/);
   assert.match(gameSource, /this\.field\.triggerGoal\(/);
   assert.match(gameSource, /this\.field\.update\(dt\)/);
 });

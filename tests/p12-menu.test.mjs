@@ -16,10 +16,11 @@ test('P12: le shell ne contient plus de navigation permanente ni de routes fant�
   assert.match(html, /p27-back-home/);
   assert.doesNotMatch(html, /menu-sidebar|menu-secondary-nav/);
   for (const page of ['rankings', 'community']) assert.doesNotMatch(html, new RegExp(`data-page="${page}"`));
-  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato','account']) {
+  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato']) {
     assert.match(main, new RegExp(`data-page="${page}"`));
   }
   assert.match(html, /data-page="settings"/);
+  assert.ok(main.includes("page === 'account'"), 'la page de compte reste disponible sans tuile de navigation permanente');
 });
 
 test('P12: le moteur de match est chargé seulement après la demande de lancement', () => {
@@ -58,14 +59,16 @@ test('P12.1: la liste des clubs et la pause utilisent le composant d’écusson 
 });
 
 
-test('P27 UI: accueil en hub de huit tuiles et accès aux pages existantes', () => {
-  assert.match(main, /p27-home-tiles/);
-  for (const label of ['CARRIÈRE','MATCH AMICAL','MON JOUEUR','COMPÉTITIONS','MERCATO','CLASSEMENTS','CLUBS','RÉSULTATS']) assert.ok(main.includes(label), `tuile manquante: ${label}`);
+test('P27 UI: accueil modulaire inspiré de DLS et connecté aux données réelles', () => {
+  assert.match(main, /p27-dls-home/);
+  for (const label of ['MATCH AMICAL','JOUEURS','COMPÉTITIONS','MERCATO','MON ÉQUIPE','CLUB RP','RÉSULTATS']) assert.ok(main.includes(label), `module manquant: ${label}`);
+  assert.doesNotMatch(main, /p27-home-tiles/);
   assert.match(main, /data-action="choose-match"/);
-  for (const page of ['career-hub','player','players','clubs','competitions','results','mercato']) assert.match(main,new RegExp(`data-page="${page}"`));
-  assert.match(main, /const topName = document\.getElementById\('p27-top-player-name'\)/);
-  assert.match(main, /const topClub = document\.getElementById\('p27-top-player-club'\)/);
-  assert.match(main, /const seasonSnapshot = seasonStats\.snapshot\(\)/);
+  for (const page of ['career-hub','player','players','clubs','rp-club','competitions','results','mercato']) assert.match(main,new RegExp(`data-page="${page}"`));
+  assert.match(main, /const pendingOffers =/);
+  assert.ok(main.includes('const seasonSnapshot = seasonStats.snapshot();'));
+  assert.ok(main.includes('const latestMatch = seasonSnapshot.matches.slice(-1)[0] || null;'));
+  assert.match(main, /p27-career-progress-fill/);
 });
 
 test('P27 UI: shell principal verrouillé en paysage sans défilement vertical', () => {
@@ -206,7 +209,7 @@ test('P27 game header: affiche les crédits réels du profil sans valeur fictive
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /id="p27-top-player-coins"/);
-  assert.match(main, /Number\(profileStore\.profile\.progression\.coins \|\| 0\)\.toLocaleString\('fr-FR'\)/);
+  assert.match(main, /Number\(headerProfile\.progression\.coins \|\| 0\)\.toLocaleString\('fr-FR'\)/);
   assert.doesNotMatch(main, /\\\\n  const topCoins/);
 });
 

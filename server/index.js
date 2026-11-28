@@ -9,6 +9,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RoomManager } from './room-manager.js';
 import { JsonAccountStore } from './account-store.js';
+import { JsonRpClubStore } from './rp-club-store.js';
+import { JsonRpClubChallengeStore } from './rp-club-challenge-store.js';
+import { JsonRpClubSeasonStore } from './rp-club-season-store.js';
+import { RpClubMatchService } from './rp-club-match-service.js';
 import { readGoogleOidcConfig } from './google-oidc-config.js';
 import { GoogleOidcTransactionStore } from './google-oidc-transactions.js';
 import { JsonPlayerIdentityStore } from './player-identity-store.js';
@@ -17,6 +21,8 @@ import { JsonCareerSyncQueue, CareerStoreSyncQueue } from './career-sync-queue.j
 import { CareerSyncService } from './career-sync-service.js';
 import { JsonPlayerProfileStore } from './player-profile-store.js';
 import { JsonProgressionStore } from './progression-store.js';
+import { JsonShopService } from './shop-service.js';
+import { getScheduledShopPromotion } from './shop-promotion-scheduler.js';
 import { JsonCompetitionStore } from './competition-store.js';
 import { JsonTransferStore } from './transfer-store.js';
 import { JsonClubFinanceService } from './club-finance-service.js';
@@ -70,6 +76,12 @@ function syncPendingHumanRosters() {
 const startupRosterSync = syncPendingHumanRosters();
 if (startupRosterSync.processed.length) process.stdout.write(`P27 human roster sync recovered: ${startupRosterSync.processed.length} operation(s)\\n`);
 const clubFinance = new JsonClubFinanceService(financeDirectory, { clubs:[...serverClubManager.clubs.values()], transferStore });
+const shopDirectory = process.env.SHOP_INVENTORY_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'shop');
+const shopService = new JsonShopService(shopDirectory, {
+  progressionStore, clubFinanceService:clubFinance,
+  resolveClubOwner:clubId => serverClubManager.getClub(clubId)?.managerId || null,
+  promotionProvider:(shop,itemId) => getScheduledShopPromotion(shop,itemId,Date.now())
+});
 const systemTransferDirectory = process.env.SYSTEM_TRANSFERS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'system-transfers');
 const systemTransfers = new P27SystemTransferService(systemTransferDirectory, { clubManager:serverClubManager, financeService:clubFinance });
 const recoveredSystemTransfers = systemTransfers.processPending();
@@ -90,9 +102,17 @@ const clubWorld = new P27ClubWorldService({
 const resultStore = new JsonResultStore(resultDirectory);
 const roomDirectory = process.env.ROOMS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rooms');
 const roomStore = new JsonRoomStore(roomDirectory);
-const manager = new RoomManager({ resultStore, roomStore, careerStore, careerSyncQueue, progressionStore, competitionStore });
+const manager = new RoomManager({ resultStore, roomStore, careerStore, careerSyncQueue, progressionStore, competitionStore, resolveClubAppearance:clubId => shopService.publicAppearance(clubId) });
 const accountDirectory = process.env.ACCOUNTS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'accounts');
 const accountStore = new JsonAccountStore(accountDirectory);
+const rpClubDirectory = process.env.RP_CLUBS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rp-clubs');
+const rpClubStore = new JsonRpClubStore(rpClubDirectory);
+const rpClubChallengeDirectory = process.env.RP_CLUB_CHALLENGES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rp-club-challenges');
+const rpClubChallengeStore = new JsonRpClubChallengeStore(rpClubChallengeDirectory);
+const rpClubSeasonDirectory = process.env.RP_CLUB_SEASONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'rp-club-seasons');
+const rpClubSeasonStore = new JsonRpClubSeasonStore(rpClubSeasonDirectory);
+const rpClubMatchService = new RpClubMatchService({ clubStore:rpClubStore, challengeStore:rpClubChallengeStore, seasonStore:rpClubSeasonStore, roomManager:manager });
+manager.onResultFinalized = (result, room) => rpClubMatchService.recordFinalizedResult(result, room);
 const googleOidcConfig = readGoogleOidcConfig(process.env);
 const googleOidcTransactionDirectory = process.env.GOOGLE_OIDC_TRANSACTIONS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'google-oidc-transactions');
 const googleOidcTransactionStore = new GoogleOidcTransactionStore({ directory: googleOidcTransactionDirectory });
@@ -227,6 +247,27 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       });
       return json(res, result.ok ? 200 : (result.pending ? 202 : 409), result);
     }
+    if (req.method === 'POST' && url.pathname === '/api/admin/rp-club-seasons') {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
+      const body = await readBody(req);
+      const result = rpClubSeasonStore.create({ id:body.id, name:body.name, startsAt:body.startsAt, endsAt:body.endsAt });
+      return json(res, result.ok ? 201 : 409, result);
+    }
+    const rpClubSeasonActivate = url.pathname.match(/^\/api\/admin\/rp-club-seasons\/([a-z0-9_-]{3,48})\/activate$/i);
+    if (req.method === 'POST' && rpClubSeasonActivate) {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
+      const result = rpClubSeasonStore.activate(rpClubSeasonActivate[1]);
+      return json(res, result.ok ? 200 : 409, result);
+    }
+    const rpClubSeasonClose = url.pathname.match(/^\/api\/admin\/rp-club-seasons\/([a-z0-9_-]{3,48})\/close$/i);
+    if (req.method === 'POST' && rpClubSeasonClose) {
+      if (!isAdminTokenConfigured()) return json(res, 503, { error:'ADMIN_TOKEN_NOT_CONFIGURED' });
+      if (!isValidAdminToken(bearer(req))) return json(res, 401, { error:'ADMIN_UNAUTHORIZED' });
+      const result = rpClubSeasonStore.close(rpClubSeasonClose[1]);
+      return json(res, result.ok ? 200 : 409, result);
+    }
     if (req.method === 'POST' && url.pathname === '/api/auth/google/start') {
       if (!googleOidcConfig.configured) return json(res, 503, { error: 'GOOGLE_OIDC_NOT_CONFIGURED' });
       if (!allowAccountAttempt(req.socket.remoteAddress)) return json(res, 429, { error: 'GOOGLE_OIDC_RATE_LIMITED' });
@@ -329,6 +370,14 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         }
       });
       return json(res,200,result);
+    }
+    const clubTakeoverMatch = url.pathname.match(/^\/api\/clubs\/([a-z0-9-]{1,48})\/takeover$/i);
+    if (req.method === 'POST' && clubTakeoverMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const result = serverClubManager.takeOver(clubTakeoverMatch[1], account.id);
+      const status = result.ok ? 200 : result.reason === 'invalid-request' ? 404 : 409;
+      return json(res, status, result);
     }
     if (req.method === 'GET' && url.pathname === '/api/clubs') {
       const rawLimit=url.searchParams.get('limit'), rawOffset=url.searchParams.get('offset');
@@ -469,6 +518,50 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
         } catch (error) { return json(res, 400, { error: String(error?.message || 'INVALID_PROGRESSION_ACTION') }); }
       }
     }
+    if (req.method === 'GET' && url.pathname === '/api/shop/clubs') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const clubs = [...serverClubManager.clubs.values()]
+        .filter(club => club.managerId === account.id)
+        .map(club => ({
+          id:club.id, name:club.name, city:club.city, country:club.country,
+          division:club.division, balance:clubFinance.store.balance(club.id)
+        }));
+      return json(res, 200, { clubs });
+    }
+    if (req.method === 'GET' && (url.pathname === '/api/shop' || url.pathname === '/api/shop/history')) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const shop = url.searchParams.get('shop') || 'player';
+      if (!['player','club'].includes(shop)) return json(res, 400, { error:'INVALID_SHOP' });
+      const clubId = url.searchParams.get('clubId') || '';
+      if (shop === 'club' && (!clubId || serverClubManager.getClub(clubId)?.managerId !== account.id))
+        return json(res, 403, { error:'CLUB_OWNER_REQUIRED' });
+      const ownerId = shop === 'player' ? account.id : clubId;
+      if (url.pathname === '/api/shop/history') return json(res, 200, shopService.getHistory({shop,ownerId}));
+      const balance = shop === 'player' ? progressionStore.get(account.id).coins : clubFinance.store.balance(clubId);
+      return json(res, 200, {
+        shop, currency:shop === 'player' ? 'player-coins' : 'club-coins', balance,
+        catalog:shopService.catalog(shop), inventory:shopService.inventory(shop,ownerId)
+      });
+    }
+    if (req.method === 'POST' && ['/api/shop/purchase','/api/shop/resale','/api/shop/equip'].includes(url.pathname)) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      if (!body || typeof body !== 'object' || Array.isArray(body)) return json(res, 400, { error:'INVALID_SHOP_ACTION' });
+      const shop = body.shop;
+      if (!['player','club'].includes(shop)) return json(res, 400, { error:'INVALID_SHOP' });
+      const result = url.pathname === '/api/shop/purchase'
+        ? shopService.purchase({shop,itemId:body.itemId,actorId:account.id,clubId:body.clubId,purchaseId:body.purchaseId})
+        : url.pathname === '/api/shop/resale'
+          ? shopService.resale({shop,itemId:body.itemId,actorId:account.id,clubId:body.clubId,resaleId:body.resaleId})
+          : shopService.setEquipped({shop,itemId:body.itemId,actorId:account.id,clubId:body.clubId,equipped:body.equipped});
+      const status = result.ok ? 200
+        : result.reason === 'club-owner-required' ? 403
+        : result.reason === 'item-not-found' || result.reason === 'item-not-owned' ? 404 : 409;
+      return json(res, status, result);
+    }
     if (url.pathname === '/api/profile') {
       const account = accountStore.resolve(accountSessionToken(req));
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
@@ -524,6 +617,237 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       return json(res, 200, { career: careerStore.get(account.id) });
     }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs') {
+      const rawLimit = url.searchParams.get('limit'), rawOffset = url.searchParams.get('offset');
+      const limit = rawLimit === null ? 24 : Number(rawLimit), offset = rawOffset === null ? 0 : Number(rawOffset);
+      if (!Number.isSafeInteger(limit) || !Number.isSafeInteger(offset) || limit < 1 || offset < 0) return json(res, 400, { error: 'INVALID_PAGINATION' });
+      return json(res, 200, rpClubStore.list({ search:url.searchParams.get('q') || '', limit, offset }));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs/me') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      return json(res, 200, { membership:rpClubStore.getForAccount(account.id), invitations:rpClubStore.getInvitationsForAccount(account.id) });
+    }
+    const rpClubActivityMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/activity$/i);
+    if (req.method === 'GET' && rpClubActivityMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const members = rpClubStore.getMemberAccounts(rpClubActivityMatch[1], account.id);
+      if (!members) return json(res, 403, { error:'RP_CLUB_MEMBERSHIP_REQUIRED' });
+      const now = Date.now();
+      const date = new Date(now);
+      const daysSinceMonday = (date.getUTCDay() + 6) % 7;
+      const periodStart = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - daysSinceMonday);
+      const contributions = members.map(member => {
+        const career = careerStore.get(member.accountId);
+        const matches = career.matches.filter(match => Number(match.finalizedAt) >= periodStart && Number(match.finalizedAt) <= now);
+        return {
+          playerId:member.playerId, displayName:member.displayName, role:member.role,
+          matches:matches.length, wins:matches.filter(match => match.result === 'win').length,
+          goals:matches.reduce((sum, match) => sum + Number(match.stats?.goals || 0), 0),
+          assists:matches.reduce((sum, match) => sum + Number(match.stats?.assists || 0), 0)
+        };
+      }).sort((a,b) => b.matches-a.matches || b.wins-a.wins || b.goals-a.goals || b.assists-a.assists || a.displayName.localeCompare(b.displayName));
+      const totals = contributions.reduce((sum, member) => ({
+        matches:sum.matches+member.matches, wins:sum.wins+member.wins,
+        goals:sum.goals+member.goals, assists:sum.assists+member.assists
+      }), { matches:0, wins:0, goals:0, assists:0 });
+      const objectiveDefinitions = [
+        { id:'matches', label:'Jouer des matchs', metric:'matches', target:10 },
+        { id:'wins', label:'Remporter des matchs', metric:'wins', target:5 },
+        { id:'goals', label:'Inscrire des buts', metric:'goals', target:20 },
+        { id:'assists', label:'Délivrer des passes décisives', metric:'assists', target:10 }
+      ];
+      const objectives = objectiveDefinitions.map(objective => {
+        const value = totals[objective.metric];
+        return {
+          id:objective.id, label:objective.label, metric:objective.metric,
+          value, target:objective.target,
+          progressPercent:Math.min(100, Math.floor(value / objective.target * 100)),
+          completed:value >= objective.target
+        };
+      });
+      return json(res, 200, { periodStart, periodEnd:periodStart + 7 * 24 * 60 * 60 * 1000, totals, members:contributions, objectives });
+    }
+    const rpClubChallengeMatchCreate = url.pathname.match(/^\/api\/rp-clubs\/challenges\/([a-f0-9-]{36})\/match$/i);
+    if (req.method === 'POST' && rpClubChallengeMatchCreate) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const result = rpClubMatchService.createRoom(rpClubChallengeMatchCreate[1], account.id);
+      const status = result.ok ? 201 : result.reason === 'RP_CLUB_CHALLENGE_NOT_FOUND' ? 404 : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs/challenges/leaderboard') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      return json(res, 200, { standings:rpClubMatchService.leaderboard() });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs/seasons') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      return json(res, 200, { seasons:rpClubSeasonStore.list() });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs/seasons/current') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      return json(res, 200, { season:rpClubSeasonStore.current() });
+    }
+    const rpClubSeasonLeaderboard = url.pathname.match(/^\/api\/rp-clubs\/seasons\/([a-z0-9_-]{3,48})\/leaderboard$/i);
+    if (req.method === 'GET' && rpClubSeasonLeaderboard) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const standings = rpClubMatchService.seasonLeaderboard(rpClubSeasonLeaderboard[1]);
+      return standings ? json(res, 200, { standings }) : json(res, 404, { error:'RP_CLUB_SEASON_NOT_FOUND' });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/rp-clubs/challenges/me') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      return json(res, 200, { challenges:rpClubMatchService.reconcileForAccount(account.id) });
+    }
+    const rpClubChallengeCreateMatch = url.pathname.match(new RegExp('^/api/rp-clubs/([a-f0-9-]{36})/challenges$','i'));
+    if (req.method === 'POST' && rpClubChallengeCreateMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const result = rpClubChallengeStore.create({ clubStore:rpClubStore, actorAccountId:account.id, targetClubId:rpClubChallengeCreateMatch[1] });
+      const status = result.ok ? 201 : result.reason === 'RP_CLUB_NOT_FOUND' ? 404 : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    const rpClubChallengeDecisionMatch = url.pathname.match(new RegExp('^/api/rp-clubs/challenges/([a-f0-9-]{36})/decision$','i'));
+    if (req.method === 'POST' && rpClubChallengeDecisionMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const result = rpClubChallengeStore.decide(rpClubChallengeDecisionMatch[1], {
+        clubStore:rpClubStore, actorAccountId:account.id, decision:body.decision, scheduledAt:body.scheduledAt
+      });
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_CHALLENGE_NOT_FOUND' ? 404 : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    const rpClubMessageMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/messages$/i);
+    if (req.method === 'GET' && rpClubMessageMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const messages = rpClubStore.getMessages(rpClubMessageMatch[1], account.id, 60);
+      if (!messages) return json(res, 403, { error:'RP_CLUB_MEMBERSHIP_REQUIRED' });
+      return json(res, 200, { messages });
+    }
+    if (req.method === 'POST' && rpClubMessageMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const identity = playerIdentityStore.getByAccountId(account.id);
+      if (!identity || identity.playerId !== account.playerId) return json(res, 403, { error:'PLAYER_IDENTITY_REQUIRED' });
+      const body = await readBody(req);
+      const result = rpClubStore.sendMessage(rpClubMessageMatch[1], {
+        accountId:account.id, playerId:identity.playerId,
+        displayName:playerProfileStore.get(account.id)?.identity?.displayName || identity.playerId,
+        text:body.text
+      });
+      const status = result.ok ? 201 : result.reason === 'RP_CLUB_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_MEMBERSHIP_REQUIRED' ? 403
+        : result.reason === 'PLAYER_IDENTITY_REQUIRED' || result.reason === 'EMPTY_RP_CLUB_MESSAGE' ? 400 : 429;
+      return json(res, status, result);
+    }
+    const rpClubPublicMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})$/i);
+    if (req.method === 'GET' && rpClubPublicMatch) {
+      const club = rpClubStore.get(rpClubPublicMatch[1]);
+      return club ? json(res, 200, { club }) : json(res, 404, { error: 'RP_CLUB_NOT_FOUND' });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/rp-clubs') {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const identity = playerIdentityStore.getByAccountId(account.id);
+      if (!identity || identity.playerId !== account.playerId) return json(res, 403, { error: 'PLAYER_IDENTITY_REQUIRED' });
+      const body = await readBody(req);
+      const displayName = playerProfileStore.get(account.id)?.identity?.displayName || identity.playerId;
+      const result = rpClubStore.create({ accountId:account.id, playerId:identity.playerId, displayName, name:body.name, tag:body.tag, description:body.description });
+      return json(res, result.ok ? 201 : (result.reason === 'PLAYER_IDENTITY_REQUIRED' || result.reason.startsWith('INVALID_') ? 400 : 409), result);
+    }
+    const rpClubJoinMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/join-requests$/i);
+    if (req.method === 'POST' && rpClubJoinMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const identity = playerIdentityStore.getByAccountId(account.id);
+      if (!identity || identity.playerId !== account.playerId) return json(res, 403, { error: 'PLAYER_IDENTITY_REQUIRED' });
+      const result = rpClubStore.requestJoin(rpClubJoinMatch[1], {
+        accountId:account.id, playerId:identity.playerId,
+        displayName:playerProfileStore.get(account.id)?.identity?.displayName || identity.playerId
+      });
+      const status = result.ok ? 201 : result.reason === 'RP_CLUB_NOT_FOUND' ? 404
+        : result.reason === 'PLAYER_IDENTITY_REQUIRED' ? 400 : 409;
+      return json(res, status, result);
+    }
+    const rpClubDecisionMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/join-requests\/([a-f0-9-]{36})\/decision$/i);
+    if (req.method === 'POST' && rpClubDecisionMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const result = rpClubStore.decideJoinRequest(rpClubDecisionMatch[1], rpClubDecisionMatch[2], { actorAccountId:account.id, decision:body.decision });
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'JOIN_REQUEST_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    const rpClubInviteMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/invitations$/i);
+    if (req.method === 'POST' && rpClubInviteMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const identity = playerIdentityStore.getByPlayerId(body.playerId);
+      if (!identity) return json(res, 404, { error:'PLAYER_IDENTITY_NOT_FOUND' });
+      const result = rpClubStore.invite(rpClubInviteMatch[1], {
+        actorAccountId:account.id, accountId:identity.accountId, playerId:identity.playerId,
+        displayName:playerProfileStore.get(identity.accountId)?.identity?.displayName || identity.playerId
+      });
+      const status = result.ok ? 201 : result.reason === 'RP_CLUB_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403
+        : result.reason === 'PLAYER_IDENTITY_REQUIRED' ? 400 : 409;
+      return json(res, status, result);
+    }
+    const rpClubInviteDecisionMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/invitations\/([a-f0-9-]{36})\/decision$/i);
+    if (req.method === 'POST' && rpClubInviteDecisionMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const result = rpClubStore.respondInvitation(rpClubInviteDecisionMatch[1], rpClubInviteDecisionMatch[2], { accountId:account.id, decision:body.decision });
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_INVITATION_NOT_FOUND' ? 404 : 409;
+      return json(res, status, result);
+    }
+    const rpClubRoleMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/members\/(FRP-\d{6})\/role$/i);
+    if (req.method === 'POST' && rpClubRoleMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const result = rpClubStore.assignRole(rpClubRoleMatch[1], rpClubRoleMatch[2], { actorAccountId:account.id, role:body.role });
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_MEMBER_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    const rpClubPresidencyTransferMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/presidency\/transfer$/i);
+    if (req.method === 'POST' && rpClubPresidencyTransferMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const body = await readBody(req);
+      const result = rpClubStore.transferPresidency(rpClubPresidencyTransferMatch[1], body.playerId, account.id);
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_MEMBER_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    const rpClubRemoveMemberMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/members\/(FRP-\d{6})\/remove$/i);
+    if (req.method === 'POST' && rpClubRemoveMemberMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error:'SESSION_EXPIRED' });
+      const result = rpClubStore.removeMember(rpClubRemoveMemberMatch[1], rpClubRemoveMemberMatch[2], account.id);
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_MEMBER_NOT_FOUND' ? 404
+        : result.reason === 'RP_CLUB_PERMISSION_DENIED' ? 403 : 409;
+      return json(res, status, result);
+    }
+    const rpClubLeaveMatch = url.pathname.match(/^\/api\/rp-clubs\/([a-f0-9-]{36})\/leave$/i);
+    if (req.method === 'POST' && rpClubLeaveMatch) {
+      const account = accountStore.resolve(accountSessionToken(req));
+      if (!account) return json(res, 401, { error: 'SESSION_EXPIRED' });
+      const result = rpClubStore.leave(rpClubLeaveMatch[1], account.id);
+      const status = result.ok ? 200 : result.reason === 'RP_CLUB_NOT_FOUND' || result.reason === 'RP_CLUB_MEMBERSHIP_NOT_FOUND' ? 404 : 409;
+      return json(res, status, result);
+    }
     if (req.method === 'GET' && url.pathname === '/api/accounts/me') {
       const account = accountStore.resolve(accountSessionToken(req));
       return account ? json(res, 200, { account }) : json(res, 401, { error: 'SESSION_EXPIRED' });
@@ -577,6 +901,16 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       const account = accountToken ? accountStore.resolve(accountToken) : null;
       if (accountToken && !account) return json(res, 401, { error: 'SESSION_EXPIRED' });
       const playerIdentity = account ? playerIdentityStore.getByAccountId(account.id) : null;
+      const room = manager.rooms.get(joinMatch[1]);
+      if (room?.rpClubChallenge) {
+        if (!account) return json(res, 401, { error:'SESSION_REQUIRED' });
+        const admission = rpClubMatchService.resolveJoin(joinMatch[1], account.id);
+        if (!admission.ok) return json(res, admission.reason === 'ROOM_NOT_FOUND' ? 404 : 403, admission);
+        if (!playerIdentity || playerIdentity.playerId !== account.playerId) return json(res, 403, { error:'PLAYER_IDENTITY_REQUIRED' });
+        const occupied = [...room.players.values()].filter(player => !player.isBot && player.connected && player.team === admission.team).length;
+        if (occupied >= 5) return json(res, 409, { error:'RP_CLUB_CHALLENGE_TEAM_FULL' });
+        body.preferredTeam = admission.team;
+      }
       return json(res, 200, manager.join(joinMatch[1], {
         ...body,
         accountId: account?.id || null,
@@ -616,7 +950,8 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
     if (req.method === 'GET' && resultMatch) return json(res, 200, manager.getResult(resultMatch[1]));
     const stateMatch = url.pathname.match(/^\/api\/rooms\/([a-f0-9]{12})$/);
     if (req.method === 'GET' && stateMatch) {
-      const since = Number(url.searchParams.get('sinceSequence'));
+      const rawSince = url.searchParams.get('sinceSequence');
+      const since = rawSince === null ? NaN : Number(rawSince);
       const afterEventId = Number(url.searchParams.get('afterEventId') || 0);
       if (Number.isSafeInteger(since) && since >= -1) {
         const delta = manager.getDelta(stateMatch[1], { afterSequence: since, afterEventId: Number.isSafeInteger(afterEventId) ? afterEventId : 0 });
@@ -630,7 +965,7 @@ const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) 
       let pathname;
       try { pathname = decodeURIComponent(url.pathname); } catch { return json(res, 400, { error: 'INVALID_PATH' }); }
       const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
-      const segments = relative.split(/[\\/]+/).filter(Boolean);
+      const segments = relative.split(/[\/]+/).filter(Boolean);
       const privateSegments = new Set(['data','server','tests','node_modules']);
       if (segments.some(segment => segment.startsWith('.') || privateSegments.has(segment.toLowerCase())))
         return json(res, 403, { error:'FORBIDDEN' });
@@ -737,4 +1072,4 @@ if (isMainModule) {
   process.once('SIGTERM', () => handleSignal('SIGTERM'));
   process.once('SIGINT', () => handleSignal('SIGINT'));
 }
-export { server, manager, clubFinance, serverClubManager, clubWorld, playerBackupScheduler, careerSyncQueue, careerSyncService, shutdownP27Server };
+export { server, manager, clubFinance, serverClubManager, clubWorld, rpClubStore, accountStore, playerIdentityStore, playerBackupScheduler, careerSyncQueue, careerSyncService, careerStore, rpClubSeasonStore, shutdownP27Server };

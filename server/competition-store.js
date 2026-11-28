@@ -185,18 +185,26 @@ export class JsonCompetitionStore {
   }
   get activeSeason(){ return this.state.seasons.find(season=>season.status==='active') || this.state.seasons.at(-1); }
   getFixture(fixtureId) {
-    const id=clean(fixtureId,96);
-    for(const competition of this.activeSeason.competitions){ const fixture=competition.fixtures.find(item=>item.id===id); if(fixture) return clone({...fixture,competitionName:competition.name}); }
+    const rawId=typeof fixtureId==='string'?fixtureId.trim():'';
+    if(!rawId||rawId.length>96||clean(rawId,96)!==rawId)return null;
+    for(const competition of this.activeSeason.competitions){ const fixture=competition.fixtures.find(item=>item.id===rawId); if(fixture) return clone({...fixture,competitionName:competition.name}); }
     return null;
   }
   recordFixtureResult(fixtureId, input = {}) { return this.transaction(() => this._recordFixtureResult(fixtureId, input)); }
   _recordFixtureResult(fixtureId,{roomId,homeGoals,awayGoals,finalizedAt=this.now()}={}) {
-    const id=clean(fixtureId,96), room=clean(roomId,64), home=scoreValue(homeGoals), away=scoreValue(awayGoals);
-    if(!id||!room||home===null||away===null||!Number.isFinite(finalizedAt)) return {ok:false,reason:'invalid-result'};
+    const rawId=typeof fixtureId==='string'?fixtureId.trim():'';
+    const rawRoom=typeof roomId==='string'?roomId.trim():'';
+    const id=clean(rawId,96), room=clean(rawRoom,64), home=scoreValue(homeGoals), away=scoreValue(awayGoals);
+    if(!id||rawId.length>96||id!==rawId||!room||rawRoom.length>64||room!==rawRoom||
+      home===null||away===null||!Number.isSafeInteger(finalizedAt)||finalizedAt<0)
+      return {ok:false,reason:'invalid-result'};
     for(const competition of this.activeSeason.competitions){
       const fixture=competition.fixtures.find(item=>item.id===id);
       if(!fixture) continue;
       if(fixture.status==='completed') return fixture.roomId===room ? {ok:true,duplicate:true,fixture:clone(fixture)} : {ok:false,reason:'fixture-already-completed'};
+      const roomAlreadyUsed=this.activeSeason.competitions.some(item=>
+        item.fixtures.some(existing=>existing.id!==id&&existing.status==='completed'&&existing.roomId===room));
+      if(roomAlreadyUsed)return {ok:false,reason:'room-already-used'};
       if(!['scheduled','replay-required'].includes(fixture.status)||!fixture.homeClubId||!fixture.awayClubId) return {ok:false,reason:'fixture-not-ready'};
       if(fixture.result) fixture.replays=[...(fixture.replays||[]),fixture.result];
       fixture.roomId=room; fixture.result={home,away,finalizedAt};

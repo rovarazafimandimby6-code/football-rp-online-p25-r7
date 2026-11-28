@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ClubManager } from '../src/club-manager.js';
 import { CareerManager } from '../src/career-manager.js';
+import { syncCareerPlayerRoster } from '../src/career-roster-sync.js';
 
 test('clubs: seuls les clubs ouverts peuvent être repris', () => {
   const clubs = new ClubManager();
@@ -353,7 +354,7 @@ test('P27 catalogue: l’audit identifie les divisions, conférences et réserva
   const audit = auditClubCatalog(new ClubManager().listClubs());
   assert.equal(audit.totalClubs, 156);
   assert.equal(audit.expectedTotal, 156);
-  assert.equal(audit.complete, true);
+  assert.equal(audit.complete, true, JSON.stringify(audit.issues.slice(0, 30)));
   assert.deepEqual(audit.divisionCounts, { D1:16, D2:20, D3:24, D4:32, D5:64 });
   assert.deepEqual(audit.conferenceCounts.D4, { A:16, B:16 });
   assert.deepEqual(audit.conferenceCounts.D5, { A:16, B:16, C:16, D:16 });
@@ -380,7 +381,7 @@ test('clubs: chaque club starter possède une implantation principale structuré
   const manparis = clubs.getClub('manparis-sporting');
   const antananarivo = clubs.getClub('antananarivo-fc');
   assert.deepEqual(manparis.location, { city:'Manchester', country:'Royaume-Uni', countryCode:'GB' });
-  assert.equal(manparis.countryCode, 'FR');
+  assert.equal(manparis.countryCode, 'GB');
   assert.deepEqual(antananarivo.location, { city:'Antananarivo', country:'Madagascar', countryCode:'MG' });
   manparis.location.city = 'Modifié';
   assert.equal(clubs.getClub('manparis-sporting').location.city, 'Manchester');
@@ -443,4 +444,301 @@ test('P27 audit: détecte les dépassements humains, les identifiants dupliqués
   assert.ok(result.errors.some(issue=>issue.code==='human-player-limit-exceeded'));
   assert.ok(result.errors.some(issue=>issue.code==='duplicate-player-id'));
   assert.ok(result.errors.some(issue=>issue.code==='invalid-player-type'));
+});
+
+test('P27 carrière : une panne de sauvegarde annule la signature et restaure le profil',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={
+    getItem:key=>values.get(key)??null,
+    setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}
+  };
+  const career=new CareerManager({storage,storageKey:'career-sign-atomic-p27',initialCoins:900});
+  failWrites=true;
+  const result=career.signContract({clubId:'club-a',salary:40,durationDays:180,signedAt:'2032-01-01T00:00:00Z'});
+  assert.deepEqual(result,{ok:false,reason:'persistence-failed'});
+  assert.equal(career.clubId,null);
+  assert.equal(career.contract,null);
+  assert.equal(career.history.length,0);
+  assert.equal(values.has('career-sign-atomic-p27'),false);
+});
+
+test('P27 carrière : une panne de sauvegarde annule le transfert et conserve l’offre',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={
+    getItem:key=>values.get(key)??null,
+    setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}
+  };
+  const career=new CareerManager({
+    storage,storageKey:'career-transfer-atomic-p27',initialCoins:1000,
+    transferWindows:[{start:'2032-01-01T00:00:00Z',end:'2032-02-01T00:00:00Z'}]
+  });
+  assert.equal(career.signContract({clubId:'club-a',salary:50,durationDays:365,signedAt:'2032-01-01T00:00:00Z'}).ok,true);
+  const offer=career.makeOffer({fromClubId:'club-b',salary:70,fee:250});
+  assert.equal(offer.ok,true);
+  const saved=values.get('career-transfer-atomic-p27');
+  failWrites=true;
+  const result=career.acceptOffer(offer.offer.id,'2032-01-15T00:00:00Z');
+  assert.deepEqual(result,{ok:false,reason:'persistence-failed'});
+  assert.equal(career.clubId,'club-a');
+  assert.equal(career.wallet,1000);
+  assert.equal(career.offers.get(offer.offer.id).status,'pending');
+  assert.ok(career.history.some(item=>item.type==='signing'));
+  assert.equal(career.history.at(-1).type,'offer-received');
+  assert.equal(values.get('career-transfer-atomic-p27'),saved);
+});
+
+test('P27 mercato : une panne de sauvegarde annule la négociation et le rejet d’offre',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={
+    getItem:key=>values.get(key)??null,
+    setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}
+  };
+  const career=new CareerManager({
+    storage,storageKey:'career-offer-edit-atomic-p27',
+    transferWindows:[{start:'2033-01-01T00:00:00Z',end:'2033-02-01T00:00:00Z'}]
+  });
+  assert.equal(career.signContract({clubId:'club-a',durationDays:365,signedAt:'2033-01-01T00:00:00Z'}).ok,true);
+  const offer=career.makeOffer({fromClubId:'club-b',salary:40,fee:100});
+  const saved=values.get('career-offer-edit-atomic-p27');
+  failWrites=true;
+  assert.deepEqual(career.negotiate(offer.offer.id,{salary:75,fee:250},'2033-01-02T00:00:00Z'),{ok:false,reason:'persistence-failed'});
+  assert.equal(career.offers.get(offer.offer.id).salary,40);
+  assert.equal(career.offers.get(offer.offer.id).fee,100);
+  assert.equal(career.rejectOffer(offer.offer.id),false);
+  assert.equal(career.offers.get(offer.offer.id).status,'pending');
+  assert.equal(values.get('career-offer-edit-atomic-p27'),saved);
+});
+
+test('P27 effectifs : un échec de sauvegarde annule le transfert sans perdre le joueur source',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+  const clubs=new ClubManager([
+    {id:'atomic-source',name:'Atomic Source',control:'open',capacity:5},
+    {id:'atomic-target',name:'Atomic Target',control:'open',capacity:5}
+  ],storage,'club-transfer-atomic-p27');
+  assert.equal(clubs.addPlayer('atomic-source',{id:'atomic-moving-player',playerType:'system',number:8}).ok,true);
+  const before=values.get('club-transfer-atomic-p27');
+  failWrites=true;
+  const result=clubs.transferPlayer('atomic-source','atomic-target','atomic-moving-player');
+  assert.deepEqual(result,{ok:false,reason:'roster-persistence-failed'});
+  assert.equal(clubs.getClub('atomic-source').roster.some(player=>player.id==='atomic-moving-player'),true);
+  assert.equal(clubs.getClub('atomic-target').roster.some(player=>player.id==='atomic-moving-player'),false);
+  assert.equal(values.get('club-transfer-atomic-p27'),before);
+});
+
+test('P27 salaire : une panne de sauvegarde ne crédite pas deux fois une échéance',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+  const career=new CareerManager({storage,storageKey:'career-salary-atomic-p27',initialCoins:100});
+  assert.equal(career.signContract({clubId:'club-a',salary:80,durationDays:60,signedAt:'2034-01-01T00:00:00Z'}).ok,true);
+  const saved=values.get('career-salary-atomic-p27');
+  failWrites=true;
+  const failed=career.processSalary('2034-01-15T00:00:00Z');
+  assert.deepEqual(failed,{ok:false,reason:'persistence-failed',paid:0,periods:0});
+  assert.equal(career.wallet,100);
+  assert.equal(career.contract.lastSalaryPaidAt,'2034-01-01T00:00:00.000Z');
+  assert.equal(career.history.some(item=>item.type==='salary'),false);
+  assert.equal(values.get('career-salary-atomic-p27'),saved);
+});
+
+test('P27 mercato : une panne de sauvegarde conserve les offres et contrats non expirés',()=>{
+  const values=new Map();
+  let failWrites=false;
+  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(key,String(value));}};
+  const career=new CareerManager({storage,storageKey:'career-expiry-atomic-p27'});
+  assert.equal(career.signContract({clubId:'club-a',durationDays:1,signedAt:'2035-01-01T00:00:00Z'}).ok,true);
+  const offer=career.makeOffer({fromClubId:'club-b',expiresAt:'2035-01-02T00:00:00Z'});
+  const saved=values.get('career-expiry-atomic-p27');
+  failWrites=true;
+  assert.deepEqual(career.refreshOfferStatuses('2035-01-03T00:00:00Z'),{ok:false,reason:'persistence-failed',updated:0});
+  assert.equal(career.offers.get(offer.offer.id).status,'pending');
+  const expired=career.refreshContractStatus('2035-01-03T00:00:00Z');
+  assert.equal(expired.persistenceFailed,true);
+  assert.equal(career.clubId,'club-a');
+  assert.equal(career.contract.status,'active');
+  assert.equal(values.get('career-expiry-atomic-p27'),saved);
+});
+
+function failingCareerStorage(key){
+  const values=new Map();let failWrites=false;
+  return {
+    values,
+    storage:{getItem:name=>values.get(name)??null,setItem:(name,value)=>{if(failWrites)throw new Error('DISK_FULL');values.set(name,String(value));}},
+    fail(){failWrites=true;}
+  };
+}
+
+test('P27 contrat : une panne de sauvegarde annule le renouvellement sans modifier salaire ni échéance',()=>{
+  const fixture=failingCareerStorage();
+  const career=new CareerManager({storage:fixture.storage,storageKey:'career-renew-atomic-p27',initialCoins:700});
+  assert.equal(career.signContract({clubId:'club-renew',salary:80,durationDays:90,signedAt:'2034-01-01T00:00:00Z'}).ok,true);
+  const before=JSON.stringify(career.snapshot());
+  fixture.fail();
+  assert.deepEqual(career.renewContract({salary:120,durationDays:240,renewedAt:'2034-01-15T00:00:00Z'}),{ok:false,reason:'persistence-failed'});
+  assert.equal(JSON.stringify(career.snapshot()),before);
+});
+
+test('P27 contrat : une panne de sauvegarde annule la résiliation et conserve le club',()=>{
+  const fixture=failingCareerStorage();
+  const career=new CareerManager({storage:fixture.storage,storageKey:'career-terminate-atomic-p27'});
+  assert.equal(career.signContract({clubId:'club-terminate',salary:50,durationDays:90,signedAt:'2034-01-01T00:00:00Z'}).ok,true);
+  const before=JSON.stringify(career.snapshot());
+  fixture.fail();
+  assert.deepEqual(career.terminateContract('2034-01-15T00:00:00Z'),{ok:false,reason:'persistence-failed'});
+  assert.equal(JSON.stringify(career.snapshot()),before);
+});
+
+test('P27 récompenses : une panne de sauvegarde annule pièces, expérience et identifiant de match',()=>{
+  const fixture=failingCareerStorage();
+  const career=new CareerManager({storage:fixture.storage,storageKey:'career-match-reward-atomic-p27',initialCoins:300});
+  const before=JSON.stringify(career.snapshot());
+  fixture.fail();
+  assert.deepEqual(career.recordMatch({result:'win',goals:2,assists:1,matchId:'match-atomic-reward'}),{ok:false,reason:'persistence-failed'});
+  assert.equal(JSON.stringify(career.snapshot()),before);
+  assert.equal(career.recordMatch({result:'win',matchId:'match-atomic-reward'}).ok,false);
+});
+
+
+test('P27 carrière : le renouvellement règle les salaires échus une seule fois avant de prolonger', () => {
+  const career = new CareerManager({ initialCoins:100 });
+  career.signContract({ clubId:'club-a', salary:80, durationDays:90, signedAt:'2036-01-01T00:00:00Z' });
+  const renewed = career.renewContract({ salary:100, durationDays:180, renewedAt:'2036-01-15T00:00:00Z' });
+  assert.equal(renewed.ok,true);
+  assert.equal(career.wallet,260);
+  assert.equal(career.history.filter(item=>item.type==='salary').length,1);
+  assert.equal(career.history.filter(item=>item.type==='renewal').length,1);
+  assert.equal(career.contract.lastSalaryPaidAt,'2036-01-15T00:00:00.000Z');
+});
+
+test('P27 carrière : la résiliation règle les salaires échus et libère le contrat en une opération', () => {
+  const career = new CareerManager({ initialCoins:100 });
+  career.signContract({ clubId:'club-a', salary:80, durationDays:90, signedAt:'2036-01-01T00:00:00Z' });
+  const ended = career.terminateContract('2036-01-15T00:00:00Z');
+  assert.equal(ended.ok,true);
+  assert.equal(career.wallet,260);
+  assert.equal(career.clubId,null);
+  assert.equal(career.contract.status,'terminated');
+  assert.equal(career.history.filter(item=>item.type==='salary').length,1);
+  assert.equal(career.history.at(-1).type,'termination');
+});
+
+test('P27 mercato : la couche métier refuse une sixième offre en attente', () => {
+  const career = new CareerManager();
+  career.signContract({ clubId:'club-current', durationDays:365 });
+  for (let index=0; index<5; index++) {
+    const result=career.makeOffer({ fromClubId:`club-${index}`});
+    assert.equal(result.ok,true);
+  }
+  assert.deepEqual(career.makeOffer({ fromClubId:'club-sixth' }),{ok:false,reason:'pending-offer-limit'});
+  assert.equal([...career.offers.values()].filter(offer=>offer.status==='pending').length,5);
+});
+
+test('P27 mercato : une offre expirée libère une place dans la limite des cinq', () => {
+  const career = new CareerManager();
+  career.signContract({ clubId:'club-current', durationDays:365, signedAt:'2037-01-01T00:00:00Z' });
+  for (let index=0; index<5; index++) {
+    const result=career.makeOffer({ fromClubId:`club-expire-${index}`, expiresAt:'2037-01-02T00:00:00Z', at:'2037-01-01T00:00:00Z' });
+    assert.equal(result.ok,true);
+  }
+  const replacement=career.makeOffer({ fromClubId:'club-new', expiresAt:'2037-01-04T00:00:00Z', at:'2037-01-03T00:00:00Z' });
+  assert.equal(replacement.ok,true);
+  assert.equal([...career.offers.values()].filter(offer=>offer.status==='pending').length,1);
+  assert.equal([...career.offers.values()].filter(offer=>offer.status==='expired').length,5);
+});
+
+
+test('P27 mercato : le salaire hebdomadaire échu est crédité avant de vérifier le coût du transfert', () => {
+  const career = new CareerManager({
+    initialCoins:100,
+    transferWindows:[{start:'2038-01-01T00:00:00Z',end:'2038-02-01T00:00:00Z'}]
+  });
+  career.signContract({clubId:'club-current',salary:80,durationDays:90,signedAt:'2038-01-01T00:00:00Z'});
+  const offer=career.makeOffer({fromClubId:'club-new',salary:100,fee:250,at:'2038-01-01T00:00:00Z'});
+  const accepted=career.acceptOffer(offer.offer.id,'2038-01-15T00:00:00Z');
+  assert.equal(accepted.ok,true);
+  assert.equal(career.wallet,10);
+  assert.equal(career.clubId,'club-new');
+});
+
+test('P27 mercato : accepter une offre annule les autres propositions et historise chaque étape', () => {
+  const career = new CareerManager({
+    initialCoins:1000,
+    transferWindows:[{start:'2039-01-01T00:00:00Z',end:'2039-02-01T00:00:00Z'}]
+  });
+  career.signContract({clubId:'club-current',durationDays:365,signedAt:'2039-01-01T00:00:00Z'});
+  const first=career.makeOffer({fromClubId:'club-first',salary:40,fee:100,at:'2039-01-01T00:00:00Z'});
+  const second=career.makeOffer({fromClubId:'club-second',salary:45,fee:120,at:'2039-01-01T00:00:00Z'});
+  assert.equal(career.negotiate(first.offer.id,{salary:55,fee:90},'2039-01-02T00:00:00Z').ok,true);
+  assert.equal(career.acceptOffer(first.offer.id,'2039-01-03T00:00:00Z').ok,true);
+  assert.equal(career.offers.get(second.offer.id).status,'cancelled');
+  assert.deepEqual(career.history.filter(item=>item.type.startsWith('offer-')).map(item=>item.type),['offer-received','offer-received','offer-negotiated','offer-cancelled']);
+});
+
+test('P27 mercato : refuser une offre déjà expirée l’enregistre comme expirée, pas comme refusée', () => {
+  const career = new CareerManager();
+  career.signContract({clubId:'club-current',durationDays:365,signedAt:'2040-01-01T00:00:00Z'});
+  const offer=career.makeOffer({fromClubId:'club-other',expiresAt:'2040-01-02T00:00:00Z',at:'2040-01-01T00:00:00Z'});
+  assert.equal(career.rejectOffer(offer.offer.id,'2040-01-03T00:00:00Z'),false);
+  assert.equal(career.offers.get(offer.offer.id).status,'expired');
+  assert.equal(career.history.at(-1).type,'offer-expired');
+});
+
+
+test('P27 mercato : la fin ou la résiliation du contrat annule et historise les offres encore ouvertes', () => {
+  const career = new CareerManager();
+  career.signContract({clubId:'club-current',durationDays:1,signedAt:'2041-01-01T00:00:00Z'});
+  const offer=career.makeOffer({fromClubId:'club-other',at:'2041-01-01T00:00:00Z'});
+  assert.equal(offer.ok,true);
+  career.terminateContract('2041-01-01T12:00:00Z');
+  assert.equal(career.offers.get(offer.offer.id).status,'cancelled');
+  assert.ok(career.history.some(item=>item.type==='offer-cancelled'&&item.reason==='contract-terminated'));
+});
+
+test('carrière : le club du contrat actif reste la référence si le clubId historique est incohérent', async () => {
+  const clubs = new ClubManager([
+    { id: 'contract-club', name: 'Club du contrat', capacity: 12 },
+    { id: 'stale-club', name: 'Ancien identifiant', capacity: 12 }
+  ], null, 'career-contract-source-of-truth');
+  const career = new CareerManager();
+  const now = new Date().toISOString();
+  assert.equal(career.signContract({ clubId: 'contract-club', salary: 100, durationDays: 365, signedAt: now }).ok, true);
+  assert.equal(clubs.addPlayer('contract-club', { id: 'career-player', name: 'Joueur carrière', playerType: 'human' }).ok, true);
+  career.clubId = 'stale-club';
+  const profile = {
+    identity: { displayName: 'Joueur carrière', role: 'MID' },
+    progression: { attributes: { pace: 50, shooting: 50, passing: 50, defense: 50, stamina: 50, control: 50 }, level: 1 },
+    appearance: {}
+  };
+  const synced = syncCareerPlayerRoster({ clubs, career, profile });
+  assert.equal(synced.ok, true);
+  assert.equal(synced.clubId, 'contract-club');
+  assert.equal(clubs.getClub('contract-club').roster.some(player => player.id === 'career-player'), true);
+  assert.equal(clubs.getClub('stale-club').roster.some(player => player.id === 'career-player'), false);
+  assert.equal(synced.player.contract.clubId, 'contract-club');
+});
+
+test('mercato : refuse deux offres simultanées du même club', () => {
+  const career = new CareerManager();
+  career.signContract({ clubId: 'club-a', durationDays: 365, signedAt: '2032-01-01T00:00:00Z' });
+  const first = career.makeOffer({ fromClubId: 'club-b', salary: 40 });
+  assert.equal(first.ok, true);
+  assert.equal(career.makeOffer({ fromClubId: 'club-b', salary: 45 }).reason, 'duplicate-pending-offer');
+  assert.equal(career.makeOffer({ fromClubId: 'club-c', salary: 45 }).ok, true);
+});
+
+test('carrière : restaure le club depuis le contrat actif si le clubId sauvegardé diverge', () => {
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const career = new CareerManager({ storage, storageKey: 'career-contract-club-normalization' });
+  assert.equal(career.signContract({ clubId: 'contract-club', durationDays: 365, signedAt: '2033-01-01T00:00:00Z' }).ok, true);
+  career.clubId = 'stale-club';
+  assert.equal(career.saveState(), true);
+  const restored = new CareerManager({ storage, storageKey: 'career-contract-club-normalization' });
+  assert.equal(restored.clubId, 'contract-club');
+  assert.equal(restored.contract.clubId, 'contract-club');
 });

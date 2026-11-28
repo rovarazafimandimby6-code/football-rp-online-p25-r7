@@ -1,22 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_CLUBS, ClubManager } from '../src/club-manager.js';
-import { P27_EXPANSION_CLUBS, P27_EXPANSION_COUNTS } from '../src/p27-club-expansion.js';
+import { P27_CLUB_NAMING_COUNTRY_CODES, P27_EXPANSION_CLUBS, P27_EXPANSION_COUNTS } from '../src/p27-club-expansion.js';
 import { auditClubCatalog, auditClubRuntimeProfiles } from '../src/club-catalog-validation.js';
 import { conferenceForClub } from '../src/league-structure.js';
 
 test('P27 expansion : les 140 clubs complètent exactement les cinq divisions', () => {
-  assert.deepEqual(P27_EXPANSION_COUNTS, { total:140, D1:12, D2:16, D3:20, D4:32, D5:60 });
+  assert.deepEqual(P27_EXPANSION_COUNTS, { total:140, D1:12, D2:16, D3:20, D4:32, D5:60, Malagasy:39, international:101 });
   assert.equal(P27_EXPANSION_CLUBS.length, 140);
   assert.equal(new Set(P27_EXPANSION_CLUBS.map(club=>club.id)).size, 140);
   assert.equal(new Set(P27_EXPANSION_CLUBS.map(club=>club.name)).size, 140);
+  assert.equal(P27_EXPANSION_CLUBS.filter(club=>club.countryCode==='MG').length,39);
+  assert.equal(P27_EXPANSION_CLUBS.filter(club=>club.countryCode!=='MG').length,101);
   assert.deepEqual(Object.fromEntries(['D1','D2','D3','D4','D5'].map(division=>[division,P27_EXPANSION_CLUBS.filter(club=>club.division===division).length])), { D1:12, D2:16, D3:20, D4:32, D5:60 });
+});
+
+
+test('P27 clubs internationaux : chaque pays représenté utilise ses conventions de nommage', () => {
+  const styledCountries = new Set(P27_CLUB_NAMING_COUNTRY_CODES);
+  const representedCountries = new Set(P27_EXPANSION_CLUBS
+    .filter(club => club.countryCode !== 'MG')
+    .map(club => club.countryCode));
+  assert.deepEqual([...representedCountries].filter(code => !styledCountries.has(code)), []);
+  assert.ok(P27_CLUB_NAMING_COUNTRY_CODES.length >= representedCountries.size);
 });
 
 test('P27 audit catalogue : contrôle les 156 identités, localisations et équipements', () => {
   const audit = auditClubCatalog(DEFAULT_CLUBS);
   assert.equal(audit.complete, true, JSON.stringify(audit.issues.slice(0, 30)));
   assert.equal(audit.totalClubs, 156);
+  assert.equal(DEFAULT_CLUBS.filter(club=>club.countryCode==='MG').length,47);
+  assert.equal(DEFAULT_CLUBS.filter(club=>club.countryCode!=='MG').length,109);
   assert.deepEqual(audit.divisionCounts, { D1:16, D2:20, D3:24, D4:32, D5:64 });
   assert.deepEqual(audit.conferenceCounts.D4, { A:16, B:16 });
   assert.deepEqual(audit.conferenceCounts.D5, { A:16, B:16, C:16, D:16 });

@@ -11,6 +11,7 @@ class ProgressionD1 {
     return {
       values: [], bind(...values) { this.values = values; return this; },
       async first() {
+        if (sql.startsWith("SELECT experience_awarded")) return db.events.get(this.values[0] + ":" + this.values[1]) || null;
         if (sql.startsWith("SELECT 1 AS applied")) return db.events.has(this.values[0] + ":" + this.values[1]) ? { applied: 1 } : null;
         if (sql.startsWith("SELECT level")) return db.rows.get(this.values[0]) || null;
         if (sql.startsWith("SELECT match_id")) return { results: [...db.events.values()].filter(x => x.account_id === this.values[0]).sort((a,b) => a.applied_at.localeCompare(b.applied_at)).map(x => ({ match_id: x.match_id })) };
@@ -84,4 +85,79 @@ test("D1 progression rejects malformed account IDs and invalid match rewards", a
   const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
   await assert.rejects(repository.get("bad"), /INVALID_ACCOUNT_ID/);
   await assert.rejects(repository.grantMatchReward(accountId, { matchId: "", result: "win" }), /INVALID_MATCH_REWARD/);
+});
+
+test("D1 progression concurrent commands use compare-and-swap and never overwrite newer values", async () => {
+  const db = new ProgressionD1();
+  const repository = new D1PlayerProgressionRepository(db, { now: fixedNow });
+  const results = await Promise.all([
+    repository.spend(accountId, "pace", 1, "practice"),
+    repository.spend(accountId, "pace", 1, "practice"),
+    repository.spend(accountId, "pace", 1, "practice"),
+  ]);
+  assert.equal(results.every(result => result.ok), true);
+  const current = await repository.get(accountId);
+  assert.equal(current.progression.attributes.pace, 58);
+  assert.equal(current.progression.coins, 10);
+  assert.equal(current.progression.experience, 75);
+  assert.equal(current.revision, 4);
+});
+
+test("D1 progression grants the same match reward only once under concurrent retries", async () => {
+  const db = new ProgressionD1();
+  const repository = new D1PlayerProgressionRepository(db, { now: fixedNow });
+  const attempts = await Promise.all([
+    repository.grantMatchReward(accountId, { matchId: "match-concurrent", result: "win", minutesPlayedMs: 90_000, rating: 7 }),
+    repository.grantMatchReward(accountId, { matchId: "match-concurrent", result: "win", minutesPlayedMs: 90_000, rating: 7 }),
+  ]);
+  assert.equal(attempts.filter(item => item.duplicate === false).length, 1);
+  assert.equal(attempts.filter(item => item.duplicate === true).length, 1);
+  const current = await repository.get(accountId);
+  assert.equal(current.progression.coins, 290);
+  assert.equal(current.progression.experience, 59);
+  assert.equal(current.revision, 2);
+  assert.equal(db.events.size, 1);
+});
+
+test("D1 progression rejects overlong match IDs instead of truncating idempotency keys", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  await assert.rejects(
+    repository.grantMatchReward(accountId, { matchId: "x".repeat(65), result: "win" }),
+    /INVALID_MATCH_REWARD/,
+  );
+});
+
+test("D1 progression treats an omitted rating as neutral instead of the minimum score", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  const result = await repository.grantMatchReward(accountId, { matchId: "match-neutral-rating", result: "draw" });
+  assert.equal(result.reward.experience, 35);
+  assert.equal(result.reward.coins, 28);
+});
+
+
+test("D1 progression rejects reused match IDs when the reward payload differs", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  await repository.grantMatchReward(accountId, { matchId: "match-payload", result: "win", minutesPlayedMs: 60_000, rating: 8 });
+  await assert.rejects(
+    repository.grantMatchReward(accountId, { matchId: "match-payload", result: "loss", minutesPlayedMs: 60_000, rating: 8 }),
+    /MATCH_REWARD_ID_CONFLICT/,
+  );
+});
+
+test("D1 progression rejects malformed match IDs, durations, and ratings", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  for (const input of [
+    { matchId: " match-1", result: "win", minutesPlayedMs: 0 },
+    { matchId: "match-1", result: "win", minutesPlayedMs: -1 },
+    { matchId: "match-1", result: "win", minutesPlayedMs: 600_001 },
+    { matchId: "match-1", result: "win", minutesPlayedMs: 0, rating: "9" },
+    { matchId: "match-1", result: "win", minutesPlayedMs: 0, rating: 11 },
+  ]) await assert.rejects(repository.grantMatchReward(accountId, input), /INVALID_MATCH_REWARD/);
+});
+
+test("D1 progression rejects fractional, string, and over-limit spend amounts", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  for (const amount of [0, -1, 1.5, "2", 6, NaN]) {
+    await assert.rejects(repository.spend(accountId, "pace", amount, "practice"), /INVALID_PROGRESSION_AMOUNT/);
+  }
 });

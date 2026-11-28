@@ -6,6 +6,12 @@ function createLocalMatchId() {
   return `local-${Date.now().toString(36)}-${localMatchSequence.toString(36)}-${random}`;
 }
 
+export function toVirtualMatchSeconds(elapsedRealSeconds, halfDurationRealSeconds) {
+  const totalRealSeconds = Math.max(1, Number(halfDurationRealSeconds) * 2 || 1);
+  const elapsed = Number.isFinite(Number(elapsedRealSeconds)) ? Math.max(0, Number(elapsedRealSeconds)) : 0;
+  return Math.min(90 * 60, (elapsed / totalRealSeconds) * 90 * 60);
+}
+
 export class MatchState {
   constructor(durationMinutes = 5) {
     this.durationMinutes = durationMinutes === 3 ? 3 : 5;
@@ -104,7 +110,7 @@ export class MatchState {
 
   formatClock() {
     // Conversion linéaire du temps réel vers 90 minutes virtuelles.
-    const virtualSeconds = Math.min(90 * 60, Math.floor((this.elapsedMatchTime / (this.halfDuration * 2)) * 90 * 60));
+    const virtualSeconds = Math.floor(toVirtualMatchSeconds(this.elapsedMatchTime, this.halfDuration));
     const m = Math.floor(virtualSeconds / 60);
     const s = virtualSeconds % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;

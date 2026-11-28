@@ -33,6 +33,53 @@ function setup() {
   return {directory,manager,financeService,journal,setFailFinance(value){failFinance=value;},cleanup(){rmSync(directory,{recursive:true,force:true});}};
 }
 
+test('P27 transfert local : prépare une copie profonde avant de déplacer le joueur',()=>{
+ const f=setup();
+ try {
+  f.manager.addPlayer('club-a',{
+   id:'system-player-deep-kit',name:'Deep Kit Player',playerType:'system',rating:66,number:10
+  });
+  const source=f.manager.clubs.get('club-a').roster.find(p=>p.id==='system-player-deep-kit');
+  source.appearance={kitColors:{primary:'#aa0000'},details:{accessories:['captain-band']}};
+  source.attributes={pace:70,technical:{control:77}};
+  source.contract.metadata={clauses:['bonus']};
+  const originalAppearance=source.appearance;
+  const originalAccessories=source.appearance.details.accessories;
+  const originalMetadata=source.contract.metadata;
+  const result=f.manager.transferPlayer('club-a','club-b','system-player-deep-kit');
+  assert.equal(result.ok,true);
+  const moved=f.manager.clubs.get('club-b').roster.find(p=>p.id==='system-player-deep-kit');
+  assert.notEqual(moved.appearance,originalAppearance);
+  assert.notEqual(moved.appearance.details,source.appearance.details);
+  assert.notEqual(moved.attributes,source.attributes);
+  assert.deepEqual(originalAccessories,['captain-band']);
+  assert.deepEqual(originalMetadata.clauses,['bonus']);
+  assert.equal(moved.contract.clubId,'club-b');
+  assert.equal(moved.contract.previousClubId,'club-a');
+  assert.ok(Number.isInteger(moved.number) && moved.number >= 1 && moved.number <= 99);
+  assert.equal(f.manager.clubs.get('club-a').roster.some(p=>p.id==='system-player-deep-kit'),false);
+ } finally {f.cleanup();}
+});
+
+test('P27 transfert local : réattribue un numéro déjà porté dans le club acheteur',()=>{
+ const f=setup();
+ try {
+  const target=f.manager.addPlayer('club-b',{id:'destination-number-owner',playerType:'system',rating:55,number:99});
+  assert.equal(target.ok,true);
+  const occupiedNumber=target.number;
+  const source=f.manager.addPlayer('club-a',{id:'incoming-number-collision',playerType:'system',rating:61,number:occupiedNumber});
+  assert.equal(source.ok,true);
+  assert.equal(source.number,occupiedNumber);
+  const result=f.manager.transferPlayer('club-a','club-b','incoming-number-collision');
+  assert.equal(result.ok,true);
+  assert.notEqual(result.number,occupiedNumber);
+  const roster=f.manager.clubs.get('club-b').roster;
+  const numbers=roster.map(player=>player.number);
+  assert.equal(new Set(numbers).size,numbers.length);
+  assert.equal(roster.find(player=>player.id==='incoming-number-collision').number,result.number);
+ } finally {f.cleanup();}
+});
+
 test('P27 lot 85 : transfert IA déplace le joueur et règle le club acheteur vers le vendeur une seule fois',()=>{
  const f=setup();
  try {
@@ -379,4 +426,115 @@ test('P27 lot 105 : réconcilie les soldes nets après deux transferts successif
   assert.equal(finance.store.getAccount('club-b').entries.filter(e=>e.id==='transfer-fee-in-net-ledger-105-b').length,1);
   assert.equal(finance.store.getAccount('club-a').entries.filter(e=>e.id==='transfer-fee-out-net-ledger-105-b').length,1);
  } finally {f.cleanup();}
+});
+
+test('P27 effectifs : ajout et modification sont annulés si la sauvegarde échoue',()=>{
+ let failWrites=false;
+ const storage={value:null,getItem(){return this.value;},setItem(key,value){if(failWrites)throw new Error('DISK_FULL');this.value=value;}};
+ const manager=new ClubManager(clubs,storage,'atomic-add-update');
+ assert.equal(manager.addPlayer('club-a',{id:'atomic-roster-player',playerType:'system',rating:60,number:9}).ok,true);
+ const saved=storage.value;
+ failWrites=true;
+ const add=manager.addPlayer('club-b',{id:'atomic-new-player',playerType:'system',rating:61,number:10});
+ assert.deepEqual(add,{ok:false,reason:'roster-persistence-failed'});
+ assert.equal(manager.getClub('club-b').roster.some(player=>player.id==='atomic-new-player'),false);
+ assert.equal(storage.value,saved);
+ const before=manager.getClub('club-a').roster.find(player=>player.id==='atomic-roster-player');
+ const edit=manager.updatePlayer('club-a',{...before,name:'Edited Name',rating:99});
+ assert.deepEqual(edit,{ok:false,reason:'roster-persistence-failed'});
+ const after=manager.getClub('club-a').roster.find(player=>player.id==='atomic-roster-player');
+ assert.equal(after.name,before.name);
+ assert.equal(after.rating,before.rating);
+ assert.equal(storage.value,saved);
+});
+
+test('P27 carrière humaine : changement de club met à jour le maillot, le numéro et le contrat sans doublon',()=>{
+ const storage={value:null,getItem(){return this.value;},setItem(key,value){this.value=value;}};
+ const testClubs=clubs.map(item=>({...item,colors:item.id==='club-b'?['#aa0000','#ffffff','#000000']:item.colors}));
+ const manager=new ClubManager(testClubs,storage,'human-career-roster-sync');
+ const playerId='human-career-sync-p27';
+ const first=manager.syncHumanCareer({playerId,clubId:'club-a',name:'Human Career',contract:{status:'active',clubId:'club-a',salary:1500,expiresAt:'2037-06-01T00:00:00.000Z'}});
+ assert.equal(first.ok,true);
+ const sourceBefore=manager.getClub('club-a').roster.find(player=>player.id===playerId);
+ assert.ok(sourceBefore);
+ const moved=manager.syncHumanCareer({playerId,clubId:'club-b',previousClubId:'club-a',name:'Human Career',contract:{status:'active',clubId:'club-b',salary:1700,expiresAt:'2037-08-01T00:00:00.000Z'}});
+ assert.equal(moved.ok,true);
+ assert.equal(moved.action,'transferred');
+ assert.equal(manager.getClub('club-a').roster.some(player=>player.id===playerId),false);
+ const target=manager.getClub('club-b').roster.filter(player=>player.id===playerId);
+ assert.equal(target.length,1);
+ assert.equal(target[0].contract.clubId,'club-b');
+ assert.equal(target[0].contract.salary,1700);
+ assert.equal(target[0].number,moved.number);
+ assert.deepEqual(target[0].appearance.kitColors,{primary:'#aa0000',secondary:'#ffffff',accent:'#000000'});
+});
+
+test('P27 carrière humaine : un transfert non sauvegardé restaure les deux effectifs',()=>{
+ let failWrites=false;
+ const storage={value:null,getItem(){return this.value;},setItem(key,value){if(failWrites)throw new Error('DISK_FULL');this.value=value;}};
+ const manager=new ClubManager(clubs,storage,'human-career-transfer-rollback');
+ const playerId='human-career-rollback-p27';
+ assert.equal(manager.syncHumanCareer({playerId,clubId:'club-a',name:'Rollback Human',contract:{status:'active',clubId:'club-a',salary:1000,expiresAt:'2037-06-01T00:00:00.000Z'}}).ok,true);
+ const saved=storage.value;
+ failWrites=true;
+ const result=manager.syncHumanCareer({playerId,clubId:'club-b',previousClubId:'club-a',name:'Rollback Human',contract:{status:'active',clubId:'club-b',salary:1100,expiresAt:'2037-08-01T00:00:00.000Z'}});
+ assert.deepEqual(result,{ok:false,reason:'roster-persistence-failed'});
+ assert.equal(manager.getClub('club-a').roster.filter(player=>player.id===playerId).length,1);
+ assert.equal(manager.getClub('club-b').roster.some(player=>player.id===playerId),false);
+ assert.equal(manager.getClub('club-a').releasedPlayers.some(entry=>entry.player.id===playerId),false);
+ assert.equal(storage.value,saved);
+});
+
+test('P27 clubs : une prise de contrôle non sauvegardée restaure le club ouvert',()=>{
+ let failWrites=false;
+ const storage={value:null,getItem(){return this.value;},setItem(key,value){if(failWrites)throw new Error('DISK_FULL');this.value=value;}};
+ const manager=new ClubManager(clubs,storage,'club-takeover-rollback');
+ manager.clubs.get('club-a').control='open';
+ const before=storage.value;
+ failWrites=true;
+ const result=manager.takeOver('club-a','manager-rollback-p27');
+ assert.deepEqual(result,{ok:false,reason:'roster-persistence-failed'});
+ const club=manager.getClub('club-a');
+ assert.equal(club.control,'open');
+ assert.equal(club.managerId,null);
+ assert.equal(storage.value,before);
+});
+
+test('P27 transferts système : refuse les identifiants de club ou joueur trop longs sans les tronquer',()=>{
+ const f=setup();try{
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService});
+  const valid={id:'ai-transfer-id-boundary',fromClubId:'club-a',toClubId:'club-b',playerId:'system-player-1',fee:900};
+  for(const field of ['fromClubId','toClubId','playerId']){
+   const result=service.transfer({...valid,[field]:'x'.repeat(49)});
+   assert.deepEqual(result,{ok:false,reason:'invalid-request'});
+  }
+  assert.equal(f.manager.getClub('club-a').roster.some(player=>player.id==='system-player-1'),true);
+  assert.equal(f.manager.getClub('club-b').roster.some(player=>player.id==='system-player-1'),false);
+  assert.equal(service.state.transfers.length,0);
+ }finally{f.cleanup();}
+});
+
+test('P27 transferts système : ne confond pas deux identifiants partageant un préfixe tronqué',()=>{
+ const f=setup();try{
+  const service=new P27SystemTransferService(f.directory,{clubManager:f.manager,financeService:f.financeService});
+  const result=service.transfer({
+   id:'ai-transfer-long-player-key',fromClubId:'club-a',toClubId:'club-b',
+   playerId:'system-player-1'.padEnd(49,'x'),fee:900
+  });
+  assert.deepEqual(result,{ok:false,reason:'invalid-request'});
+  assert.equal(service.state.transfers.length,0);
+ }finally{f.cleanup();}
+});
+
+test('P27 mercato : les identifiants déterministes de transfert restent bornés sans tronquer les identités',()=>{
+ const a=mkdtempSync(path.join(os.tmpdir(),'p27-market-id-a-'));
+ const b=mkdtempSync(path.join(os.tmpdir(),'p27-market-id-b-'));
+ try{
+  const first=marketFixture(a).simulateMarket({windowId:'long-but-valid-market-window-2028-01',maxTransfers:1,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  const second=marketFixture(b).simulateMarket({windowId:'long-but-valid-market-window-2028-01',maxTransfers:1,now:Date.parse('2028-01-01T00:00:00.000Z')});
+  assert.equal(first.processed,1);
+  assert.equal(first.transfers[0].id.length<=96,true);
+  assert.match(first.transfers[0].id,/^ai-market-long-but-valid-market-window-2028-01-[a-f0-9]{32}$/);
+  assert.equal(first.transfers[0].id,second.transfers[0].id);
+ }finally{rmSync(a,{recursive:true,force:true});rmSync(b,{recursive:true,force:true});}
 });

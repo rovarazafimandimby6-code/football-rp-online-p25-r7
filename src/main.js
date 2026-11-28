@@ -2,11 +2,14 @@ import { ClubManager } from './club-manager.js';
 import { PlayerProfileStore } from './player-profile.js';
 import { LocalPlayerProfile } from './local-player-profile.js';
 import { CareerManager } from './career-manager.js';
+import { applyCareerMatchReward, reconcileCareerProfileRewards } from './career-reward-reconciliation.js';
 import { syncCareerPlayerRoster } from './career-roster-sync.js';
 import { PlayerSeasonStats } from './player-season-stats.js';
 import { resolveOnlinePlayerPerformance } from './online-career-sync.js';
 import { renderClubCrest } from './club-identity.js';
 import { Player } from './player.js';
+import { listP27Players } from './p27-player-library.js';
+import { renderSystemPlayerPortrait } from './p27-system-player-portrait.js';
 import { createMatchSquad } from './match-squad.js';
 import { OnlineMatchClient } from './online-client.js';
 import { OnlineAccountClient } from './online-account-client.js';
@@ -14,10 +17,18 @@ import { PlayerSyncOutbox } from './player-sync-outbox.js';
 import { ProfileSyncCoordinator } from './profile-sync-coordinator.js';
 import { createAccountRecoveryAdapters, hasAccountRecoveryData } from './account-recovery-adapters.js';
 import { restoreAccountSnapshot } from './account-recovery.js';
+import { mountPlayerShop, syncEquippedCosmetics } from './player-shop-ui.js';
+import { mountClubShop } from './club-shop-ui.js';
+import { getP27ClubShopKit, getP27ClubShopAppearance } from './p27-club-kit.js';
 import { createLegacyProfileBackup, buildLegacyProfileMigrationPayload } from './legacy-profile-migration.js';
 import * as THREE from 'three';
 
 const P27_OFFLINE_TEST = typeof __P27_OFFLINE_TEST__ !== 'undefined' && __P27_OFFLINE_TEST__;
+const P27_API_BASE_URL = typeof __P27_API_BASE_URL__ !== 'undefined' && /^https:\/\//.test(__P27_API_BASE_URL__)
+  ? __P27_API_BASE_URL__.replace(/\/$/, '')
+  : location.origin;
+const p27ApiUrl = path => new URL(path, P27_API_BASE_URL + '/').toString();
+const p27ApiFetch = (input, init = {}) => globalThis.fetch(p27ApiUrl(input), { ...init, credentials: 'include' });
 const COUNTRY_NAME_CODES = Object.freeze({
   MADAGASCAR:'MG', FRANCE:'FR', COLOMBIE:'CO', CAMEROUN:'CM', 'RD CONGO':'CD',
   'RÉPUBLIQUE DÉMOCRATIQUE DU CONGO':'CD', 'REPUBLIQUE DEMOCRATIQUE DU CONGO':'CD',
@@ -121,10 +132,12 @@ function buildTransferWindows() {
   return windows;
 }
 const career = new CareerManager({ initialCoins: 2500, transferWindows: buildTransferWindows() });
+const careerRewardRecovery = reconcileCareerProfileRewards({ career, profileStore });
+if (!careerRewardRecovery.ok) console.warn('[Football RP Online] Récompenses en attente de récupération :', careerRewardRecovery.reason);
 syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
 let game = null;
 let pendingOnlineMatch = null;
-const accountClient = new OnlineAccountClient({ baseUrl: location.origin });
+const accountClient = new OnlineAccountClient({ baseUrl: P27_API_BASE_URL });
 let pendingAccountRecoveryPreview = null;
 if (!P27_OFFLINE_TEST) accountClient.restoreSession();
 const profileSyncOutbox = new PlayerSyncOutbox();
@@ -138,6 +151,14 @@ const queueAndSyncCurrentProfile = async () => {
   profileSyncCoordinator.enqueueCurrentProfile();
   return profileSyncCoordinator.flush();
 };
+async function syncPlayerShopAppearanceFromServer() {
+  if (!accountClient.hasSession) return false;
+  try {
+    const snapshot = await accountClient.getShopSnapshot('player');
+    syncEquippedCosmetics(snapshot.inventory, snapshot.catalog);
+    return true;
+  } catch (_) { return false; }
+}
 if (!P27_OFFLINE_TEST) {
 void accountClient.resumeCookieSession().then(async () => {
   if (!localPlayerIdentity && localPlayerProfileStore && /^FRP-[0-9]{6}$/.test(accountClient.account?.playerId || '')) {
@@ -148,10 +169,11 @@ void accountClient.resumeCookieSession().then(async () => {
       // Do not overwrite or fabricate a local identity if safe adoption is unavailable.
     }
   }
+  await syncPlayerShopAppearanceFromServer();
   void profileSyncCoordinator.flush();
   const button = document.querySelector('[data-action="account-recovery-preview"]');
   if (button) button.disabled = false;
-}).catch(() => {});
+}).catch(() => { void reserveLocalPlayerIdentity(); });
 }
 if (!P27_OFFLINE_TEST) {
   window.addEventListener('online', () => { void profileSyncCoordinator.flush().catch(() => {}); });
@@ -159,7 +181,7 @@ if (!P27_OFFLINE_TEST) {
     if (document.visibilityState === 'visible') void profileSyncCoordinator.flush().catch(() => {});
   });
 }
-const onlineClient = new OnlineMatchClient({ baseUrl: location.origin, accountTokenProvider: () => accountClient.token });
+const onlineClient = new OnlineMatchClient({ baseUrl: P27_API_BASE_URL, accountTokenProvider: () => accountClient.token });
 let avatarPreview = null;
 function disposeAvatarPreview() {
   if (!avatarPreview) return;
@@ -175,6 +197,7 @@ function disposeAvatarPreview() {
 function mountAvatarPreview(profile) {
   const host = document.getElementById('avatar-preview');
   if (!host) return;
+  disposeAvatarPreview();
   try {
     const width = Math.max(180, host.clientWidth || 280);
     const height = Math.max(220, host.clientHeight || 300);
@@ -193,7 +216,7 @@ function mountAvatarPreview(profile) {
     const rim = new THREE.DirectionalLight(0x70baff, 1.25); rim.position.set(3, 3, -3); scene.add(rim);
     const floor = new THREE.Mesh(new THREE.CircleGeometry(1.2, 32), new THREE.MeshStandardMaterial({ color: 0x172a3b, roughness: 0.95 }));
     floor.rotation.x = -Math.PI / 2; floor.position.y = 0.015; scene.add(floor);
-    const player = new Player({ id: 'avatar-preview', team: 'blue', number: profile.identity.number, name: profile.identity.displayName, role: profile.identity.role, slotIndex: 0, homePos: { x: 0, z: 0 }, appearance: profile.appearance, attributes: profile.progression.attributes, preferredFoot: profile.identity.preferredFoot });
+    const player = new Player({ id: 'avatar-preview', team: 'blue', number: profile.identity.number, name: profile.identity.displayName, role: profile.identity.role, slotIndex: 0, homePos: { x: 0, z: 0 }, appearance: { ...(profile.appearance || {}), shopCosmeticsEnabled:true }, attributes: profile.progression.attributes, preferredFoot: profile.identity.preferredFoot });
     player.isControlled = true; player.visual.ring.visible = false; player.visual.root.rotation.y = 0.12; scene.add(player.visual.root);
     let last = performance.now();
     const state = {
@@ -278,6 +301,10 @@ function mountAvatarPreview(profile) {
 }
 
 let selectedMatchup = { home: 'antananarivo-fc', away: 'toamasina-united' };
+let selectedFormation = '2-2';
+let selectedBenchSize = 5;
+let selectedHomeStarterIds = null;
+let selectedHomeStarterClubId = null;
 let selectedClubId = null;
 let playerLibraryLimit = 12;
 let playerLibraryPage = 0;
@@ -295,16 +322,28 @@ try {
   preferences.cameraMode = ['player','touchline','broadcast','close','tactical','spectator'].includes(saved.cameraMode) ? saved.cameraMode : 'player';
   preferences.cameraZoom = Number.isFinite(Number(saved.cameraZoom)) ? Math.max(0, Math.min(100, Number(saved.cameraZoom))) : 55;
   preferences.nameDisplay = 'standard';
+  preferences.homeStarterClubId = typeof saved.homeStarterClubId === 'string' ? saved.homeStarterClubId : null;
+  preferences.homeStarterIds = Array.isArray(saved.homeStarterIds) ? saved.homeStarterIds.filter(id => typeof id === 'string').slice(0,5) : null;
+  preferences.formation = ['2-2','1-2-1','2-1-1'].includes(saved.formation) ? saved.formation : '2-2';
+  preferences.benchSize = Number.isInteger(saved.benchSize) ? Math.max(3, Math.min(7, saved.benchSize)) : 5;
 } catch (_) {}
+selectedFormation = preferences.formation || '2-2';
+selectedBenchSize = preferences.benchSize || 5;
+selectedHomeStarterClubId = preferences.homeStarterClubId;
+selectedHomeStarterIds = preferences.homeStarterIds;
 
 const crest = (club) => renderClubCrest({ id: club.id, name: club.name, size: 58, colors: club.colors });
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 async function reserveLocalPlayerIdentity() {
-  if (P27_OFFLINE_TEST || !localPlayerProfileStore || !localPlayerIdentity || localPlayerIdentity.identityStatus === 'reserved') return;
+  if (P27_OFFLINE_TEST || !localPlayerProfileStore || !localPlayerIdentity || (localPlayerIdentity.identityStatus === 'reserved' && accountClient.hasSession)) return;
   try {
-    localPlayerIdentity = await localPlayerProfileStore.reserveWithServer();
-    await accountClient.resumeCookieSession().catch(() => null);
+    localPlayerIdentity = await localPlayerProfileStore.reserveWithServer({
+      endpoint: p27ApiUrl('/api/player-identities/reserve'),
+      onSession: session => accountClient.acceptSession(session)
+    });
+    if (accountClient.token) await accountClient.refresh().catch(() => null);
+    else await accountClient.resumeCookieSession().catch(() => null);
     document.querySelectorAll('[data-player-id]').forEach(node => { node.textContent = localPlayerIdentity.id; });
     void profileSyncCoordinator?.flush().catch(() => {});
   } catch (_) {
@@ -337,7 +376,7 @@ async function loadPlayerCareer(player) {
     return;
   }
   try {
-    const response = await fetch(`/api/players/${encodeURIComponent(playerId)}/career`, { headers: { accept: 'application/json' }, cache: 'no-store' });
+    const response = await p27ApiFetch(`/api/players/${encodeURIComponent(playerId)}/career`, { headers: { accept: 'application/json' }, cache: 'no-store' });
     if (sequence !== playerCareerRequestSequence || selectedPlayerProfile !== player) return;
     if (response.status === 404) {
       target.innerHTML = '<b>Aucun match enregistré</b><p>Ce joueur n’a pas encore participé à un match enregistré sur le serveur.</p>';
@@ -383,7 +422,7 @@ async function loadPublicClubDirectory() {
   if(status) status.textContent='Synchronisation du catalogue de la saison active…';
   try {
     const fetchPage=async offset=>{
-      const response=await fetch('/api/clubs?limit=100&offset='+offset,{headers:{Accept:'application/json'}});
+      const response=await p27ApiFetch('/api/clubs?limit=100&offset='+offset,{headers:{Accept:'application/json'}});
       if(!response.ok) throw new Error('CATALOGUE_HTTP_'+response.status);
       return response.json();
     };
@@ -436,7 +475,7 @@ async function loadServerCompetitionOverview() {
   const host=document.getElementById('menu-content');
   if(!host || !host.querySelector('.competition-layout')) return;
   try {
-    const response=await fetch('/api/competitions',{headers:{Accept:'application/json'}});
+    const response=await p27ApiFetch('/api/competitions',{headers:{Accept:'application/json'}});
     if(!response.ok) throw new Error('COMPETITIONS_HTTP_'+response.status);
     const snapshot=await response.json();
     if(requestId!==publicCompetitionRequest || !document.getElementById('menu-content')?.querySelector('.competition-layout')) return;
@@ -481,7 +520,197 @@ async function loadServerCompetitionOverview() {
   }
 }
 
+async function rpClubApi(path, options = {}) {
+  if (!accountClient.hasSession && path !== '') { try { await accountClient.resumeCookieSession(); } catch {} }
+  const headers = Object.assign({ Accept:'application/json' }, options.body ? { 'content-type':'application/json' } : {}, accountClient.token ? { authorization:'Bearer ' + accountClient.token } : {}, options.headers || {});
+  const response = await p27ApiFetch('/api/rp-clubs' + path, Object.assign({}, options, { credentials:'include', headers }));
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || payload.reason || ('RP_CLUB_HTTP_' + response.status));
+  return payload;
+}
+function rpClubErrorMessage(error) {
+  const labels = { SESSION_EXPIRED:'Connectez votre compte P27 pour utiliser les Clubs RP.', PLAYER_IDENTITY_REQUIRED:'Votre identité joueur doit d’abord être réservée et associée à votre compte.', ALREADY_IN_RP_CLUB:'Vous appartenez déjà à un Club RP.', RP_CLUB_NAME_OR_TAG_TAKEN:'Ce nom ou ce sigle est déjà utilisé.', INVALID_CLUB_NAME:'Le nom doit contenir entre 3 et 24 caractères.', INVALID_CLUB_TAG:'Le sigle doit contenir entre 2 et 5 lettres ou chiffres.', RP_CLUB_FULL:'Ce Club RP a atteint sa capacité.', JOIN_REQUEST_ALREADY_PENDING:'Votre demande est déjà en attente.', RP_CLUB_PERMISSION_DENIED:'Seuls les responsables du Club RP peuvent faire cela.', FOUNDER_MUST_TRANSFER_PRESIDENCY:'Le fondateur doit transférer la présidence avant de quitter le club.', PRESIDENT_MUST_TRANSFER_PRESIDENCY:'Transférez la présidence avant de quitter le club.', FOUNDER_CANNOT_LEAVE:'Le fondateur historique reste membre du Club RP.', RP_CLUB_MEMBER_PROTECTED:'Ce membre ne peut pas être exclu.', RP_CLUB_CANNOT_TRANSFER_TO_SELF:'Choisissez un autre membre pour transférer la présidence.', RP_CLUB_MEMBERSHIP_REQUIRED:'Vous devez appartenir à un Club RP pour lancer un défi.', RP_CLUB_CHALLENGE_SELF:'Vous ne pouvez pas défier votre propre Club RP.', RP_CLUB_CHALLENGE_ALREADY_ACTIVE:'Un défi entre ces deux clubs est déjà en cours.', INVALID_RP_CLUB_CHALLENGE_DATE:'Choisissez une date située entre 30 minutes et 30 jours à partir de maintenant.', RP_CLUB_CHALLENGE_NOT_PENDING:'Ce défi a déjà reçu une réponse.', RP_CLUB_CHALLENGE_NOT_IN_TIME_WINDOW:'Le salon ne peut être ouvert que 15 minutes avant l’horaire prévu et jusqu’à 2 heures après.', RP_CLUB_CHALLENGE_NOT_ACCEPTED:'Ce défi doit d’abord être accepté.', RP_CLUB_CHALLENGE_ROOM_ALREADY_USED:'Ce défi a déjà utilisé son salon de match.', RP_CLUB_CHALLENGE_MEMBERSHIP_REQUIRED:'Seuls les membres actuels des deux Clubs RP peuvent rejoindre ce match.', RP_CLUB_CHALLENGE_TEAM_FULL:'Le camp de votre Club RP est complet.', RP_CLUB_MESSAGE_COOLDOWN:'Patientez deux secondes avant votre prochain message.', EMPTY_RP_CLUB_MESSAGE:'Écrivez un message avant de l’envoyer.' };
+  const code = String(error && error.message || error);
+  return labels[code] || ('Action impossible : ' + code.slice(0, 90));
+}
+function setRpClubStatus(message, isError = false) {
+  const status = document.getElementById('rp-club-status');
+  if (status) { status.textContent = message; status.classList.toggle('is-error', isError); }
+}
+let rpClubPageRequestSequence = 0;
+let rpClubChatRefreshTimer = null;
+let rpClubChatRefreshPending = false;
+function stopRpClubChatPolling() {
+  if (rpClubChatRefreshTimer !== null) clearInterval(rpClubChatRefreshTimer);
+  rpClubChatRefreshTimer = null;
+}
+function renderRpClubChatMessages(messages) {
+  return (Array.isArray(messages) ? messages : []).map(message =>
+    '<article class="rp-club-chat-message"><div><b>' + escapeHTML(message.displayName) + '</b><small>' +
+    new Date(message.createdAt).toLocaleString('fr-FR', { dateStyle:'short', timeStyle:'short' }) +
+    '</small></div><p>' + escapeHTML(message.text) + '</p></article>'
+  ).join('') || '<p class="notice">La discussion est vide. Lancez la conversation avec les membres du club.</p>';
+}
+async function refreshRpClubChat(clubId) {
+  const history = document.getElementById('rp-club-chat-history');
+  if (!history || rpClubChatRefreshPending) return;
+  rpClubChatRefreshPending = true;
+  try {
+    const payload = await rpClubApi('/' + encodeURIComponent(clubId) + '/messages');
+    const current = document.getElementById('rp-club-chat-history');
+    if (!current || current !== history) return;
+    const wasAtBottom = current.scrollHeight - current.scrollTop - current.clientHeight < 36;
+    const messages = Array.isArray(payload.messages) ? payload.messages : [];
+    current.innerHTML = renderRpClubChatMessages(messages);
+    const count = document.getElementById('rp-club-chat-count');
+    if (count) count.textContent = messages.length + ' MESSAGES';
+    if (wasAtBottom) current.scrollTop = current.scrollHeight;
+  } catch (error) {
+    if (error?.message === 'SESSION_EXPIRED' || error?.message === 'RP_CLUB_MEMBERSHIP_REQUIRED') stopRpClubChatPolling();
+  } finally {
+    rpClubChatRefreshPending = false;
+  }
+}
+function startRpClubChatPolling(clubId) {
+  stopRpClubChatPolling();
+  const history = document.getElementById('rp-club-chat-history');
+  if (history) history.scrollTop = history.scrollHeight;
+  rpClubChatRefreshTimer = setInterval(() => { if (!document.hidden) void refreshRpClubChat(clubId); }, 10000);
+}
+async function loadRpClubPage(selectedSeasonId = null) {
+  const host = document.getElementById('rp-club-root');
+  if (!host) return;
+  const requestId = ++rpClubPageRequestSequence;
+  host.innerHTML = '<div class="rp-club-loading">SYNCHRONISATION DU CLUB RP…</div>';
+  let membership = null, invitations = [], activity = null, challenges = [], standings = [], seasons = [], currentSeason = null, seasonStandings = [], selectedSeason = null, authError = null, directory = { clubs:[], total:0 };
+  try { const mine = await rpClubApi('/me'); membership = mine.membership; invitations = mine.invitations || []; } catch (error) { authError = error; }
+  try { directory = await rpClubApi('?limit=30'); } catch (error) { if (!authError) authError = error; }
+  if (membership?.club?.id) { try { activity = await rpClubApi('/' + membership.club.id + '/activity'); } catch (error) { if (!authError) authError = error; } try { challenges = (await rpClubApi('/challenges/me')).challenges || []; } catch (error) { if (!authError) authError = error; } try { standings = (await rpClubApi('/challenges/leaderboard')).standings || []; } catch (error) { if (!authError) authError = error; } }
+  if (membership?.club?.id) {
+    try { seasons = (await rpClubApi('/seasons')).seasons || []; } catch (error) { if (!authError) authError = error; }
+    try { currentSeason = (await rpClubApi('/seasons/current')).season || null; } catch (error) { if (!authError) authError = error; }
+    selectedSeason = seasons.find(item => item.id === selectedSeasonId)
+      || (currentSeason && seasons.find(item => item.id === currentSeason.id))
+      || seasons.find(item => item.status === 'completed')
+      || seasons[0] || null;
+    if (selectedSeason) {
+      try { seasonStandings = (await rpClubApi('/seasons/' + encodeURIComponent(selectedSeason.id) + '/leaderboard')).standings || []; }
+      catch (error) { if (!authError) authError = error; }
+    }
+  }
+  if (requestId !== rpClubPageRequestSequence || !document.getElementById('rp-club-root')) return;
+  if (membership) {
+    const club = membership.club;
+    const roleNames = { founder:'FONDATEUR', president:'PRÉSIDENT', vice_president:'VICE-PRÉSIDENT', recruiter:'RECRUTEUR', member:'MEMBRE' };
+    const pending = membership.pendingRequests || [];
+    const canInvite = membership.membership.isPresident || ['vice_president','recruiter'].includes(membership.membership.role);
+    const canChallenge = membership.membership.isPresident || ['vice_president','recruiter'].includes(membership.membership.role);
+    const canManageRoles = Boolean(membership.membership.isPresident);
+    const inviteControls = canInvite ? '<div class="rp-club-invite-controls"><label>IDENTIFIANT JOUEUR À INVITER<input id="rp-club-invite-player" maxlength="10" placeholder="FRP-123456"></label><button type="button" data-action="rp-club-send-invite" data-club="' + escapeHTML(club.id) + '">ENVOYER UNE INVITATION</button></div>' : '';
+    const members = club.members.map(member => {
+      const protectedMember = member.role === 'founder' || member.role === 'president';
+      const controls = canManageRoles && !protectedMember ? '<div class="rp-club-member-controls"><select id="rp-club-role-' + member.playerId + '"><option value="member" ' + (member.role === 'member' ? 'selected' : '') + '>MEMBRE</option><option value="recruiter" ' + (member.role === 'recruiter' ? 'selected' : '') + '>RECRUTEUR</option><option value="vice_president" ' + (member.role === 'vice_president' ? 'selected' : '') + '>VICE-PRÉSIDENT</option></select><button type="button" data-action="rp-club-role" data-player="' + member.playerId + '" data-club="' + escapeHTML(club.id) + '">RÔLE</button><button type="button" data-action="rp-club-transfer-presidency" data-player="' + member.playerId + '" data-name="' + escapeHTML(member.displayName) + '" data-club="' + escapeHTML(club.id) + '">PRÉSIDENCE</button><button type="button" class="rp-club-remove-member" data-action="rp-club-remove-member" data-player="' + member.playerId + '" data-name="' + escapeHTML(member.displayName) + '" data-club="' + escapeHTML(club.id) + '">EXCLURE</button></div>' : '';
+      return '<div class="rp-club-member"><span class="rp-club-member-avatar">' + escapeHTML(member.displayName.slice(0,1).toUpperCase()) + '</span><div><b>' + escapeHTML(member.displayName) + '</b><small>' + escapeHTML(member.playerId) + ' · ' + (roleNames[member.role] || 'MEMBRE') + (member.playerId === club.presidentPlayerId ? ' · PRÉSIDENT EN EXERCICE' : '') + '</small></div>' + controls + '</div>';
+    }).join('');
+    const requests = pending.map(request => '<div class="rp-club-request"><div><b>' + escapeHTML(request.displayName) + '</b><small>' + escapeHTML(request.playerId) + '</small></div><button type="button" class="rp-club-accept" data-action="rp-club-decision" data-club="' + escapeHTML(club.id) + '" data-request="' + escapeHTML(request.id) + '" data-decision="accept">ACCEPTER</button><button type="button" class="rp-club-reject" data-action="rp-club-decision" data-club="' + escapeHTML(club.id) + '" data-request="' + escapeHTML(request.id) + '" data-decision="reject">REFUSER</button></div>').join('');
+    const challengeRows = challenges.map(challenge => {
+      const outgoing = challenge.challengerClubId === club.id;
+      const pendingChallenge = challenge.status === 'pending';
+      const scheduleLabel = challenge.scheduledAt ? new Date(challenge.scheduledAt).toLocaleString('fr-FR', { dateStyle:'medium', timeStyle:'short' }) : '';
+      return '<article class="rp-club-challenge-row"><div class="rp-club-challenge-versus"><b>' + escapeHTML(challenge.challengerTag) + '</b><span>VS</span><b>' + escapeHTML(challenge.targetTag) + '</b></div><div class="rp-club-challenge-copy"><strong>' + escapeHTML(challenge.challengerName) + ' — ' + escapeHTML(challenge.targetName) + '</strong><small>' + (pendingChallenge ? (outgoing ? 'DÉFI ENVOYÉ · EN ATTENTE' : 'NOUVEAU DÉFI REÇU') : challenge.status === 'accepted' ? 'RENCONTRE PLANIFIÉE · ' + escapeHTML(scheduleLabel) : challenge.status === 'declined' ? 'DÉFI REFUSÉ' : challenge.status === 'completed' && challenge.result ? 'TERMINÉE · ' + challenge.result.blue + ' — ' + challenge.result.red : 'RENCONTRE') + '</small></div>' +
+      (pendingChallenge && !outgoing && canChallenge ? '<div class="rp-club-challenge-controls"><label>DATE ET HEURE<input type="datetime-local" id="rp-club-date-' + escapeHTML(challenge.id) + '"></label><button type="button" data-action="rp-club-challenge-decision" data-challenge="' + escapeHTML(challenge.id) + '" data-decision="accept">ACCEPTER ET PLANIFIER</button><button type="button" class="rp-club-reject" data-action="rp-club-challenge-decision" data-challenge="' + escapeHTML(challenge.id) + '" data-decision="reject">REFUSER</button></div>' : '') +
+      (challenge.status === 'accepted' && outgoing && canChallenge && !challenge.roomId ? '<div class="rp-club-challenge-controls"><button type="button" data-action="rp-club-challenge-match" data-challenge="' + escapeHTML(challenge.id) + '">OUVRIR LE SALON DE MATCH</button></div>' : '') +
+      (challenge.roomId ? '<small class="rp-club-room-ready">SALON DE MATCH · ' + escapeHTML(challenge.roomId) + '</small>' : '') +
+      '</article>';
+    }).join('');
+    const challengeDirectory = (directory.clubs || []).filter(item => item.id !== club.id).map(item => '<article class="rp-club-directory-item"><div class="rp-club-directory-mark">' + escapeHTML(item.tag) + '</div><div class="rp-club-directory-copy"><b>' + escapeHTML(item.name) + '</b><small>NIVEAU ' + item.level + ' · ' + item.memberCount + ' MEMBRES</small></div><button type="button" data-action="rp-club-challenge" data-club="' + escapeHTML(item.id) + '" ' + (canChallenge ? '' : 'disabled') + '>LANCER UN DÉFI</button></article>').join('');
+    const challengesPanel = '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">RENCONTRES ENTRE COMMUNAUTÉS</span><h3>Défis inter-Club RP</h3></div><b>' + challenges.filter(item=>item.status==='pending').length + ' EN ATTENTE</b></div>' + (challengeRows || '<p class="notice">Aucun défi en cours. Défiez un autre Club RP pour planifier une rencontre.</p>') + '<div class="rp-club-challenge-directory">' + (challengeDirectory || '<small>Aucun autre Club RP disponible pour le moment.</small>') + '</div><small class="rp-club-activity-note">Les responsables peuvent ouvrir le salon à l’heure prévue. Seuls les membres actuels des deux Clubs RP peuvent rejoindre ; les résultats validés alimentent l’historique et le classement inter-Club.</small></section>';
+    const standingsRows = standings.map((row,index) => '<div class="rp-club-standing-row"><b>' + (index+1) + '</b><strong>' + escapeHTML(row.name) + '<small>' + escapeHTML(row.tag) + '</small></strong><span>' + row.played + ' MJ</span><span>' + row.goalsFor + ':' + row.goalsAgainst + '</span><b>' + row.points + ' PTS</b></div>').join('');
+    const standingsPanel = '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMPÉTITION COMMUNAUTAIRE</span><h3>Classement inter-Club RP</h3></div><b>' + standings.length + ' CLUBS</b></div>' + (standingsRows || '<p class="notice">Le classement apparaîtra après les premiers matchs inter-Club RP terminés.</p>') + '<small class="rp-club-activity-note">3 points pour une victoire, 1 pour un nul. Classement calculé à partir des scores officiels archivés.</small></section>';
+    const seasonStatus = season => season.status === 'active' ? 'EN COURS' : season.status === 'completed' ? 'TERMINÉE' : 'À VENIR';
+    const seasonOptions = seasons.map(season => '<button type="button" class="rp-club-season-tab' + (selectedSeason?.id === season.id ? ' is-active' : '') + '" data-action="rp-club-season-select" data-season="' + escapeHTML(season.id) + '"><b>' + escapeHTML(season.name) + '</b><small>' + seasonStatus(season) + '</small></button>').join('');
+    const seasonRows = seasonStandings.map((row,index) => '<div class="rp-club-standing-row"><b>' + (index+1) + '</b><strong>' + escapeHTML(row.name) + '<small>' + escapeHTML(row.tag) + '</small></strong><span>' + row.played + ' MJ</span><span>' + row.goalsFor + ':' + row.goalsAgainst + '</span><b>' + row.points + ' PTS</b></div>').join('');
+    const seasonLeader = seasonStandings[0] || null;
+    const seasonLeaderPanel = selectedSeason && seasonLeader ? '<div class="rp-club-season-leader' + (selectedSeason.status === 'completed' ? ' is-champion' : '') + '"><span class="rp-club-season-cup">★</span><div><small>' + (selectedSeason.status === 'completed' ? 'CHAMPION DE LA SAISON' : 'LEADER PROVISOIRE') + '</small><b>' + escapeHTML(seasonLeader.name) + '</b><span>' + seasonLeader.wins + ' V · ' + seasonLeader.draws + ' N · ' + seasonLeader.losses + ' D · ' + seasonLeader.points + ' PTS</span></div></div>' : '';
+    const seasonPanel = '<section class="rp-club-panel rp-club-season-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">CHAMPIONNAT COMMUNAUTAIRE</span><h3>Saisons & palmarès</h3></div><b>' + seasons.length + ' SAISONS</b></div>' +
+      (currentSeason ? '<div class="rp-club-current-season"><span class="rp-club-season-live"></span><div><small>SAISON ACTIVE</small><b>' + escapeHTML(currentSeason.name) + '</b></div><span>' + currentSeason.matchesPlayed + ' MATCHS</span></div>' : '<p class="notice">Aucune saison active actuellement.</p>') +
+      (seasonOptions ? '<div class="rp-club-season-tabs">' + seasonOptions + '</div>' : '<p class="notice">L’historique des saisons apparaîtra ici après la création de la première saison.</p>') + seasonLeaderPanel +
+      (selectedSeason ? '<div class="rp-club-season-table-heading"><b>' + escapeHTML(selectedSeason.name) + '</b><small>' + seasonStatus(selectedSeason) + ' · ' + selectedSeason.matchesPlayed + ' MATCHS VALIDÉS</small></div>' + (seasonRows || '<p class="notice">Aucun résultat validé pour cette saison.</p>') : '') +
+      '<small class="rp-club-activity-note">Classement établi exclusivement à partir des résultats officiels des défis inter-Club RP.</small></section>';
+    const governanceEvents = (membership.governanceLog || []).map(event => '<article class="rp-club-governance-event"><div><b>' + escapeHTML(event.actorDisplayName) + '</b><small>' + new Date(event.createdAt).toLocaleString('fr-FR', { dateStyle:'short', timeStyle:'short' }) + '</small></div><p>' + escapeHTML(event.details) + (event.targetDisplayName ? ' · ' + escapeHTML(event.targetDisplayName) : '') + '</p></article>').join('');
+    const governancePanel = '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">TRANSPARENCE DU GROUPE</span><h3>Journal des décisions</h3></div><b>' + (membership.governanceLog || []).length + ' ÉVÉNEMENTS</b></div><div class="rp-club-governance-list">' + (governanceEvents || '<p class="notice">Aucune décision enregistrée pour le moment.</p>') + '</div><small class="rp-club-activity-note">Les changements de rôle, décisions de recrutement, transferts de présidence et exclusions sont historisés.</small></section>';
+    const chatMessages = renderRpClubChatMessages(membership.messages || []);
+    const chatPanel = '<section class="rp-club-panel rp-club-chat-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">ESPACE COMMUNAUTAIRE</span><h3>Discussion du Club RP</h3></div><b id="rp-club-chat-count">' + (membership.messages || []).length + ' MESSAGES</b></div><div id="rp-club-chat-history" class="rp-club-chat-history">' + chatMessages + '</div><div class="rp-club-chat-compose"><input id="rp-club-chat-input" maxlength="300" placeholder="Écrire un message au Club RP…" autocomplete="off"><button type="button" data-action="rp-club-message" data-club="' + escapeHTML(club.id) + '">ENVOYER</button></div><small class="rp-club-activity-note">Discussion privée : seuls les membres actuels peuvent lire et envoyer des messages. 300 caractères maximum, délai anti-spam de 2 secondes. Actualisation automatique toutes les 10 secondes.</small></section>';
+    const activityMembers = activity?.members || [];
+    const objectiveCards = (activity?.objectives || []).map(objective => '<div class="rp-club-objective' + (objective.completed ? ' is-complete' : '') + '"><div><b>' + escapeHTML(objective.label) + '</b><strong>' + objective.value + ' / ' + objective.target + '</strong></div><div class="rp-club-objective-track"><span style="width:' + Math.max(0, Math.min(100, Number(objective.progressPercent) || 0)) + '%"></span></div><small>' + (objective.completed ? 'OBJECTIF ATTEINT' : 'PROGRESSION COLLECTIVE') + '</small></div>').join('');
+    const activityPanel = activity ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">ACTIVITÉ RÉELLE · SEMAINE UTC</span><h3>Contribution des membres</h3></div><b>' + activity.totals.matches + ' MATCHS</b></div><div class="rp-club-activity-stats"><span><b>' + activity.totals.wins + '</b><small>VICTOIRES</small></span><span><b>' + activity.totals.goals + '</b><small>BUTS</small></span><span><b>' + activity.totals.assists + '</b><small>PASSES D.</small></span></div><div class="rp-club-objectives"><div class="rp-club-objectives-heading"><span class="eyebrow">DÉFIS HEBDOMADAIRES</span><small>PROGRESSION DU CLUB</small></div>' + objectiveCards + '</div><div class="rp-club-contribution-heading"><b>CLASSEMENT DES MEMBRES</b><small>PARTICIPATION · VICTOIRES · PERFORMANCE</small></div><div class="rp-club-contributors">' + activityMembers.map((member,index) => '<div class="rp-club-contributor"><b>' + (index+1) + '</b><span>' + escapeHTML(member.displayName) + '<small>' + member.matches + ' matchs · ' + member.wins + ' V · ' + member.goals + ' buts · ' + member.assists + ' PD</small></span><strong>' + (member.role === 'founder' ? 'FONDATEUR' : member.role === 'president' ? 'PRÉSIDENT' : member.role === 'vice_president' ? 'VICE-PRÉS.' : member.role === 'recruiter' ? 'RECRUTEUR' : 'MEMBRE') + '</strong></div>').join('') + '</div><small class="rp-club-activity-note">Classement hebdomadaire fondé sur les matchs de carrière confirmés : participation, victoires, buts puis passes décisives. Aucun crédit ni XP n’est attribué par ce tableau.</small></section>' : '';
+    host.innerHTML = '<section class="rp-club-hero"><div class="rp-club-identity"><span class="rp-club-tag">' + escapeHTML(club.tag) + '</span><div><span class="eyebrow">VOTRE GROUPEMENT RP</span><h2>' + escapeHTML(club.name) + '</h2><p>' + escapeHTML(club.description || 'Aucune description') + '</p></div></div><div class="rp-club-stats"><span><b>' + club.memberCount + '</b><small>MEMBRES</small></span><span><b>' + club.capacity + '</b><small>CAPACITÉ</small></span><span><b>' + (activity?.totals.matches ?? 0) + '</b><small>MATCHS SEMAINE</small></span></div></section>' +
+      chatPanel + '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMMUNAUTÉ</span><h3>Effectif du Club RP</h3></div><span class="rp-club-role">' + (membership.membership.isPresident ? 'PRÉSIDENT EN EXERCICE' : (roleNames[membership.membership.role] || 'MEMBRE')) + '</span></div><div class="rp-club-member-list">' + members + '</div>' + inviteControls + '</section>' + governancePanel + challengesPanel + standingsPanel + seasonPanel + activityPanel +
+      (pending.length ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">RECRUTEMENT</span><h3>Demandes en attente</h3></div><b>' + pending.length + '</b></div><div class="rp-club-request-list">' + requests + '</div></section>' : '') +
+      '<div class="rp-club-actions"><button type="button" class="rp-club-refresh" data-action="rp-club-reload">ACTUALISER</button><button type="button" class="rp-club-leave" data-action="rp-club-leave" data-club="' + escapeHTML(club.id) + '">QUITTER LE CLUB</button></div><p id="rp-club-status" class="rp-club-status" role="status" aria-live="polite"></p>';
+    startRpClubChatPolling(club.id);
+    return;
+  }
+  const canCreate = accountClient.hasSession && (!authError || authError.message !== 'SESSION_EXPIRED');
+  const invitationHtml = invitations.map(invite => '<article class="rp-club-directory-item rp-club-invitation"><div class="rp-club-directory-mark">' + escapeHTML(invite.club.tag) + '</div><div class="rp-club-directory-copy"><b>' + escapeHTML(invite.club.name) + '</b><small>INVITATION · ' + invite.club.memberCount + '/' + invite.club.capacity + ' MEMBRES</small><p>' + escapeHTML(invite.club.description || 'Invitation à rejoindre cette communauté') + '</p></div><button type="button" class="rp-club-accept" data-action="rp-club-invitation" data-club="' + escapeHTML(invite.club.id) + '" data-invitation="' + escapeHTML(invite.id) + '" data-decision="accept">ACCEPTER</button><button type="button" class="rp-club-reject" data-action="rp-club-invitation" data-club="' + escapeHTML(invite.club.id) + '" data-invitation="' + escapeHTML(invite.id) + '" data-decision="reject">REFUSER</button></article>').join('');
+  const directoryHtml = (directory.clubs || []).map(club => '<article class="rp-club-directory-item"><div class="rp-club-directory-mark">' + escapeHTML(club.tag) + '</div><div class="rp-club-directory-copy"><b>' + escapeHTML(club.name) + '</b><small>NIVEAU ' + club.level + ' · ' + club.memberCount + '/' + club.capacity + ' MEMBRES</small><p>' + escapeHTML(club.description || 'Communauté Football RP') + '</p></div><button type="button" data-action="rp-club-join" data-club="' + escapeHTML(club.id) + '" ' + (canCreate ? '' : 'disabled') + '>DEMANDER À REJOINDRE</button></article>').join('');
+  host.innerHTML = '<section class="rp-club-intro"><span class="eyebrow">CLAN DLS · ADAPTATION FOOTBALL RP</span><h2>Formez votre Club RP</h2><p>Rassemblez des joueurs, recrutez des membres et construisez votre communauté. Votre Club RP est indépendant de votre équipe de championnat.</p></section>' +
+    (invitations.length ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">INVITATIONS REÇUES</span><h3>Rejoindre un Club RP</h3></div><b>' + invitations.length + '</b></div><div class="rp-club-directory-list">' + invitationHtml + '</div></section>' : '') +
+    (canCreate ? '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">NOUVEAU GROUPEMENT</span><h3>Créer un Club RP</h3></div></div><div class="rp-club-create-grid"><label>Nom du club<input id="rp-club-name" maxlength="24" placeholder="Ex. Kintana United"></label><label>Sigle<input id="rp-club-tag" maxlength="5" placeholder="KIN"></label><label class="rp-club-description-field">Description<input id="rp-club-description" maxlength="120" placeholder="Présentez votre communauté"></label></div><button type="button" class="rp-club-create" data-action="rp-club-create">CRÉER LE CLUB</button></section>' :
+      '<section class="rp-club-panel rp-club-account-required"><b>COMPTE P27 REQUIS</b><p>' + escapeHTML(rpClubErrorMessage(authError)) + ' La consultation de l’annuaire reste disponible.</p><button type="button" data-page="player">OUVRIR MON PROFIL</button></section>') +
+    '<section class="rp-club-panel"><div class="rp-club-panel-heading"><div><span class="eyebrow">COMMUNAUTÉ P27</span><h3>Clubs RP disponibles</h3></div><b>' + (directory.total || 0) + '</b></div><div class="rp-club-directory-list">' + (directoryHtml || '<p class="notice">Aucun Club RP n’a encore été créé.</p>') + '</div></section><p id="rp-club-status" class="rp-club-status" role="status" aria-live="polite"></p>';
+}
+async function performRpClubAction(action, button) {
+  try {
+    if (action === 'rp-club-create') {
+      await rpClubApi('', { method:'POST', body:JSON.stringify({ name:document.getElementById('rp-club-name')?.value || '', tag:document.getElementById('rp-club-tag')?.value || '', description:document.getElementById('rp-club-description')?.value || '' }) });
+    } else if (action === 'rp-club-join') {
+      await rpClubApi('/' + button.dataset.club + '/join-requests', { method:'POST' });
+    } else if (action === 'rp-club-decision') {
+      await rpClubApi('/' + button.dataset.club + '/join-requests/' + button.dataset.request + '/decision', { method:'POST', body:JSON.stringify({ decision:button.dataset.decision }) });
+    } else if (action === 'rp-club-role') {
+      const playerId = button.dataset.player;
+      const role = document.getElementById('rp-club-role-' + playerId)?.value || 'member';
+      await rpClubApi('/' + button.dataset.club + '/members/' + playerId + '/role', { method:'POST', body:JSON.stringify({ role }) });
+    } else if (action === 'rp-club-transfer-presidency') {
+      if (!window.confirm('Transférer la présidence à ' + button.dataset.name + ' ? Vous conserverez le statut de fondateur, sans les pouvoirs du président.')) return;
+      await rpClubApi('/' + button.dataset.club + '/presidency/transfer', { method:'POST', body:JSON.stringify({ playerId:button.dataset.player }) });
+    } else if (action === 'rp-club-remove-member') {
+      if (!window.confirm('Exclure ' + button.dataset.name + ' du Club RP ? Cette action sera inscrite au journal.')) return;
+      await rpClubApi('/' + button.dataset.club + '/members/' + button.dataset.player + '/remove', { method:'POST' });
+    } else if (action === 'rp-club-send-invite') {
+      await rpClubApi('/' + button.dataset.club + '/invitations', { method:'POST', body:JSON.stringify({ playerId:document.getElementById('rp-club-invite-player')?.value || '' }) });
+    } else if (action === 'rp-club-invitation') {
+      await rpClubApi('/' + button.dataset.club + '/invitations/' + button.dataset.invitation + '/decision', { method:'POST', body:JSON.stringify({ decision:button.dataset.decision }) });
+    } else if (action === 'rp-club-challenge') {
+      await rpClubApi('/' + button.dataset.club + '/challenges', { method:'POST' });
+    } else if (action === 'rp-club-challenge-match') {
+      const result = await rpClubApi('/challenges/' + button.dataset.challenge + '/match', { method:'POST' });
+      if (result.room?.id) setRpClubStatus('Salon de match créé : ' + result.room.id + '. Les membres autorisés peuvent rejoindre ce salon.');
+    } else if (action === 'rp-club-challenge-decision') {
+      const decision = button.dataset.decision;
+      const input = document.getElementById('rp-club-date-' + button.dataset.challenge);
+      const scheduledAt = decision === 'accept' && input?.value ? new Date(input.value).toISOString() : null;
+      if (decision === 'accept' && (!scheduledAt || !Number.isFinite(Date.parse(scheduledAt)))) throw new Error('INVALID_RP_CLUB_CHALLENGE_DATE');
+      await rpClubApi('/challenges/' + button.dataset.challenge + '/decision', { method:'POST', body:JSON.stringify({ decision, scheduledAt }) });
+    } else if (action === 'rp-club-season-select') {
+      await loadRpClubPage(button.dataset.season);
+      return;
+    } else if (action === 'rp-club-message') {
+      const input = document.getElementById('rp-club-chat-input');
+      const messageText = input?.value || '';
+      await rpClubApi('/' + button.dataset.club + '/messages', { method:'POST', body:JSON.stringify({ text:messageText }) });
+      if (input) input.value = '';
+    } else if (action === 'rp-club-leave') {
+      await rpClubApi('/' + button.dataset.club + '/leave', { method:'POST' });
+    }
+    await loadRpClubPage();
+    setRpClubStatus('Modification enregistrée.');
+  } catch (error) { setRpClubStatus(rpClubErrorMessage(error), true); }
+}
+
 function renderPage(page = 'home') {
+  stopRpClubChatPolling();
   syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
   if (page !== 'results') resultsRequestSequence++;
   disposeAvatarPreview();
@@ -489,12 +718,21 @@ function renderPage(page = 'home') {
   if (content) content.scrollTop = 0;
   const title = document.getElementById('menu-page-title');
   const subtitle = document.getElementById('menu-page-subtitle');
-  const topName = document.getElementById('p27-top-player-name');
-  const topClub = document.getElementById('p27-top-player-club');
-  if (topName) topName.textContent = profileStore.profile.identity.displayName || 'Nouveau joueur';
+  const headerProfile = profileStore.profile;
+  const headerLevel = Number(headerProfile.progression.level) || 1;
+  const headerNeed = Math.max(1, headerLevel * 100);
+  const headerProgress = headerLevel >= 99 ? 100 : Math.max(0,Math.min(100,Math.round((Number(headerProfile.progression.experience || 0)/headerNeed)*100)));
+  const initials = String(headerProfile.identity.displayName || 'P27').trim().split(/\s+/).map(part=>part[0] || '').join('').slice(0,2).toUpperCase() || 'P27';
   const topCoins = document.getElementById('p27-top-player-coins');
-  if (topCoins) topCoins.textContent = Number(profileStore.profile.progression.coins || 0).toLocaleString('fr-FR');
-  if (topClub) topClub.textContent = career.clubId ? (clubs.getClub(career.clubId)?.name || 'Sans club') : 'Sans club';
+  const topLevel = document.getElementById('p27-top-player-level');
+  const topAvatar = document.getElementById('p27-top-player-avatar');
+  const topProfileLevel = document.getElementById('p27-profile-level');
+  const topProgress = document.getElementById('p27-career-progress-fill');
+  if (topCoins) topCoins.textContent = Number(headerProfile.progression.coins || 0).toLocaleString('fr-FR');
+  if (topLevel) topLevel.textContent = String(headerLevel);
+  if (topProfileLevel) topProfileLevel.textContent = String(headerLevel);
+  if (topAvatar) topAvatar.textContent = initials;
+  if (topProgress) topProgress.style.width = String(headerProgress) + '%';
   const menuRoot = document.getElementById('main-menu');
   if (menuRoot) menuRoot.classList.toggle('p27-home-active', page === 'home');
   const backButton = document.querySelector('.p27-back-home');
@@ -522,7 +760,15 @@ function renderPage(page = 'home') {
     title.textContent = page === 'career-hub' ? 'Carrière' : 'Football RP Online';
     subtitle.textContent = page === 'career-hub' ? 'Votre parcours et votre progression.' : 'Choisissez votre prochaine étape.';
     const level = Number(profile.progression.level) || 1;
-    const stars = Math.max(1, Math.min(5, Math.ceil(level / 20)));
+    const xpNeeded = Math.max(1, level * 100);
+    const xpProgress = level >= 99 ? 100 : Math.max(0, Math.min(100, Math.round((Number(profile.progression.experience || 0) / xpNeeded) * 100)));
+    const attributeValues = Object.values(profile.progression.attributes || {}).map(value => Number(value) || 0);
+    const overall = attributeValues.length ? Math.round(attributeValues.reduce((sum,value)=>sum+value,0)/attributeValues.length) : 0;
+    const pendingOffers = [...career.offers.values()].filter(offer => offer.status === 'pending').length;
+    const seasonSnapshot = seasonStats.snapshot();
+    const seasonTotals = seasonSnapshot.totals || {};
+    const latestMatch = seasonSnapshot.matches.slice(-1)[0] || null;
+    const recentForm = Array.isArray(seasonSnapshot.currentForm) ? seasonSnapshot.currentForm.slice(-5) : [];
     content.innerHTML = page === 'career-hub' ? `
       <section class="p27-dls-career">
         <div class="p27-dls-career-banner">
@@ -530,73 +776,125 @@ function renderPage(page = 'home') {
             <span class="p27-game-kicker">CARRIÈRE · SAISON EN COURS</span>
             <h2>VOTRE PROCHAINE SAISON COMMENCE ICI</h2>
             <p>${escapeHTML(profile.identity.displayName)} · NIVEAU ${level} · ${escapeHTML(clubLabel)}</p>
+            <div class="p27-dls-career-form"><span>FORME RÉCENTE</span><div>${recentForm.length ? recentForm.map(match => '<i class="p27-form-chip ' + escapeHTML(match.result) + '">' + (match.result === 'win' ? 'V' : match.result === 'draw' ? 'N' : 'D') + '</i>').join('') : '<small>Aucun match validé</small>'}</div><small>${Number(seasonTotals.matches || 0)} MATCHS · ${Number(seasonTotals.goals || 0)} BUTS · ${Number(seasonTotals.assists || 0)} PASSES D.</small></div>
           </div>
-          <div class="p27-career-rating"><small>NIVEAU</small><strong>${level}</strong><span>JOUEUR</span></div>
+          <div class="p27-career-rating"><small>NOTE GLOBALE</small><strong>${overall}</strong><span>JOUEUR</span></div>
         </div>
         <div class="p27-dls-career-grid" aria-label="Gestion de carrière">
           <button class="p27-dls-mode p27-dls-next" data-action="choose-match"><span class="p27-dls-mode-kicker">PROCHAIN MATCH</span><span class="p27-dls-mode-art"><b>VS</b><i>⚽</i></span><strong>JOUER</strong><small>Préparer une rencontre amicale</small><em>›</em></button>
           <button class="p27-dls-mode p27-dls-team" data-page="players"><span class="p27-dls-mode-kicker">GESTION DE L'ÉQUIPE</span><span class="p27-dls-mode-art"><b>XI</b><i>♟</i></span><strong>EFFECTIF</strong><small>Joueurs, postes et profils</small><em>›</em></button>
           <button class="p27-dls-mode p27-dls-transfers" data-page="mercato"><span class="p27-dls-mode-kicker">MARCHÉ DES TRANSFERTS</span><span class="p27-dls-mode-art"><b>⇄</b><i>✦</i></span><strong>TRANSFERTS</strong><small>Contrats et opportunités</small><em>›</em></button>
-          <button class="p27-dls-mode p27-dls-club" data-page="clubs"><span class="p27-dls-mode-kicker">VOTRE INSTITUTION</span><span class="p27-dls-mode-art"><b>♜</b><i>★</i></span><strong>MON CLUB</strong><small>${escapeHTML(clubLabel)}</small><em>›</em></button>
+          <button class="p27-dls-mode p27-dls-club" data-page="clubs"><span class="p27-dls-mode-kicker">ÉQUIPE DE CHAMPIONNAT</span><span class="p27-dls-mode-art"><b>XI</b><i>♜</i></span><strong>MON ÉQUIPE</strong><small>${escapeHTML(clubLabel)}</small><em>›</em></button>
         </div>
         <div class="p27-dls-career-footer">
-          <div><small>CRÉDITS DISPONIBLES</small><strong>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</strong></div>
+          <div><small>PIÈCES DISPONIBLES</small><strong>${Number(profile.progression.coins||0).toLocaleString('fr-FR')}</strong></div>
           <div><small>POINTS D'ENTRAÎNEMENT</small><strong>${Number(profile.progression.trainingPoints||0).toLocaleString('fr-FR')}</strong></div>
+          <div><small>NOTE MOYENNE</small><strong>${seasonSnapshot.averageRating === null ? '—' : Number(seasonSnapshot.averageRating).toFixed(1) + '/10'}</strong></div>
+          <button data-page="results">DERNIERS MATCHS <b>›</b></button>
           <button data-page="player">FICHE JOUEUR <b>›</b></button>
         </div>
-      </section>` : `\n      <section class="p27-home-tiles" aria-label="Modes et rubriques">
-        <button class="p27-tile p27-tile-career" data-page="career-hub"><span class="p27-tile-title">CARRIÈRE <i>›</i></span><span class="p27-tile-art"><b>★</b><small>${'★'.repeat(stars)}${'☆'.repeat(5-stars)} · NIVEAU ${level}</small></span><span class="p27-tile-info">Votre parcours et votre progression</span></button>
-        <button class="p27-tile p27-tile-friendly" data-action="choose-match"><span class="p27-tile-title">MATCH AMICAL <i>›</i></span><span class="p27-tile-art"><b>⚽</b></span><span class="p27-tile-info">Jouer un match 5 contre 5</span></button>
-        <button class="p27-tile p27-tile-player" data-page="player"><span class="p27-tile-title">MON JOUEUR <i>›</i></span><span class="p27-tile-art p27-tile-avatar"><b>♟</b></span><span class="p27-tile-info">${escapeHTML(profile.identity.displayName)}</span></button>
-        <button class="p27-tile p27-tile-compet" data-page="competitions"><span class="p27-tile-title">COMPÉTITIONS <i>›</i></span><span class="p27-tile-art"><b>🏆</b></span><span class="p27-tile-info">Championnats et coupes</span></button>
-        <button class="p27-tile p27-tile-market" data-page="mercato"><span class="p27-tile-title">MERCATO <i>›</i></span><span class="p27-tile-art"><b>⇄</b></span><span class="p27-tile-info">Transferts et contrats</span></button>
-        <button class="p27-tile p27-tile-rank" data-page="competitions" data-view="rankings"><span class="p27-tile-title">CLASSEMENTS <i>›</i></span><span class="p27-tile-art"><b>▤</b></span><span class="p27-tile-info">Voir les positions des clubs</span></button>
-        <button class="p27-tile p27-tile-clubs" data-page="clubs"><span class="p27-tile-title">CLUBS <i>›</i></span><span class="p27-tile-art"><b>⬟</b></span><span class="p27-tile-info">Explorer les clubs</span></button>
-        <button class="p27-tile p27-tile-results" data-page="results"><span class="p27-tile-title">RÉSULTATS <i>›</i></span><span class="p27-tile-art"><b>▣</b></span><span class="p27-tile-info">Historique des rencontres</span></button>
+      </section>` : `<section class="p27-dls-home" aria-label="Accueil du jeu">
+        <article class="p27-hub-career">
+          <div class="p27-hub-career-copy">
+            <span class="p27-hub-kicker">MODE CARRIÈRE · SAISON PERSONNELLE</span>
+            <h2>CARRIÈRE</h2>
+            <p>${escapeHTML(profile.identity.displayName || 'Votre joueur')} · ${escapeHTML(clubLabel)} · NIVEAU ${level}</p>
+            <div class="p27-hub-xp"><span>PROGRESSION</span><div><i style="width:${xpProgress}%"></i></div><b>${xpProgress}% </b></div>
+            <button data-page="career-hub">ACCÉDER À LA CARRIÈRE <span>›</span></button>
+          </div>
+          <div class="p27-hub-rating"><small>NOTE GLOBALE</small><strong>${overall}</strong><span>JOUEUR</span></div>
+          <div class="p27-hub-watermark" aria-hidden="true">P27</div>
+        </article>
+        <button class="p27-hub-panel p27-hub-match" data-action="choose-match">
+          <span class="p27-hub-kicker">JOUER</span><strong>MATCH AMICAL</strong><small>5 contre 5 · Local</small><i>›</i>
+        </button>
+        <button class="p27-hub-panel p27-hub-player" data-page="player">
+          <span class="p27-hub-kicker">PERSONNALISATION</span><strong>MON JOUEUR</strong><small>Niveau ${level} · Profil et apparence</small><i>›</i>
+        </button>
+        <button class="p27-hub-panel p27-hub-competitions" data-page="competitions">
+          <span class="p27-hub-kicker">SAISON</span><strong>COMPÉTITIONS</strong><small>${clubs.listDivisions().length} divisions</small><i>›</i>
+        </button>
+        <button class="p27-hub-panel p27-hub-market" data-page="mercato">
+          <span class="p27-hub-kicker">TRANSFERTS</span><strong>MERCATO</strong><small>${pendingOffers} offre(s) en attente · Bibliothèques</small><i>›</i>
+        </button>
+        <button class="p27-hub-panel p27-hub-rankings" data-page="rankings">
+          <span class="p27-hub-kicker">MONDE COMPÉTITIF</span><strong>CLASSEMENTS</strong><small>Positions officielles</small><i>›</i>
+        </button>
+        <button class="p27-hub-panel p27-hub-club" data-page="rp-club">
+          <span class="p27-hub-kicker">COMMUNAUTÉ</span><strong>CLUBS</strong><small>Créer ou rejoindre un Club RP</small><i>›</i>
+        </button>
+        <button class="p27-hub-panel p27-hub-results" data-page="results">
+          <span class="p27-hub-kicker">HISTORIQUE</span><strong>RÉSULTATS</strong><small>${latestMatch ? `${latestMatch.result === 'win' ? 'Victoire' : latestMatch.result === 'draw' ? 'Match nul' : 'Défaite'} · ${latestMatch.rating.toFixed(1)}/10` : 'Aucun match enregistré'}</small><i>›</i>
+        </button>
       </section>`;
+  } else if (page === 'boutique') {
+    title.textContent = 'Boutique joueur'; subtitle.textContent = 'Articles personnels · pièces · inventaire';
+    content.innerHTML = '<div id="p27-player-shop-mount"></div>';
+    mountPlayerShop(document.getElementById('p27-player-shop-mount'), accountClient, renderPage);
+  } else if (page === 'boutique-club') {
+    title.textContent = 'Boutique du club'; subtitle.textContent = 'TRÉSORERIE · PERSONNALISATION · INVENTAIRE';
+    content.innerHTML = '<div id="p27-club-shop-mount"></div>';
+    mountClubShop(document.getElementById('p27-club-shop-mount'), accountClient, renderPage);
   } else if (page === 'player') {
     const p = profileStore.profile;
     const a = p.progression.attributes;
+    let shopAppearance = {};
+    try { shopAppearance = JSON.parse(localStorage.getItem('fpro.player-shop-equipped.v1') || '{}') || {}; } catch {}
+    const profileFrame = ['profile-frame-standard','profile-frame-rare','profile-frame-premium'].includes(shopAppearance['profile-frames']) ? shopAppearance['profile-frames'] : '';
+    const profileBackground = ['profile-background-standard','profile-background-rare','profile-background-premium'].includes(shopAppearance['profile-backgrounds']) ? shopAppearance['profile-backgrounds'] : '';
     const seasonSnapshot = seasonStats.snapshot();
     const season = seasonSnapshot.totals;
     const recent = seasonSnapshot.matches.slice(-8).reverse();
     title.textContent = 'MON JOUEUR'; subtitle.textContent = 'PROFIL · APPARENCE · PROGRESSION';
-    content.innerHTML = `<div class="profile-layout"><div class="player-card"><div id="avatar-preview" class="avatar-preview-stage" role="img" aria-label="Aperçu 3D de votre footballeur personnalisé"><span>${escapeHTML(p.identity.number)}</span></div><span class="eyebrow">JOUEUR · NIVEAU ${p.progression.level}</span><h2>${escapeHTML(p.identity.displayName)}</h2><p>${countryFlag(playerOptions.nationality)} ${escapeHTML(countryOptions.find(item => item.code === playerOptions.nationality)?.name || playerOptions.nationality)} · ${escapeHTML(playerOptions.position)} · Pied ${p.identity.preferredFoot === 'left' ? 'gauche' : 'droit'}</p><div class="profile-meta"><span>${p.progression.coins} <small>CRÉDITS</small></span><span>${p.progression.trainingPoints} <small>POINTS D'ENTRAÎNEMENT</small></span></div></div><div class="attribute-list">${Object.entries(a).map(([key,val])=>`<div><span>${({pace:'Vitesse',shooting:'Finition',passing:'Passe',defense:'Défense',stamina:'Endurance',control:'Contrôle'})[key]}</span><b>${val}</b><i><em style="width:${val}%"></em></i></div>`).join('')}</div></div>
+    content.innerHTML = `<div class="profile-layout"><div class="player-card p27-shop-profile-card ${profileBackground}"><div id="avatar-preview" class="avatar-preview-stage ${profileFrame}" role="img" aria-label="Aperçu 3D de votre footballeur personnalisé"><span>${escapeHTML(p.identity.number)}</span></div><span class="eyebrow">JOUEUR · NIVEAU ${p.progression.level}</span><h2>${escapeHTML(p.identity.displayName)}</h2><p>${countryFlag(playerOptions.nationality)} ${escapeHTML(countryOptions.find(item => item.code === playerOptions.nationality)?.name || playerOptions.nationality)} · ${escapeHTML(playerOptions.position)} · Pied ${p.identity.preferredFoot === 'left' ? 'gauche' : 'droit'}</p><div class="profile-meta"><span>${p.progression.coins} <small>CRÉDITS</small></span><span>${p.progression.trainingPoints} <small>POINTS D'ENTRAÎNEMENT</small></span></div></div><div class="attribute-list">${Object.entries(a).map(([key,val])=>`<div><span>${({pace:'Vitesse',shooting:'Finition',passing:'Passe',defense:'Défense',stamina:'Endurance',control:'Contrôle'})[key]}</span><b>${val}</b><i><em style="width:${val}%"></em></i></div>`).join('')}</div></div>
 ${renderGoogleProtectionCard({ compact: true })}
       <section class="competition-panel player-stats-panel"><div class="panel-heading"><div><span class="eyebrow">SAISON EN COURS · SAUVEGARDÉE SUR CET APPAREIL</span><h2>Statistiques personnelles</h2></div></div><div class="quick-grid"><div class="quick-card"><b>${season.matches}</b><small>Matchs</small></div><div class="quick-card"><b>${Math.floor(season.minutesPlayedMs/60000)}</b><small>Minutes</small></div><div class="quick-card"><b>${season.goals}</b><small>Buts</small></div><div class="quick-card"><b>${season.assists}</b><small>Passes décisives</small></div><div class="quick-card"><b>${season.passes ? Math.round(season.completedPasses/season.passes*100) : 0}%</b><small>Précision passes</small></div><div class="quick-card"><b>${season.playerOfMatch}</b><small>Homme du match</small></div><div class="quick-card"><b>${season.tackles}</b><small>Tacles</small></div><div class="quick-card"><b>${season.interceptions}</b><small>Interceptions</small></div></div><div class="career-form"><div class="panel-heading"><div><span class="eyebrow">DYNAMIQUE RÉCENTE</span><h3>Forme · 5 derniers matchs</h3></div><b>${seasonSnapshot.averageRating === null ? '—' : seasonSnapshot.averageRating.toFixed(1)+'/10'} <small>MOYENNE</small></b></div><div class="form-strip">${seasonSnapshot.currentForm.length ? seasonSnapshot.currentForm.map(m=>`<span class="form-chip ${m.result}" title="${new Date(m.date).toLocaleDateString('fr-FR')} · ${m.rating.toFixed(1)}/10">${m.result==='win'?'V':m.result==='draw'?'N':'D'}<small>${m.rating.toFixed(1)}</small></span>`).join('') : '<span class="notice">La forme apparaîtra après vos premiers matchs.</span>'}</div></div>${recent.length ? `<div class="history-list">${recent.map(m=>`<div><b>${m.rating.toFixed(1)} / 10 ${m.playerOfMatch?'★':''}</b><span>${m.result==='win'?'Victoire':m.result==='draw'?'Nul':'Défaite'} · ${m.goals} but(s) · ${m.assists} passe(s) décisive(s)${m.opponent?' · '+escapeHTML(m.opponent):''}</span><small>${Math.floor(m.minutesPlayedMs/60000)} min · ${new Date(m.date).toLocaleDateString('fr-FR')}</small></div>`).join('')}</div>` : '<p class="notice">Aucun match enregistré pour le moment.</p>'}<p class="notice">Historique et statistiques enregistrés sur cet appareil. Les notes en ligne proviennent du rapport autoritaire du serveur.</p></section>
-      <section class="profile-editor" id="profile-editor"><h3>Personnaliser mon joueur</h3><div class="editor-grid"><label>Nom affiché<input name="displayName" maxlength="20" value="${escapeHTML(p.identity.displayName)}" required></label><label>Numéro<input name="number" type="number" min="1" max="99" value="${p.identity.number}" required></label></div>${renderPositionPicker()}${renderCountryPicker()}<div class="player-visual-customizer">${renderVisualChoices('PIED PRÉFÉRÉ','preferredFoot',[{value:'right',label:'Droit'},{value:'left',label:'Gauche'}],p.identity.preferredFoot)}${renderVisualChoices('TENUE','kit',[{value:'emerald',label:'Émeraude',swatch:'#16834a'},{value:'crimson',label:'Rouge',swatch:'#dc3a32'},{value:'gold',label:'Or',swatch:'#d7a928'},{value:'violet',label:'Violet',swatch:'#8054c7'},{value:'monochrome',label:'Noir & blanc',swatch:'#d5dbe3'}],p.appearance.kit)}${renderVisualChoices('TEINT','skinTone',[{value:'light',label:'Clair',swatch:'#e9c6a5'},{value:'medium',label:'Moyen',swatch:'#bd8a65'},{value:'dark',label:'Foncé',swatch:'#70452f'}],p.appearance.skinTone)}${renderVisualChoices('COIFFURE','hairStyle',[{value:'short',label:'Courte'},{value:'curly',label:'Bouclée'},{value:'afro',label:'Afro'},{value:'fade',label:'Dégradé'},{value:'shaved',label:'Rasée'}],p.appearance.hairStyle)}${renderVisualChoices('MORPHOLOGIE','bodyBuild',[{value:'lean',label:'Fine'},{value:'athletic',label:'Athlétique'},{value:'strong',label:'Puissante'}],p.appearance.bodyBuild)}${renderVisualChoices('CHEVEUX','hairColor',[{value:'dark',label:'Noir',swatch:'#171717'},{value:'brown',label:'Brun',swatch:'#68452f'},{value:'blond',label:'Blond',swatch:'#d6b76c'}],p.appearance.hairColor)}</div><button class="primary-cta" type="button" data-action="save-player-editor">ENREGISTRER MON JOUEUR</button><p class="notice" id="profile-save-status">Personnalisation enregistrée localement sur cet appareil.</p></section>
+      <section class="profile-editor" id="profile-editor"><h3>Personnaliser mon joueur</h3><div class="editor-grid"><label>Nom affiché<input name="displayName" maxlength="20" value="${escapeHTML(p.identity.displayName)}" required></label><label>Numéro<input name="number" type="number" min="1" max="99" value="${p.identity.number}" required></label></div>${renderPositionPicker()}${renderCountryPicker()}<div class="player-visual-customizer">${renderVisualChoices('PIED PRÉFÉRÉ','preferredFoot',[{value:'right',label:'Droit'},{value:'left',label:'Gauche'},{value:'both',label:'Ambidextre'}],p.identity.preferredFoot)}${renderVisualChoices('TENUE','kit',[{value:'emerald',label:'Émeraude',swatch:'#16834a'},{value:'crimson',label:'Rouge',swatch:'#dc3a32'},{value:'gold',label:'Or',swatch:'#d7a928'},{value:'violet',label:'Violet',swatch:'#8054c7'},{value:'monochrome',label:'Noir & blanc',swatch:'#d5dbe3'}],p.appearance.kit)}${renderVisualChoices('TEINT','skinTone',[{value:'light',label:'Clair',swatch:'#e9c6a5'},{value:'medium',label:'Moyen',swatch:'#bd8a65'},{value:'dark',label:'Foncé',swatch:'#70452f'}],p.appearance.skinTone)}${renderVisualChoices('COIFFURE','hairStyle',[{value:'short',label:'Courte'},{value:'curly',label:'Bouclée'},{value:'afro',label:'Afro'},{value:'fade',label:'Dégradé'},{value:'shaved',label:'Rasée'}],p.appearance.hairStyle)}${renderVisualChoices('MORPHOLOGIE','bodyBuild',[{value:'lean',label:'Fine'},{value:'athletic',label:'Athlétique'},{value:'strong',label:'Puissante'}],p.appearance.bodyBuild)}${renderVisualChoices('CHEVEUX','hairColor',[{value:'dark',label:'Noir',swatch:'#171717'},{value:'brown',label:'Brun',swatch:'#68452f'},{value:'blond',label:'Blond',swatch:'#d6b76c'}],p.appearance.hairColor)}${renderVisualChoices('VISAGE','faceShape',[{value:'oval',label:'Ovale'},{value:'round',label:'Rond'},{value:'angular',label:'Anguleux'},{value:'long',label:'Allongé'},{value:'square',label:'Carré'}],p.appearance.faceShape)}${renderVisualChoices('REGARD','eyeShape',[{value:'almond',label:'En amande'},{value:'round',label:'Rond'},{value:'hooded',label:'Tombant'}],p.appearance.eyeShape)}}</div><button class="primary-cta" type="button" data-action="save-player-editor">ENREGISTRER MON JOUEUR</button><p class="notice" id="profile-save-status">Personnalisation enregistrée localement sur cet appareil.</p></section>
       <section class="profile-editor training-panel"><h3>Centre d’entraînement</h3><p>Choisis comment financer ta progression : séance individuelle avec crédits et expérience, ou entraînement encadré avec les points gagnés à chaque niveau.</p><div class="training-controls"><label>Capacité<select id="practice-attribute"><option value="pace">Vitesse</option><option value="shooting">Finition</option><option value="passing">Passe</option><option value="defense">Défense</option><option value="stamina">Endurance</option><option value="control">Contrôle</option></select></label><label>Programme<select id="training-method"><option value="practice">Séance individuelle · 80 crédits / point + XP</option><option value="train">Entraînement encadré · 1 point d’entraînement + 40 crédits / point</option></select></label><label>Intensité<select id="practice-amount"><option value="1">Légère · 1 point</option><option value="2">Moyenne · 2 points</option><option value="3">Intense · 3 points</option></select></label><button class="small-action" data-action="practice-player">EFFECTUER LA SÉANCE</button></div><p class="notice">Crédits : ${p.progression.coins} · Points d’entraînement : ${p.progression.trainingPoints} · Attributs plafonnés à 99.</p></section>`;
     mountAvatarPreview(p);
   } else if (page === 'players') {
-    const rosterPlayers=clubs.listClubs().flatMap(club=>club.roster.map(player=>({...player,clubId:club.id,clubName:club.name,clubDivision:club.division})));
-    playerLibraryProfiles = rosterPlayers.map(player => ({...player,careerPlayerId:`club-${player.clubId}-${player.id}`}));
+    const directoryClubs=clubs.listClubs();
+    const firstPlayerPage=listP27Players({clubs:directoryClubs,filters:{limit:100,offset:0}});
+    const rosterPlayers=[...firstPlayerPage.players];
+    for(let offset=firstPlayerPage.limit;offset<firstPlayerPage.total;offset+=firstPlayerPage.limit){
+      rosterPlayers.push(...listP27Players({clubs:directoryClubs,filters:{limit:firstPlayerPage.limit,offset}}).players);
+    }
+    rosterPlayers.forEach(player=>{
+      player.clubDivision=player.division||'';
+      player.clubName=player.clubName||null;
+      player.careerPlayerId=`club-${player.clubId||player.lastClubId||'unknown'}-${player.id}`;
+    });
+    playerLibraryProfiles = rosterPlayers;
     const roleNames={GK:'Gardien',DEF:'Défenseur',MID:'Milieu',FWD:'Attaquant'};
     const average=rosterPlayers.length?Math.round(rosterPlayers.reduce((sum,p)=>sum+p.rating,0)/rosterPlayers.length):0;
     playerLibraryLimit=24;
     title.textContent='Bibliothèque des joueurs';
-    subtitle.textContent='Explorez les joueurs des effectifs connus, comparez leurs notes et leurs potentiels.';
+    subtitle.textContent='Effectifs, joueurs libres et prêts · comparez les notes et les potentiels.';
     content.innerHTML=`<div class="player-library">
-      <div class="player-library-overview"><div><b>${rosterPlayers.length}</b><span>JOUEURS RÉPERTORIÉS</span></div><div><b>${clubs.listClubs().length}</b><span>CLUBS COUVERTS</span></div><div><b>${average}</b><span>NOTE MOYENNE</span></div><div><b>${rosterPlayers.filter(p=>p.nationality==='MG').length}</b><span>JOUEURS MALGACHES</span></div></div>
+      <div class="player-library-overview"><div><b>${firstPlayerPage.total}</b><span>JOUEURS RÉPERTORIÉS</span></div><div><b>${directoryClubs.length}</b><span>CLUBS COUVERTS</span></div><div><b>${firstPlayerPage.facets.statuses.free}</b><span>JOUEURS LIBRES</span></div><div><b>${average}</b><span>NOTE MOYENNE</span></div></div>
       <div class="player-library-toolbar">
         <label><span>RECHERCHE</span><input id="library-search" type="search" placeholder="Nom, archétype…" autocomplete="off"></label>
         <label><span>CLUB</span><select id="library-club"><option value="all">Tous les clubs</option>${clubs.listClubs().map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('')}</select></label>
         <label><span>POSTE</span><select id="library-role"><option value="all">Tous les postes</option><option value="GK">Gardiens</option><option value="DEF">Défenseurs</option><option value="MID">Milieux</option><option value="FWD">Attaquants</option></select></label>
+        <label><span>STATUT</span><select id="library-status"><option value="all">Tous</option><option value="active">Sous contrat</option><option value="free">Joueurs libres</option><option value="loaned">En prêt</option></select></label>
+        <label><span>ORIGINE</span><select id="library-type"><option value="all">Tous les joueurs</option><option value="human">Joueurs RP</option><option value="system">Joueurs du monde</option></select></label>
         <label><span>TRI</span><select id="library-sort"><option value="rating">Note générale</option><option value="potential">Potentiel</option><option value="age">Âge</option><option value="name">Nom A–Z</option></select></label>
         <label><span>NOTE MIN.</span><select id="library-min-rating"><option value="0">Toutes</option><option value="60">60+</option><option value="70">70+</option><option value="80">80+</option></select></label>
       </div>
-      <div class="player-library-resultline"><span id="library-count">${rosterPlayers.length} joueurs</span><span>DONNÉES ISSUES DES EFFECTIFS LOCAUX</span></div>
-      <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>{const origin=(player.isHuman===true||player.ownerType==='human'||player.source==='human'||player.createdBy==='user')?'human':'system';const attrs=player.attributes||{};const cardAttributes=[['RAP',attrs.pace],['ACC',attrs.acceleration],['END',attrs.stamina],['PUI',attrs.strength],['CON',attrs.control],['PAS',attrs.passing],['TIR',attrs.shooting],['TAC',attrs.defense]];return `<article class="player-library-card" role="button" tabindex="0" aria-label="Afficher la carte de ${escapeHTML(player.name)}" aria-expanded="false" data-player-profile="${index}" data-profile-origin="players" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId)}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
-        <span class="player-card-portrait" aria-hidden="true">${['👨🏽‍🦱','👱🏽‍♂️','👨🏽‍🦰','👨🏽‍🦲','👨🏽‍🦳','👨🏽‍🦲','👨🏽‍🦳','👨🏽‍🦲','👨🏽‍🦰','👨🏽‍🦰','👱🏽‍♂️','🧝🏽‍♂️'][index%12]}</span>
+      <p id="library-empty-state" class="notice player-library-empty-state" role="status" hidden>Aucun joueur ne correspond à ces critères. Modifiez la recherche ou les filtres.</p>
+      <div class="player-library-resultline"><span id="library-count">${rosterPlayers.length} joueurs</span><span>EFFECTIFS · LIBRES · PRÊTS</span></div>
+      <div class="player-library-grid" id="player-library-grid">${rosterPlayers.map((player,index)=>{const origin=(player.playerType==='human'||player.isHuman===true||player.ownerType==='human'||player.source==='human'||player.createdBy==='user')?'human':'system';const attrs=player.attributes||{};const cardAttributes=[['RAP',attrs.pace],['ACC',attrs.acceleration],['END',attrs.stamina],['PUI',attrs.strength],['CON',attrs.control],['PAS',attrs.passing],['TIR',attrs.shooting],['TAC',attrs.defense]];return `<article class="player-library-card" role="button" tabindex="0" aria-label="Afficher la carte de ${escapeHTML(player.name)}" aria-expanded="false" data-player-profile="${index}" data-profile-origin="players" data-library-card data-name="${escapeHTML(player.name.toLocaleLowerCase('fr'))}" data-archetype="${escapeHTML(player.archetype.toLocaleLowerCase('fr'))}" data-club="${escapeHTML(player.clubId||'')}" data-club-name="${escapeHTML((player.clubName||'').toLocaleLowerCase('fr'))}" data-last-club="${escapeHTML((player.lastClubName||'').toLocaleLowerCase('fr'))}" data-status="${escapeHTML(player.status||'active')}" data-type="${escapeHTML(player.playerType||'system')}" data-role="${player.role}" data-rating="${player.rating}" data-potential="${player.potential}" data-age="${player.age}" data-index="${index}">
+        ${origin==='system'?renderSystemPlayerPortrait(player,'card'):`<span class="player-card-portrait player-card-portrait-human" aria-hidden="true"><b>${escapeHTML(String(player.name||'').split(/\\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase())}</b><small>${escapeHTML(player.position||roleNames[player.role]||player.role||'')}</small></span>`}
         <span class="player-card-compact-copy">
           <span class="player-card-name-line"><i class="player-origin-dot ${origin}" aria-hidden="true"></i><strong>${escapeHTML(player.name)}</strong><b class="player-card-rating" aria-label="Note globale ${player.rating}">${player.rating}</b></span>
-          <small>${countryFlag(player.nationality)} · ${escapeHTML(player.clubName)}</small>
-          <small>${escapeHTML(player.clubDivision||'')} · ${escapeHTML(player.position||roleNames[player.role]||player.role)} · #${player.number}</small>
+          <small>${countryFlag(player.nationality)} · ${escapeHTML(player.clubName||player.lastClubName||(player.status==='free'?'Joueur libre':'Club non renseigné'))}</small>
+          <small>${player.status==='free'?'LIBRE':player.status==='loaned'?'EN PRÊT':'SOUS CONTRAT'} · ${escapeHTML(player.clubDivision||player.position||roleNames[player.role]||player.role)} · #${player.number}</small>
           <button type="button" class="player-card-more" data-action="open-player-profile" data-player-index="${index}">Voir plus ›</button>
         </span>
-        <span class="player-card-expanded-details" aria-hidden="true">${cardAttributes.map(([label,value])=>`<span><small>${label}</small><b>${value!==undefined&&value!==null&&value!==''&&Number.isFinite(Number(value))?Number(value):'—'}</b></span>`).join('')}<small class="player-card-physical">Profil physique : informations disponibles dans la fiche complète</small></span>
+        <span class="player-card-expanded-details" aria-hidden="true">${cardAttributes.map(([label,value])=>`<span><small>${label}</small><b>${value!==undefined&&value!==null&&value!==''&&Number.isFinite(Number(value))?Number(value):'—'}</b></span>`).join('')}<small class="player-card-physical">POTENTIEL ${player.potential} · ${player.status==='free'?'JOUEUR LIBRE':player.status==='loaned'?'PRÊT ACTIF':'SOUS CONTRAT'}</small></span>
       </article>`}).join('')}</div>
       <div class="player-library-footer compact-library-pagination"><span id="library-visible-count">0 affiché</span><div><button class="small-action" data-action="players-page" data-page="-1" id="library-page-prev" aria-label="Page précédente">‹</button><span id="library-page-label">1 / 1</span><button class="small-action" data-action="players-page" data-page="1" id="library-page-next" aria-label="Page suivante">›</button></div></div>
-      <p class="notice">Cette bibliothèque recense les joueurs actuellement présents dans les effectifs locaux connus. Les joueurs libres, les transferts et les prêts ne sont pas inventés : ils seront intégrés quand leurs statuts seront reliés à une source de données fiable.</p>
+      <p class="notice">Les statuts proviennent des effectifs et de l'historique des joueurs libérés. Un joueur transféré reste rattaché à son club actuel ; seuls les contrats expirés ou libérations vérifiés apparaissent comme joueurs libres.</p>
     </div>`;
     filterPlayerLibrary();
   } else if (page === 'player-detail') {
@@ -608,20 +906,27 @@ ${renderGoogleProtectionCard({ compact: true })}
     title.textContent = player.name;
     subtitle.textContent = 'Fiche joueur · identité, club actuel et parcours vérifié.';
     const initials = player.name.split(/\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase();
-    content.innerHTML = `<button class="text-cta" data-action="back-player-library">← RETOUR À LA BIBLIOTHÈQUE</button>
+    const playerStatusLabel = player.status==='free'?'JOUEUR LIBRE':player.status==='loaned'?'EN PRÊT':'SOUS CONTRAT';
+    const playerClubLabel = player.clubName || (player.lastClubName ? `Dernier club : ${player.lastClubName}` : 'Sans club');
+    content.innerHTML = `<button class="text-cta" data-action="back-player-library">← ${playerProfileReturnPage === 'clubs' ? 'RETOUR À L’EFFECTIF' : 'RETOUR À LA BIBLIOTHÈQUE'}</button>
       <section class="player-career-hero">
-        <div class="player-career-avatar"><span>#${player.number}</span><b>${escapeHTML(initials)}</b></div>
-        <div class="player-career-identity"><span class="eyebrow">${escapeHTML(player.clubDivision)} · ${escapeHTML(roleNames[player.role]||player.role)}</span><h2>${escapeHTML(player.name)}</h2><p>${escapeHTML(player.clubName)} · <span class="player-nationality"><b aria-hidden="true">${countryFlag(player.nationality)}</b>  ${escapeHTML(countryName(player.nationality))}</span> · ${player.age} ans</p><div class="player-career-tags"><span>NOTE ${player.rating}</span><span>POTENTIEL ${player.potential}</span><span>PIED ${player.preferredFoot==='left'?'GAUCHE':'DROIT'}</span></div></div>
+        ${(player.playerType==='system'||player.controlStatus==='system')&&player.isHuman!==true&&player.ownerType!=='human'&&player.source!=='human'&&player.createdBy!=='user'?renderSystemPlayerPortrait(player,'detail'):`<div class="player-career-avatar"><span>#${player.number}</span><b>${escapeHTML(initials)}</b></div>`}
+        <div class="player-career-identity"><span class="eyebrow">${escapeHTML(player.clubDivision||player.division||playerStatusLabel)} · ${escapeHTML(roleNames[player.role]||player.role)}</span><h2>${escapeHTML(player.name)}</h2><p>${escapeHTML(playerClubLabel)} · <span class="player-nationality"><b aria-hidden="true">${countryFlag(player.nationality)}</b>  ${escapeHTML(countryName(player.nationality))}</span> · ${player.age} ans</p><div class="player-career-tags"><span>NOTE ${player.rating}</span><span>POTENTIEL ${player.potential}</span><span>${playerStatusLabel}</span><span>PIED ${player.preferredFoot==='left'?'GAUCHE':player.preferredFoot==='both'?'AMBIDEXTRE':'DROIT'}</span></div></div>
       </section>
       <div class="player-career-columns">
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">IDENTITÉ SPORTIVE</span><h2>Profil technique</h2></div></div><div class="player-career-attributes">${Object.entries(attributeNames).map(([key,label])=>{const value=Number(player.attributes?.[key]??player.rating);return `<div><span>${label}</span><b>${value}</b><i><em style="width:${Math.max(0,Math.min(99,value))}%"></em></i></div>`;}).join('')}</div><p class="notice">${escapeHTML(player.archetype)} · Les attributs décrivent le joueur dans l'effectif actuel.</p></section>
-        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PARCOURS EN CLUB</span><h2>Historique des clubs</h2></div></div><div class="player-career-timeline" id="player-career-club-history"><div class="player-career-timeline-item"><i></i><div><b>${escapeHTML(player.clubName)}</b><span>Club actuel · ${escapeHTML(player.clubDivision)}</span><small>Présence dans l'effectif local</small></div><strong>ACTUEL</strong></div></div><p class="notice">Les anciens clubs et dates de transfert apparaîtront lorsqu'ils seront enregistrés par le système de mercato.</p></section>
+        <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PARCOURS EN CLUB</span><h2>Historique des clubs</h2></div></div><div class="player-career-timeline" id="player-career-club-history"><div class="player-career-timeline-item"><i></i><div><b>${escapeHTML(player.clubName||player.lastClubName||'Sans club')}</b><span>${player.status==='free'?'Dernier club connu':player.status==='loaned'?'Prêt en cours':'Club actuel'} · ${escapeHTML(player.clubDivision||player.division||'')}</span><small>${player.status==='free'?'Contrat terminé ou joueur libéré':player.status==='loaned'?'Statut de prêt enregistré':'Présence dans l’effectif local'}</small></div><strong>${player.status==='free'?'LIBRE':player.status==='loaned'?'PRÊT':'ACTUEL'}</strong></div></div><p class="notice">Les anciens clubs et dates de transfert apparaîtront lorsqu'ils seront enregistrés par le système de mercato.</p></section>
       </div>
       <div class="player-career-columns">
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">STATISTIQUES OFFICIELLES</span><h2>Matchs · buts · passes</h2></div></div><div class="player-career-empty" id="player-career-stats"><b>Chargement du parcours sportif…</b><p>Recherche des matchs validés sur le serveur.</p></div></section>
         <section class="competition-panel"><div class="panel-heading"><div><span class="eyebrow">PALMARÈS</span><h2>Coupes & trophées</h2></div></div><div class="player-career-empty"><b>Palmarès à construire</b><p>Aucun titre n'est attribué automatiquement. Les coupes et distinctions apparaîtront après les compétitions réellement disputées et leurs résultats validés.</p></div></section>
       </div>`;
     loadPlayerCareer(player);
+  } else if (page === 'rp-club') {
+    title.textContent = 'CLUB RP';
+    subtitle.textContent = 'COMMUNAUTÉ · RECRUTEMENT · VIE COLLECTIVE';
+    content.innerHTML = '<div id="rp-club-root"><div class="rp-club-loading">CHARGEMENT…</div></div>';
+    void loadRpClubPage();
   } else if (page === 'clubs') {
     const divisionLabels = { D1: 'D1 · PREMIER LEAGUE', D2: 'D2 · LIGUE 2', D3: 'D3 · NATIONAL LEAGUE', D4: 'D4 · CHALLENGER LEAGUE', D5: 'D5 · REGIONAL LEAGUE', AMATEUR: 'AMATEUR' };
     const nationalityNames = { MG:'Madagascar', FR:'France', SN:'Sénégal', BR:'Brésil', ES:'Espagne', AR:'Argentine', PT:'Portugal', JP:'Japon', NG:'Nigeria', IT:'Italie', GB:'Angleterre', KE:'Kenya' };
@@ -635,7 +940,7 @@ ${renderGoogleProtectionCard({ compact: true })}
       const roster = (selectedClub.roster || []).slice().sort((a,b) => ({GK:0,DEF:1,MID:2,FWD:3}[a.role]-({GK:0,DEF:1,MID:2,FWD:3}[b.role]) || b.rating-a.rating));
       playerLibraryProfiles = roster.map(player => ({...player,clubId:selectedClub.id,clubName:selectedClub.name,clubDivision:selectedClub.division,careerPlayerId:`club-${selectedClub.id}-${player.id}`}));
       const average = roster.length ? Math.round(roster.reduce((sum,p)=>sum+p.rating,0)/roster.length) : 0;
-      content.innerHTML = `<button class="text-cta" data-action="back-clubs">← RETOUR AUX CLUBS</button><section class="club-detail-hero">${crest(selectedClub)}<div><span class="eyebrow">${divisionLabels[selectedClub.division]}</span><h2>${escapeHTML(selectedClub.name)}</h2><p>${escapeHTML(selectedClub.city)} · ${escapeHTML(selectedClub.country)}</p><div class="club-detail-stats"><span><b>${selectedClub.rating}</b><small>NOTE CLUB</small></span><span><b>${roster.length}</b><small>JOUEURS</small></span><span><b>${average}</b><small>MOYENNE EFFECTIF</small></span><span><b>${selectedClub.reputation}</b><small>RÉPUTATION</small></span></div></div></section><section class="competition-panel roster-panel"><div class="panel-heading"><div><span class="eyebrow">EFFECTIF COMPLET</span><h2>Effectif · ${roster.length} joueurs</h2></div><span class="club-control-indicator ${selectedClub.control==='player'||selectedClub.managementType==='human'?'human':'system'}"><i></i>${selectedClub.control==='player'||selectedClub.managementType==='human'?'CLUB DIRIGÉ PAR UN JOUEUR':'CLUB DIRIGÉ PAR LE SYSTÈME'}</span></div><div class="roster-filters"><label>Rechercher un joueur<input id="roster-search" type="search" placeholder="Nom du joueur…" autocomplete="off"></label><label>Filtrer par poste<select id="roster-role"><option value="all">Tous les postes</option><option value="GK">Gardiens</option><option value="DEF">Défenseurs</option><option value="MID">Milieux</option><option value="FWD">Attaquants</option></select></label></div><div class="roster-table-wrap"><table class="roster-table"><thead><tr><th>#</th><th>JOUEUR</th><th>NATIONALITÉ</th><th>ÂGE</th><th>POSTE</th><th>NOTE</th><th>POTENTIEL</th><th>VIT.</th><th>TIR</th><th>PAS.</th><th>DÉF.</th><th>END.</th><th>CTR.</th></tr></thead><tbody id="club-roster-rows">${roster.map((player,index)=>`<tr role="button" tabindex="0" aria-label="Ouvrir le profil de ${escapeHTML(player.name)}" data-player-profile="${index}" data-profile-origin="clubs" data-player-row data-name="${escapeHTML(player.name.toLowerCase())}" data-role="${player.role}"><td>${player.number}</td><td><b>${escapeHTML(player.name)}</b><small>${escapeHTML(player.archetype)}</small></td><td><span class="nationality-cell">${escapeHTML(nationalityNames[player.nationality]||player.nationality)}</span></td><td>${player.age}</td><td>${roleNames[player.role]||player.role}</td><td><b class="player-rating">${player.rating}</b></td><td>${player.potential}</td><td>${player.attributes?.pace ?? player.rating}</td><td>${player.attributes?.shooting ?? player.rating}</td><td>${player.attributes?.passing ?? player.rating}</td><td>${player.attributes?.defense ?? player.rating}</td><td>${player.attributes?.stamina ?? player.rating}</td><td>${player.attributes?.control ?? player.rating}</td></tr>`).join('')}</tbody></table><p class="roster-empty hidden" id="roster-empty">Aucun joueur ne correspond à ces filtres.</p></div></section>${selectedClub.control==='open'?`<button class="primary-cta" data-action="take-club" data-club="${escapeHTML(selectedClub.id)}">REPRENDRE CE CLUB</button>`:''}<p class="notice">Les profils et identités sont fictifs. Les notes et potentiels sont des valeurs de jeu, pas des évaluations de personnes réelles.</p>`;
+      content.innerHTML = `<button class="text-cta" data-action="back-clubs">← RETOUR AUX CLUBS</button><section class="club-detail-hero">${crest(selectedClub)}<div><span class="eyebrow">${divisionLabels[selectedClub.division]}</span><h2>${escapeHTML(selectedClub.name)}</h2><p>${escapeHTML(selectedClub.city)} · ${escapeHTML(selectedClub.country)}</p><div class="club-detail-stats"><span><b>${selectedClub.rating}</b><small>NOTE CLUB</small></span><span><b>${roster.length}</b><small>JOUEURS</small></span><span><b>${average}</b><small>MOYENNE EFFECTIF</small></span><span><b>${selectedClub.reputation}</b><small>RÉPUTATION</small></span></div></div></section><section class="competition-panel roster-panel"><div class="panel-heading"><div><span class="eyebrow">EFFECTIF COMPLET</span><h2>Effectif · ${roster.length} joueurs</h2></div><span class="club-control-indicator ${selectedClub.control==='player'||selectedClub.managementType==='human'?'human':'system'}"><i></i>${selectedClub.control==='player'||selectedClub.managementType==='human'?'CLUB DIRIGÉ PAR UN JOUEUR':'CLUB DIRIGÉ PAR LE SYSTÈME'}</span></div><div class="roster-filters"><label>Rechercher un joueur<input id="roster-search" type="search" placeholder="Nom du joueur…" autocomplete="off"></label><label>Filtrer par poste<select id="roster-role"><option value="all">Tous les postes</option><option value="GK">Gardiens</option><option value="DEF">Défenseurs</option><option value="MID">Milieux</option><option value="FWD">Attaquants</option></select></label><span id="roster-filter-count" class="roster-filter-count" role="status" aria-live="polite">${roster.length} / ${roster.length} joueurs affichés</span></div><div class="roster-table-wrap"><table class="roster-table"><thead><tr><th>#</th><th>JOUEUR</th><th>NATIONALITÉ</th><th>ÂGE</th><th>POSTE</th><th>NOTE</th><th>POTENTIEL</th><th>VIT.</th><th>TIR</th><th>PAS.</th><th>DÉF.</th><th>END.</th><th>CTR.</th></tr></thead><tbody id="club-roster-rows">${roster.map((player,index)=>`<tr role="button" tabindex="0" aria-label="Ouvrir le profil de ${escapeHTML(player.name)}" data-player-profile="${index}" data-profile-origin="clubs" data-player-row data-name="${escapeHTML(player.name.toLowerCase())}" data-role="${player.role}"><td>${player.number}</td><td><div class="roster-player-identity">${(player.playerType==='system'||player.controlStatus==='system')&&player.isHuman!==true&&player.ownerType!=='human'&&player.source!=='human'&&player.createdBy!=='user'?renderSystemPlayerPortrait(player,'roster'):''}<span><b>${escapeHTML(player.name)}</b><small>${escapeHTML(player.archetype)}</small></span></div></td><td><span class="nationality-cell">${escapeHTML(nationalityNames[player.nationality]||player.nationality)}</span></td><td>${player.age}</td><td>${roleNames[player.role]||player.role}</td><td><b class="player-rating">${player.rating}</b></td><td>${player.potential}</td><td>${player.attributes?.pace ?? player.rating}</td><td>${player.attributes?.shooting ?? player.rating}</td><td>${player.attributes?.passing ?? player.rating}</td><td>${player.attributes?.defense ?? player.rating}</td><td>${player.attributes?.stamina ?? player.rating}</td><td>${player.attributes?.control ?? player.rating}</td></tr>`).join('')}</tbody></table><p class="roster-empty hidden" id="roster-empty">Aucun joueur ne correspond à ces filtres.</p></div></section>${selectedClub.control==='open'?`<button class="primary-cta" data-action="take-club" data-club="${escapeHTML(selectedClub.id)}">REPRENDRE CE CLUB</button>`:''}<p class="notice">Les profils et identités sont fictifs. Les notes et potentiels sont des valeurs de jeu, pas des évaluations de personnes réelles.</p>`;
     } else {
       content.innerHTML = `<div class="club-overview"><div><b>${allClubs.length}</b><span>CLUBS FONDATEURS</span></div><div><b>${allClubs.filter(c=>c.country.split('·').some(country=>country.trim()==='Madagascar')).length}</b><span>CLUBS AVEC ANCRAGE MALGACHE</span></div><div><b>${allClubs.reduce((n,c)=>n+c.roster.length,0)}</b><span>JOUEURS DU SYSTÈME</span></div></div><div class="club-discovery-toolbar">
         <label class="club-search-field"><span>RECHERCHER UN CLUB</span><input id="club-search" type="search" placeholder="Nom, ville ou stade…" autocomplete="off"></label>
@@ -646,7 +951,7 @@ ${renderGoogleProtectionCard({ compact: true })}
         <span id="club-filter-count" class="club-filter-count">${allClubs.length} clubs</span>
         <div class="club-division-tabs" role="group" aria-label="Choisir une division">${clubs.listDivisions().filter(division=>division.id!=='AMATEUR').map(division=>`<button type="button" class="club-division-tab ${division.id==='D1'?'active':''}" data-action="club-division-tab" data-division="${escapeHTML(division.id)}">${escapeHTML(division.id)}</button>`).join('')}</div>
         <div class="club-library-pagination"><button type="button" class="small-action" data-action="club-page" data-page="-1" id="club-page-prev" aria-label="Page précédente">‹</button><span id="club-page-label">1 / 1</span><button type="button" class="small-action" data-action="club-page" data-page="1" id="club-page-next" aria-label="Page suivante">›</button></div>
-      </div>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.slice().sort((a,b)=>b.rating-a.rating).map(club=>`<article class="club-card compact-club-card" role="button" tabindex="0" aria-expanded="false" aria-label="Développer la carte du club ${escapeHTML(club.name)}" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-conference="${escapeHTML(club.conference || '')}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}"><div class="club-card-copy"><div class="club-card-kickers"><span>${escapeHTML(club.division)}</span><span>CLUB</span></div><h3>${escapeHTML(club.name)}</h3><div class="club-meta-line"><strong>NOTE GLOBALE ${club.rating}</strong></div><div class="club-card-summary">${escapeHTML(club.city)} · ${club.roster.length} joueurs</div><button class="small-action club-card-more" data-action="view-roster" data-club="${escapeHTML(club.id)}">VOIR EFFECTIF →</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE</button>` : ''}</div>${crest(club)}<div class="club-card-expanded-details"><span><b>CHAMPIONNAT</b>${escapeHTML(club.division)} · ${escapeHTML(club.conference || 'National')}</span><span><b>VILLE</b>${escapeHTML(club.city)}</span><span><b>PAYS</b>${escapeHTML(club.country)}</span><span><b>STADE</b>${escapeHTML(club.stadium || '—')}</span><span><b>EFFECTIF</b>${club.roster.length} joueurs</span><span><b>RÉPUTATION</b>${club.reputation}</span></div></article>`).join('')}</div></section>`).join('')}<p class="notice">Catalogue local chargé · vérification de la saison active en cours.</p><p class="notice" id="club-directory-status" aria-live="polite">Synchronisation du catalogue…</p><p class="notice">Les identités des clubs et joueurs sont fictives. Les fiches publiques n’exposent pas les contrats privés.</p>`;
+      </div><p id="club-empty-state" class="notice club-empty-state" role="status" hidden>Aucun club ne correspond à ces critères. Modifiez la recherche ou les filtres.</p>${clubs.listDivisions().map(division=>`<section class="club-division" data-division="${escapeHTML(division.id)}"><div class="club-division-heading"><div><span class="eyebrow">${divisionLabels[division.id]}</span><h2>${escapeHTML(division.name)}</h2></div><span class="division-count">${division.clubs.length} CLUBS</span></div><div class="club-grid">${division.clubs.slice().sort((a,b)=>b.rating-a.rating).map(club=>`<article class="club-card compact-club-card" role="button" tabindex="0" aria-expanded="false" aria-label="Développer la carte du club ${escapeHTML(club.name)}" data-club-card data-name="${escapeHTML(club.name.toLocaleLowerCase('fr'))}" data-location="${escapeHTML(`${club.city} ${club.country} ${club.stadium}`.toLocaleLowerCase('fr'))}" data-country="${escapeHTML(club.country)}" data-conference="${escapeHTML(club.conference || '')}" data-division="${escapeHTML(club.division)}" data-rating="${club.rating}" data-roster="${club.roster.length}" data-reputation="${club.reputation}"><div class="club-card-copy"><div class="club-card-kickers"><span>${escapeHTML(club.division)}</span><span>CLUB</span></div><h3>${escapeHTML(club.name)}</h3><div class="club-meta-line"><strong>NOTE GLOBALE ${club.rating}</strong></div><div class="club-card-summary">${escapeHTML(club.city)} · ${club.roster.length} joueurs</div><button class="small-action club-card-more" data-action="view-roster" data-club="${escapeHTML(club.id)}">VOIR EFFECTIF →</button>${club.control === 'open' ? `<button class="small-action" data-action="take-club" data-club="${escapeHTML(club.id)}">REPRENDRE</button>` : ''}</div>${crest(club)}<div class="club-card-expanded-details"><span><b>CHAMPIONNAT</b>${escapeHTML(club.division)} · ${escapeHTML(club.conference || 'National')}</span><span><b>VILLE</b>${escapeHTML(club.city)}</span><span><b>PAYS</b>${escapeHTML(club.country)}</span><span><b>STADE</b>${escapeHTML(club.stadium || '—')}</span><span><b>EFFECTIF</b>${club.roster.length} joueurs</span><span><b>RÉPUTATION</b>${club.reputation}</span></div></article>`).join('')}</div></section>`).join('')}<p class="notice">Catalogue local chargé · vérification de la saison active en cours.</p><p class="notice" id="club-directory-status" aria-live="polite">Synchronisation du catalogue…</p><p class="notice">Les identités des clubs et joueurs sont fictives. Les fiches publiques n’exposent pas les contrats privés.</p>`;
       const divisionFilter=document.getElementById('club-division-filter');
       if(divisionFilter) divisionFilter.value='D1';
       filterClubDiscovery({target:{id:'club-division-filter'}});
@@ -667,8 +972,14 @@ ${renderGoogleProtectionCard({ compact: true })}
     subtitle.textContent = 'Historique officiel des rencontres terminées sur le serveur.';
     renderResultsPage(0);
   } else if (page === 'settings') {
-    title.textContent = 'PARAMÈTRES'; subtitle.textContent = 'CONFIGURATION DU JEU';
-    content.innerHTML = `<div class="settings-card"><label>Caméra du match<select id="pref-camera"><option value="player" ${preferences.cameraMode==='player'?'selected':''}>Immersion joueur · adaptée au poste</option><option value="touchline" ${preferences.cameraMode==='touchline'?'selected':''}>Ligne de touche · latérale</option><option value="broadcast" ${preferences.cameraMode==='broadcast'?'selected':''}>Retransmission · oblique</option><option value="close" ${preferences.cameraMode==='close'?'selected':''}>Rapprochée · joueurs plus grands</option><option value="tactical" ${preferences.cameraMode==='tactical'?'selected':''}>Tactique · vue large</option><option value="spectator" ${preferences.cameraMode==='spectator'?'selected':''}>Spectateur · panoramique</option></select></label><label>Zoom caméra · référence 55 %<input id="pref-zoom" type="range" min="0" max="100" value="${preferences.cameraZoom}"></label><label>Affichage des noms<select id="pref-names"><option value="standard" selected>Standard · joueur contrôlé + deux proches</option></select></label><label>Durée du match<select id="pref-duration"><option value="5" ${preferences.duration===5?'selected':''}>5 minutes · 2 × 2 min 30</option><option value="3" ${preferences.duration===3?'selected':''}>3 minutes · 2 × 1 min 30</option></select></label><label>Qualité graphique<select id="pref-quality"><option value="auto" ${preferences.quality==='auto'?'selected':''}>Automatique · recommandé</option><option value="low" ${preferences.quality==='low'?'selected':''}>Basse · appareils modestes</option><option value="medium" ${preferences.quality==='medium'?'selected':''}>Moyenne · recommandée</option><option value="high" ${preferences.quality==='high'?'selected':''}>Haute</option></select></label><button class="primary-cta" data-action="save-settings">ENREGISTRER</button></div><section class="competition-panel p27-cloud-only"><div class="panel-heading"><div><span class="eyebrow">PROFIL & SAUVEGARDE</span><h2>Compte et synchronisation</h2></div></div><p class="notice">L'association Google sera facultative et recommandée. Elle permettra de retrouver la carrière sur un autre appareil.</p><button class="small-action" type="button" data-page="account">GÉRER MON PROFIL JOUEUR</button></section><p class="notice">Les réglages graphiques s'appliquent au prochain lancement du match.</p>`;
+    title.textContent = 'PARAMÈTRES';
+    subtitle.textContent = 'CONFIGURATION DU JEU';
+    content.innerHTML = `<section class="competition-panel settings-card">
+      <span class="eyebrow">PARAMÈTRES DU JEU</span>
+      <h2>Configuration</h2>
+      <p class="notice">Les options détaillées seront ajoutées après la finalisation des écrans principaux. Les réglages actuels du prototype restent inchangés.</p>
+      <button class="secondary-cta" data-page="home">RETOUR À L’ACCUEIL</button>
+    </section>`;
   } else if (page === 'account') {
     title.textContent = 'Profil et synchronisation';
     subtitle.textContent = 'Jouez librement, puis associez Google si vous souhaitez protéger votre carrière.';
@@ -686,20 +997,42 @@ ${renderGoogleProtectionCard({ compact: true })}
   } else if (page === 'mercato') {
     career.refreshContractStatus();
     career.refreshOfferStatuses();
+    syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
     const clubsList = clubs.listClubs();
+    const availableClubs = clubsList.filter(club => club.humanAdmission !== 'system-only' && club.roster.length < club.capacity && club.roster.filter(player => player.playerType === 'human').length < 7);
     const currentClub = career.clubId ? clubs.getClub(career.clubId) : null;
     const hasActiveContract = Boolean(career.contract && !career.getContractStatus()?.expired);
     const pending = [...career.offers.values()].filter(offer => offer.status === 'pending');
     const history = career.history.slice().reverse().slice(0, 8);
+    const historyTitle = item => ({
+      signing:'Signature', transfer:'Transfert', renewal:'Renouvellement', termination:'Résiliation',
+      'contract-expired':'Fin de contrat', salary:'Salaire', 'offer-received':'Offre reçue',
+      'offer-negotiated':'Négociation', 'offer-rejected':'Offre refusée', 'offer-expired':'Offre expirée', 'offer-cancelled':'Offre annulée'
+    }[item.type] || 'Match');
+    const historySummary = item => {
+      const clubName = id => escapeHTML(clubs.getClub(id)?.name || id || 'Club inconnu');
+      if (item.type === 'signing') return `Contrat avec ${clubName(item.clubId)}`;
+      if (item.type === 'transfer') return `${clubName(item.from)} → ${clubName(item.to)} · indemnité ${Number(item.fee||0).toLocaleString('fr-FR')} crédits`;
+      if (item.type === 'renewal') return `Contrat renouvelé avec ${clubName(item.clubId)} · ${Number(item.salary||0).toLocaleString('fr-FR')} crédits / semaine`;
+      if (item.type === 'termination') return `Contrat résilié · ${clubName(item.clubId)}`;
+      if (item.type === 'contract-expired') return `Contrat arrivé à échéance · ${clubName(item.clubId)}`;
+      if (item.type === 'salary') return `${item.periods} semaine(s) payée(s) · +${Number(item.amount||0).toLocaleString('fr-FR')} crédits`;
+      if (item.type === 'offer-received') return `Offre de ${clubName(item.clubId)} · ${Number(item.salary||0).toLocaleString('fr-FR')} crédits / semaine · indemnité ${Number(item.fee||0).toLocaleString('fr-FR')}`;
+      if (item.type === 'offer-negotiated') return `Négociation avec ${clubName(item.clubId)} · ${Number(item.salary||0).toLocaleString('fr-FR')} crédits / semaine · indemnité ${Number(item.fee||0).toLocaleString('fr-FR')}`;
+      if (item.type === 'offer-rejected') return `Offre refusée de ${clubName(item.clubId)}`;
+      if (item.type === 'offer-expired') return `Offre expirée de ${clubName(item.clubId)}`;
+      if (item.type === 'offer-cancelled') return `${item.reason === 'contract-expired' ? 'Offre annulée à échéance du contrat' : item.reason === 'contract-terminated' ? 'Offre annulée après résiliation' : 'Offre annulée après un transfert'} · ${clubName(item.clubId)}`;
+      return `${item.result==='win'?'Victoire':item.result==='draw'?'Match nul':'Défaite'} · ${item.goals||0} but(s)`;
+    };
     const salaryStatus = career.getSalaryStatus();
     const open = career.isTransferWindowOpen();
     const nextWindow = career.transferWindows.find(window => window.start > Date.now());
-    const dateLabel = value => new Date(value).toLocaleDateString('fr-FR');
+    const dateLabel = value => { const date = new Date(value); return Number.isNaN(date.getTime()) ? 'Date inconnue' : date.toLocaleDateString('fr-FR'); };
     title.textContent = 'Mercato & contrats'; subtitle.textContent = 'Votre parcours professionnel, vos offres et vos négociations.';
-    content.innerHTML = `<section class="competition-panel p27-market-shortcuts"><div class="panel-heading"><div><span class="eyebrow">EXPLORER LE MARCHÉ</span><h2>Bibliothèques</h2></div></div><div class="p27-market-shortcut-actions"><button class="secondary-cta" data-page="players">BIBLIOTHÈQUE JOUEURS →</button><button class="secondary-cta" data-page="clubs">BIBLIOTHÈQUE CLUBS →</button></div></section><div class="career-summary"><div><span class="eyebrow">BUDGET DE TRANSFERT LOCAL</span><strong>${career.wallet.toLocaleString('fr-FR')} crédits</strong><small>Solde indépendant des crédits d'entraînement.</small></div><div><span class="eyebrow">FENÊTRE DE TRANSFERT</span><strong class="${open?'window-open':'window-closed'}">${open?'OUVERTE':'FERMÉE'}</strong><small>${open?'Les transferts peuvent être conclus.':nextWindow?`Prochaine ouverture : ${dateLabel(nextWindow.start)} au ${dateLabel(nextWindow.end)}.`:'Aucune fenêtre programmée.'}</small></div></div>
-      <section class="competition-panel contract-panel"><div class="panel-heading"><div><span class="eyebrow">SITUATION PROFESSIONNELLE</span><h2>Mon contrat</h2></div><span class="local-tag">CARRIÈRE LOCALE</span></div>${hasActiveContract?`<div class="contract-details"><b>${escapeHTML(currentClub?.name || career.contract.clubId)}</b><span>Salaire : ${career.contract.salary.toLocaleString('fr-FR')} crédits / semaine</span><span>Signé le ${dateLabel(career.contract.signedAt)} · Expire le ${dateLabel(career.contract.expiresAt)}</span><small>${salaryStatus?.paymentBeforeExpiry ? 'Prochain versement estimé : ' + dateLabel(salaryStatus.nextPaymentAt) + ' · ' + (salaryStatus.daysUntilPayment === 0 ? 'échéance atteinte' : 'dans ' + salaryStatus.daysUntilPayment + ' jour(s)') : 'Aucun versement hebdomadaire prévu avant la fin du contrat.'}</small><small>Statut : ${escapeHTML(career.getContractStatus()?.status || career.contract.status)} · ${career.getContractStatus()?.daysRemaining || 0} jour(s) restant(s)</small><div class="contract-actions"><label>Nouveau salaire / semaine<input id="renew-contract-salary" type="number" min="0" max="100000" value="${career.contract.salary}"></label><button class="small-action" data-action="renew-contract">RENOUVELER · 180 JOURS</button><button class="text-cta" data-action="terminate-contract">RÉSILIER LE CONTRAT</button></div></div>`:`<p class="notice">Vous n'avez pas encore de contrat. Choisissez un club pour commencer votre carrière.</p><div class="sign-contract-row"><label>Club<select id="contract-club">${clubsList.map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)} · niveau ${c.rating}</option>`).join('')}</select></label><label>Salaire / semaine<input id="contract-salary" type="number" min="0" max="100000" value="120"></label><button class="primary-cta" data-action="sign-contract">SIGNER MON PREMIER CONTRAT</button></div>`}</section>
-      <section class="competition-panel market-panel"><div class="panel-heading"><div><span class="eyebrow">OFFRES DES CLUBS</span><h2>Table des négociations</h2></div><button class="small-action" data-action="generate-offers" ${hasActiveContract?'':'disabled'}>SOLLICITER DES OFFRES</button></div>${pending.length?`<div class="offer-list">${pending.map(offer=>{const club=clubs.getClub(offer.fromClubId);return `<article class="offer-card"><div class="offer-heading"><b>${escapeHTML(club?.name||offer.fromClubId)}</b><span>OFFRE EN ATTENTE</span></div><div class="offer-terms"><label>Salaire / semaine<input type="number" min="0" max="100000" id="salary-${escapeHTML(offer.id)}" value="${offer.salary}"></label><label>Indemnité de transfert<input type="number" min="0" max="1000000" id="fee-${escapeHTML(offer.id)}" value="${offer.fee}"></label></div><div class="offer-actions"><button class="small-action" data-action="negotiate-offer" data-offer="${escapeHTML(offer.id)}">NÉGOCIER</button><button class="small-action accept-action" data-action="accept-offer" data-offer="${escapeHTML(offer.id)}" ${open?'':'disabled'}>ACCEPTER</button><button class="text-cta" data-action="reject-offer" data-offer="${escapeHTML(offer.id)}">REFUSER</button></div></article>`;}).join('')}</div>`:`<div class="empty-fixtures"><b>Aucune offre en attente</b><p>${hasActiveContract?'Sollicitez les clubs pour recevoir des propositions de démonstration.':'Signez d’abord un contrat pour accéder au marché.'}</p></div>`}</section>
-      <section class="competition-panel market-history"><div class="panel-heading"><div><span class="eyebrow">JOURNAL DE CARRIÈRE</span><h2>Historique</h2></div></div>${history.length?`<div class="history-list">${history.map(item=>`<div><b>${item.type==='signing'?'Signature':item.type==='transfer'?'Transfert':item.type==='renewal'?'Renouvellement':item.type==='termination'?'Résiliation':item.type==='contract-expired'?'Fin de contrat':item.type==='salary'?'Salaire':'Match'}</b><span>${item.type==='signing'?`Contrat avec ${escapeHTML(clubs.getClub(item.clubId)?.name||item.clubId)}`:item.type==='transfer'?`${escapeHTML(clubs.getClub(item.from)?.name||item.from||'Sans club')} → ${escapeHTML(clubs.getClub(item.to)?.name||item.to)}`:item.type==='renewal'?`Contrat renouvelé avec ${escapeHTML(clubs.getClub(item.clubId)?.name||item.clubId)} · ${item.salary} crédits / semaine`:item.type==='termination'?`Contrat résilié · ${escapeHTML(clubs.getClub(item.clubId)?.name||item.clubId)}`:item.type==='contract-expired'?`Contrat arrivé à échéance · ${escapeHTML(clubs.getClub(item.clubId)?.name||item.clubId)}`:item.type==='salary'?`${item.periods} semaine(s) payée(s) · +${item.amount.toLocaleString('fr-FR')} crédits`:`${item.result==='win'?'Victoire':item.result==='draw'?'Match nul':'Défaite'} · ${item.goals||0} but(s)`}</span><small>${dateLabel(item.date)}</small></div>`).join('')}</div>`:`<p class="notice">Votre historique apparaîtra ici après vos signatures et transferts.</p>`}</section><p class="notice">Mode prototype hors ligne : les offres sont générées localement à partir des niveaux des clubs. Aucun joueur réel, club réel ou serveur de transfert n'est connecté.</p>`;
+    content.innerHTML = `<section class="competition-panel p27-market-shortcuts"><div class="panel-heading"><div><span class="eyebrow">REPÉRER UN JOUEUR OU UN CLUB</span><h2>Catalogues de recrutement</h2><p class="p27-market-shortcuts-intro">Le Mercato gère les contrats et les offres. Les catalogues servent à consulter les joueurs et les clubs.</p></div></div><div class="p27-market-shortcut-actions"><button class="secondary-cta" data-page="players"><span><b>CATALOGUE JOUEURS</b><small>Profils, postes, notes et statuts contractuels</small></span><em>→</em></button><button class="secondary-cta" data-page="clubs"><span><b>CATALOGUE CLUBS</b><small>Clubs, divisions et effectifs</small></span><em>→</em></button></div></section><div class="career-summary"><div><span class="eyebrow">BUDGET DE TRANSFERT LOCAL</span><strong>${career.wallet.toLocaleString('fr-FR')} crédits</strong><small>Solde indépendant des crédits d'entraînement.</small></div><div><span class="eyebrow">FENÊTRE DE TRANSFERT</span><strong class="${open?'window-open':'window-closed'}">${open?'OUVERTE':'FERMÉE'}</strong><small>${open?'Les transferts peuvent être conclus.':nextWindow?`Prochaine ouverture : ${dateLabel(nextWindow.start)} au ${dateLabel(nextWindow.end)}.`:'Aucune fenêtre programmée.'}</small></div></div>
+      <section class="competition-panel contract-panel"><div class="panel-heading"><div><span class="eyebrow">SITUATION PROFESSIONNELLE</span><h2>Mon contrat</h2></div><span class="local-tag">CARRIÈRE LOCALE</span></div>${hasActiveContract?`<div class="contract-details"><b>${escapeHTML(currentClub?.name || career.contract.clubId)}</b><span>Salaire : ${career.contract.salary.toLocaleString('fr-FR')} crédits / semaine</span><span>Signé le ${dateLabel(career.contract.signedAt)} · Expire le ${dateLabel(career.contract.expiresAt)}</span><small>${salaryStatus?.paymentBeforeExpiry ? 'Prochain versement estimé : ' + dateLabel(salaryStatus.nextPaymentAt) + ' · ' + (salaryStatus.daysUntilPayment === 0 ? 'échéance atteinte' : 'dans ' + salaryStatus.daysUntilPayment + ' jour(s)') : 'Aucun versement hebdomadaire prévu avant la fin du contrat.'}</small><small>Statut : ${escapeHTML(career.getContractStatus()?.status || career.contract.status)} · ${career.getContractStatus()?.daysRemaining || 0} jour(s) restant(s)</small><div class="contract-actions"><label>Nouveau salaire / semaine<input id="renew-contract-salary" type="number" min="0" max="100000" value="${career.contract.salary}"></label><button class="small-action" data-action="renew-contract">RENOUVELER · 180 JOURS</button><button class="text-cta" data-action="terminate-contract">RÉSILIER LE CONTRAT</button></div></div>`:`<p class="notice">Vous n'avez pas encore de contrat. Choisissez un club pour commencer votre carrière.</p><div class="sign-contract-row"><label>Club<select id="contract-club">${availableClubs.length ? availableClubs.map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)} · niveau ${c.rating}</option>`).join('') : '<option value="">Aucun club disponible</option>'}</select></label><label>Salaire / semaine<input id="contract-salary" type="number" min="0" max="100000" value="120"></label><button class="primary-cta" data-action="sign-contract" ${availableClubs.length ? '' : 'disabled'}>SIGNER MON PREMIER CONTRAT</button></div>`}</section>
+      <section class="competition-panel market-panel"><div class="panel-heading"><div><span class="eyebrow">OFFRES DES CLUBS</span><h2>Table des négociations</h2></div><button class="small-action" data-action="generate-offers" ${hasActiveContract?'':'disabled'}>SOLLICITER DES OFFRES</button></div>${pending.length?`<div class="offer-list">${pending.map(offer=>{const club=clubs.getClub(offer.fromClubId);return `<article class="offer-card"><div class="offer-heading"><b>${escapeHTML(club?.name||offer.fromClubId)}</b><span>OFFRE EN ATTENTE</span></div><div class="offer-terms"><label>Salaire / semaine<input type="number" min="0" max="100000" id="salary-${escapeHTML(offer.id)}" value="${offer.salary}"></label><label>Indemnité de transfert<input type="number" min="0" max="1000000" id="fee-${escapeHTML(offer.id)}" value="${offer.fee}"></label></div><div class="offer-actions"><button class="small-action" data-action="negotiate-offer" data-offer="${escapeHTML(offer.id)}">NÉGOCIER</button><button class="small-action accept-action" data-action="accept-offer" data-offer="${escapeHTML(offer.id)}" ${open?'':'disabled'}>ACCEPTER</button><button class="text-cta" data-action="reject-offer" data-offer="${escapeHTML(offer.id)}">REFUSER</button></div></article>`;}).join('')}</div>`:`<div class="empty-fixtures"><b>Aucune offre en attente</b><p>${hasActiveContract?'Les propositions simulées sont calculées localement à partir du niveau des clubs.':'Signez d’abord un contrat pour accéder au marché.'}</p></div>`}</section>
+      <section class="competition-panel market-history"><div class="panel-heading"><div><span class="eyebrow">JOURNAL DE CARRIÈRE</span><h2>Historique</h2></div></div>${history.length?`<div class="history-list">${history.map(item=>`<div><b>${historyTitle(item)}</b><span>${historySummary(item)}</span><small>${dateLabel(item.date)}</small></div>`).join('')}</div>`:`<p class="notice">Votre historique apparaîtra ici après vos signatures et transferts.</p>`}</section><p class="notice">Mode prototype hors ligne : les offres sont générées localement à partir des niveaux des clubs. Aucun joueur réel, club réel ou serveur de transfert n'est connecté.</p>`;
   } else {
     const labels = {rankings:['Classements','Les classements seront alimentés par les résultats officiels une fois le système de compétition connecté.'],community:['Communauté','Les profils en ligne, invitations et interactions sociales nécessitent le serveur multijoueur.']};
     const [t,d] = labels[page] || ['Module','Ce module sera disponible dans une prochaine version.'];
@@ -717,19 +1050,30 @@ async function renderResultsPage(offset = 0, selectedRoomId = null) {
   const requestId = ++resultsRequestSequence;
   content.innerHTML = '<section class="competition-panel results-panel"><p class="notice">Chargement de l’historique des rencontres…</p></section>';
   try {
-    const response = await fetch(`/api/results?limit=10&offset=${Math.max(0, Math.min(5000, Math.floor(offset)))}`, { headers: { accept: 'application/json' }, cache: 'no-store' });
+    const response = await p27ApiFetch(`/api/results?limit=10&offset=${Math.max(0, Math.min(5000, Math.floor(offset)))}`, { headers: { accept: 'application/json' }, cache: 'no-store' });
     if (!response.ok) throw new Error(response.status === 404 ? 'Le serveur ne propose pas encore l’historique des résultats.' : `Serveur indisponible (${response.status}).`);
     const payload = await response.json();
     if (requestId !== resultsRequestSequence || !document.getElementById('menu-content')) return;
-    const rows = Array.isArray(payload.results) ? payload.results : [];
-    const page = payload.pagination || { limit: 10, offset, total: rows.length, hasMore: false, nextOffset: null };
-    const dateLabel = value => Number.isFinite(Number(value)) ? new Date(Number(value)).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : 'Date inconnue';
+    const rows = Array.isArray(payload.results) ? payload.results.filter(result => result && typeof result === 'object') : [];
+    const rawPage = payload.pagination && typeof payload.pagination === 'object' ? payload.pagination : {};
+    const pageLimit = Math.max(1, Math.min(100, resultNumber(rawPage.limit) || 10));
+    const pageOffset = Math.max(0, Math.min(5000, resultNumber(rawPage.offset ?? offset)));
+    const pageTotal = Math.max(rows.length, resultNumber(rawPage.total));
+    const nextOffset = rawPage.nextOffset == null ? null : Math.max(0, Math.min(5000, resultNumber(rawPage.nextOffset)));
+    const page = { limit: pageLimit, offset: pageOffset, total: pageTotal, hasMore: rawPage.hasMore === true && nextOffset !== null && nextOffset > pageOffset, nextOffset };
+    const dateLabel = value => {
+      const timestamp = typeof value === 'string' && !/^\\d+(?:\\.\\d+)?$/.test(value) ? Date.parse(value) : Number(value);
+      if (!Number.isFinite(timestamp) || timestamp <= 0) return 'Date inconnue';
+      const date = new Date(timestamp);
+      return Number.isNaN(date.getTime()) ? 'Date inconnue' : date.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+    };
     const cards = rows.map(result => {
       const blue = result.score?.blue ?? 0, red = result.score?.red ?? 0;
       const outcome = result.outcome === 'draw' ? 'MATCH NUL' : result.outcome === 'blue' ? 'VICTOIRE BLEUE' : result.outcome === 'red' ? 'VICTOIRE ROUGE' : 'TERMINÉ';
-      return `<article class="result-card"><div class="result-card-top"><span>${dateLabel(result.finalizedAt)}</span><small>${escapeHTML(result.roomId || 'Rencontre')}</small></div><div class="result-scoreline"><div><b>ÉQUIPE BLEUE</b><strong>${resultNumber(blue)}</strong></div><i>–</i><div><b>ÉQUIPE ROUGE</b><strong>${resultNumber(red)}</strong></div></div><div class="result-card-bottom"><span>${outcome}</span><button class="small-action" data-action="show-result" data-room="${escapeHTML(result.roomId)}">VOIR LA FEUILLE DE MATCH</button></div></article>`;
+      const roomId = typeof result.roomId === 'string' ? result.roomId.trim() : '';
+      return `<article class="result-card"><div class="result-card-top"><span>${dateLabel(result.finalizedAt)}</span><small>${escapeHTML(roomId || 'Rencontre')}</small></div><div class="result-scoreline"><div><b>ÉQUIPE BLEUE</b><strong>${resultNumber(blue)}</strong></div><i>–</i><div><b>ÉQUIPE ROUGE</b><strong>${resultNumber(red)}</strong></div></div><div class="result-card-bottom"><span>${outcome}</span>${roomId ? `<button class="small-action" data-action="show-result" data-room="${escapeHTML(roomId)}">VOIR LA FEUILLE DE MATCH</button>` : '<span class="notice">Feuille de match indisponible</span>'}</div></article>`;
     }).join('');
-    content.innerHTML = `<section class="competition-panel results-panel"><div class="panel-heading"><div><span class="eyebrow">ARCHIVES SERVEUR</span><h2>${resultNumber(page.total)} rencontre(s) enregistrée(s)</h2></div><span class="local-tag">RÉSULTATS VALIDÉS</span></div>${rows.length ? `<div class="results-list">${cards}</div>` : '<div class="empty-fixtures"><b>Aucun résultat disponible</b><p>Les matchs terminés et sauvegardés sur le serveur apparaîtront ici. Les matchs locaux ne sont pas ajoutés à cet historique.</p></div>'}<div class="results-pagination"><span>Page ${Math.floor((page.offset || 0) / Math.max(1, page.limit || 10)) + 1} · ${resultNumber(page.total)} résultat(s)</span><div><button class="small-action" data-action="results-page" data-offset="${Math.max(0, (page.offset || 0) - (page.limit || 10))}" ${!page.offset ? 'disabled' : ''}>← PRÉCÉDENTS</button><button class="small-action" data-action="results-page" data-offset="${page.nextOffset ?? 0}" ${!page.hasMore ? 'disabled' : ''}>SUIVANTS →</button></div></div><p class="notice">Les archives sont partagées par le serveur. Leur conservation après redéploiement dépend du volume persistant configuré côté hébergement.</p><div id="result-detail"></div></section>`;
+    content.innerHTML = `<section class="competition-panel results-panel"><div class="panel-heading"><div><span class="eyebrow">ARCHIVES SERVEUR</span><h2>${resultNumber(page.total)} rencontre(s) enregistrée(s)</h2></div><span class="local-tag">RÉSULTATS VALIDÉS</span></div>${rows.length ? `<div class="results-list">${cards}</div>` : '<div class="empty-fixtures"><b>Aucun résultat disponible</b><p>Les matchs terminés et sauvegardés sur le serveur apparaîtront ici. Les matchs locaux ne sont pas ajoutés à cet historique.</p></div>'}<div class="results-pagination"><span>Page ${Math.floor(page.offset / page.limit) + 1} · ${resultNumber(page.total)} résultat(s)</span><div><button class="small-action" data-action="results-page" data-offset="${Math.max(0, page.offset - page.limit)}" ${page.offset === 0 ? 'disabled' : ''}>← PRÉCÉDENTS</button><button class="small-action" data-action="results-page" data-offset="${page.nextOffset ?? page.offset + page.limit}" ${!page.hasMore ? 'disabled' : ''}>SUIVANTS →</button></div></div><p class="notice">Les archives sont partagées par le serveur. Leur conservation après redéploiement dépend du volume persistant configuré côté hébergement.</p><div id="result-detail"></div></section>`;
     if (selectedRoomId) await renderResultDetail(selectedRoomId, requestId);
   } catch (error) {
     if (requestId !== resultsRequestSequence) return;
@@ -743,7 +1087,7 @@ async function renderRankingsPage() {
   const requestId = ++publicCompetitionRequest;
   host.innerHTML = '<section class="competition-panel ranking-screen"><p class="notice">Chargement des classements officiels…</p></section>';
   try {
-    const response = await fetch('/api/competitions', { headers: { accept: 'application/json' }, cache: 'no-store' });
+    const response = await p27ApiFetch('/api/competitions', { headers: { accept: 'application/json' }, cache: 'no-store' });
     if (!response.ok) throw new Error('Le service des compétitions est indisponible.');
     const snapshot = await response.json();
     if (requestId !== publicCompetitionRequest || !document.getElementById('menu-content')) return;
@@ -773,7 +1117,7 @@ async function renderResultDetail(roomId, requestId = resultsRequestSequence) {
   if (!host || !/^[a-f0-9]{12}$/.test(roomId)) return;
   host.innerHTML = '<p class="notice">Chargement de la feuille de match…</p>';
   try {
-    const response = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/result`, { cache: 'no-store' });
+    const response = await p27ApiFetch(`/api/rooms/${encodeURIComponent(roomId)}/result`, { cache: 'no-store' });
     if (!response.ok) throw new Error('La feuille de match n’est plus disponible sur le serveur.');
     const result = await response.json();
     if (requestId !== resultsRequestSequence || !document.getElementById('result-detail')) return;
@@ -843,6 +1187,29 @@ function showMainMenu() {
   renderPage('home');
 }
 
+function buildCareerMatchRoster(club) {
+  const roster = Array.isArray(club?.roster) ? club.roster.slice() : [];
+  if (roster.some(player => player.id === 'career-player')) return roster;
+  const profile = profileStore.profile;
+  const attributes = { ...(profile.progression?.attributes || {}) };
+  const values = Object.values(attributes).map(Number).filter(Number.isFinite);
+  const rating = Math.max(1, Math.min(99, Math.round(values.length ? values.reduce((sum,value)=>sum+value,0)/values.length : 50)));
+  roster.push({
+    id:'career-player',
+    name:profile.identity.displayName || 'Mon joueur',
+    role:['GK','DEF','MID','FWD'].includes(profile.identity.role) ? profile.identity.role : 'MID',
+    number:profile.identity.number || 17,
+    rating,
+    potential:Math.max(rating, Number(profile.progression?.level)||rating),
+    attributes,
+    playerType:'human',
+    preferredFoot:profile.identity.preferredFoot || 'right',
+    appearance:profile.appearance && typeof profile.appearance === 'object' ? { ...profile.appearance } : null,
+    archetype:'Joueur carrière'
+  });
+  return roster;
+}
+
 async function startMatch(online = null) {
   menu.classList.add('hidden');
   shell.classList.remove('hidden');
@@ -854,13 +1221,41 @@ async function startMatch(online = null) {
     gl2.getExtension('WEBGL_lose_context')?.loseContext();
     const { Game } = await import('./game.js');
     const onlineTeams = online?.joinResult?.state?.teams || null;
+    if (!online && career.contract?.status === 'active' && career.clubId) selectedMatchup.home = career.clubId;
     const homeClub = onlineTeams?.blue?.id ? clubs.getClub(onlineTeams.blue.id) : clubs.getClub(selectedMatchup.home);
     const awayClub = onlineTeams?.red?.id ? clubs.getClub(onlineTeams.red.id) : clubs.getClub(selectedMatchup.away);
-    const kitPalette = (club) => club?.colors?.length >= 3
-      ? { primary: club.colors[0], secondary: club.colors[1], accent: club.colors[2] }
-      : null;
+    const loadClubKits = async (club, kitType, teamKey) => {
+      if (!club) return { outfield:null, goalkeeper:null, appearance:getP27ClubShopAppearance(club, []) };
+      const publicTeamAppearance = onlineTeams?.[teamKey]?.shopAppearance || null;
+      let inventory = Array.isArray(publicTeamAppearance?.equippedItemIds)
+        ? publicTeamAppearance.equippedItemIds.map(itemId => ({ itemId, status:'owned', equipped:true })) : [];
+      if (Number.isInteger(publicTeamAppearance?.stadiumExpansionLevel) && publicTeamAppearance.stadiumExpansionLevel > 0) {
+        inventory.push({ itemId:'club-capacity-level-'+publicTeamAppearance.stadiumExpansionLevel, category:'capacity', upgradeLevel:publicTeamAppearance.stadiumExpansionLevel, status:'owned', equipped:false });
+      }
+      if (accountClient.hasSession) {
+        try {
+          const snapshot = await accountClient.getShopSnapshot('club', club.id);
+          inventory = snapshot.inventory;
+        } catch (_) {
+          // Les articles privés d'un autre club ne sont jamais supposés accessibles.
+        }
+      }
+      return {
+        outfield:getP27ClubShopKit(club, inventory, kitType, 'MID'),
+        goalkeeper:getP27ClubShopKit(club, inventory, kitType, 'GK'),
+        appearance:getP27ClubShopAppearance(club, inventory)
+      };
+    };
+    const [homeKits, awayKits] = await Promise.all([
+      loadClubKits(homeClub, 'home', 'blue'),
+      loadClubKits(awayClub, 'away', 'red')
+    ]);
+    const homeKitAppearance = homeKits.outfield;
+    const awayKitAppearance = awayKits.outfield;
     game = new Game(container, {
       careerPlayerId: 'career-player',
+      formation: selectedFormation,
+      benchSize: selectedBenchSize,
       playerRole: profileStore.profile.identity.role,
       playerName: profileStore.profile.identity.displayName,
       playerNumber: profileStore.profile.identity.number,
@@ -869,10 +1264,16 @@ async function startMatch(online = null) {
       onlineClient: online?.client || null,
       onlineJoinResult: online?.joinResult || null,
       preferredFoot: profileStore.profile.identity.preferredFoot,
-      homeRoster: homeClub?.roster,
+      homeRoster: online ? homeClub?.roster : buildCareerMatchRoster(homeClub),
+      homeStarterIds: online ? null : selectedHomeStarterIds,
       awayRoster: awayClub?.roster,
-      homeKitColors: kitPalette(homeClub),
-      awayKitColors: kitPalette(awayClub),
+      homeKitColors: homeKitAppearance?.kitColors || null,
+      awayKitColors: awayKitAppearance?.kitColors || null,
+      homeKitAppearance,
+      awayKitAppearance,
+      homeGoalkeeperKitAppearance:homeKits.goalkeeper,
+      awayGoalkeeperKitAppearance:awayKits.goalkeeper,
+      homeClubAppearance:{ ...homeKits.appearance, colors:homeKits.appearance?.crestColors || homeClub?.colors || null },
       cameraMode: preferences.cameraMode,
       cameraZoom: preferences.cameraZoom,
       onCameraMode: (mode) => { preferences.cameraMode = mode; try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {} },
@@ -895,8 +1296,9 @@ async function startMatch(online = null) {
                 assists: performance.stats.assists,
                 cleanSheet: performance.cleanSheet
               });
-              reward.matchId = matchId;
-              profileStore.grantMatchRewards(reward);
+              const appliedReward = applyCareerMatchReward({ careerReward:reward, profileStore, matchId });
+              if (!appliedReward.ok) console.warn('[Football RP Online] Récompense joueur en attente de récupération :', appliedReward.reason);
+              syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
               seasonStats.recordMatch({ matchId, result: performance.result, stats: { ...performance.stats, cleanSheet: performance.cleanSheet }, minutesPlayedMs: performance.minutesPlayedMs, role: performance.role, rating: performance.rating, playerOfMatch: performance.playerOfMatch, opponent: performance.opponent });
             } catch (error) {
               console.warn('[Football RP Online] Statistiques de carrière en ligne non synchronisées :', error);
@@ -908,8 +1310,9 @@ async function startMatch(online = null) {
         const cleanSheet = outcome === 'win' && (result.winner === 'blue' ? result.redScore === 0 : result.blueScore === 0);
         const matchId = result.matchId || game.match.matchId;
         const reward = career.recordMatch({ matchId, result: outcome, goals: result.playerStats?.goals, assists: result.playerStats?.assists, cleanSheet });
-        reward.matchId = matchId;
-              profileStore.grantMatchRewards(reward);
+        const appliedReward = applyCareerMatchReward({ careerReward:reward, profileStore, matchId });
+        if (!appliedReward.ok) console.warn('[Football RP Online] Récompense joueur en attente de récupération :', appliedReward.reason);
+        syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
         seasonStats.recordMatch({ matchId, result: outcome, stats: { ...result.playerStats, cleanSheet }, minutesPlayedMs: result.playerStats?.minutesPlayedMs, role: profileStore.profile.identity.role });
       }
     });
@@ -917,8 +1320,8 @@ async function startMatch(online = null) {
     document.getElementById('red-name').textContent = awayClub?.name || 'ÉQUIPE EXTÉRIEURE';
     const blueCrest = document.querySelector('#board .team.blue .crest');
     const redCrest = document.querySelector('#board .team.red .crest');
-    if (blueCrest && homeClub) blueCrest.outerHTML = renderClubCrest({ id: homeClub.id, name: homeClub.name, size: 27, compact: true, colors: homeClub.colors });
-    if (redCrest && awayClub) redCrest.outerHTML = renderClubCrest({ id: awayClub.id, name: awayClub.name, size: 27, compact: true, colors: awayClub.colors });
+    if (blueCrest && homeClub) blueCrest.outerHTML = renderClubCrest({ id: homeClub.id, name: homeClub.name, size: 27, compact: true, colors:homeKits.appearance?.crestColors || null, crestStyle:homeKits.appearance?.crestStyle });
+    if (redCrest && awayClub) redCrest.outerHTML = renderClubCrest({ id: awayClub.id, name: awayClub.name, size: 27, compact: true, colors:awayKits.appearance?.crestColors || null, crestStyle:awayKits.appearance?.crestStyle });
     const qualityControl = document.getElementById('quality');
     if (qualityControl) qualityControl.value = preferences.quality;
     game.match.setDurationMinutes(preferences.duration);
@@ -1140,7 +1543,10 @@ async function submitAccountForm(action) {
       return;
     }
     else if (action === 'logout') await accountClient.logout();
-    if (['login', 'register', 'refresh'].includes(action)) await profileSyncCoordinator.flush();
+    if (['login', 'register', 'refresh'].includes(action)) {
+      await syncPlayerShopAppearanceFromServer();
+      await profileSyncCoordinator.flush();
+    }
     renderPage('account');
   } catch (error) {
     if (status) status.textContent = `Opération impossible : ${String(error?.message || error).slice(0, 100)}`;
@@ -1156,13 +1562,29 @@ menu.addEventListener('input', event => {
   });
 });
 menu.addEventListener('keydown', event => { if(event.target.closest('[data-club-card]')) { const action=event.target.closest('[data-action]')?.dataset.action; if(!action) { const card=event.target.closest('[data-club-card]'); if(card){event.preventDefault();const opening=!card.classList.contains('is-expanded');menu.querySelectorAll('.club-card.compact-club-card.is-expanded').forEach(item=>{if(item!==card){item.classList.remove('is-expanded');item.setAttribute('aria-expanded','false');}});card.classList.toggle('is-expanded',opening);card.setAttribute('aria-expanded',String(opening));}} } });
+menu.addEventListener('keydown', event => {
+  const rosterRow = event.target.closest('tr[data-player-profile][data-player-row]');
+  if (rosterRow && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    const index = Number(rosterRow.dataset.playerProfile);
+    selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null;
+    playerProfileReturnPage = 'clubs';
+    if (selectedPlayerProfile) renderPage('player-detail');
+    return;
+  }
+  if (event.key !== 'Enter' || event.target?.id !== 'rp-club-chat-input') return;
+  event.preventDefault();
+  const button = menu.querySelector('[data-action="rp-club-message"]');
+  if (button && !button.disabled) void performRpClubAction('rp-club-message', button);
+});
 menu.addEventListener('click', event => {
   const playerChoice = event.target.closest('[data-player-choice]');
   if (playerChoice) {
     const key = playerChoice.dataset.playerChoice;
     const value = playerChoice.dataset.choiceValue;
     if (key === 'preferredFoot') profileStore.updateIdentity({ preferredFoot:value });
-    else if (['kit','skinTone','hairStyle','hairColor','bodyBuild'].includes(key)) profileStore.updateAppearance({ [key]:value });
+    else if (['kit','skinTone','hairStyle','hairColor','bodyBuild','faceShape','eyeShape'].includes(key)) profileStore.updateAppearance({ [key]:value });
+    mountAvatarPreview(profileStore.profile);
     const group = playerChoice.closest('[data-choice-group]');
     group?.querySelectorAll('.player-choice').forEach(button => button.classList.toggle('active', button === playerChoice));
     return;
@@ -1187,11 +1609,19 @@ menu.addEventListener('click', event => {
 });
 menu.addEventListener('click', event => {
   const pageButton = event.target.closest('[data-page]');
-  if (pageButton) { renderPage(pageButton.dataset.view || pageButton.dataset.page); return; }
+  const isLibraryPagination = pageButton && ['players-page', 'club-page'].includes(pageButton.dataset.action);
+  if (pageButton && !isLibraryPagination) { renderPage(pageButton.dataset.view || pageButton.dataset.page); return; }
   const careerButton = event.target.closest('.player-card-more');
-  if (careerButton) { const index = Number(careerButton.dataset.playerIndex); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = 'players'; if(selectedPlayerProfile) renderPage('player-detail'); return; }
+  if (careerButton) { const index = Number(careerButton.dataset.playerIndex); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = careerButton.closest('[data-profile-origin]')?.dataset.profileOrigin === 'clubs' ? 'clubs' : 'players'; if(selectedPlayerProfile) renderPage('player-detail'); return; }
   const playerCard = event.target.closest('[data-player-profile]');
   if (playerCard && event.target.closest('.player-card-details')) return;
+  if (playerCard && playerCard.matches('tr[data-player-row]')) {
+    const index = Number(playerCard.dataset.playerProfile);
+    selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null;
+    playerProfileReturnPage = playerCard.dataset.profileOrigin === 'clubs' ? 'clubs' : 'players';
+    if (selectedPlayerProfile) renderPage('player-detail');
+    return;
+  }
   if (playerCard) {
     menu.querySelectorAll('.player-library-card.is-expanded').forEach(card=>{if(card!==playerCard){card.classList.remove('is-expanded');card.setAttribute('aria-expanded','false');card.querySelector('.player-card-expanded-details')?.setAttribute('aria-hidden','true');}});
     const expanded=playerCard.classList.toggle('is-expanded');
@@ -1221,9 +1651,10 @@ menu.addEventListener('click', event => {
     return;
   }
   if (action === 'players-page') { playerLibraryPage=Math.max(0,playerLibraryPage+Number(event.target.closest('[data-page]')?.dataset.page||0)); filterPlayerLibrary(); }
-  else if (action === 'open-player-profile') { const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; renderPage('player-detail'); }
+  else if (action === 'open-player-profile') { const origin = event.target.closest('[data-profile-origin]')?.dataset.profileOrigin; const index = Number(event.target.closest('[data-player-profile]')?.dataset.playerProfile); selectedPlayerProfile = Number.isInteger(index) ? playerLibraryProfiles[index] || null : null; playerProfileReturnPage = origin === 'clubs' ? 'clubs' : 'players'; renderPage('player-detail'); }
   else if (action === 'back-player-library') { selectedPlayerProfile = null; renderPage(playerProfileReturnPage); }
   else if (action === 'view-roster') { selectedClubId = event.target.closest('[data-club]')?.dataset.club || null; renderPage('clubs'); }
+  else if (action?.startsWith('rp-club-')) { void performRpClubAction(action, event.target.closest('[data-action]')); }
   else if (action === 'back-clubs') { selectedClubId = null; renderPage('clubs'); }
   else if (action === 'results-page') { renderResultsPage(Number(event.target.closest('[data-offset]')?.dataset.offset || 0)); }
   else if (action === 'show-result') { const roomId = event.target.closest('[data-room]')?.dataset.room; if (roomId) renderResultDetail(roomId); }
@@ -1248,11 +1679,11 @@ menu.addEventListener('click', event => {
     void (async () => {
       try {
         let response;
-        if (action === 'google-login') response = await fetch('/api/auth/google/login/start', { method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' } });
+        if (action === 'google-login') response = await p27ApiFetch('/api/auth/google/login/start', { method: 'POST', credentials: 'include', headers: { accept: 'application/json' } });
         else {
           const identity = localPlayerProfileStore && localPlayerProfileStore.load();
           if (!identity || identity.identityStatus !== 'reserved') throw new Error('LOCAL_IDENTITY_NOT_SERVER_RESERVED');
-          response = await fetch('/api/auth/google/link/start', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ localProfileKey: identity.localProfileKey, localProofSecret: identity.localProofSecret }) });
+          response = await p27ApiFetch('/api/auth/google/link/start', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json', accept: 'application/json', ...(accountClient.token ? { authorization: 'Bearer ' + accountClient.token } : {}) }, body: JSON.stringify({ localProfileKey: identity.localProfileKey, localProofSecret: identity.localProofSecret }) });
         }
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'GOOGLE_AUTH_START_FAILED');
@@ -1286,6 +1717,7 @@ menu.addEventListener('click', event => {
     const field = document.getElementById('online-room-id'); if (field) field.value = id;
     joinOnlineRoom(id);
   } else if (action === 'choose-match') {
+    if (career.contract?.status === 'active' && career.clubId) selectedMatchup.home = career.clubId;
     const options = clubs.listClubs().map(c=>`<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('');
     document.getElementById('menu-content').innerHTML = `<div class="mode-card"><span class="eyebrow">MODE DISPONIBLE · MATCH RAPIDE</span><h2>Préparez votre entrée sur le terrain</h2><p>Match local de démonstration en 5 contre 5 face à une équipe contrôlée par le système. Chaque commande reste limitée à votre propre footballeur.</p><div class="match-centre">
       <div class="match-centre-heading"><span class="eyebrow">AVANT-MATCH · CENTRE DE PRÉPARATION</span><b>CHOISISSEZ VOTRE AFFiche</b></div>
@@ -1301,6 +1733,7 @@ menu.addEventListener('click', event => {
     document.getElementById('menu-content').scrollTop = 0;
     const homeSelect=document.getElementById('match-home'), awaySelect=document.getElementById('match-away');
     homeSelect.value=selectedMatchup.home; awaySelect.value=selectedMatchup.away;
+    homeSelect.disabled = Boolean(career.contract?.status === 'active' && career.clubId);
     const updateMatchup=()=>{
       if(homeSelect.value===awaySelect.value) awaySelect.value=clubs.listClubs().find(c=>c.id!==homeSelect.value)?.id||awaySelect.value;
       selectedMatchup={home:homeSelect.value,away:awaySelect.value};
@@ -1321,12 +1754,82 @@ menu.addEventListener('click', event => {
   } else if (action === 'show-lineup') {
     const content=document.getElementById('menu-content');
     const home=clubs.getClub(selectedMatchup.home), away=clubs.getClub(selectedMatchup.away);
-    const homeSquad = createMatchSquad('blue','2-2',home.roster,'career-player');
-    const awaySquad = createMatchSquad('red','2-2',away.roster);
+    const homeRoster = buildCareerMatchRoster(home);
     const roleLabels = { GK:'Gardien', DEF:'Défenseur', MID:'Milieu', FWD:'Attaquant' };
-    const renderPlayers = (players) => players.map(player=>`<div class="pre-match-player"><span class="pre-match-number">${player.number}</span><b>${escapeHTML(player.name)}</b><small>${roleLabels[player.role]||player.role}</small><strong>${player.rating}</strong></div>`).join('');
-    const renderLineup = (team, squad) => `<section class="pre-match-team ${team}"><div class="pre-match-team-heading"><span class="eyebrow">${team==='blue'?'ÉQUIPE DOMICILE':'ÉQUIPE EXTÉRIEURE'}</span><b>${team==='blue'?'BLEU':'ROUGE'} · ${squad.starters.length}/5</b></div><div class="pre-match-player-list">${renderPlayers(squad.starters)}</div><div class="pre-match-bench-heading"><span>REMPLAÇANTS</span><b>${squad.substitutes.length}</b></div><div class="pre-match-player-list pre-match-bench-list">${squad.substitutes.length ? renderPlayers(squad.substitutes) : '<p class="pre-match-no-bench">Aucun remplaçant enregistré</p>'}</div><small class="pre-match-squad-total">Effectif disponible : ${squad.squadSize} joueur(s)</small></section>`;
-    content.innerHTML=`<div class="match-intro"><span class="eyebrow">PRÉSENTATION DU MATCH</span><h2>LE TERRAIN VOUS ATTEND</h2><p>5 contre 5 · ${preferences.duration} minutes · Stade de démonstration</p><div class="intro-versus"><div>${crest(home)}<b>${escapeHTML(home.name)}</b><small>${escapeHTML(home.city)}</small></div><strong>VS</strong><div>${crest(away)}<b>${escapeHTML(away.name)}</b><small>${escapeHTML(away.city)}</small></div></div><div class="intro-lineup"><span>FORMATION 2–2</span><span>10 TITULAIRES · RÉSERVES AFFICHÉES</span><span>CONTRÔLE INDIVIDUEL</span></div><div class="pre-match-lineups">${renderLineup('blue',homeSquad)}${renderLineup('red',awaySquad)}</div><button class="primary-cta" data-action="start-match">ENTRER SUR LE TERRAIN <span>→</span></button><button class="text-cta" data-action="choose-match">Modifier les équipes</button></div>`;
+    const formationLabels = { '2-2':'2–2 · Équilibrée', '1-2-1':'1–2–1 · Axiale', '2-1-1':'2–1–1 · Compacte' };
+    const formationSelect = `<label class="pre-match-formation">FORMATION DE L’ÉQUIPE <select id="pre-match-formation">${Object.entries(formationLabels).map(([value,label])=>`<option value="${value}" ${selectedFormation===value?'selected':''}>${label}</option>`).join('')}</select></label>`;
+    const benchSizeSelect = `<label class="pre-match-formation">REMPLAÇANTS <select id="pre-match-bench-size">${[3,4,5,6,7].map(value=>`<option value="${value}" ${selectedBenchSize===value?'selected':''}>${value} remplaçants</option>`).join('')}</select></label>`;
+    const isSystemPortraitEligible = player => (player?.playerType==='system'||player?.controlStatus==='system')&&player?.isHuman!==true&&player?.ownerType!=='human'&&player?.source!=='human'&&player?.createdBy!=='user';
+    const validHomeStarterSelection = Array.isArray(selectedHomeStarterIds) && selectedHomeStarterIds.length === 5
+      && new Set(selectedHomeStarterIds).size === 5
+      && selectedHomeStarterIds.includes('career-player')
+      && selectedHomeStarterIds.every(id => homeRoster.some(player => player.id === id));
+    if (selectedHomeStarterClubId !== home.id || !validHomeStarterSelection) {
+      const defaults = createMatchSquad('blue',selectedFormation,homeRoster,'career-player',selectedBenchSize);
+      selectedHomeStarterIds = defaults.starters.map(player => player.id);
+      selectedHomeStarterClubId = home.id;
+      preferences.homeStarterClubId = home.id;
+      preferences.homeStarterIds = selectedHomeStarterIds;
+      try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
+    }
+    const renderPlayers = (players, team, group) => players.map(player=>{
+      const hasPortrait = isSystemPortraitEligible(player);
+      const canMove = team === 'blue' && player.id !== 'career-player';
+      const control = canMove
+        ? group === 'starter'
+          ? '<button type="button" class="lineup-selection-control" data-squad-action="bench" data-player-id="'+escapeHTML(player.id)+'">SORTIR</button>'
+          : '<button type="button" class="lineup-selection-control" data-squad-action="start" data-player-id="'+escapeHTML(player.id)+'">TITULAIRE</button>'
+        : team === 'blue' && player.id === 'career-player' ? '<small class="career-player-lock">TITULAIRE FIXE</small>' : '';
+      return `<div class="pre-match-player${hasPortrait?' has-system-portrait':''}"><span class="pre-match-number">${player.number}</span>${hasPortrait?renderSystemPlayerPortrait(player,'roster'):''}<b>${escapeHTML(player.name)}</b><small>${roleLabels[player.role]||player.role}</small><strong>${player.rating}</strong>${control}</div>`;
+    }).join('');
+    const renderLineup = (team, squad) => `<section class="pre-match-team ${team}"><div class="pre-match-team-heading"><span class="eyebrow">${team==='blue'?'ÉQUIPE DOMICILE':'ÉQUIPE EXTÉRIEURE'}</span><b>${team==='blue'?'BLEU':'ROUGE'} · ${squad.starters.length}/5</b></div>${team==='blue'?'<small class="lineup-manager-hint">Choisissez vos titulaires et remplaçants. Votre joueur carrière reste titulaire.</small>':''}<div class="pre-match-player-list">${renderPlayers(squad.starters,team,'starter')}</div><div class="pre-match-bench-heading"><span>REMPLAÇANTS</span><b>${squad.substitutes.length}</b></div><div class="pre-match-player-list pre-match-bench-list">${squad.substitutes.length ? renderPlayers(squad.substitutes,team,'bench') : '<p class="pre-match-no-bench">Aucun remplaçant enregistré</p>'}</div><small class="pre-match-squad-total">Effectif disponible : ${squad.squadSize} joueur(s)</small></section>`;
+    const renderSquads = () => {
+      const homeSquad = createMatchSquad('blue',selectedFormation,homeRoster,'career-player',selectedBenchSize,selectedHomeStarterIds);
+      const awaySquad = createMatchSquad('red',selectedFormation,away.roster,null,selectedBenchSize);
+      const lineups = content.querySelector('.pre-match-lineups');
+      if (lineups) lineups.innerHTML = `${renderLineup('blue',homeSquad)}${renderLineup('red',awaySquad)}`;
+      const label = content.querySelector('[data-current-formation]');
+      if (label) label.textContent = formationLabels[selectedFormation];
+      const benchLabel = content.querySelector('[data-current-bench-size]');
+      if (benchLabel) benchLabel.textContent = String(selectedBenchSize);
+    };
+    content.innerHTML=`<div class="match-intro"><span class="eyebrow">PRÉSENTATION DU MATCH</span><h2>LE TERRAIN VOUS ATTEND</h2><p>5 contre 5 · ${preferences.duration} minutes · Stade de démonstration</p><div class="intro-versus"><div>${crest(home)}<b>${escapeHTML(home.name)}</b><small>${escapeHTML(home.city)}</small></div><strong>VS</strong><div>${crest(away)}<b>${escapeHTML(away.name)}</b><small>${escapeHTML(away.city)}</small></div></div>${formationSelect}${benchSizeSelect}<div class="intro-lineup"><span>FORMATION <b data-current-formation>${formationLabels[selectedFormation]}</b></span><span>5 TITULAIRES · <b data-current-bench-size>${selectedBenchSize}</b> RÉSERVISTES MAX.</span><span>CONTRÔLE INDIVIDUEL</span></div><div class="pre-match-lineups"></div><button class="primary-cta" data-action="start-match">ENTRER SUR LE TERRAIN <span>→</span></button><button class="text-cta" data-action="choose-match">Modifier les équipes</button></div>`;
+    renderSquads();
+    content.querySelector('#pre-match-formation')?.addEventListener('change', event => {
+      if (!Object.hasOwn(formationLabels,event.target.value)) return;
+      selectedFormation = event.target.value;
+      preferences.formation = selectedFormation;
+      try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
+      renderSquads();
+    });
+    content.querySelector('#pre-match-bench-size')?.addEventListener('change', event => {
+      const size = Number(event.target.value);
+      if (!Number.isInteger(size) || size < 3 || size > 7) return;
+      selectedBenchSize = size;
+      preferences.benchSize = size;
+      try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
+      renderSquads();
+    });
+    content.querySelector('.pre-match-lineups')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-squad-action]');
+      if (!button) return;
+      const id = button.dataset.playerId;
+      const squad = createMatchSquad('blue',selectedFormation,homeRoster,'career-player',selectedBenchSize,selectedHomeStarterIds);
+      if (button.dataset.squadAction === 'start') {
+        if (!squad.substitutes.some(player => player.id === id)) return;
+        const outgoing = squad.starters.filter(player => player.id !== 'career-player')
+          .sort((a,b)=>(Number(a.rating)||0)-(Number(b.rating)||0))[0];
+        if (!outgoing) return;
+        selectedHomeStarterIds = selectedHomeStarterIds.map(playerId => playerId === outgoing.id ? id : playerId);
+      } else if (button.dataset.squadAction === 'bench') {
+        if (id === 'career-player' || !squad.starters.some(player => player.id === id) || !squad.substitutes.length) return;
+        selectedHomeStarterIds = selectedHomeStarterIds.map(playerId => playerId === id ? squad.substitutes[0].id : playerId);
+      } else return;
+      preferences.homeStarterClubId = home.id;
+      preferences.homeStarterIds = selectedHomeStarterIds;
+      try { localStorage.setItem('fpro-menu-preferences', JSON.stringify(preferences)); } catch (_) {}
+      renderSquads();
+    });
     content.scrollTop = 0;
   } else if (action === 'start-match') startMatch();
   else if (action === 'take-club') {
@@ -1375,29 +1878,59 @@ menu.addEventListener('click', event => {
   } else if (action === 'sign-contract') {
     const clubId = document.getElementById('contract-club')?.value;
     const targetClub = clubs.getClub(clubId);
-    const alreadyRegistered = clubs.listClubs().some(club => club.roster.some(player => player.id === 'career-player'));
-    const canRegister = targetClub && (alreadyRegistered || targetClub.roster.length < targetClub.capacity);
-    const result = canRegister
+    const alreadyRegistered = Boolean(targetClub?.roster.some(player => player.id === 'career-player'));
+    const canRegister = targetClub && (alreadyRegistered || (targetClub.humanAdmission !== 'system-only' && targetClub.roster.length < targetClub.capacity && targetClub.roster.filter(player => player.playerType === 'human').length < 7));
+    const before = career.captureState();
+    let result = canRegister
       ? career.signContract({ clubId, salary: Number(document.getElementById('contract-salary')?.value || 0), durationDays: 180 })
       : { ok: false, reason: targetClub ? 'roster-full' : 'invalid-club' };
+    if (result.ok) {
+      const synced = syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      if (!synced.ok) {
+        career.restoreState(before);
+        career.saveState();
+        result = { ok:false, reason:'roster-sync-failed' };
+      }
+    }
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'active-contract' ? 'Vous avez déjà un contrat actif.' : result.reason === 'roster-full' ? 'Effectif complet : ce club ne peut pas inscrire votre footballeur.' : 'Impossible de signer ce contrat.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'active-contract' ? 'Vous avez déjà un contrat actif.' : result.reason === 'roster-full' ? 'Effectif complet : ce club ne peut pas inscrire votre footballeur.' : result.reason === 'roster-sync-failed' ? 'Inscription impossible : le contrat a été annulé car l’effectif n’a pas pu être enregistré.' : 'Impossible de signer ce contrat.';
   } else if (action === 'renew-contract') {
-    const result = career.renewContract({ salary: Number(document.getElementById('renew-contract-salary')?.value), durationDays: 180 });
+    const before = career.captureState();
+    let result = career.renewContract({ salary: Number(document.getElementById('renew-contract-salary')?.value), durationDays: 180 });
+    if (result.ok) {
+      const synced = syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      if (!synced.ok) {
+        career.restoreState(before);
+        career.saveState();
+        result = { ok:false, reason:'roster-sync-failed' };
+      }
+    }
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'contract-expired' ? 'Contrat expiré : signez un nouveau contrat.' : 'Renouvellement impossible : vérifiez le salaire.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'contract-expired' ? 'Contrat expiré : signez un nouveau contrat.' : result.reason === 'roster-sync-failed' ? 'Renouvellement annulé : impossible de synchroniser le contrat dans l’effectif.' : 'Renouvellement impossible : vérifiez le salaire.';
   } else if (action === 'terminate-contract') {
-    const result = career.terminateContract();
+    const before = career.captureState();
+    let result = career.terminateContract();
+    if (result.ok) {
+      const synced = syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      if (!synced.ok) {
+        career.restoreState(before);
+        career.saveState();
+        result = { ok:false, reason:'roster-sync-failed' };
+      }
+    }
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = 'Aucun contrat actif à résilier.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'roster-sync-failed' ? 'Résiliation annulée : impossible de libérer la place dans l’effectif.' : 'Aucun contrat actif à résilier.';
   } else if (action === 'generate-offers') {
     if (career.contract && !career.getContractStatus()?.expired) {
-      clubs.listClubs().filter(club => club.id !== career.clubId).forEach(club => {
-        const duplicate = [...career.offers.values()].some(offer => offer.fromClubId === club.id && offer.status === 'pending');
-        if (!duplicate) {
-          const nextWindow = career.transferWindows.find(window => window.end >= Date.now());
-          career.makeOffer({ fromClubId: club.id, salary: Math.max(40, club.rating * 4), fee: club.rating * 8, expiresAt: new Date(nextWindow?.end || Date.now() + 30 * 86400000).toISOString() });
-        }
+      const pendingOffers = [...career.offers.values()].filter(offer => offer.status === 'pending');
+      const availableSlots = Math.max(0, 5 - pendingOffers.length);
+      const candidates = clubs.listClubs()
+        .filter(club => club.id !== career.clubId && club.humanAdmission !== 'system-only' && club.roster.length < club.capacity && club.roster.filter(player => player.playerType === 'human').length < 7 && !pendingOffers.some(offer => offer.fromClubId === club.id))
+        .sort((a, b) => Math.abs(Number(a.rating || 0) - Number(clubs.getClub(career.clubId)?.rating || 0)) - Math.abs(Number(b.rating || 0) - Number(clubs.getClub(career.clubId)?.rating || 0)) || String(a.name).localeCompare(String(b.name), 'fr'))
+        .slice(0, availableSlots);
+      const nextWindow = career.transferWindows.find(window => window.end >= Date.now());
+      candidates.forEach(club => {
+        career.makeOffer({ fromClubId: club.id, salary: Math.max(40, club.rating * 4), fee: club.rating * 8, expiresAt: new Date(nextWindow?.end || Date.now() + 30 * 86400000).toISOString() });
       });
     }
     renderPage('mercato');
@@ -1411,12 +1944,21 @@ menu.addEventListener('click', event => {
     const offer = career.offers.get(id);
     const targetClub = clubs.getClub(offer?.fromClubId);
     const alreadyRegistered = targetClub?.roster.some(player => player.id === 'career-player');
-    const canRegister = targetClub && (alreadyRegistered || targetClub.roster.length < targetClub.capacity);
-    const result = canRegister
+    const canRegister = targetClub && (alreadyRegistered || (targetClub.humanAdmission !== 'system-only' && targetClub.roster.length < targetClub.capacity && targetClub.roster.filter(player => player.playerType === 'human').length < 7));
+    const before = career.captureState();
+    let result = canRegister
       ? career.acceptOffer(id)
       : { ok: false, reason: targetClub ? 'roster-full' : 'invalid-club' };
+    if (result.ok) {
+      const synced = syncCareerPlayerRoster({ clubs, career, profile: profileStore.profile });
+      if (!synced.ok) {
+        career.restoreState(before);
+        career.saveState();
+        result = { ok:false, reason:'roster-sync-failed' };
+      }
+    }
     renderPage('mercato');
-    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'window-closed' ? 'Transfert impossible : la fenêtre officielle est fermée.' : result.reason === 'insufficient-funds' ? 'Budget de transfert insuffisant.' : result.reason === 'roster-full' ? 'Transfert refusé : l’effectif du club cible est complet.' : 'Cette offre ne peut pas être acceptée.';
+    if (!result.ok) document.getElementById('menu-page-subtitle').textContent = result.reason === 'window-closed' ? 'Transfert impossible : la fenêtre officielle est fermée.' : result.reason === 'insufficient-funds' ? 'Budget de transfert insuffisant.' : result.reason === 'roster-full' ? 'Transfert refusé : l’effectif du club cible est complet.' : result.reason === 'roster-sync-failed' ? 'Transfert annulé : l’effectif n’a pas pu être mis à jour.' : 'Cette offre ne peut pas être acceptée.';
   } else if (action === 'reject-offer') {
     career.rejectOffer(event.target.closest('[data-offer]')?.dataset.offer);
     renderPage('mercato');
@@ -1478,22 +2020,31 @@ const filterPlayerLibrary = () => {
   const query=(document.getElementById('library-search')?.value||'').trim().toLocaleLowerCase('fr');
   const club=document.getElementById('library-club')?.value||'all';
   const role=document.getElementById('library-role')?.value||'all';
+  const status=document.getElementById('library-status')?.value||'all';
+  const type=document.getElementById('library-type')?.value||'all';
   const minRating=Number(document.getElementById('library-min-rating')?.value||0);
   const sort=document.getElementById('library-sort')?.value||'rating';
   const cards=[...root.querySelectorAll('[data-library-card]')];
   cards.sort((a,b)=>{
     if(sort==='name') return a.dataset.name.localeCompare(b.dataset.name,'fr');
     const key=sort==='potential'?'potential':sort==='age'?'age':'rating';
-    return sort==='age'?Number(a.dataset.age)-Number(b.dataset.age):Number(b.dataset[key])-Number(a.dataset[key]);
+    const av=Number(a.dataset[key]),bv=Number(b.dataset[key]);
+    const aValid=Number.isFinite(av),bValid=Number.isFinite(bv);
+    if(aValid!==bValid) return aValid?-1:1;
+    if(aValid&&av!==bv) return sort==='age'?av-bv:bv-av;
+    return a.dataset.name.localeCompare(b.dataset.name,'fr');
   });
-  const matchedCards=cards.filter(card=>(card.dataset.name.includes(query)||card.dataset.archetype.includes(query))
+  const matchedCards=cards.filter(card=>(card.dataset.name.includes(query)||card.dataset.archetype.includes(query)||card.dataset.clubName.includes(query)||card.dataset.lastClub.includes(query))
     &&(club==='all'||card.dataset.club===club)&&(role==='all'||card.dataset.role===role)
+    &&(status==='all'||card.dataset.status===status)&&(type==='all'||card.dataset.type===type)
     &&Number(card.dataset.rating)>=minRating);
   const pageCount=Math.max(1,Math.ceil(matchedCards.length/playerLibraryLimit));
   playerLibraryPage=Math.min(playerLibraryPage,pageCount-1);
   const start=playerLibraryPage*playerLibraryLimit;
   const visibleCards=new Set(matchedCards.slice(start,start+playerLibraryLimit));
   for(const card of cards){card.classList.toggle('hidden',!visibleCards.has(card));root.appendChild(card);}
+  const emptyState=document.getElementById('library-empty-state');
+  if(emptyState) emptyState.hidden=matchedCards.length>0;
   const count=document.getElementById('library-count');
   const shown=document.getElementById('library-visible-count');
   const label=document.getElementById('library-page-label');
@@ -1506,7 +2057,7 @@ const filterPlayerLibrary = () => {
   if(next) next.disabled=playerLibraryPage>=pageCount-1;
 };
 const onPlayerLibraryFilter = event => {
-  if(['library-search','library-club','library-role','library-sort','library-min-rating'].includes(event.target.id)){
+  if(['library-search','library-club','library-role','library-status','library-type','library-sort','library-min-rating'].includes(event.target.id)){
     playerLibraryPage=0; filterPlayerLibrary();
   }
 };
@@ -1528,7 +2079,11 @@ const filterClubDiscovery = event => {
     cards.sort((a,b)=>{
       if(sort==='name') return a.dataset.name.localeCompare(b.dataset.name,'fr');
       const key=sort==='roster'?'roster':sort==='reputation'?'reputation':'rating';
-      return Number(b.dataset[key])-Number(a.dataset[key]);
+      const av=Number(a.dataset[key]),bv=Number(b.dataset[key]);
+      const aValid=Number.isFinite(av),bValid=Number.isFinite(bv);
+      if(aValid!==bValid) return aValid?-1:1;
+      if(aValid&&av!==bv) return bv-av;
+      return a.dataset.name.localeCompare(b.dataset.name,'fr');
     });
     const matches=cards.filter(card=>(card.dataset.name.includes(query)||card.dataset.location.includes(query))
       && (division==='all'||card.dataset.division===division)
@@ -1543,6 +2098,8 @@ const filterClubDiscovery = event => {
   }
   clubLibraryPage=Math.min(clubLibraryPage,pageCount-1);
   if(clubLibraryPage<0) clubLibraryPage=0;
+  const emptyState=document.getElementById('club-empty-state');
+  if(emptyState) emptyState.hidden=matchedTotal>0;
   const counter=document.getElementById('club-filter-count');
   const label=document.getElementById('club-page-label');
   const previous=document.getElementById('club-page-prev');
@@ -1559,11 +2116,15 @@ const filterClubRoster = event => {
   if (event.target.id !== 'roster-search' && event.target.id !== 'roster-role') return;
   const query = (document.getElementById('roster-search')?.value || '').trim().toLocaleLowerCase('fr');
   const role = document.getElementById('roster-role')?.value || 'all';
+  const rows = [...document.querySelectorAll('[data-player-row]')];
   let visible = 0;
-  document.querySelectorAll('[data-player-row]').forEach(row => {
+  rows.forEach(row => {
     const match = row.dataset.name.includes(query) && (role === 'all' || row.dataset.role === role);
-    row.classList.toggle('hidden', !match); if (match) visible++;
+    row.classList.toggle('hidden', !match);
+    if (match) visible++;
   });
+  const count = document.getElementById('roster-filter-count');
+  if (count) count.textContent = visible + ' / ' + rows.length + ' joueurs affichés';
   document.getElementById('roster-empty')?.classList.toggle('hidden', visible > 0);
 };
 menu.addEventListener('input', filterClubRoster);

@@ -3,7 +3,7 @@
 # No Cloudflare resource is created or deployed by this file.
 # Configure the server-only HMAC key with: wrangler secret put P27_MATCH_INGEST_SECRET
 
-name = "football-rp-online-p27-api"
+name = "football-rp-online-p25-r7"
 main = "src/cloudflare/worker.js"
 compatibility_date = "2026-11-25"
 compatibility_flags = ["nodejs_compat"]
@@ -13,5 +13,14 @@ preview_urls = false
 [[d1_databases]]
 binding = "P27_DB"
 database_name = "p27-world"
-database_id = "00000000-0000-4000-8000-000000000000"
+database_id = "9f243d33-8053-45c2-9a77-0e8dc3f5a5d0"
 migrations_dir = "migrations/d1"
+
+
+[[durable_objects.bindings]]
+name = "P27_MATCH_ROOMS"
+class_name = "P27MatchRoomDurableObject"
+
+[[migrations]]
+tag = "v1-match-rooms"
+new_sqlite_classes = ["P27MatchRoomDurableObject"]

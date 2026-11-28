@@ -6,6 +6,7 @@ import path from 'node:path';
 import { JsonRoomStore } from '../server/room-store.js';
 import { JsonResultStore } from '../server/result-store.js';
 import { RoomManager } from '../server/room-manager.js';
+import { JsonProgressionStore } from '../server/progression-store.js';
 
 function temporaryDirectory(prefix) { return mkdtempSync(path.join(os.tmpdir(), prefix)); }
 
@@ -231,7 +232,7 @@ test('P27 simulation : plusieurs dizaines de salons avancent ensemble sans perte
     manager.join(created.id, { displayName: `Humain ${index + 1}` });
     const room = manager.rooms.get(created.id);
     assert.equal(room.phase, 'playing');
-    assert.equal(room.players.size, 14);
+    assert.equal(room.players.size, 24);
     rooms.push({ id: created.id, sequence: room.sequence });
   }
 
@@ -244,11 +245,175 @@ test('P27 simulation : plusieurs dizaines de salons avancent ensemble sans perte
   for (const entry of rooms) {
     const room = manager.rooms.get(entry.id);
     assert.ok(room.sequence > entry.sequence);
-    assert.equal(room.players.size, 14);
+    assert.equal(room.players.size, 24);
     assert.ok(Number.isFinite(room.ball.x) && Number.isFinite(room.ball.z));
     for (const player of room.players.values()) {
       assert.ok(Number.isFinite(player.x) && Number.isFinite(player.z));
       assert.ok(Number.isFinite(player.input.x) && Number.isFinite(player.input.z));
     }
   }
+});
+
+test('P27 salons persistés : un salon inactif nettoie aussi une déconnexion horodatée à zéro', () => {
+  let now = 0;
+  const manager = new RoomManager({ now: () => now, roomTtlMs: 60 * 60_000, disconnectGraceMs: 20_000 });
+  const created = manager.create({ name: 'Déconnexion à zéro' });
+  const room = manager.rooms.get(created.id);
+  room.phase = 'lobby';
+  room.players.clear();
+  room.players.set('human-at-zero', {
+    id: 'human-at-zero', team: 'blue', slot: 0, isBot: false,
+    connected: false, aiControlled: true, disconnectedAt: 0,
+  });
+
+  now = 20_001;
+  manager.tick(0);
+  assert.equal(manager.rooms.has(created.id), false);
+});
+
+test('P27 résultat final : un coup de sifflet non finalisé survit au redémarrage et termine sa sauvegarde', () => {
+  const directory = temporaryDirectory('p27-room-fulltime-recovery-');
+  try {
+    let now = 50_000;
+    const roomDirectory = path.join(directory, 'rooms');
+    const resultDirectory = path.join(directory, 'results');
+    const progressionDirectory = path.join(directory, 'progression');
+    const roomStore = new JsonRoomStore(roomDirectory);
+    const resultStore = new JsonResultStore(resultDirectory);
+    const progressionStore = new JsonProgressionStore(progressionDirectory);
+    const first = new RoomManager({ now: () => now, roomStore, resultStore, progressionStore });
+    const created = first.create({ name: 'Finalisation récupérable' });
+    const joined = first.join(created.id, { displayName: 'Joueur carrière', accountId: 'account-final-recovery' });
+    const room = first.rooms.get(created.id);
+    const player = room.players.get(joined.playerId);
+    player.matchTimePlayedMs = 90_000;
+    player.stats.goals = 1;
+    room.phase = 'fulltime';
+    room.elapsedMs = room.durationMinutes * 60_000;
+    room.score = { blue: 1, red: 0 };
+
+    progressionStore.persist = () => { throw new Error('DISK_FULL'); };
+    assert.equal(first.tryFinalizeResult(room), false);
+    assert.equal(resultStore.get(created.id), null);
+    const checkpoint = roomStore.readAll().find(item => item.id === created.id);
+    assert.equal(checkpoint.phase, 'fulltime');
+    assert.equal(checkpoint.score.blue, 1);
+
+    now += 5_000;
+    const recoveredProgression = new JsonProgressionStore(progressionDirectory);
+    const restarted = new RoomManager({
+      now: () => now,
+      roomStore: new JsonRoomStore(roomDirectory),
+      resultStore: new JsonResultStore(resultDirectory),
+      progressionStore: recoveredProgression,
+    });
+    assert.equal(restarted.rooms.get(created.id).phase, 'fulltime');
+    restarted.tick(0);
+    assert.equal(restarted.getResult(created.id).score.blue, 1);
+    assert.ok(recoveredProgression.get('account-final-recovery').processedMatchIds.includes(created.id));
+    assert.deepEqual(new JsonRoomStore(roomDirectory).readAll(), []);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+
+test('P27 sécurité des salons : les checkpoints ne conservent que le hash du jeton et permettent la reconnexion après redémarrage', () => {
+  const directory = temporaryDirectory('p27-room-token-hash-');
+  try {
+    let now = 1_000;
+    const store = new JsonRoomStore(directory);
+    const first = new RoomManager({ now: () => now, roomStore: store });
+    const created = first.create({ name: 'Jeton protégé' });
+    const joined = first.join(created.id, { displayName: 'Joueur sécurisé' });
+    const checkpoint = store.readAll().find(room => room.id === created.id);
+    const savedPlayer = checkpoint.players.find(player => player.id === joined.playerId);
+    assert.equal(savedPlayer.token, undefined);
+    assert.match(savedPlayer.tokenHash, /^[a-f0-9]{64}$/);
+    assert.equal(JSON.stringify(checkpoint).includes(joined.token), false);
+
+    now += 1_000;
+    const restarted = new RoomManager({ now: () => now, roomStore: new JsonRoomStore(directory) });
+    const restoredPlayer = restarted.rooms.get(created.id).players.get(joined.playerId);
+    assert.equal(restoredPlayer.token, undefined);
+    assert.equal(restoredPlayer.tokenHash, savedPlayer.tokenHash);
+    const result = restarted.reconnect(created.id, joined.token);
+    assert.equal(result.reconnected, true);
+    const publicPlayer = result.state.players.find(player => player.id === joined.playerId);
+    assert.equal(publicPlayer.token, undefined);
+    assert.equal(publicPlayer.tokenHash, undefined);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('P27 sécurité des salons : un ancien checkpoint avec jeton brut est migré au premier restore', () => {
+  const directory = temporaryDirectory('p27-room-token-legacy-');
+  try {
+    const store = new JsonRoomStore(directory);
+    const token = 'legacy-reconnect-token-1234567890';
+    store.save({
+      id: 'legacy-room', name: 'Ancien format', phase: 'playing', durationMinutes: 5,
+      createdAt: 1, updatedAt: 1, startedAt: 1, elapsedMs: 1_000, sequence: 0,
+      period: 1, score: { blue: 0, red: 0 }, players: [{
+        id: 'legacy-player', token, team: 'blue', slot: 0, isBot: false,
+        connected: true, controlMode: 'human', aiControlled: false,
+        stats: { passes: 0, completedPasses: 0, shots: 0, tackles: 0, goals: 0, assists: 0, saves: 0, interceptions: 0 },
+      }],
+      ball: { x: 0, y: 0.36, z: 0, vx: 0, vy: 0, vz: 0, ownerId: null, lastTouchTeam: null },
+      events: [], attackDirection: { blue: 1, red: -1 }, teams: { blue: null, red: null },
+      nextEventId: 1, rotationRequests: [],
+    });
+    const restored = new RoomManager({ now: () => 2, roomStore: store });
+    const checkpoint = store.readAll()[0];
+    assert.equal(checkpoint.players[0].token, undefined);
+    assert.match(checkpoint.players[0].tokenHash, /^[a-f0-9]{64}$/);
+    assert.equal(restored.reconnect('legacy-room', token).reconnected, true);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+
+test('P27 salons : le checkpoint utilise un schéma versionné et accepte les anciens snapshots', () => {
+  let now = 10_000;
+  const roomStore = {
+    snapshots: [],
+    save(snapshot) { this.snapshots = [snapshot]; },
+    readAll() { return this.snapshots; },
+    delete(id) { this.snapshots = this.snapshots.filter(item => item.id !== id); },
+  };
+  const manager = new RoomManager({
+    now: () => now,
+    roomStore,
+    roomIdFactory: () => 'a1b2c3d4e5f6',
+  });
+  const created = manager.create({ name: 'Identifiant déterministe' });
+  assert.equal(created.id, 'a1b2c3d4e5f6');
+  assert.equal(roomStore.snapshots[0].schemaVersion, 1);
+
+  const legacyStore = {
+    readAll: () => [{ ...roomStore.snapshots[0], schemaVersion: undefined }],
+    delete() {},
+    save() {},
+  };
+  const legacy = new RoomManager({ now: () => now, roomStore: legacyStore });
+  assert.ok(legacy.rooms.has(created.id));
+});
+
+test('P27 salons : refuse un checkpoint issu d une version future inconnue', () => {
+  const roomStore = {
+    readAll: () => [{
+      schemaVersion: 99,
+      id: 'a1b2c3d4e5f6',
+      phase: 'lobby',
+      updatedAt: 10_000,
+      players: [],
+    }],
+    delete() {},
+    save() {},
+  };
+  assert.throws(
+    () => new RoomManager({ now: () => 10_000, roomStore }),
+    /ROOM_STORE_VERSION_UNSUPPORTED/
+  );
+});
+
+test('P27 salons : refuse un générateur d identifiant incompatible avec les routes publiques', () => {
+  const manager = new RoomManager({ roomIdFactory: () => 'not-a-room-id' });
+  assert.throws(() => manager.create(), /INVALID_ROOM_ID_GENERATOR/);
 });

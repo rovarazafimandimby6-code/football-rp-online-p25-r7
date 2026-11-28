@@ -4,6 +4,7 @@ import { LEAGUE_DIVISIONS, normalizeDivision, normalizeConference } from './leag
 import { generateClubCharacteristics, generateClubRecruitmentProfile, generateClubStrategicProfile, balanceClubRosterQuality } from './club-profile.js';
 import { generateClubLore } from './p27-club-lore.js';
 import { P27_EXPANSION_CLUBS } from './p27-club-expansion.js';
+import { applyP27ClubKit } from './p27-club-kit.js';
 
 const safeId = value => String(value ?? '').trim().slice(0, 48);
 const safeCount = value => Number.isFinite(Number(value)) && Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 5 ? Number(value) : null;
@@ -51,9 +52,7 @@ const normalizeRosterPlayer = (player, club, index = 0) => {
     controlStatus: player?.playerType === 'human' ? (player?.controlStatus === 'automated' ? 'automated' : 'human') : 'system',
     preferredFoot: player?.preferredFoot === 'left' ? 'left' : 'right',
     archetype: cleanText(player?.archetype, 'Joueur polyvalent', 40),
-    appearance: player?.appearance && typeof player.appearance === 'object'
-      ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null }
-      : null
+    appearance: { ...(player?.appearance && typeof player.appearance === 'object' ? player.appearance : {}), ...applyP27ClubKit({ appearance:player?.appearance, role:player?.role }, club).appearance }
   };
 };
 
@@ -104,25 +103,25 @@ const normalizeClubLocation = (location, legacyCity = '') => {
 };
 
 export const DEFAULT_CLUBS = Object.freeze([
-  club('antananarivo-fc','Antananarivo Crown FC','Antananarivo / Madrid','Madagascar · Espagne','MG','D1',76,'ai',['#1769aa','#092e55','#f3d36a'],'Stade des Hautes-Terres',82,4200000),
-  club('manparis-sporting','Manparis Sporting','Manchester / Paris','International','FR','D1',78,'ai',['#493b91','#211b4e','#e7d8ff'],'Arena des Deux Capitales',86,5100000),
-  club('dakar-milan-union','Dakar-Milan Union','Dakar / Milan','Sénégal · Italie','SN','D1',74,'ai',['#c33c45','#641d2a','#f4e7d0'],'Stade de la Renaissance',80,3900000),
-  club('toamasina-united','Toamasina Coast FC','Toamasina','Madagascar','MG','D1',72,'ai',['#168b83','#064c4b','#e6d78b'],'Stade du Port',77,3400000),
+  club('antananarivo-fc','Antananarivo Crown FC','Antananarivo','Madagascar','MG','D1',76,'ai',['#1769aa','#092e55','#f3d36a'],'Stade des Hautes-Terres',82,4200000),
+  club('manparis-sporting','Manchester Sporting','Manchester','Royaume-Uni','GB','D1',78,'ai',['#123b7a','#d72645','#ffffff'],'Arena des Deux Capitales',86,5100000),
+  club('dakar-milan-union','Dakar Athletic','Dakar','Sénégal','SN','D1',74,'ai',['#c33c45','#641d2a','#f4e7d0'],'Stade de la Renaissance',80,3900000),
+  club('toamasina-united','Toamasina Coast','Toamasina','Madagascar','MG','D1',72,'ai',['#168b83','#064c4b','#e6d78b'],'Stade du Port',77,3400000),
 
-  club('londaka-city','Londaka City','Londres / Dakar','International','SN','D2',68,'ai',['#d8aa45','#76501a','#fff0b8'],'Londaka Park',70,2300000),
+  club('londaka-city','London UK','Londres','Royaume-Uni','GB','D2',68,'ai',['#d8aa45','#76501a','#fff0b8'],'Londaka Park',70,2300000),
   club('lisboa-nova-athletic','Lisboa Nova Athletic','Lisbonne','Portugal','PT','D2',67,'ai',['#32945b','#145332','#d6f4df'],'Nova Arena',69,2200000),
   club('fianarantsoa-athletic','Fianarantsoa Highland','Fianarantsoa','Madagascar','MG','D2',66,'open',['#7856b8','#34215e','#e6d8ff'],'Stade des Hauts Plateaux',68,2100000),
-  club('osaka-antsirabe-fc','Osaka-Antsira FC','Osaka / Antsirabe','Japon · Madagascar','MG','D2',65,'ai',['#d94a4a','#7c202b','#f5e7d6'],'Stade du Soleil Levant',67,2000000),
+  club('osaka-antsirabe-fc','Osaka Red Phoenix','Osaka','Japon','JP','D2',65,'ai',['#d94a4a','#7c202b','#f5e7d6'],'Stade du Soleil Levant',67,2000000),
 
   club('mahajanga-city','Mahajanga Gulf United','Mahajanga','Madagascar','MG','D3',61,'open',['#d8aa45','#76501a','#fff0b8'],'Stade du Canal',61,1250000),
-  club('rio-tana-creative','Rio-Tana Creative','Rio / Antananarivo','Brésil · Madagascar','MG','D3',60,'ai',['#26945b','#105a36','#f2d34f'],'Arena Créative',60,1200000),
+  club('rio-tana-creative','Rio de Janeiro Sporting','Rio de Janeiro','Brésil','BR','D3',60,'ai',['#26945b','#105a36','#f2d34f'],'Arena Créative',60,1200000),
   club('antsirabe-sport','Antsirabe Sporting','Antsirabe','Madagascar','MG','D3',59,'ai',['#32945b','#145332','#d6f4df'],'Stade Thermal',59,1150000),
-  club('valencia-northbridge','Valencia Northbridge','Valence / Northbridge','Espagne · International','ES','D3',60,'ai',['#e06b32','#7e2d20','#f5d9a1'],'Northbridge Ground',60,1180000),
+  club('valencia-northbridge','Valencia Northbridge','Valence','Espagne','ES','D3',60,'ai',['#e06b32','#7e2d20','#f5d9a1'],'Northbridge Ground',60,1180000),
 
-  club('tulear-sunrise','Tuléar Sunrise FC','Toliara','Madagascar','MG','AMATEUR',53,'open',['#e09b35','#7b431b','#ffe5a5'],'Terrain du Sud',48,420000),
+  club('tulear-sunrise','Toliara Sunrise','Toliara','Madagascar','MG','AMATEUR',53,'open',['#e09b35','#7b431b','#ffe5a5'],'Terrain du Sud',48,420000),
   club('morondava-lagoon','Morondava Lagoon','Morondava','Madagascar','MG','AMATEUR',51,'open',['#278c9b','#14515d','#d8f0e8'],'Stade du Baobab',45,360000),
-  club('nairobi-tana-academy','Nairobi-Tana Academy','Nairobi / Antananarivo','Kenya · Madagascar','MG','AMATEUR',52,'open',['#526f3e','#273c24','#e3d7a4'],'Academy Field',47,390000),
-  club('antsiranana-north-fc','Antsiranana North FC','Antsiranana','Madagascar','MG','AMATEUR',50,'open',['#3976a8','#1e3f68','#f0d477'],'Stade du Nord',44,340000)
+  club('nairobi-tana-academy','Nairobi Academy','Nairobi','Kenya','KE','AMATEUR',52,'open',['#526f3e','#273c24','#e3d7a4'],'Academy Field',47,390000),
+  club('antsiranana-north-fc','Antsiranana North','Antsiranana','Madagascar','MG','AMATEUR',50,'open',['#3976a8','#1e3f68','#f0d477'],'Stade du Nord',44,340000)
 ].map(item => ({ ...item, location: STARTER_CLUB_LOCATIONS[item.id], ...(item.division === 'AMATEUR' ? { division: 'D5', conference: ({ 'tulear-sunrise': 'C', 'morondava-lagoon': 'D', 'nairobi-tana-academy': 'B', 'antsiranana-north-fc': 'A' })[item.id] } : {}) })).concat(P27_EXPANSION_CLUBS));
 
 export class ClubManager {
@@ -133,6 +132,7 @@ export class ClubManager {
     this.clubs = new Map();
     const seedDefaultRosters = clubs === DEFAULT_CLUBS;
     const globallyUsedNames = new Set();
+    const globallyUsedNationalities = new Map();
     for (const input of Array.isArray(clubs) ? clubs : []) {
       const id = safeId(input?.id);
       if (!id || this.clubs.has(id)) continue;
@@ -168,7 +168,7 @@ export class ClubManager {
       normalized.clubLore = input.clubLore && typeof input.clubLore === 'object' ? { ...generateClubLore({ ...normalized, ...input }), ...input.clubLore, rivalries: Array.isArray(input.clubLore.rivalries) ? input.clubLore.rivalries.filter(item => item && typeof item.clubId === 'string').map(item => ({ clubId:item.clubId, type:String(item.type || 'sporting'), status:item.status === 'active' ? 'active' : 'proposed' })) : [] } : generateClubLore({ ...normalized, ...input });
       if (normalized.humanAdmission === 'system-only') normalized.control = 'ai';
       normalized.roster = seedDefaultRosters ? assignSystemContracts(balanceClubRosterQuality(
-        generateClubRoster({ ...normalized, recruitmentProfile: normalized.recruitmentProfile }, { size: Math.min(normalized.initialRosterSize, normalized.capacity), usedNames: globallyUsedNames }),
+        generateClubRoster({ ...normalized, recruitmentProfile: normalized.recruitmentProfile }, { size: Math.min(normalized.initialRosterSize, normalized.capacity), usedNames: globallyUsedNames, nationalityCounts: globallyUsedNationalities }),
         normalized
       ), normalized) : [];
       this.clubs.set(id, normalized);
@@ -185,7 +185,7 @@ export class ClubManager {
         humanAdmission: 'system-only', recruitmentProfile: { mode:'continent', continent:'Africa' }
       });
       if (seedDefaultRosters) reserved.roster = assignSystemContracts(balanceClubRosterQuality(
-        generateClubRoster({ ...reserved, recruitmentProfile: reserved.recruitmentProfile }, { size: Math.min(reserved.initialRosterSize, reserved.capacity), usedNames: globallyUsedNames }),
+        generateClubRoster({ ...reserved, recruitmentProfile: reserved.recruitmentProfile }, { size: Math.min(reserved.initialRosterSize, reserved.capacity), usedNames: globallyUsedNames, nationalityCounts: globallyUsedNationalities }),
         reserved
       ), reserved);
     }
@@ -239,8 +239,16 @@ export class ClubManager {
             role: ['GK','DEF','MID','FWD'].includes(p.role) ? p.role : 'MID', number: Number.isInteger(p.number) ? Math.max(1, Math.min(99,p.number)) : 1,
             playerType: ['human','system'].includes(p.playerType) ? p.playerType : (club.roster.some(seed => seed.id === safeId(p.id)) ? 'system' : 'human'), contract: p.playerType === 'human' ? (p.contract && p.contract.status === 'active' && Number.isSafeInteger(Number(p.contract.weeklyWage ?? p.contract.salary)) ? { ...p.contract, weeklyWage: Math.max(0, Math.floor(Number(p.contract.weeklyWage ?? p.contract.salary))), salary: Math.max(0, Math.floor(Number(p.contract.salary ?? p.contract.weeklyWage))) } : null) : { ...createSystemPlayerContract({ clubId: club.id, playerId: safeId(p.id), division: club.division, rating: Math.max(1, Math.min(99, Number(p.rating) || 50)) }), ...(p.contract && typeof p.contract === 'object' ? Object.fromEntries(['reviewCount','reviewedAt','signedAt','durationWeeks','expiresAt','transferredAt','previousClubId','renewalCount','renewedAt','termHistory','renewalDecision','renewalDeclinedAt','renewalDeclineReason'].filter(key => p.contract[key] !== undefined).map(key => [key,p.contract[key]])) : {}) }, controlStatus: p.playerType === 'human' && p.controlStatus === 'automated' ? 'automated' : (p.playerType === 'human' ? 'human' : 'system'),
             rating: Math.max(1, Math.min(99, Number(p.rating) || 50)), potential: Math.max(1, Math.min(99, Number(p.potential) || Number(p.rating) || 50)), potentialBand: ['standard','good','high','exceptional'].includes(p.potentialBand) ? p.potentialBand : 'standard', attributes: normalizePlayerAttributes(p.attributes, Number(p.rating) || 50), loyalty: normalizePlayerLoyalty(p.loyalty),
-            preferredFoot: p.preferredFoot === 'left' ? 'left' : 'right', archetype: cleanText(p.archetype, 'Joueur polyvalent', 40),
-            appearance: p.appearance && typeof p.appearance === 'object' ? { skinTone: ['light','olive','tan','medium','brown','dark','deep'].includes(p.appearance.skinTone) ? p.appearance.skinTone : 'medium', bodyBuild: ['lean','athletic','strong'].includes(p.appearance.bodyBuild) ? p.appearance.bodyBuild : 'athletic', hairStyle: ['short','curly','afro','fade','shaved','braids','twists','wavy'].includes(p.appearance.hairStyle) ? p.appearance.hairStyle : 'short', hairColor: ['dark','brown','blond','black'].includes(p.appearance.hairColor) ? p.appearance.hairColor : 'dark', kitColors: p.appearance.kitColors && ['primary','secondary','accent'].every(key => /^#[0-9a-f]{6}$/i.test(p.appearance.kitColors[key] || '')) ? { ...p.appearance.kitColors } : null, kitDesign: ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'].includes(p.appearance.kitDesign) ? p.appearance.kitDesign : 'central', kitVariant: p.appearance.kitVariant === 'goalkeeper' ? 'goalkeeper' : 'outfield', faceShape: ['oval','round','angular','long','square'].includes(p.appearance.faceShape) ? p.appearance.faceShape : 'oval', eyeShape: ['almond','round','deep-set','hooded'].includes(p.appearance.eyeShape) ? p.appearance.eyeShape : 'almond' } : null
+            preferredFoot: ['left','right','both'].includes(p.preferredFoot) ? p.preferredFoot : 'right', archetype: cleanText(p.archetype, 'Joueur polyvalent', 40),
+            ...(p.playerReference && typeof p.playerReference === 'object' ? {
+              playerReference: { ...p.playerReference },
+              playerReferenceStats: p.playerReferenceStats && typeof p.playerReferenceStats === 'object' ? { ...p.playerReferenceStats } : null,
+              // Keep legacy aliases for older career snapshots and downstream systems.
+              dls26Reference: p.dls26Reference && typeof p.dls26Reference === 'object' ? { ...p.dls26Reference } : null,
+              dls26Stats: p.dls26Stats && typeof p.dls26Stats === 'object' ? { ...p.dls26Stats } : null,
+              ...(Number.isInteger(p.heightCm) && p.heightCm >= 140 && p.heightCm <= 220 ? { heightCm: p.heightCm } : {})
+            } : {}),
+            appearance: p.appearance && typeof p.appearance === 'object' ? { skinTone: ['light','olive','tan','medium','brown','dark','deep'].includes(p.appearance.skinTone) ? p.appearance.skinTone : 'medium', bodyBuild: ['lean','athletic','strong'].includes(p.appearance.bodyBuild) ? p.appearance.bodyBuild : 'athletic', hairStyle: ['short','curly','afro','fade','shaved','braids','twists','wavy'].includes(p.appearance.hairStyle) ? p.appearance.hairStyle : 'short', hairColor: ['dark','brown','blond','black','auburn','grey'].includes(p.appearance.hairColor) ? p.appearance.hairColor : 'dark', kitColors: p.appearance.kitColors && ['primary','secondary','accent'].every(key => /^#[0-9a-f]{6}$/i.test(p.appearance.kitColors[key] || '')) ? { ...p.appearance.kitColors } : null, kitDesign: ['vertical','sash','hoops','wave','pinstripes','quartered','chevron','sunburst','horizontal','diagonal','central','split','shoulder','ripple','cross','sidepanels'].includes(p.appearance.kitDesign) ? p.appearance.kitDesign : 'central', kitVariant: p.appearance.kitVariant === 'goalkeeper' ? 'goalkeeper' : 'outfield', faceShape: ['oval','round','angular','long','square'].includes(p.appearance.faceShape) ? p.appearance.faceShape : 'oval', eyeShape: ['almond','round','deep-set','hooded'].includes(p.appearance.eyeShape) ? p.appearance.eyeShape : 'almond', facialHair: p.appearance.facialHair === 'beard' ? 'beard' : 'none' } : null
           }));
           const seededById = new Map(club.roster.map(player => [player.id, player]));
           const migratedRoster = restoredRoster.map(player => {
@@ -252,7 +260,7 @@ export class ClubManager {
           const releasedIds = new Set((Array.isArray(saved.releasedPlayers) ? saved.releasedPlayers : []).map(item => safeId(item?.player?.id)).filter(Boolean));
           const mergedRoster = new Map(club.roster.filter(player => !releasedIds.has(player.id)).map(player => [player.id, player]));
           for (const player of migratedRoster) mergedRoster.set(player.id, player);
-          club.roster = [...mergedRoster.values()].slice(0, club.capacity);
+          club.roster = [...mergedRoster.values()].slice(0, club.capacity).map(player => applyP27ClubKit(player, club));
         }
         club.releasedPlayers = Array.isArray(saved.releasedPlayers) ? saved.releasedPlayers.filter(item => item && item.player && typeof item.player === 'object').slice(-100).map(item => ({ player:{ ...item.player, contract:item.player.contract ? { ...item.player.contract } : null }, releasedAt:typeof item.releasedAt === 'string' ? item.releasedAt : null, reason:item.reason === 'contract-expired' ? item.reason : 'released' })) : [];
         club.managerId = saved.managerId ? safeId(saved.managerId) : null;
@@ -277,7 +285,9 @@ export class ClubManager {
     if (!club || !manager) return { ok: false, reason: 'invalid-request' };
     if (club.control !== 'open' || club.humanAdmission === 'system-only' || club.managerId) return { ok: false, reason: 'club-not-available' };
     if ([...this.clubs.values()].some(other => other.managerId === manager)) return { ok: false, reason: 'manager-already-has-club' };
-    club.control = 'player'; club.managerId = manager; this.saveSeason();
+    const previousControl = club.control; const previousManagerId = club.managerId;
+    club.control = 'player'; club.managerId = manager;
+    if (!this.saveSeason()) { club.control = previousControl; club.managerId = previousManagerId; return { ok:false, reason:'roster-persistence-failed' }; }
     return { ok: true, club: this.getClub(club.id) };
   }
 
@@ -289,11 +299,12 @@ export class ClubManager {
     const playerType = player?.playerType === 'system' ? 'system' : 'human';
     if (playerType === 'human' && club.humanAdmission === 'system-only') return { ok: false, reason: 'human-admission-closed' };
     if (playerType === 'human' && club.roster.filter(item => item.playerType === 'human').length >= 7) return { ok: false, reason: 'human-player-limit' };
-    const normalized = normalizeRosterPlayer({ ...player, playerType, id }, club, club.roster.length);
+    const normalized = applyP27ClubKit(normalizeRosterPlayer({ ...player, playerType, id }, club, club.roster.length), club);
     normalized.number = availableShirtNumber(club, normalized.number);
     if (!normalized.number) return { ok: false, reason: 'shirt-numbers-full' };
     club.roster.push(normalized);
-    this.saveSeason(); return { ok: true, rosterSize: club.roster.length, number: normalized.number };
+    if (!this.saveSeason()) { club.roster.pop(); return { ok:false, reason:'roster-persistence-failed' }; }
+    return { ok: true, rosterSize: club.roster.length, number: normalized.number };
   }
 
   signFreeAgent(clubId, playerId, { now = Date.now() } = {}) {
@@ -384,7 +395,7 @@ export class ClubManager {
         existing.club.releasedPlayers = existing.club.releasedPlayers.slice(-100);
       }
       const source = existing?.player || {};
-      const normalized = normalizeRosterPlayer({
+      const normalized = applyP27ClubKit(normalizeRosterPlayer({
         ...source, id, name:cleanText(name, source.name || 'Joueur humain', 36),
         playerType:'human', controlStatus:'human',
         contract:contract && contract.status === 'active' ? {
@@ -392,7 +403,7 @@ export class ClubManager {
           salary:Math.max(0, Math.floor(Number(contract.salary) || 0)),
           weeklyWage:Math.max(0, Math.floor(Number(contract.salary) || 0))
         } : null
-      }, target, target.roster.length);
+      }, target, target.roster.length), target);
       normalized.number = assignedNumber;
       target.roster.push(normalized);
       if (!this.saveSeason()) {
@@ -435,8 +446,12 @@ export class ClubManager {
     const requestedNumber = Number(updated.number);
     if (club.roster.some(existing => existing.id !== id && existing.number === requestedNumber)) return { ok: false, reason: 'shirt-number-taken' };
     if (JSON.stringify(club.roster[index]) !== JSON.stringify(updated)) {
+      const previous = club.roster[index];
       club.roster[index] = updated;
-      this.saveSeason();
+      if (!this.saveSeason()) {
+        club.roster[index] = previous;
+        return { ok:false, reason:'roster-persistence-failed' };
+      }
     }
     return { ok: true, player: clonePlayer(updated) };
   }
@@ -456,12 +471,10 @@ export class ClubManager {
     if (player.playerType === 'human' && to.roster.filter(item => item.playerType === 'human').length >= 7) return { ok: false, reason: 'human-player-limit' };
     const assignedNumber = availableShirtNumber(to, player.number);
     if (!assignedNumber) return { ok: false, reason: 'shirt-numbers-full' };
-    from.roster.splice(sourceIndex, 1);
-    const transferred = {
-      ...player,
-      number: assignedNumber,
-      appearance: player.appearance ? { ...player.appearance, kitColors: player.appearance.kitColors ? { ...player.appearance.kitColors } : null } : null
-    };
+    // Prepare the destination snapshot before mutating either roster.
+    // This prevents kit/contract preparation errors from orphaning the source player.
+    const transferSnapshot = JSON.parse(JSON.stringify(player));
+    const transferred = applyP27ClubKit({ ...transferSnapshot, number:assignedNumber }, to);
     if (transferred.playerType === 'system') {
       transferred.contract = {
         ...createSystemPlayerContract({
@@ -483,6 +496,7 @@ export class ClubManager {
         previousClubId: from.id
       };
     }
+    from.roster.splice(sourceIndex, 1);
     to.roster.push(transferred);
     if (!this.saveSeason()) {
       to.roster.pop();
@@ -501,8 +515,12 @@ export class ClubManager {
     if (player.playerType !== 'system') return { ok:false, reason:'not-system-player' };
     const result = setSystemPlayerContractTerm(player.contract, { signedAt, durationWeeks });
     if (!result.ok) return result;
+    const previousContract = clonePlayer(player).contract;
     player.contract = result.contract;
-    this.saveSeason();
+    if (!this.saveSeason()) {
+      player.contract = previousContract;
+      return { ok:false, reason:'roster-persistence-failed' };
+    }
     return { ok:true, contract:{ ...player.contract } };
   }
 
@@ -514,8 +532,12 @@ export class ClubManager {
     const result = renewSystemPlayerContract(player.contract, { now, durationWeeks, weeklyWage });
     if (!result.ok) return result;
     const { renewalDecision, renewalDeclinedAt, renewalDeclineReason, ...renewedContract } = result.contract;
+    const previousContract = clonePlayer(player).contract;
     player.contract = renewedContract;
-    this.saveSeason();
+    if (!this.saveSeason()) {
+      player.contract = previousContract;
+      return { ok:false, reason:'roster-persistence-failed' };
+    }
     return { ok:true, contract:{ ...player.contract, termHistory:player.contract.termHistory.map(entry => ({ ...entry })) } };
   }
 
@@ -565,6 +587,10 @@ export class ClubManager {
   expireSystemPlayerContracts({ now = Date.now() } = {}) {
     if (!Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-time', expired:[] };
     const expired = [];
+    const before = new Map([...this.clubs.values()].map(club => [club.id, {
+      roster:club.roster.map(clonePlayer),
+      releasedPlayers:(club.releasedPlayers || []).map(entry => ({ ...entry, player:clonePlayer(entry.player) }))
+    }]));
     for (const club of this.clubs.values()) {
       const remaining = [];
       for (const player of club.roster) {
@@ -580,22 +606,38 @@ export class ClubManager {
         club.releasedPlayers = club.releasedPlayers.slice(-100);
       }
     }
-    if (expired.length) this.saveSeason();
+    if (expired.length && !this.saveSeason()) {
+      for (const club of this.clubs.values()) {
+        const previous = before.get(club.id);
+        club.roster = previous.roster;
+        club.releasedPlayers = previous.releasedPlayers;
+      }
+      return { ok:false, reason:'roster-persistence-failed', expired:[] };
+    }
     return { ok:true, expired };
   }
 
   replenishSystemRosterVacancies({ clubIds = null, now = Date.now() } = {}) {
     if (!Number.isSafeInteger(now) || now < 0) return { ok:false, reason:'invalid-time', recruited:[], clubsUpdated:[] };
     const selected = Array.isArray(clubIds) ? new Set(clubIds.map(safeId)) : null;
-    const usedNames = new Set([...this.clubs.values()].flatMap(item => item.roster.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase())));
-    const usedIds = new Set([...this.clubs.values()].flatMap(item => item.roster.map(player => player.id)));
+    const beforeRosters = new Map([...this.clubs.values()].map(club => [club.id, club.roster.map(clonePlayer)]));
+    const worldPlayers = [...this.clubs.values()].flatMap(item => item.roster);
+    const usedNames = new Set(worldPlayers.map(player => player.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase()));
+    const usedIds = new Set(worldPlayers.map(player => player.id));
+    const nationalityCounts = new Map();
+    for (const player of worldPlayers) nationalityCounts.set(player.nationality, (nationalityCounts.get(player.nationality) || 0) + 1);
+    let worldPlayerCount = worldPlayers.length;
+    let malagasyPlayerCount = nationalityCounts.get('MG') || 0;
     const recruited = [];
     for (const club of this.clubs.values()) {
       if (selected && !selected.has(club.id)) continue;
       const targetSize = Math.min(club.capacity, Math.max(0, Number(club.initialRosterSize) || club.capacity));
       const vacancies = Math.max(0, targetSize - club.roster.length);
       if (!vacancies) continue;
-      const candidates = generateClubRoster({ ...club, recruitmentProfile:club.recruitmentProfile }, { size:vacancies, usedNames });
+      const malagasyQuota = Math.max(0, Math.min(vacancies, Math.round((worldPlayerCount + vacancies) * 0.3) - malagasyPlayerCount));
+      const candidates = generateClubRoster({ ...club, recruitmentProfile:club.recruitmentProfile }, { size:vacancies, usedNames, nationalityCounts, malagasyQuota });
+      worldPlayerCount += candidates.length;
+      malagasyPlayerCount += candidates.filter(player => player.nationality === 'MG').length;
       for (let index = 0; index < candidates.length; index++) {
         const candidate = candidates[index];
         let serial = Math.max(1, club.releasedPlayers.length + club.roster.length + index + 1);
@@ -617,7 +659,10 @@ export class ClubManager {
         recruited.push({ clubId:club.id, playerId:id, role:candidate.role, rating:candidate.rating });
       }
     }
-    if (recruited.length) this.saveSeason();
+    if (recruited.length && !this.saveSeason()) {
+      for (const club of this.clubs.values()) club.roster = beforeRosters.get(club.id);
+      return { ok:false, reason:'roster-persistence-failed', recruited:[], clubsUpdated:[] };
+    }
     return { ok:true, recruited, clubsUpdated:[...new Set(recruited.map(item=>item.clubId))] };
   }
 
@@ -646,6 +691,7 @@ export class ClubManager {
       clubId: club.id, playerId: player.id, division: club.division, rating: player.rating
     })?.weeklyWage;
     if (!Number.isSafeInteger(weeklyWage) || weeklyWage <= 0) return { ok: false, reason: 'invalid-wage' };
+    const previousContract = clonePlayer(player).contract;
     const previousWage = player.contract.weeklyWage ?? player.contract.salary;
     player.contract = {
       ...player.contract,
@@ -654,7 +700,10 @@ export class ClubManager {
       reviewedAt: new Date(now).toISOString(),
       reviewCount: Math.max(0, Number(player.contract.reviewCount) || 0) + 1
     };
-    this.saveSeason();
+    if (!this.saveSeason()) {
+      player.contract = previousContract;
+      return { ok:false, reason:'roster-persistence-failed' };
+    }
     return { ok: true, previousWage, weeklyWage, contract: { ...player.contract } };
   }
 
@@ -671,6 +720,8 @@ export class ClubManager {
   removePlayer(clubId, playerId) {
     const club = this.clubs.get(safeId(clubId)); if (!club) return false;
     const index = club.roster.findIndex(player => player.id === safeId(playerId)); if (index < 0) return false;
+    const previousRoster = club.roster.slice();
+    const previousReleased = (club.releasedPlayers || []).map(item => ({ ...item, player:clonePlayer(item.player) }));
     const [player] = club.roster.splice(index, 1);
     if (player.playerType === 'system' && player.contract?.type === 'system-roster') {
       club.releasedPlayers = Array.isArray(club.releasedPlayers) ? club.releasedPlayers : [];
@@ -681,7 +732,12 @@ export class ClubManager {
       });
       club.releasedPlayers = club.releasedPlayers.slice(-100);
     }
-    this.saveSeason(); return true;
+    if (!this.saveSeason()) {
+      club.roster = previousRoster;
+      club.releasedPlayers = previousReleased;
+      return false;
+    }
+    return true;
   }
 
   createFixture({ id, homeClubId, awayClubId, scheduledAt } = {}) {

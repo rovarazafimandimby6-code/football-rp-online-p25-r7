@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chooseRenderProfile, resolveRenderProfile } from '../src/performance-tuning.js';
+import { RenderFramePacer } from '../src/render-frame-pacer.js';
 import { readFile } from 'node:fs/promises';
 
 const fieldSource = await readFile(new URL('../src/field.js', import.meta.url), 'utf8');
 const sceneSource = await readFile(new URL('../src/scene.js', import.meta.url), 'utf8');
 const mainSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+const playerSource = await readFile(new URL('../src/player.js', import.meta.url), 'utf8');
 
 test('P20 : le mode automatique limite la charge sur un appareil Android modeste', () => {
   const profile = resolveRenderProfile('auto', { hardwareConcurrency: 4, deviceMemory: 2, pixelRatio: 2.75 });
@@ -29,16 +31,130 @@ test('P20 : les niveaux manuels restent bornés et le profil matériel reste pru
   assert.equal(chooseRenderProfile({ hardwareConcurrency: 2, deviceMemory: 1 }).tier, 'low');
 });
 
-test('P20 : les filets ne recalculent plus leurs normales hors impulsion de but', () => {
+test('P20 : les filets animés utilisent un buffer dynamique sans recalcul de normales', () => {
   assert.match(fieldSource, /if \(this\.goalPulse > 0\.001\)/);
-  assert.match(fieldSource, /computeVertexNormals\(\)/);
+  assert.match(fieldSource, /backNetGeo\.attributes\.position\.setUsage\(THREE\.DynamicDrawUsage\)/);
+  assert.doesNotMatch(fieldSource, /computeVertexNormals\(\)/);
   assert.match(fieldSource, /else if \(this\.netAnimating\)/);
   assert.match(fieldSource, /attr\.array\.set\(panel\.base\)/);
 });
 
-test('P20 : les fanions de corner ont une animation légère et le mode auto est proposé', () => {
+test('P20 : les fanions de corner sont légers et les réglages avancés restent différés', () => {
   assert.match(fieldSource, /this\.cornerFlags/);
   assert.match(fieldSource, /Math\.sin\(this\.elapsed \* 2\.2/);
   assert.match(sceneSource, /resolveRenderProfile\(level/);
-  assert.match(mainSource, /value="auto"/);
+  assert.match(mainSource, /Les options détaillées seront ajoutées après la finalisation des écrans principaux/);
+});
+
+
+test('P27 : la pelouse gagne en relief par bandes de tonte sans augmenter la géométrie', () => {
+  assert.match(fieldSource, /const stripes = 24/);
+  assert.match(fieldSource, /createLinearGradient\(i \* sw/);
+  assert.match(fieldSource, /Fines traces de tonte transversales/);
+  assert.match(fieldSource, /tex\.anisotropy = 4/);
+});
+
+test('P27 : les lignes du terrain partagent un matériau unique', () => {
+  assert.match(fieldSource, /this\.lineMaterial \|\| \(this\.lineMaterial = new THREE\.MeshBasicMaterial/);
+});
+
+
+test('P27 : les rectangles de lignes réutilisent leurs géométries et les filets partagent leur matériau', () => {
+  assert.match(fieldSource, /this\.lineGeometryCache = new Map\(\)/);
+  assert.match(fieldSource, /horizontalGeometry = this\.lineGeometryCache\.get/);
+  assert.match(fieldSource, /verticalGeometry = this\.lineGeometryCache\.get/);
+  assert.match(fieldSource, /this\.netMaterial \|\| \(this\.netMaterial = new THREE\.MeshBasicMaterial/);
+  assert.match(fieldSource, /map: createNetTexture\(\)/);
+});
+
+
+test('P27 : les géométries statiques du stade sont mutualisées entre meshes identiques', () => {
+  assert.match(fieldSource, /this\.sharedGeometryCache = new Map\(\)/);
+  assert.match(fieldSource, /getSharedGeometry\(key, create\)/);
+  assert.match(fieldSource, /getSharedGeometry\('technical-seat'/);
+  assert.match(fieldSource, /getSharedGeometry\('stand-tier-side'/);
+  assert.match(fieldSource, /getSharedGeometry\('floodlight-pole'/);
+  assert.match(fieldSource, /getSharedGeometry\('floodlight-head'/);
+  assert.match(fieldSource, /endStandGeometries = \[0, 1\]\.map/);
+});
+
+
+test('P27 : le remplacement des extensions et décorations du club libère leurs ressources GPU', () => {
+  assert.match(fieldSource, /function disposeGroupResources\(group\)/);
+  assert.match(fieldSource, /disposeGroupResources\(this\.clubExpansionGroup\)/);
+  assert.match(fieldSource, /disposeGroupResources\(this\.clubBannerGroup\)/);
+  assert.match(fieldSource, /const geometries = new Set\(\)/);
+  assert.match(fieldSource, /const materials = new Set\(\)/);
+  assert.match(fieldSource, /material\.dispose\(\)/);
+  assert.match(fieldSource, /geometry\.dispose\(\)/);
+});
+
+
+test('P27 : la foule du stade adapte sa densité et sa géométrie au profil mobile', () => {
+  assert.match(sceneSource, /this\.scene\.userData\.renderQuality = profile\.quality/);
+  assert.match(fieldSource, /const lowEndCrowd = this\.scene\.userData\?\.renderQuality === 'low'/);
+  assert.match(fieldSource, /const count = lowEndCrowd \? 240 : 420/);
+  assert.match(fieldSource, /lowEndCrowd \? 8 : 10/);
+  assert.match(fieldSource, /lowEndCrowd \? 6 : 8/);
+});
+
+
+test('P27 stade : les deux cages partagent les géométries statiques sans partager les filets déformables', () => {
+  const goalBuilder = fieldSource.slice(fieldSource.indexOf('  buildGoal(side) {'), fieldSource.indexOf('  buildStadium() {'));
+  for (const key of ['goal-front-post','goal-crossbar','goal-back-post','goal-top-support','goal-top-net','goal-side-net']) {
+    assert.ok(goalBuilder.includes(`getSharedGeometry('${key}'`), `géométrie partagée attendue : ${key}`);
+  }
+  assert.ok(goalBuilder.includes('this.goalPostMaterial || (this.goalPostMaterial = new THREE.MeshLambertMaterial'));
+  assert.ok(goalBuilder.includes('const backNetGeo = new THREE.PlaneGeometry'));
+  assert.ok(goalBuilder.includes('this.netPanels.push({ mesh: backNet, base:'));
+});
+
+
+test('P27 stade : les marquages répétés et les fanions réutilisent leurs géométries statiques', () => {
+  for (const key of ['pitch-midline','pitch-center-ring','pitch-center-spot','pitch-penalty-spot','pitch-penalty-arc','pitch-corner-arc','corner-flag','corner-flag-pole']) {
+    assert.ok(fieldSource.includes(`getSharedGeometry('${key}'`), `géométrie partagée attendue : ${key}`);
+  }
+  assert.match(fieldSource, /const poleGeo = this\.getSharedGeometry\('corner-flag-pole'/);
+  assert.match(fieldSource, /const flagGeo = this\.getSharedGeometry\('corner-flag'/);
+});
+
+
+test('P27 rendu : le rendu utilise le drapeau de perte de contexte sans interroger WebGL à chaque frame', () => {
+  const renderMethod = sceneSource.slice(sceneSource.indexOf('  render(nowMs = performance.now()) {'), sceneSource.indexOf('  dispose() {'));
+  assert.match(renderMethod, /if \(!this\.renderer \|\| this\.contextLost\) return false/);
+  assert.doesNotMatch(renderMethod, /getContext\(\)\.isContextLost\(\)/);
+  assert.match(sceneSource, /webglcontextlost/);
+  assert.match(sceneSource, /webglcontextrestored/);
+});
+
+test('P27 joueurs : les oscillations visuelles utilisent une horloge locale accumulée', () => {
+  assert.match(playerSource, /this\.visualAnimationTime = 0/);
+  assert.match(playerSource, /this\.visualAnimationTime \+= dt \* 1000/);
+  assert.match(playerSource, /const now = this\.visualAnimationTime/);
+  assert.doesNotMatch(playerSource, /performance\.now\?\./);
+});
+
+test('P27 rendu : le limiteur reprend immédiatement après un retour d horloge', () => {
+  const pacer = new RenderFramePacer(30);
+  assert.equal(pacer.shouldRender(100), true);
+  assert.equal(pacer.shouldRender(110), false);
+  assert.equal(pacer.shouldRender(134), true);
+  assert.equal(pacer.shouldRender(5), true);
+  assert.equal(pacer.shouldRender(10), false);
+  assert.equal(pacer.shouldRender(39), true);
+});
+
+test('P27 rendu : la réinitialisation du limiteur autorise la première frame', () => {
+  const pacer = new RenderFramePacer(30);
+  assert.equal(pacer.shouldRender(1000), true);
+  assert.equal(pacer.shouldRender(1010), false);
+  pacer.reset();
+  assert.equal(pacer.shouldRender(1011), true);
+});
+
+test('P27 rendu : les événements de redimensionnement identiques ne relancent pas le sizing WebGL', () => {
+  const resizeMethod = sceneSource.slice(sceneSource.indexOf('  resize() {'), sceneSource.indexOf('  render(nowMs'));
+  assert.match(resizeMethod, /this\.lastSize\?\.width === w && this\.lastSize\?\.height === h/);
+  assert.match(resizeMethod, /this\.lastSize = \{ width: w, height: h \}/);
+  assert.match(sceneSource, /this\.lastSize = null;\s*this\.resize\(\)/);
 });

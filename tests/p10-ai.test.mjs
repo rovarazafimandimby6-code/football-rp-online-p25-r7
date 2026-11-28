@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
+import { scorePassOption, getSupportTarget, getDefensiveShapeTarget, getDefensiveCoverTarget, getDefensiveBlockShift, predictDefensiveThreatPosition, getDefensiveRecoveryTarget, getSpacedDefensiveTarget, decisionAttributeFactor, TeamAI, createTeamRoster } from '../src/ai.js';
 
 const player = (id, team, x, z, specialty = 'balanced') => ({
   id, team, role: 'FWD', specialty,
@@ -88,6 +88,21 @@ test('P27: les appels offensifs choisissent un couloir moins occupé par les dé
   assert.ok(target.z <= 15 && target.z >= -15, 'la course doit rester dans les limites du terrain');
 });
 
+test('P27: après récupération, les appels offensifs attaquent plus vite la profondeur sans déplacer le joueur de couverture', () => {
+  const runner = player('runner-transition', 'blue', 0, -4, 'runner');
+  runner.homePos = { x: 0, z: -4 };
+  const cover = player('cover-transition', 'blue', -8, 5, 'cover');
+  cover.homePos = { x: -8, z: 5 };
+  const carrier = player('carrier-transition', 'blue', 2, 0, 'playmaker');
+  const players = [runner, cover, carrier];
+  const normalRun = getSupportTarget(runner, carrier, players, 1, [], false);
+  const fastBreakRun = getSupportTarget(runner, carrier, players, 1, [], true);
+  const normalCover = getSupportTarget(cover, carrier, players, 1, [], false);
+  const transitionCover = getSupportTarget(cover, carrier, players, 1, [], true);
+  assert.ok(fastBreakRun.x > normalRun.x + 2, 'le coureur doit attaquer plus tôt la profondeur');
+  assert.deepEqual(transitionCover, normalCover, 'le joueur de couverture conserve sa position de sécurité');
+});
+
 test('P27: le meneur se rend disponible derrière le porteur et le défenseur de couverture garde sa ligne', () => {
   const carrier = player('carrier', 'blue', 8, 2, 'runner');
   const playmaker = player('maker', 'blue', 2, 7, 'playmaker');
@@ -124,6 +139,27 @@ test('P27: la qualité de décision offensive reste bornée pour les attributs e
   assert.ok(decisionAttributeFactor(elite, 'shooting', 'composure') > decisionAttributeFactor(weak, 'shooting', 'composure'));
 });
 
+test('P27: le défenseur de couverture ferme la ligne vers le receveur adverse dangereux', () => {
+  const cover = player('cover', 'blue', 3, -5, 'cover');
+  cover.homePos = { x: 3, z: -5 };
+  const carrier = player('carrier', 'red', 12, 0, 'runner');
+  const receiver = player('receiver', 'red', 6, 9, 'finisher');
+  const distant = player('distant', 'red', -8, -12, 'balanced');
+  const target = getDefensiveCoverTarget(cover, { pos: carrier.pos, owner: carrier }, [carrier, receiver, distant], 1);
+  assert.ok(target.x < carrier.pos.x, 'la couverture se place entre le porteur et le receveur');
+  assert.ok(target.z > carrier.pos.z && target.z < receiver.pos.z, 'la couverture ferme le couloir de passe');
+  assert.ok(target.x >= -26 && target.x <= 26 && target.z >= -15 && target.z <= 15);
+});
+
+test('P27: sans receveur adverse exploitable, la couverture protège l’axe du ballon', () => {
+  const cover = player('cover', 'blue', 4, 0, 'cover');
+  cover.homePos = { x: 4, z: 0 };
+  const carrier = player('carrier', 'red', 2, 0, 'runner');
+  const target = getDefensiveCoverTarget(cover, { pos: carrier.pos, owner: carrier }, [carrier], 1);
+  assert.ok(target.x < carrier.pos.x, 'la couverture reste côté but');
+  assert.equal(target.z, 0);
+});
+
 test('P27: le bloc défensif protège la profondeur côté but et conserve les couloirs', () => {
   const defender = player('defender', 'blue', -10, -7, 'balanced');
   defender.homePos = { x: -10, z: -7 };
@@ -137,6 +173,18 @@ test('P27: le bloc défensif protège la profondeur côté but et conserve les c
   assert.ok(target.z < 0, 'le défenseur ne quitte pas son couloir pour suivre le joueur éloigné');
 });
 
+test('P27: toute la ligne défensive recule collectivement quand le ballon entre dans sa moitié', () => {
+  const defender = player('line-defender', 'blue', -7, 3);
+  defender.homePos = { x: -7, z: 3 };
+  const safeBall = { pos: { x: 12, z: 0 } };
+  const dangerousBall = { pos: { x: -20, z: 0 } };
+  const safeTarget = getDefensiveShapeTarget(defender, safeBall, [], 1, 'balanced');
+  const retreatTarget = getDefensiveShapeTarget(defender, dangerousBall, [], 1, 'balanced');
+  assert.ok(retreatTarget.x < safeTarget.x - 2,
+    'la ligne doit reculer nettement lorsque le ballon approche de son propre but');
+  assert.ok(retreatTarget.x >= -26 && retreatTarget.x <= 26);
+});
+
 test('P27: le bloc défensif se replie davantage avec une mentalité prudente', async () => {
 
   const defender = player('defender', 'blue', -5, 4);
@@ -146,4 +194,130 @@ test('P27: le bloc défensif se replie davantage avec une mentalité prudente', 
   const balanced = getDefensiveShapeTarget(defender, ball, [carrier], 1, 'balanced');
   const defensive = getDefensiveShapeTarget(defender, ball, [carrier], 1, 'defensive');
   assert.ok(defensive.x < balanced.x, 'le bloc prudent doit reculer davantage');
+});
+
+
+test('P27: le bloc défensif conserve des intervalles entre coéquipiers', () => {
+  const defender = player('defender', 'blue', 0, 0);
+  const teammate = player('teammate', 'blue', 2, 0);
+  defender.homePos = { x: 0, z: 0 };
+  teammate.homePos = { x: 2, z: 0 };
+  const original = { x: 1, z: 0 };
+  const target = getSpacedDefensiveTarget(defender, original, [defender, teammate], 4.8);
+  assert.ok(target.x < original.x, 'le défenseur s’écarte du coéquipier situé à sa droite');
+  assert.ok(Math.hypot(target.x - teammate.pos.x, target.z - teammate.pos.z) > 1,
+    'la correction réduit le chevauchement');
+  assert.deepEqual(original, { x: 1, z: 0 }, 'la cible fournie reste inchangée');
+  assert.ok(target.x >= -26 && target.x <= 26 && target.z >= -15 && target.z <= 15);
+});
+
+test('P27: les rôles de pressing restent stables lorsque deux joueurs sont à égale distance', () => {
+  const first = player('slot-2', 'blue', 0, -2);
+  const second = player('slot-1', 'blue', 0, 2);
+  first.slotIndex = 2;
+  second.slotIndex = 1;
+  const carrier = player('carrier', 'red', 0, 0);
+  for (const p of [first, second, carrier]) {
+    p.attributes = { pace: 60, stamina: 60, defense: 60, control: 60, passing: 60, shooting: 60 };
+    p.homePos = { ...p.pos };
+  }
+  const ai = new TeamAI();
+  ai.update([first, second, carrier], { pos: { x: 0, z: 0 }, owner: carrier }, 0.05,
+    { aiPass() {}, aiShoot() {}, tryTackle() {} });
+  assert.ok(second.vel.x > first.vel.x,
+    'le slot prioritaire doit devenir le poursuivant même si l’ordre du tableau change');
+});
+
+
+test('P27: un défenseur privilégie une menace de son couloir plutôt que de traverser le bloc', () => {
+  const defender = player('lane-defender', 'blue', -10, -8, 'balanced');
+  defender.homePos = { x: -10, z: -8 };
+  const ball = { pos: { x: 8, z: 0 } };
+  const acrossLane = player('across-lane', 'red', -8, -4);
+  const sameLane = player('same-lane', 'red', -4, -7);
+  const target = getDefensiveShapeTarget(defender, ball, [acrossLane, sameLane], 1, 'balanced');
+  assert.ok(target.x > -8.5,
+    'le défenseur doit prioriser la menace dans son couloir malgré la proximité de l’autre menace');
+  assert.ok(target.z < 0, 'le défenseur conserve son côté du terrain');
+});
+
+
+test('P27: après un renversement, le bloc coulisse ensemble vers le nouveau couloir', () => {
+  const weakSide = player('weak-side', 'blue', -8, -8);
+  weakSide.homePos = { x: -8, z: -8 };
+  const strongSide = player('strong-side', 'blue', -8, 8);
+  strongSide.homePos = { x: -8, z: 8 };
+  const switchedBall = { pos: { x: 8, z: 12 } };
+  const weakTarget = getDefensiveShapeTarget(weakSide, switchedBall, [], 1, 'balanced');
+  const strongTarget = getDefensiveShapeTarget(strongSide, switchedBall, [], 1, 'balanced');
+  assert.ok(weakTarget.z > weakSide.homePos.z + 3, 'le défenseur côté faible accompagne le coulissement collectif');
+  assert.ok(strongTarget.z > strongSide.homePos.z, 'le défenseur côté ballon accompagne aussi le bloc');
+  assert.ok(weakTarget.z < 0, 'le défenseur côté faible reste dans son demi-couloir et ne traverse pas l’axe');
+  assert.ok(Math.abs(weakTarget.z - weakSide.homePos.z) <= 5.5, 'le déplacement latéral reste plafonné');
+});
+
+test('P27: le décalage collectif latéral est borné et symétrique', () => {
+  assert.equal(getDefensiveBlockShift(20), 3.4);
+  assert.equal(getDefensiveBlockShift(-20), -3.4);
+  assert.equal(getDefensiveBlockShift(0), 0);
+});
+
+
+test('P27: la défense anticipe une course adverse vers son but', () => {
+  const runner = player('deep-runner', 'red', -3, 2, 'runner');
+  runner.vel = { x: -6, z: 1.5 };
+  const predicted = predictDefensiveThreatPosition(runner, 1, 0.7);
+  assert.ok(predicted.x < runner.pos.x - 3, 'la position anticipée doit tenir compte de la course vers notre but');
+  assert.ok(predicted.z > runner.pos.z, 'la dérive latérale modérée de la course est anticipée');
+  const retreating = player('retreating', 'red', -3, 2);
+  retreating.vel = { x: 5, z: 0 };
+  const unchanged = predictDefensiveThreatPosition(retreating, 1);
+  assert.equal(unchanged.x, retreating.pos.x,
+    'un adversaire qui s’éloigne de notre but ne déclenche pas d’anticipation vers l’avant');
+  assert.equal(unchanged.z, retreating.pos.z);
+
+  const oppositeRunner = player('opposite-runner', 'blue', 3, -2, 'runner');
+  oppositeRunner.vel = { x: 6, z: -1.5 };
+  const oppositePredicted = predictDefensiveThreatPosition(oppositeRunner, -1, 0.7);
+  assert.ok(oppositePredicted.x > oppositeRunner.pos.x + 3,
+    'l’anticipation fonctionne aussi lorsque l’équipe défend vers +X');
+  assert.ok(oppositePredicted.z < oppositeRunner.pos.z,
+    'la dérive latérale est conservée dans l’autre sens d’attaque');
+});
+
+test('P27: après une passe en profondeur, la défense récupère derrière le receveur sans quitter son couloir', () => {
+  const defender = player('recovery-defender', 'blue', -10, -6);
+  defender.homePos = { x: -10, z: -6 };
+  const runner = player('through-runner', 'red', -5, -4, 'runner');
+  runner.vel = { x: -8, z: 3 };
+  const recovery = getDefensiveRecoveryTarget(defender, runner, 1);
+  assert.ok(recovery.x < -12, 'le défenseur doit se replacer côté but du receveur');
+  assert.ok(recovery.z < 0 && Math.abs(recovery.z - defender.homePos.z) < 3.8,
+    'le défenseur protège la profondeur tout en gardant son couloir');
+
+  const notBroken = player('not-broken', 'red', 8, -4, 'runner');
+  notBroken.vel = { x: -2, z: 0 };
+  assert.deepEqual(getDefensiveRecoveryTarget(defender, notBroken, 1), defender.homePos,
+    'sans ligne franchie, le défenseur conserve son poste');
+
+  const oppositeDefender = player('opposite-defender', 'red', 10, 6);
+  oppositeDefender.homePos = { x: 10, z: 6 };
+  const oppositeRunner = player('opposite-through-runner', 'blue', 5, 4, 'runner');
+  oppositeRunner.vel = { x: 8, z: -3 };
+  const oppositeRecovery = getDefensiveRecoveryTarget(oppositeDefender, oppositeRunner, -1);
+  assert.ok(oppositeRecovery.x > 12,
+    'le repli côté but fonctionne également lorsque le sens de défense est inversé');
+});
+
+test('P27: le bloc se place plus tôt côté but face à un appel en profondeur', () => {
+  const defender = player('anticipation-defender', 'blue', -10, 2);
+  defender.homePos = { x: -10, z: 2 };
+  const staticRunner = player('static-runner', 'red', -3, 2);
+  const movingRunner = player('moving-runner', 'red', -3, 2);
+  movingRunner.vel = { x: -6, z: 0 };
+  const ball = { pos: { x: -1, z: 2 } };
+  const staticTarget = getDefensiveShapeTarget(defender, ball, [staticRunner], 1, 'balanced');
+  const movingTarget = getDefensiveShapeTarget(defender, ball, [movingRunner], 1, 'balanced');
+  assert.ok(movingTarget.x < staticTarget.x - 0.5,
+    'le défenseur anticipe davantage la course qui menace la profondeur');
 });

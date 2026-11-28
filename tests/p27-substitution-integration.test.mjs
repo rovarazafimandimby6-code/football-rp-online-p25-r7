@@ -7,7 +7,7 @@ const ui = await readFile(new URL('../src/ui.js', import.meta.url), 'utf8');
 const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
 
 test('P27 remplacements : le banc est chargé depuis le roster réel et les changements remplacent le joueur en jeu', () => {
-  assert.match(game, /createMatchSquad\('blue', '2-2', callbacks\.homeRoster/);
+  assert.match(game, /createMatchSquad\('blue', formation, callbacks\.homeRoster/);
   assert.match(game, /applySubstitution\(outgoingId, incomingId\)/);
   assert.match(game, /this\.players\[playerIndex\] = replacement/);
   assert.match(game, /this\.ball\.owner === outgoing/);
@@ -20,8 +20,10 @@ test('P27 remplacements : le menu pause expose les paires compatibles et conserv
   assert.match(ui, /data-out-id/);
   assert.match(ui, /data-in-id/);
   assert.match(ui, /onSubstitute/);
-  assert.match(game, /validateSubstitution/);
-  assert.match(game, /activePlayer: this\.activePlayer/);
+  assert.match(game, /validateRotation/);
+  assert.match(game, /elapsedMatchSeconds: toVirtualMatchSeconds\(this\.match\.elapsedMatchTime, this\.match\.halfDuration\)/);
+  assert.match(game, /this\.substitutionLimit = Infinity/);
+  assert.match(game, /lastSubstitutedOutAt:toVirtualMatchSeconds\(this\.match\.elapsedMatchTime, this\.match\.halfDuration\)/);
 });
 
 test('P27 présentation : la feuille de match rend les objets squad et non des variables obsolètes', () => {

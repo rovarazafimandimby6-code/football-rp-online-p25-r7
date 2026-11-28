@@ -8,6 +8,7 @@ export class ProfileSyncCoordinator {
     this.outbox = outbox;
     this.getProfile = getProfile;
     this.getLocalIdentity = getLocalIdentity;
+    this.flushPromise = null;
   }
 
   enqueueProfile(profile) {
@@ -18,7 +19,13 @@ export class ProfileSyncCoordinator {
     return this.enqueueProfile(this.getProfile());
   }
 
-  async flush() {
+  flush() {
+    if (this.flushPromise) return this.flushPromise;
+    this.flushPromise = this.flushOnce();
+    return this.flushPromise.finally(() => { this.flushPromise = null; });
+  }
+
+  async flushOnce() {
     const status = this.outbox.status();
     if (!status.pending || !this.accountClient.hasSession) {
       return { uploaded: 0, remaining: status.pending, blocked: 0, skipped: true };

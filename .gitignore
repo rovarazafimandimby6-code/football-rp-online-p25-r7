@@ -2,7 +2,15 @@ node_modules/
 .DS_Store
 *.log
 .env
-/data/results/
+/data/
+
+# Runtime snapshots, restore staging files and local platform output
+*.tmp
+*.restore
+*.rollback
+.wrangler/
+.dev.vars
+.dev.vars.*
 
 dist/
 android/

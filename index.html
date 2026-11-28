@@ -21,6 +21,8 @@
     #p27-startup-splash.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
     @media(prefers-reduced-motion:reduce){#p27-startup-splash{transition:none}}
   </style>
+  </head>
+<body>
   <div id="p27-startup-splash" role="img" aria-label="Présentation de Football RP Online P27">
     <img src="https://i.postimg.cc/7h0kQsK4/20261126-133355-2.jpg" alt="Football RP Online P27 — écran de présentation" fetchpriority="high">
   </div>
@@ -30,16 +32,17 @@
       art.addEventListener('error',dismiss,{once:true});window.setTimeout(dismiss,2600);
     })();
   </script>
-  </head>
-<body>
   <section id="main-menu" aria-label="Menu principal Football RP Online">
     <div class="menu-backdrop"><div class="stadium-lights"></div><div class="stadium-pitch"></div></div>
-    <header class="menu-topbar p27-game-topbar">
-      <button class="p27-back-home" data-page="home" type="button" aria-label="Retour au menu principal" title="Retour">‹</button>
+    <header class="menu-topbar p27-game-topbar" aria-label="Barre de jeu">
+      <button class="p27-back-home" data-page="home" type="button" aria-label="Retour au hub" title="Retour">‹</button>
       <button class="menu-settings-icon" data-page="settings" type="button" aria-label="Paramètres" title="Paramètres">⚙</button>
-      <div class="p27-top-section"><strong id="menu-page-title">ACCUEIL</strong><span id="menu-page-subtitle">FOOTBALL RP ONLINE · P27</span></div>
-      <div class="p27-top-player"><strong id="p27-top-player-name">Mon joueur</strong><span id="p27-top-player-club">Sans club</span></div>
-      <div class="p27-top-currency"><small>CRÉDITS</small><strong id="p27-top-player-coins">2 500</strong></div>
+      <div class="p27-top-section" hidden aria-hidden="true"><strong id="menu-page-title">ACCUEIL</strong><span id="menu-page-subtitle">P27</span></div>
+      <div class="p27-career-progress" aria-label="Progression de carrière">
+        <span>LVL <b id="p27-top-player-level">1</b></span>
+        <div><i id="p27-career-progress-fill" style="width:0%"></i></div>
+      </div>
+      <div class="p27-top-currency" aria-label="Pièces"><strong id="p27-top-player-coins">250</strong></div>
     </header>
     <div class="menu-layout p27-screen-layout">
       <section class="menu-main"><div id="menu-content"></div></section>

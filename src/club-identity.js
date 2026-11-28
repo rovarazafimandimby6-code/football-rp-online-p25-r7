@@ -17,11 +17,18 @@ export function clubPalette(clubId, fallback = 'antananarivo-fc', customColors =
   return [...(PALETTES[clubId] || PALETTES[fallback])];
 }
 
-export function renderClubCrest({ id = 'antananarivo-fc', name = 'Football Club', size = 56, compact = false, colors = null } = {}) {
+export function renderClubCrest({ id = 'antananarivo-fc', name = 'Football Club', size = 56, compact = false, colors = null, crestStyle = 'classic' } = {}) {
   const [primary, dark, accent] = clubPalette(id, 'antananarivo-fc', colors);
   const initials = clubInitials(name).replace(/[&<>"']/g, '');
   const label = String(name).replace(/[&<>"']/g, '');
   const safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0,48) || 'club';
   const fontSize = initials.length > 2 ? 13 : 17;
-  return `<span class="club-crest-svg${compact ? ' compact' : ''}" role="img" aria-label="Écusson ${label}" style="--crest-primary:${primary};--crest-dark:${dark};--crest-accent:${accent};--crest-size:${size}px"><svg viewBox="0 0 100 112" aria-hidden="true" focusable="false"><defs><linearGradient id="crest-${safeId}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--crest-primary)"/><stop offset="1" stop-color="var(--crest-dark)"/></linearGradient></defs><path d="M8 7H92L86 72Q82 91 50 106Q18 91 14 72Z" fill="url(#crest-${safeId})" stroke="var(--crest-accent)" stroke-width="5"/><path d="M17 16H83L78 69Q75 84 50 96Q25 84 22 69Z" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2"/><path d="M24 23H76L72 62H28Z" fill="rgba(0,0,0,.16)"/><path d="M31 73H69" stroke="var(--crest-accent)" stroke-width="3" stroke-linecap="round"/><text x="50" y="57" text-anchor="middle" fill="#fff" font-size="${fontSize}" font-weight="900" font-family="Arial,sans-serif">${initials}</text><circle cx="50" cy="82" r="5" fill="var(--crest-accent)"/></svg></span>`;
+  const custom = crestStyle === 'custom';
+  const outerShape = custom
+    ? '<path d="M50 5L91 24L85 72Q78 94 50 107Q22 94 15 72L9 24Z" fill="url(#crest-'+safeId+')" stroke="var(--crest-accent)" stroke-width="5"/>'
+    : '<path d="M8 7H92L86 72Q82 91 50 106Q18 91 14 72Z" fill="url(#crest-'+safeId+')" stroke="var(--crest-accent)" stroke-width="5"/>';
+  const innerShape = custom
+    ? '<path d="M50 16L80 30L75 69Q69 86 50 96Q31 86 25 69L20 30Z" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2"/>'
+    : '<path d="M17 16H83L78 69Q75 84 50 96Q25 84 22 69Z" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2"/>';
+  return `<span class="club-crest-svg${compact ? ' compact' : ''}" role="img" aria-label="Écusson ${label}" style="--crest-primary:${primary};--crest-dark:${dark};--crest-accent:${accent};--crest-size:${size}px"><svg viewBox="0 0 100 112" aria-hidden="true" focusable="false"><defs><linearGradient id="crest-${safeId}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--crest-primary)"/><stop offset="1" stop-color="var(--crest-dark)"/></linearGradient></defs>${outerShape}${innerShape}<path d="M24 23H76L72 62H28Z" fill="rgba(0,0,0,.16)"/><path d="M31 73H69" stroke="var(--crest-accent)" stroke-width="3" stroke-linecap="round"/><text x="50" y="57" text-anchor="middle" fill="#fff" font-size="${fontSize}" font-weight="900" font-family="Arial,sans-serif">${initials}</text><circle cx="50" cy="82" r="5" fill="var(--crest-accent)"/></svg></span>`;
 }

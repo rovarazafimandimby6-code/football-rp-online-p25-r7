@@ -2,6 +2,8 @@ import { readJsonWithBackup, writeJsonWithBackup } from './persistent-json.js';
 
 const STORAGE_KEY = 'football-rp-online.player-profile.v1';
 const clamp = (n, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(n)) ? Number(n) : min));
+const MATCH_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const validMatchId = value => typeof value === 'string' && MATCH_ID_RE.test(value);
 const cleanText = (value, fallback, max = 24) => String(value ?? fallback).replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, max) || fallback;
 
 export const DEFAULT_ATTRIBUTES = Object.freeze({ pace: 55, shooting: 50, passing: 50, defense: 45, stamina: 55, control: 50 });
@@ -17,7 +19,7 @@ export function createDefaultProfile() {
   return {
     schemaVersion: 1,
     identity: { displayName: 'Nouveau joueur', number: 10, preferredFoot: 'right', role: 'MID' },
-    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic' },
+    appearance: { kit: 'emerald', skinTone: 'medium', hairStyle: 'short', hairColor: 'dark', bodyBuild: 'athletic', faceShape:'oval', eyeShape:'almond' },
     progression: { level: 1, experience: 0, coins: 250, trainingPoints: 0, attributes: { ...DEFAULT_ATTRIBUTES } },
     appliedMatchIds: [],
     createdAt: new Date().toISOString(),
@@ -37,7 +39,7 @@ export function validateProfile(input) {
     identity: {
       displayName: cleanText(identity.displayName, base.identity.displayName, 20),
       number: Math.round(clamp(identity.number, 1, 99)),
-      preferredFoot: ['left', 'right'].includes(identity.preferredFoot) ? identity.preferredFoot : 'right',
+      preferredFoot: ['left', 'right', 'both'].includes(identity.preferredFoot) ? identity.preferredFoot : 'right',
       role: ['GK', 'DEF', 'MID', 'FWD'].includes(identity.role) ? identity.role : 'MID'
     },
     appearance: {
@@ -45,7 +47,9 @@ export function validateProfile(input) {
       skinTone: ['light', 'medium', 'dark'].includes(appearance.skinTone) ? appearance.skinTone : 'medium',
       hairStyle: ['short', 'curly', 'shaved', 'fade', 'afro'].includes(appearance.hairStyle) ? appearance.hairStyle : 'short',
       hairColor: ['dark', 'brown', 'blond'].includes(appearance.hairColor) ? appearance.hairColor : 'dark',
-      bodyBuild: ['lean', 'athletic', 'strong'].includes(appearance.bodyBuild) ? appearance.bodyBuild : 'athletic'
+      bodyBuild: ['lean', 'athletic', 'strong'].includes(appearance.bodyBuild) ? appearance.bodyBuild : 'athletic',
+      faceShape: ['oval','round','angular','long','square'].includes(appearance.faceShape) ? appearance.faceShape : 'oval',
+      eyeShape: ['almond','round','hooded'].includes(appearance.eyeShape) ? appearance.eyeShape : 'almond'
     },
     progression: {
       level: Math.round(clamp(progression.level, 1, 99)),
@@ -54,7 +58,7 @@ export function validateProfile(input) {
       trainingPoints: Math.round(clamp(progression.trainingPoints, 0, 100_000)),
       attributes: Object.fromEntries(Object.keys(DEFAULT_ATTRIBUTES).map(k => [k, Math.round(clamp(attrs[k] ?? DEFAULT_ATTRIBUTES[k], 1, 99))]))
     },
-    appliedMatchIds: Array.isArray(p.appliedMatchIds) ? [...new Set(p.appliedMatchIds.filter(id => typeof id === 'string' && id.trim()).map(id => id.slice(0, 64)))].slice(-2000) : [],
+    appliedMatchIds: Array.isArray(p.appliedMatchIds) ? [...new Set(p.appliedMatchIds.filter(validMatchId))].slice(-2000) : [],
     createdAt: typeof p.createdAt === 'string' ? p.createdAt : base.createdAt,
     updatedAt: new Date().toISOString()
   };
@@ -77,8 +81,10 @@ export class PlayerProfileStore {
     return this.profile;
   }
   save(profile = this.profile) {
-    this.profile = validateProfile(profile);
-    return writeJsonWithBackup(this.storage, this.key, this.profile, normalizeStoredProfile);
+    const nextProfile = validateProfile(profile);
+    if (!writeJsonWithBackup(this.storage, this.key, nextProfile, normalizeStoredProfile)) return false;
+    this.profile = nextProfile;
+    return true;
   }
   updateIdentity(changes = {}) {
     return this.save({ ...this.profile, identity: { ...this.profile.identity, ...changes } });
@@ -87,7 +93,8 @@ export class PlayerProfileStore {
     return this.save({ ...this.profile, appearance: { ...this.profile.appearance, ...changes } });
   }
   grantMatchRewards({ experience = 0, coins = 0, matchId = null } = {}) {
-    const id = typeof matchId === 'string' ? matchId.trim().slice(0, 64) : '';
+    if (matchId !== null && matchId !== undefined && !validMatchId(matchId)) return { ok: false, reason: 'invalid-match-id', progression: this.profile.progression };
+    const id = matchId ?? '';
     if (id && this.profile.appliedMatchIds.includes(id)) return { ok: true, duplicate: true, progression: this.profile.progression };
     const p = structuredClone(this.profile);
     p.progression.experience += Math.round(clamp(experience, 0, 100_000));
@@ -100,7 +107,7 @@ export class PlayerProfileStore {
     }
     if (p.progression.level >= 99) p.progression.experience = 0;
     if (id) { p.appliedMatchIds.push(id); p.appliedMatchIds = p.appliedMatchIds.slice(-2000); }
-    this.save(p);
+    if (!this.save(p)) return { ok:false, reason:'persistence-failed', progression:this.profile.progression };
     return { ok: true, duplicate: false, progression: this.profile.progression };
   }
   addExperience(amount) {
@@ -140,7 +147,7 @@ export class PlayerProfileStore {
       p.progression.trainingPoints += 2;
       p.progression.coins += 50;
     }
-    this.save(p);
+    if (!this.save(p)) return { ok:false, reason:'persistence-failed' };
     return { ok: true, attribute, value: this.profile.progression.attributes[attribute], spentCoins: cost, progression: this.profile.progression };
   }
   train(attribute, amount = 1) {
@@ -154,7 +161,7 @@ export class PlayerProfileStore {
     p.progression.trainingPoints -= points;
     p.progression.coins -= cost;
     p.progression.attributes[attribute] += points;
-    this.save(p);
+    if (!this.save(p)) return { ok:false, reason:'persistence-failed' };
     return { ok: true, attribute, value: this.profile.progression.attributes[attribute], spentCoins: cost };
   }
   reset() { this.profile = createDefaultProfile(); this.save(); return this.profile; }

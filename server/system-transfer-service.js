@@ -1,8 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 
-const safeId = value => String(value ?? '').trim().slice(0, 48);
+const safeId = value => typeof value === 'string' ? value.trim() : '';
+const validEntityId = value => /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,47}$/.test(value);
 const validFee = value => Number.isSafeInteger(value) && value > 0 && value <= 1_000_000_000;
 
 /**
@@ -86,7 +87,8 @@ export class P27SystemTransferService {
     const transferId = String(id || '').trim();
     const fromId = safeId(fromClubId), toId = safeId(toClubId), player = safeId(playerId);
     if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{2,95}$/.test(transferId) ||
-        !fromId || !toId || !player || !validFee(fee) || !Number.isSafeInteger(now) || now < 0)
+        !validEntityId(fromId) || !validEntityId(toId) || !validEntityId(player) ||
+        !validFee(fee) || !Number.isSafeInteger(now) || now < 0)
       return { ok:false, reason:'invalid-request' };
     const existing = this.state.transfers.find(item => item.id === transferId);
     if (existing) {
@@ -187,7 +189,8 @@ export class P27SystemTransferService {
           if (Number.isFinite(available) && available < fee) continue;
           const gap = Math.max(0, (Number(buyer.rating)||0)-(Number(seller.rating)||0));
           const score = (2-buyerRoleCount)*1000 + gap*10 + rating;
-          const id = `ai-market-${window}-${player.id}-${buyer.id}`.slice(0,96);
+          const identityHash = createHash('sha256').update(`${window}\\0${player.id}\\0${buyer.id}`).digest('hex').slice(0,32);
+          const id = `ai-market-${window}-${identityHash}`;
           candidates.push({ id, playerId:player.id, fromClubId:seller.id, toClubId:buyer.id, fee, score, rating, role });
         }
       }

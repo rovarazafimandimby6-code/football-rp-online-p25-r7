@@ -358,3 +358,149 @@ test('P27 journal financier : reprend un salaire humain après panne du checkpoi
   assert.equal(f.service.store.getAccount(event.clubId).totalExpenses,450);
  } finally {f.cleanup();}
 });
+
+
+test('P27 réconciliation : audite les comptes, contrats et journaux sans modifier les soldes',()=>{
+ const f=setup();
+ try {
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,true);
+  assert.equal(audit.issueCount,0);
+  assert.equal(audit.clubs,DEFAULT_CLUBS.length);
+  assert.equal(audit.accounts,DEFAULT_CLUBS.length);
+  assert.equal(audit.totalBalance,audit.openingBalance+audit.totalIncome-audit.totalExpenses);
+  assert.equal(f.service.auditReconciliation().ok,true);
+ } finally {f.cleanup();}
+});
+
+test('P27 réconciliation : détecte un compte manquant et un compte orphelin',()=>{
+ const f=setup();
+ try {
+  const known=DEFAULT_CLUBS[0].id;
+  f.service.store.accounts.delete(known);
+  f.service.store.openAccount('orphan-finance-account',0);
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.deepEqual(audit.missingAccounts,[known]);
+  assert.deepEqual(audit.orphanAccounts,['orphan-finance-account']);
+  assert.equal(audit.issues.some(issue=>issue.type==='missing-account'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='orphan-account'),true);
+ } finally {f.cleanup();}
+});
+
+test('P27 réconciliation : détecte un checkpoint de transfert sans écriture correspondante',()=>{
+ const from=DEFAULT_CLUBS[0],to=DEFAULT_CLUBS[1];
+ const event={id:'audit-transfer-checkpoint',type:'transfer',fromClubId:from.id,toClubId:to.id,fee:500,at:Date.UTC(2027,0,1)};
+ const f=setup({events:[event]});
+ try {
+  assert.equal(f.service.syncRecordedTransferFees().ok,true);
+  const account=f.service.store.accounts.get(from.id);
+  account.entries=account.entries.filter(entry=>entry.id!=='transfer-fee-out-audit-transfer-checkpoint');
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-debit-checkpoint-without-entry'),true);
+ } finally {f.cleanup();}
+});
+
+
+test('P27 réconciliation : détecte les doublons et états incohérents des journaux financiers',()=>{
+ const f=setup();
+ try {
+  const from=DEFAULT_CLUBS[0],to=DEFAULT_CLUBS[1];
+  f.service.transferJournal.transfers.push({
+   id:'duplicate-transfer',fromClubId:from.id,toClubId:to.id,fee:100,
+   debitPosted:true,creditPosted:true,status:'pending'
+  });
+  f.service.transferJournal.transfers.push({
+   id:'duplicate-transfer',fromClubId:'unknown-club',toClubId:to.id,fee:0,
+   debitPosted:false,creditPosted:false,status:'unknown'
+  });
+  f.service.transferJournal.playerWages.push(
+   {id:'duplicate-wage',clubId:from.id,amount:50,posted:false},
+   {id:'duplicate-wage',clubId:'missing-club',amount:-1,posted:'yes'}
+  );
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-journal-duplicate-or-missing-id'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-journal-invalid-club-reference'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-journal-invalid-state'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='transfer-journal-status-checkpoint-mismatch'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='player-wage-journal-duplicate-or-missing-id'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='player-wage-journal-invalid-state'),true);
+ } finally {f.cleanup();}
+});
+
+
+test('P27 réconciliation : signale les événements financiers source ignorés ou invalides',()=>{
+ const club=DEFAULT_CLUBS[0];
+ const events=[
+  {id:'valid-transfer',type:'transfer',fromClubId:club.id,toClubId:club.id,fee:500},
+  {id:'bad-wage',type:'salary-payment',clubId:'missing-club',amount:0},
+  {id:'bad-wage',type:'salary-payment',clubId:club.id,amount:100}
+ ];
+ const f=setup({events});
+ try {
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='source-transfer-event-invalid'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='source-player-wage-event-invalid'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='source-finance-event-duplicate-or-missing-id'),true);
+ } finally {f.cleanup();}
+});
+
+
+test('P27 finance : refuse un checkpoint de paie invalide pour un club existant',()=>{
+ const f=setup();
+ try {
+  writeFileSync(path.join(f.directory,'system-payroll-schedule.json'),JSON.stringify({
+   version:1,clubs:{[DEFAULT_CLUBS[0].id]:'not-a-timestamp'}
+  }));
+  assert.throws(()=>new JsonClubFinanceService(f.directory,{
+   clubs:DEFAULT_CLUBS,transferStore:f.transferStore
+  }),/PAYROLL_SCHEDULE_CORRUPT/);
+ } finally { rmSync(f.directory,{recursive:true,force:true}); }
+});
+
+
+test('P27 réconciliation : vérifie les identifiants et montants exacts des échéances sponsor et prêt',()=>{
+ const f=setup();
+ try {
+  const club=DEFAULT_CLUBS[0].id;
+  const start=Date.UTC(2027,0,1);
+  const account=f.service.store.getAccount(club);
+  f.service.store.signSponsorContract(club,{id:'audit-sponsor-exact',name:'Partenaire',weeklyPayment:700,durationWeeks:2,signedAt:start});
+  f.service.store.settleSponsorPayments(club,start+8*86400000);
+  f.service.store.issueLoan(club,{id:'audit-loan-exact',lender:'Banque',principal:1000,totalRepayment:1200,durationWeeks:2,issuedAt:start});
+  f.service.store.settleLoanRepayments(club,start+8*86400000);
+  const raw=f.service.store.accounts.get(club);
+  const sponsor=raw.entries.find(entry=>entry.id==='sponsor-audit-sponsor-exact-1');
+  const loan=raw.entries.find(entry=>entry.id==='loan-payment-audit-loan-exact-1');
+  sponsor.amount+=1;
+  loan.amount-=1;
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='sponsor-installment-invalid'),true);
+  assert.equal(audit.issues.some(issue=>issue.type==='loan-installment-invalid'),true);
+ } finally {f.cleanup();}
+});
+
+
+test('P27 réconciliation : détecte un salaire système modifié dans le grand livre',()=>{
+ const start=Date.UTC(2027,0,1);let now=start;
+ const club={id:'audited-system-wage-club',budget:1000,roster:[
+  {id:'audited-player',name:'Joueur Audité',playerType:'system',contract:{
+   id:'audited-contract',clubId:'audited-system-wage-club',playerId:'audited-player',
+   status:'active',weeklyWage:100,salary:100,signedAt:new Date(start).toISOString()
+  }}
+ ]};
+ const f=setup({clubs:[club],now:()=>now});
+ try {
+  now=start+7*86400000;
+  assert.equal(f.service.settleSystemPayroll(now).posted,1);
+  const entry=f.service.store.accounts.get(club.id).entries[0];
+  entry.amount=99;
+  const audit=f.service.auditReconciliation();
+  assert.equal(audit.ok,false);
+  assert.equal(audit.issues.some(issue=>issue.type==='system-wage-entry-invalid'&&issue.entryId===entry.id),true);
+ } finally {f.cleanup();}
+});

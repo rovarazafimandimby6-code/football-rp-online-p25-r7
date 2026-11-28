@@ -21,9 +21,11 @@ test('P27 fullscreen: la page déclare viewport bord à bord et le manifeste ins
   assert.match(copy, /cp\(manifest, manifestDestination/);
 });
 
-test('P27 Android: le workflow verrouille le paysage et masque les barres système en mode immersif', async () => {
+test('P27 Android: le build reste manuel pendant la pause APK et conserve la configuration immersive', async () => {
   const workflow = await read('../.github/workflows/p27-android-apk.yml');
-  assert.match(workflow, /p27-dls19-ui-rebuild/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /^\\s+push:/m);
+  assert.doesNotMatch(workflow, /^\\s+pull_request:/m);
   assert.match(workflow, /android:screenOrientation="landscape"/);
   assert.match(workflow, /applyP27ImmersiveFullscreen/);
   assert.match(workflow, /WindowInsets\.Type\.statusBars\(\)/);
@@ -59,4 +61,15 @@ test('P27: aucun bouton ni script de bascule manuelle plein écran ne subsiste',
   assert.doesNotMatch(main, /toggleMobileFullscreen|fullscreenButtons|requestFullscreen|exitFullscreen/);
   assert.doesNotMatch(css, /\.fullscreen-toggle|#match-fullscreen/);
   assert.match(html, /id="pause"/);
+});
+
+
+test('P27 startup: le splash de présentation est dans le body, pas dans le head', async () => {
+  const html = await read('../index.html');
+  const head = html.slice(0, html.indexOf('</head>'));
+  const body = html.slice(html.indexOf('<body>'));
+  assert.doesNotMatch(head, /id="p27-startup-splash"/);
+  assert.match(body, /<div id="p27-startup-splash"/);
+  assert.ok(body.indexOf('id="p27-startup-splash"') < body.indexOf('id="main-menu"'));
+  assert.match(body, /art\.addEventListener\('error',dismiss/);
 });
