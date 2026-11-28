@@ -498,7 +498,7 @@ test('P27 synchronisation automatique : sérialise deux flush simultanés pour �
       calls.push({ url, options });
       if (options.method === 'PUT') await putGate;
       return { ok: true, status: 200, json: async () => ({
-        profile: { identity: { displayName: 'Rova' }, appearance: {} },
+        profile: { identity: { displayName: options.method === 'PUT' ? 'Rova' : 'Previous' }, appearance: {} },
         revision: options.method === 'PUT' ? 1 : 0
       }) };
     }
