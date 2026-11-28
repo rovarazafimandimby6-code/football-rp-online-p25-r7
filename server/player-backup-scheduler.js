@@ -35,7 +35,8 @@ export function resolvePlayerBackupConfig({ env = process.env, root = process.cw
       completedResults: path.resolve(env.RESULTS_DIR || `${base}/data/results`),
       rpClubs: path.resolve(env.RP_CLUBS_DIR || `${base}/data/rp-clubs`),
       rpClubChallenges: path.resolve(env.RP_CLUB_CHALLENGES_DIR || `${base}/data/rp-club-challenges`),
-      rpClubSeasons: path.resolve(env.RP_CLUB_SEASONS_DIR || `${base}/data/rp-club-seasons`),\n      roomCheckpoints: path.resolve(env.ROOMS_DIR || `${base}/data/rooms`)
+      rpClubSeasons: path.resolve(env.RP_CLUB_SEASONS_DIR || `${base}/data/rp-club-seasons`),
+      roomCheckpoints: path.resolve(env.ROOMS_DIR || `${base}/data/rooms`)
     }
   };
 }
