@@ -69,3 +69,10 @@ test("D1 profile repository rejects invalid revisions and malformed account iden
   await assert.rejects(repository.save(accountId, profileInput, -1), /INVALID_PROFILE_REVISION/);
   await assert.rejects(repository.get("not-an-account"), /INVALID_ACCOUNT_ID/);
 });
+
+test("profile normalization uses the default shirt number for null or empty values", () => {
+  for (const number of [null, ""]) {
+    const profile = normalizePlayerProfile({ identity: { number } }, () => Date.parse("2026-11-25T12:00:00.000Z"));
+    assert.equal(profile.identity.number, 10);
+  }
+});
