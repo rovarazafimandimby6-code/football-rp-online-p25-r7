@@ -75,3 +75,31 @@ test('sync outbox rejects duplicate operation IDs and invalid sequence metadata'
   ] };
   assert.throws(() => new PlayerSyncOutbox({ storage: storage(JSON.stringify(badSequence)) }).pending(), /STATE_CORRUPT/);
 });
+
+
+test('sync outbox refuses out-of-order acknowledgements and preserves the revision cursor', () => {
+  let n = 0;
+  const q = new PlayerSyncOutbox({
+    storage: storage(),
+    operationIdFactory: () => 'ordered-operation-' + (++n).toString().padStart(8, '0')
+  });
+  const first = q.enqueue('profile_snapshot', { displayName: 'First' });
+  const second = q.enqueue('profile_snapshot', { displayName: 'Second' });
+
+  assert.equal(q.acknowledge({ operationId: second.operationId, serverVersion: 2 }), false);
+  assert.equal(q.status().serverVersion, 0);
+  assert.deepEqual(q.pending().map(row => row.operationId), [first.operationId, second.operationId]);
+
+  assert.equal(q.acknowledge({ operationId: first.operationId, serverVersion: 1 }), true);
+  assert.equal(q.status().serverVersion, 1);
+  assert.equal(q.acknowledge({ operationId: second.operationId, serverVersion: 2 }), true);
+  assert.deepEqual(q.status(), { state: 'synced', pending: 0, serverVersion: 2, nextSequence: 3 });
+});
+
+test('sync outbox cannot acknowledge an unknown or already acknowledged operation', () => {
+  const q = new PlayerSyncOutbox({ storage: storage(), operationIdFactory: () => 'ordered-operation-id-0001' });
+  const op = q.enqueue('profile_snapshot', { displayName: 'Player' });
+  assert.equal(q.acknowledge({ operationId: 'unknown-operation-id', serverVersion: 1 }), false);
+  assert.equal(q.acknowledge({ operationId: op.operationId, serverVersion: 1 }), true);
+  assert.equal(q.acknowledge({ operationId: op.operationId, serverVersion: 2 }), false);
+});
