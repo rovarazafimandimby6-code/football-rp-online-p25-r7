@@ -18,7 +18,7 @@ test('P27 sécurité des salons : les vues publiques ne divulguent aucun secret 
   for (const state of publicStates) {
     const player = state.players.find(item => item.id === joined.playerId);
     assert.ok(player);
-    for (const field of ['token', 'accountId', 'careerPlayerId', 'input', 'lastInputSequence', 'lastSeen', 'disconnectedAt', 'lastActionAt']) {
+    for (const field of ['token', 'tokenHash', 'accountId', 'careerPlayerId', 'input', 'lastInputSequence', 'lastSeen', 'disconnectedAt', 'lastActionAt']) {
       assert.equal(Object.hasOwn(player, field), false, `champ privé exposé : ${field}`);
     }
   }
