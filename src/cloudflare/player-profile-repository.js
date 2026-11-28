@@ -12,7 +12,8 @@ export function normalizePlayerProfile(input = {}, now = () => Date.now()) {
     schemaVersion: 1,
     identity: {
       displayName: clean(identity.displayName, 20, "Nouveau joueur"),
-      number: Number.isFinite(Number(identity.number)) ? Math.max(1, Math.min(99, Math.round(Number(identity.number)))) : 10,
+      number: identity.number !== null && identity.number !== undefined && identity.number !== "" && Number.isFinite(Number(identity.number))
+        ? Math.max(1, Math.min(99, Math.round(Number(identity.number)))) : 10,
       preferredFoot: oneOf(identity.preferredFoot, ["left", "right", "both"], "right"),
       role: oneOf(identity.role, ["GK", "DEF", "MID", "FWD"], "MID"),
     },
