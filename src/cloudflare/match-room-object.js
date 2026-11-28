@@ -359,13 +359,17 @@ export class P27MatchRoomDurableObject {
         continue;
       }
       const attachment = authenticated.attachment;
-      const events = state.events.filter(event => Number.isSafeInteger(event.id) && event.id > (attachment.lastEventId || 0)).slice(-20);
+      // Deliver pending events in bounded batches without skipping older events.
+      const events = state.events
+        .filter(event => Number.isSafeInteger(event.id) && event.id > (attachment.lastEventId || 0))
+        .slice(0, 20);
+      const deliveredCursor = events.length ? events[events.length - 1].id : (attachment.lastEventId || 0);
       try {
         this._sendSocket(socket, "delta", {
-          eventCursor: state.eventCursor, events,
+          eventCursor: deliveredCursor, events,
           state: { ...state, events: [] },
         });
-        attachment.lastEventId = state.eventCursor;
+        attachment.lastEventId = deliveredCursor;
         attachment.lastStateSequence = state.sequence;
         socket.serializeAttachment(attachment);
       } catch {

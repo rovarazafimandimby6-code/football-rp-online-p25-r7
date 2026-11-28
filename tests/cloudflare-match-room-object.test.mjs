@@ -209,3 +209,42 @@ test("finalized account match writes idempotent career and progression outbox ev
   assert.equal(state.backing.get("finalized-result-synced"), true);
   stopTimer(object);
 });
+
+
+test("WebSocket delta batches preserve event order without advancing past undelivered events", async () => {
+  const state = makeState();
+  const object = new P27MatchRoomDurableObject(state, {});
+  await object.fetch(request("/internal/create", "POST", { roomId: "a1b2c3d4e5f6" }));
+  const joined = await (await object.fetch(request("/internal/join", "POST", {}))).json();
+  const sent = [];
+  const socket = {
+    attachment: null,
+    serializeAttachment(value) { this.attachment = structuredClone(value); },
+    deserializeAttachment() { return this.attachment ? structuredClone(this.attachment) : null; },
+    send(value) { sent.push(JSON.parse(value)); },
+    close(code, reason) { this.closed = { code, reason }; },
+  };
+  await object.webSocketMessage(socket, JSON.stringify({
+    v: 1, type: "hello", roomId: "a1b2c3d4e5f6", token: joined.token,
+    afterSequence: -1, afterEventId: 0,
+  }));
+  const events = Array.from({ length: 25 }, (_, index) => ({ id: index + 1, type: "test" }));
+  object.manager.get = () => ({
+    sequence: 99, eventCursor: 25, events, phase: "playing", players: [],
+  });
+  state.getWebSockets = () => [socket];
+
+  await object._broadcastSockets();
+  let delta = sent.at(-1);
+  assert.equal(delta.type, "delta");
+  assert.deepEqual(delta.events.map(event => event.id), Array.from({ length: 20 }, (_, i) => i + 1));
+  assert.equal(delta.eventCursor, 20);
+  assert.equal(socket.attachment.lastEventId, 20);
+
+  await object._broadcastSockets();
+  delta = sent.at(-1);
+  assert.deepEqual(delta.events.map(event => event.id), [21, 22, 23, 24, 25]);
+  assert.equal(delta.eventCursor, 25);
+  assert.equal(socket.attachment.lastEventId, 25);
+  stopTimer(object);
+});
