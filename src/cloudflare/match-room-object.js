@@ -64,7 +64,10 @@ export class P27MatchRoomDurableObject {
       });
       this.lastFlushAt = Date.now();
       const room = this.manager.rooms.get(this.roomId);
-      if (room && ACTIVE_PHASES.has(room.phase)) {
+      if (this.stores.results.get(this.roomId)) {
+        try { await this._syncFinalizedResult(); }
+        catch { await state.storage.setAlarm(Date.now() + 1_000); }
+      } else if (room && ACTIVE_PHASES.has(room.phase)) {
         await state.storage.setAlarm(Date.now() + 1_000);
         this._scheduleTick(50);
       }
