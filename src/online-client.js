@@ -1,3 +1,4 @@
+import { OnlineMatchSocketTransport } from './online-match-socket.js';
 /** Minimal HTTP client for the authoritative match-room API. */
 export class OnlineMatchClient {
   constructor({ baseUrl = '', fetchImpl = globalThis.fetch, storage = globalThis.sessionStorage, accountTokenProvider = () => null } = {}) {
@@ -9,6 +10,7 @@ export class OnlineMatchClient {
     this.token = null;
     this.playerId = null;
     this.sequence = 0;
+    this.realtimeTransport = null;
   }
 
   async request(path, { method = 'GET', body, auth = false, accountAuth = false } = {}) {
@@ -48,6 +50,22 @@ export class OnlineMatchClient {
     this.persistSession();
     return result;
   }
+  connectRealtime({ enabled = false, afterSequence = -1, afterEventId = 0, onMessage = null, onStatus = null, onError = null, WebSocketImpl = globalThis.WebSocket } = {}) {
+    if (!enabled) return false;
+    if (!this.roomId || !this.token || !this.playerId) throw new Error('NOT_JOINED');
+    this.disconnectRealtime();
+    this.realtimeTransport = new OnlineMatchSocketTransport({
+      baseUrl: this.baseUrl, roomId: this.roomId, token: this.token, playerId: this.playerId,
+      WebSocketImpl, onMessage, onStatus, onError,
+    });
+    return this.realtimeTransport.connect({ afterSequence, afterEventId });
+  }
+
+  disconnectRealtime() {
+    this.realtimeTransport?.close();
+    this.realtimeTransport = null;
+  }
+
   async requestEntry() {
     if (!this.roomId || !this.token) throw new Error('NOT_JOINED');
     return this.request(`/api/rooms/${this.roomId}/entry-request`, { method: 'POST', auth: true, body: {} });
@@ -93,6 +111,7 @@ export class OnlineMatchClient {
   async leave() {
     if (!this.roomId || !this.token) return false;
     await this.request(`/api/rooms/${this.roomId}/leave`, { method: 'POST', auth: true });
+    this.disconnectRealtime();
     this.roomId = null; this.token = null; this.playerId = null;
     try { this.storage?.removeItem('fpro.match.session'); } catch {}
     return true;
