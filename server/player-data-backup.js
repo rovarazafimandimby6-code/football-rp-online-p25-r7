@@ -78,21 +78,62 @@ export function verifyPlayerDataBackup(backupFile) {
   return { ok: true, createdAt: bundle.createdAt, stores: Object.keys(STORES) };
 }
 
-/** Restores only a fully verified bundle. Existing files are staged for rollback on write failure. */
-export function restorePlayerDataBackup({ backupFile, directories = defaultDirectories(process.cwd()) } = {}) {
+/**
+ * Plans or applies a verified restore. Dry-run is the default; applying requires
+ * explicit opt-in, and replacing any existing file requires a second opt-in.
+ * A caller may select a subset of durable stores. Live room archives are never restored.
+ */
+export function restorePlayerDataBackup({
+  backupFile,
+  directories = defaultDirectories(process.cwd()),
+  dryRun = true,
+  apply = false,
+  stores,
+  overwriteExisting = false
+} = {}) {
+  if (dryRun === false && apply !== true) throw new Error('RESTORE_APPLY_CONFIRMATION_REQUIRED');
+  if (dryRun === true && apply === true) throw new Error('RESTORE_MODE_CONFLICT');
   verifyPlayerDataBackup(backupFile);
   const bundle = JSON.parse(readFileSync(path.resolve(backupFile), 'utf8'));
+  const available = Object.keys(STORES).filter(key => STORES[key].restore !== false);
+  const selected = stores === undefined ? available : stores;
+  if (!Array.isArray(selected) || selected.length === 0 || new Set(selected).size !== selected.length) {
+    throw new Error('RESTORE_STORE_SELECTION_INVALID');
+  }
+  for (const key of selected) {
+    if (typeof key !== 'string' || !available.includes(key)) throw new Error(`RESTORE_STORE_NOT_ALLOWED:${key}`);
+  }
+
+  const plan = selected.map(key => {
+    const spec = STORES[key];
+    const directory = path.resolve(directories[key] || path.join(process.cwd(), 'data', spec.directory));
+    const destination = path.join(directory, spec.file);
+    return { key, destination, exists: existsSync(destination), backupSha256: bundle.files[key].sha256 };
+  });
+  const existing = plan.filter(item => item.exists);
+  if (!dryRun && existing.length && !overwriteExisting) {
+    throw new Error(`RESTORE_OVERWRITE_CONFIRMATION_REQUIRED:${existing.map(item => item.key).join(',')}`);
+  }
+  if (dryRun) {
+    return {
+      ok: true,
+      dryRun: true,
+      applied: false,
+      createdAt: bundle.createdAt,
+      planned: plan.map(({ key, exists, backupSha256 }) => ({ key, exists, backupSha256 })),
+      requiresOverwriteConfirmation: existing.map(item => item.key),
+      archivedOnly: Object.keys(STORES).filter(key => STORES[key].restore === false)
+    };
+  }
+
   const staged = [];
   const replaced = [];
   try {
-    for (const [key, spec] of Object.entries(STORES)) {
-      if (spec.restore === false) continue;
-      const directory = path.resolve(directories[key] || path.join(process.cwd(), 'data', spec.directory));
-      mkdirSync(directory, { recursive: true });
-      const destination = path.join(directory, spec.file);
-      const temporary = `${destination}.${process.pid}.${randomUUID()}.restore`;
-      writeFileSync(temporary, bundle.files[key].content, { mode: 0o600, flag: 'wx' });
-      staged.push({ destination, temporary, previous: existsSync(destination) ? readFileSync(destination) : null });
+    for (const item of plan) {
+      mkdirSync(path.dirname(item.destination), { recursive: true });
+      const temporary = `${item.destination}.${process.pid}.${randomUUID()}.restore`;
+      writeFileSync(temporary, bundle.files[item.key].content, { mode: 0o600, flag: 'wx' });
+      staged.push({ ...item, temporary, previous: existsSync(item.destination) ? readFileSync(item.destination) : null });
     }
     for (const item of staged) {
       renameSync(item.temporary, item.destination);
@@ -113,7 +154,14 @@ export function restorePlayerDataBackup({ backupFile, directories = defaultDirec
   } finally {
     for (const item of staged) { try { unlinkSync(item.temporary); } catch {} }
   }
-  return { ok: true, restored: Object.keys(STORES).filter(key => STORES[key].restore !== false), archivedOnly: Object.keys(STORES).filter(key => STORES[key].restore === false), createdAt: bundle.createdAt };
+  return {
+    ok: true,
+    dryRun: false,
+    applied: true,
+    restored: selected,
+    archivedOnly: Object.keys(STORES).filter(key => STORES[key].restore === false),
+    createdAt: bundle.createdAt
+  };
 }
 
 /**
