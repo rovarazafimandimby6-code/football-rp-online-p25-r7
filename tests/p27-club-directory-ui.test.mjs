@@ -6,7 +6,7 @@ const main=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
 const css=await readFile(new URL('../style.css',import.meta.url),'utf8');
 
 test('P27 catalogue UI : charge le catalogue de saison par pages et vérifie les 156 identifiants',()=>{
-  assert.match(main,/fetch\('\/api\/clubs\?limit=100&offset='/);
+  assert.match(main,/p27ApiFetch\('\/api\/clubs\?limit=100&offset='/);
   assert.match(main,/fetchPage\(0\),fetchPage\(100\)/);
   assert.match(main,/pages\[0\]\.total!==156/);
   assert.match(main,/new Set\(items\.map\(item=>item\.id\)\)\.size!==156/);
