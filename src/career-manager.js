@@ -1,3 +1,5 @@
+const MATCH_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const validMatchId = value => typeof value === 'string' && MATCH_ID_RE.test(value);
 const idOf = value => String(value ?? '').trim().slice(0, 48);
 const nonNegativeInt = (value, fallback = 0, max = 1_000_000_000) => {
   const n = Number(value);
@@ -31,7 +33,7 @@ const normalizeCareerState = state => {
     && timestamp(state.contract.expiresAt) !== null && ['active','expired','terminated'].includes(state.contract.status)
     ? { ...state.contract, clubId: idOf(state.contract.clubId), salary: nonNegativeInt(state.contract.salary), status: state.contract.status, lastSalaryPaidAt: timestamp(state.contract.lastSalaryPaidAt) !== null ? new Date(timestamp(state.contract.lastSalaryPaidAt)).toISOString() : (typeof state.contract.signedAt === 'string' ? state.contract.signedAt : null) } : null;
   const offers = Array.isArray(state.offers) ? state.offers.filter(item => item && typeof item === 'object' && idOf(item.id) && idOf(item.fromClubId) && ['pending','accepted','rejected','expired','cancelled'].includes(item.status)).map(item => ({ ...item, id: idOf(item.id), fromClubId: idOf(item.fromClubId), salary: nonNegativeInt(item.salary), fee: nonNegativeInt(item.fee) })) : [];
-  return { wallet: nonNegativeInt(state.wallet, 500), clubId: contract?.status === 'active' ? contract.clubId : null, contract, offers, history: Array.isArray(state.history) ? state.history.filter(item => item && typeof item === 'object').slice(-200) : [], matchRewards: Array.isArray(state.matchRewards) ? state.matchRewards.filter(item => item && typeof item.matchId === 'string' && item.matchId.trim()).slice(-2000).map(item => ({ matchId: item.matchId.slice(0, 64), experience: nonNegativeInt(item.experience), coins: nonNegativeInt(item.coins) })) : [], processedMatchIds: Array.isArray(state.processedMatchIds) ? [...new Set(state.processedMatchIds.filter(id => typeof id === 'string' && id.trim()).map(id => id.slice(0, 64)))].slice(-2000) : [], nextOfferNumber: Math.max(1, nonNegativeInt(state.nextOfferNumber, 1)) };
+  return { wallet: nonNegativeInt(state.wallet, 500), clubId: contract?.status === 'active' ? contract.clubId : null, contract, offers, history: Array.isArray(state.history) ? state.history.filter(item => item && typeof item === 'object').slice(-200) : [], matchRewards: Array.isArray(state.matchRewards) ? state.matchRewards.filter(item => item && validMatchId(item.matchId)).slice(-2000).map(item => ({ matchId: item.matchId, experience: nonNegativeInt(item.experience), coins: nonNegativeInt(item.coins) })) : [], processedMatchIds: Array.isArray(state.processedMatchIds) ? [...new Set(state.processedMatchIds.filter(validMatchId))].slice(-2000) : [], nextOfferNumber: Math.max(1, nonNegativeInt(state.nextOfferNumber, 1)) };
 };
 
 export class CareerManager {
@@ -393,7 +395,8 @@ export class CareerManager {
 
   recordMatch({ result, goals = 0, assists = 0, cleanSheet = false, matchId = null } = {}) {
     if (!['win', 'draw', 'loss'].includes(result)) return { ok: false, reason: 'invalid-result' };
-    const id = typeof matchId === 'string' ? matchId.trim().slice(0, 64) : '';
+    if (matchId !== null && matchId !== undefined && !validMatchId(matchId)) return { ok:false, reason:'invalid-match-id' };
+    const id = matchId ?? '';
     if (id && this.processedMatchIds.includes(id)) {
       const savedReward = this.matchRewards.find(item => item.matchId === id);
       return { experience: savedReward?.experience || 0, coins: savedReward?.coins || 0, duplicate: true, recoverable: Boolean(savedReward) };
