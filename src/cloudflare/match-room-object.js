@@ -378,8 +378,10 @@ export class P27MatchRoomDurableObject {
         .slice(0, 20);
       try {
         const sent = this._sendSocket(socket, "delta", {
-          eventCursor: attachment.lastEventId || 0, events,
-          state: { ...state, events: [] },
+          // Cursor must represent the last event included in this batch.
+          // A stale cursor here made clients receive events but believe none were delivered.
+          eventCursor: events.length ? events[events.length - 1].id : (attachment.lastEventId || 0),
+          events, state: { ...state, events: [] },
         });
         attachment.lastEventId = Number.isSafeInteger(sent.eventCursor)
           ? sent.eventCursor : (attachment.lastEventId || 0);
