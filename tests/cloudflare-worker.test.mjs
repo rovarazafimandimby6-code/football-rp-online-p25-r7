@@ -221,7 +221,7 @@ test("match room gateway rejects expired authenticated sessions before joining",
   const response = await worker.fetch(request("/api/rooms/a1b2c3d4e5f6/join", {
     method: "POST",
     headers: {
-      authorization: "Bearer expired-session-token",
+      authorization: "Bearer " + "x".repeat(48),
       "content-type": "application/json",
     },
     body: JSON.stringify({ displayName: "Joueur" }),
