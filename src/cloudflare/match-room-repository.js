@@ -69,7 +69,12 @@ export class D1MatchRoomRepository {
       "ON CONFLICT(room_id) DO UPDATE SET phase=excluded.phase, mode=excluded.mode, room_name=excluded.room_name, " +
       "duration_minutes=excluded.duration_minutes, blue_humans=excluded.blue_humans, red_humans=excluded.red_humans, " +
       "updated_at=excluded.updated_at, expires_at=excluded.expires_at " +
-      "WHERE p27_match_rooms.phase IN ('lobby', 'playing', 'halftime')"
+      "WHERE p27_match_rooms.phase IN ('lobby', 'playing', 'halftime') " +
+      "AND excluded.updated_at >= p27_match_rooms.updated_at " +
+      "AND (p27_match_rooms.phase = excluded.phase " +
+      "OR (p27_match_rooms.phase = 'lobby' AND excluded.phase IN ('playing', 'halftime')) " +
+      "OR (p27_match_rooms.phase = 'playing' AND excluded.phase = 'halftime') " +
+      "OR (p27_match_rooms.phase = 'halftime' AND excluded.phase = 'playing'))"
     ).bind(
       room.roomId, room.roomId, room.phase, room.mode, room.name, room.durationMinutes,
       room.blueHumans, room.redHumans, room.createdAt, room.updatedAt, room.expiresAt,
@@ -77,7 +82,9 @@ export class D1MatchRoomRepository {
     if (Number(result?.meta?.changes) !== 1) {
       const existing = await this.getRoom(room.roomId);
       if (!existing) throw new Error("MATCH_ROOM_WRITE_FAILED");
-      throw new Error("MATCH_ROOM_TERMINAL");
+      if (TERMINAL_PHASES.has(existing.phase)) throw new Error("MATCH_ROOM_TERMINAL");
+      if (existing.updatedAt > room.updatedAt) throw new Error("MATCH_ROOM_STALE_UPDATE");
+      throw new Error("MATCH_ROOM_PHASE_REGRESSION");
     }
     return this.getRoom(room.roomId);
   }
