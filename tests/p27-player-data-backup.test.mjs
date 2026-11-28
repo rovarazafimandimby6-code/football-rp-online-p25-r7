@@ -21,11 +21,13 @@ const schemas = {
   profiles: { version:1, profiles:[{accountId:'account-1',profile:{identity:{displayName:'Test'}}}] },
   progression: { version:1, players:[{accountId:'account-1',progression:{level:4}}] },
   careers: { version:1, careers:[{accountId:'account-1',totals:{matches:2},matches:[]}], playerCareers:[] },
+  careerSyncQueue: { version:1, pending:[] },
   transfers: { version:1, careers:[{accountId:'account-1',playerId:'human-1',wallet:2500,clubId:null,contract:null,offers:[],history:[],loanOffers:[],loanHistory:[]}], events:[], clubs:[], rosterSync:[] },
   clubRosters: { version:8, clubs:[], fixtures:[] },
   clubFinance: { version:1, accounts:[] },
   systemPayroll: { version:1, clubs:{} },
   transferFinanceJournal: { version:1, transfers:[], playerWages:[] },
+  systemTransferOutbox: { version:1, transfers:[] },
   shopInventory: { version:1, players:[], clubs:[], purchases:[], resales:[] },
   competitions: { version:1, seasons:[] },
   completedResults: [],
@@ -39,7 +41,7 @@ function makeRoot() {
   for(const key of Object.keys(schemas)){
     directories[key]=path.join(root,key);
     mkdirSync(directories[key],{recursive:true});
-    const filenames={accounts:'accounts.json',playerIdentities:'player-identities.json',googleIdentities:'google-identities.json',profiles:'player-profiles.json',progression:'progression.json',careers:'careers.json',transfers:'transfers.json',clubRosters:'club-rosters.json',clubFinance:'club-finance.json',systemPayroll:'system-payroll-schedule.json',transferFinanceJournal:'transfer-finance-journal.json',shopInventory:'shop-inventory.json',competitions:'competitions.json',completedResults:'completed-results.json',rpClubs:'rp-clubs.json',rpClubChallenges:'rp-club-challenges.json',rpClubSeasons:'rp-club-seasons.json'};
+    const filenames={accounts:'accounts.json',playerIdentities:'player-identities.json',googleIdentities:'google-identities.json',profiles:'player-profiles.json',progression:'progression.json',careers:'careers.json',careerSyncQueue:'pending-career-sync.json',transfers:'transfers.json',clubRosters:'club-rosters.json',clubFinance:'club-finance.json',systemPayroll:'system-payroll-schedule.json',transferFinanceJournal:'transfer-finance-journal.json',systemTransferOutbox:'system-transfer-outbox.json',shopInventory:'shop-inventory.json',competitions:'competitions.json',completedResults:'completed-results.json',rpClubs:'rp-clubs.json',rpClubChallenges:'rp-club-challenges.json',rpClubSeasons:'rp-club-seasons.json'};
     const filename=filenames[key];
     writeFileSync(path.join(directories[key],filename),JSON.stringify(schemas[key]));
   }
@@ -110,7 +112,7 @@ test('P27 compte: un store absent est sauvegardé comme état vide conforme à s
       unlinkSync(path.join(source.directories[key],filenames[key]));
     }
     const result=createPlayerDataBackup({directories:source.directories,outputFile:backup});
-    assert.equal(result.stores.length,17);
+    assert.equal(result.stores.length,19);
     assert.equal(verifyPlayerDataBackup(backup).ok,true);
     const bundle=JSON.parse(readFileSync(backup,'utf8'));
     assert.deepEqual(JSON.parse(bundle.files.accounts.content),{version:1,accounts:[],sessions:[]});
@@ -129,11 +131,11 @@ test('P27 compte: le backup accepte les fichiers produits par les vrais stores s
     googleIdentities:path.join(root,'google-identities'),
     profiles:path.join(root,'player-profiles'),
     progression:path.join(root,'progression'),
-    careers:path.join(root,'careers'),
+    careers:path.join(root,'careers'),careerSyncQueue:path.join(root,'career-sync'),
     transfers:path.join(root,'transfers'),
     clubRosters:path.join(root,'club-rosters'),
     clubFinance:path.join(root,'club-finance'),systemPayroll:path.join(root,'system-payroll'),transferFinanceJournal:path.join(root,'transfer-finance-journal'),
-    shopInventory:path.join(root,'shop-inventory'),competitions:path.join(root,'competitions'),completedResults:path.join(root,'completed-results'),
+    systemTransferOutbox:path.join(root,'system-transfers'),shopInventory:path.join(root,'shop-inventory'),competitions:path.join(root,'competitions'),completedResults:path.join(root,'completed-results'),
     rpClubs:path.join(root,'rp-clubs'),rpClubChallenges:path.join(root,'rp-club-challenges'),rpClubSeasons:path.join(root,'rp-club-seasons')
   };
   try{
@@ -158,6 +160,6 @@ test('P27 compte: le backup accepte les fichiers produits par les vrais stores s
     const outputFile=path.join(root,'backups','real-server-stores.json');
     const createdBackup=createPlayerDataBackup({directories,outputFile});
     assert.equal(verifyPlayerDataBackup(outputFile).ok,true);
-    assert.equal(createdBackup.stores.length,17);
+    assert.equal(createdBackup.stores.length,19);
   }finally{rmSync(root,{recursive:true,force:true});}
 });
