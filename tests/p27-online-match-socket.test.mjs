@@ -23,7 +23,7 @@ test('P27 socket transport connects to secure room endpoint and authenticates af
   socket.open();
   const hello=JSON.parse(socket.sent[0]);
   assert.equal(hello.type,'hello');
-  assert.equal(hello.token,'secret');
+  assert.equal(hello.token,'secret-token');
   assert.equal(hello.afterSequence,4);
   assert.equal(statuses.includes('authenticating'),true);
 });
