@@ -2,7 +2,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 const PLAYER_ID_RE = /^FRP-[0-9]{6}$/;
 const EVENT_TYPES = new Set(["signing", "transfer", "renewal", "termination", "expiry", "loan", "loan-return"]);
 const STATUSES = new Set(["active", "terminated", "expired", "free-agent"]);
-const clean = (value, max = 96) => String(value ?? "").replace(/[<>\u0000-\u001f]/g, "").trim().slice(0, max);
+const EVENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$/;
+const CLUB_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 
 function validateIdentity(accountId, playerId) {
   if (typeof accountId !== "string" || !UUID_RE.test(accountId)) throw new Error("INVALID_ACCOUNT_ID");
@@ -12,11 +13,15 @@ function normalizeContract(input, playerId) {
   if (input === null || input === undefined) return { status: "free-agent", clubId: null, json: null };
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("INVALID_PLAYER_CONTRACT");
   const contract = structuredClone(input);
-  const status = clean(contract.status, 16);
-  if (!STATUSES.has(status) || status === "free-agent") throw new Error("INVALID_PLAYER_CONTRACT");
-  const clubId = contract.clubId === null || contract.clubId === undefined ? null : clean(contract.clubId, 64);
+  const status = contract.status;
+  if (typeof status !== "string" || !STATUSES.has(status) || status === "free-agent") throw new Error("INVALID_PLAYER_CONTRACT");
+  const rawClubId = contract.clubId;
+  if (rawClubId !== null && rawClubId !== undefined &&
+      (typeof rawClubId !== "string" || !CLUB_ID_RE.test(rawClubId))) throw new Error("INVALID_PLAYER_CONTRACT");
+  const clubId = rawClubId ?? null;
   if (status === "active" && !clubId) throw new Error("INVALID_PLAYER_CONTRACT");
-  if (contract.playerId !== undefined && typeof contract.playerId !== "string") throw new Error("INVALID_PLAYER_CONTRACT");
+  if (contract.playerId !== undefined && contract.playerId !== playerId) throw new Error("PLAYER_IDENTITY_MISMATCH");
+  contract.playerId = playerId;
   const json = JSON.stringify(contract);
   if (json.length > 8_192) throw new Error("PLAYER_CONTRACT_TOO_LARGE");
   return { status, clubId, json };
@@ -51,10 +56,11 @@ export class D1PlayerContractRepository {
     eventId, eventType, expectedRevision, occurredAt, contract = null,
   } = {}) {
     validateIdentity(accountId, playerId);
-    const id = clean(eventId, 96);
-    if (!id || !EVENT_TYPES.has(eventType) || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
+    const id = eventId;
+    if (typeof id !== "string" || !EVENT_ID_RE.test(id) || !EVENT_TYPES.has(eventType) ||
+        !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
         !Number.isSafeInteger(occurredAt) || occurredAt < 0) throw new Error("INVALID_CONTRACT_EVENT");
-    const normalized = normalizeContract(contract);
+    const normalized = normalizeContract(contract, playerId);
     const existingEvent = await this.db.prepare(
       "SELECT * FROM p27_player_contract_events WHERE account_id = ? AND event_id = ?"
     ).bind(accountId, id).first();
