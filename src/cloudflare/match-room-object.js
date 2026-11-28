@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+import { createMatchMessage } from "../online-match-protocol.js";
 import { RoomManager } from "../../server/room-manager.js";
 import { D1MatchRoomRepository } from "./match-room-repository.js";
 
@@ -132,13 +134,17 @@ export class P27MatchRoomDurableObject {
     this.manager.tick(0.05);
     const room = this.manager.rooms.get(this.roomId);
     const result = this.stores.results.get(this.roomId);
+    if (Date.now() - (this.lastBroadcastAt || 0) >= 80) {
+      await this._broadcastSockets();
+      this.lastBroadcastAt = Date.now();
+    }
     if (result) {
       await this._syncFinalizedResult();
       return;
     }
     if (room && Date.now() - this.lastFlushAt >= 1_000) {
       await this._flush();
-      await this._syncRegistry();
+      try { await this._syncRegistry(); } catch (error) { this.registrySyncError = String(error?.message || "MATCH_ROOM_INDEX_WRITE_FAILED").slice(0, 120); }
     }
   }
 
@@ -164,9 +170,144 @@ export class P27MatchRoomDurableObject {
     }
   }
 
+
+  _upgradeWebSocket() {
+    if (!this.manager.rooms.has(this.roomId)) return json(404, { error: "ROOM_NOT_FOUND" });
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    this.state.acceptWebSocket(server);
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  _sendSocket(socket, type, payload = {}) {
+    let message = { v: 1, type, ...payload };
+    let encoded = JSON.stringify(message);
+    if (new TextEncoder().encode(encoded).byteLength > 16 * 1024 && message.state) {
+      message = { ...message, state: { ...message.state, events: [] }, events: (message.events || []).slice(-12) };
+      encoded = JSON.stringify(message);
+    }
+    if (new TextEncoder().encode(encoded).byteLength > 16 * 1024) throw new Error("MATCH_SOCKET_MESSAGE_TOO_LARGE");
+    socket.send(encoded);
+  }
+
+  _socketPlayer(socket) {
+    let attachment;
+    try { attachment = socket.deserializeAttachment(); } catch { return null; }
+    if (!attachment || attachment.roomId !== this.roomId ||
+        typeof attachment.playerId !== "string" || !/^[a-f0-9]{64}$/.test(String(attachment.tokenHash || ""))) return null;
+    const room = this.manager.rooms.get(this.roomId);
+    const player = room?.players.get(attachment.playerId);
+    if (!player || player.isBot) return null;
+    const storedHash = typeof player.tokenHash === "string" ? player.tokenHash
+      : typeof player.token === "string" ? createHash("sha256").update(player.token).digest("hex") : "";
+    if (!/^[a-f0-9]{64}$/.test(storedHash)) return null;
+    const expected = Buffer.from(attachment.tokenHash, "hex");
+    const actual = Buffer.from(storedHash, "hex");
+    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
+    return { attachment, player };
+  }
+
+  async webSocketMessage(socket, rawMessage) {
+    await this.ready;
+    try {
+      if (typeof rawMessage !== "string" || new TextEncoder().encode(rawMessage).byteLength > 16 * 1024) {
+        throw new Error("MATCH_SOCKET_MESSAGE_INVALID");
+      }
+      const parsed = JSON.parse(rawMessage);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || parsed.v !== 1 ||
+          typeof parsed.type !== "string") throw new Error("MATCH_SOCKET_MESSAGE_INVALID");
+      const { v: _version, type, ...payload } = parsed;
+      const message = createMatchMessage(type, payload);
+
+      if (message.type === "hello") {
+        if (socket.deserializeAttachment?.()) throw new Error("MATCH_SOCKET_ALREADY_AUTHENTICATED");
+        if (message.roomId !== this.roomId) throw new Error("MATCH_SOCKET_ROOM_MISMATCH");
+        const { player } = this.manager.authenticate(this.roomId, message.token);
+        const tokenHash = createHash("sha256").update(message.token).digest("hex");
+        socket.serializeAttachment({
+          roomId: this.roomId, playerId: player.id, tokenHash,
+          lastEventId: message.afterEventId, lastStateSequence: message.afterSequence,
+        });
+        this.manager.reconnectForPlayer(this.roomId, player.id);
+        const current = socket.deserializeAttachment();
+        this._sendSocket(socket, "welcome", {
+          playerId: player.id, nextSequence: Math.max(1, player.lastInputSequence + 1),
+        });
+        this._sendSocket(socket, "snapshot", { state: this.manager.get(this.roomId) });
+        current.lastStateSequence = this.manager.get(this.roomId).sequence;
+        socket.serializeAttachment(current);
+        await this._persistMutation();
+        return;
+      }
+
+      const authenticated = this._socketPlayer(socket);
+      if (!authenticated) throw new Error("UNAUTHORIZED");
+      const { attachment, player } = authenticated;
+      if (message.type === "input") {
+        this.manager.submitInputForPlayer(this.roomId, player.id, message);
+        attachment.lastInputSequence = message.sequence;
+        socket.serializeAttachment(attachment);
+        this._sendSocket(socket, "ack", { sequence: message.sequence });
+        return;
+      }
+      if (message.type === "heartbeat") {
+        this.manager.heartbeatForPlayer(this.roomId, player.id);
+        attachment.lastInputSequence = Math.max(attachment.lastInputSequence || 0, message.lastSequence);
+        socket.serializeAttachment(attachment);
+        this._sendSocket(socket, "ack", { sequence: message.lastSequence });
+        return;
+      }
+      if (message.type === "leave") {
+        this.manager.leaveForPlayer(this.roomId, player.id);
+        await this._persistMutation();
+        this._sendSocket(socket, "ack", { sequence: Math.max(0, attachment.lastInputSequence || 0) });
+        socket.close(1000, "player left");
+        return;
+      }
+      throw new Error("MATCH_SOCKET_MESSAGE_UNSUPPORTED");
+    } catch (error) {
+      const code = String(error?.message || "MATCH_SOCKET_ERROR").slice(0, 80);
+      try { this._sendSocket(socket, "error", { code, fatal: true }); } catch {}
+      try { socket.close(1008, "invalid match message"); } catch {}
+    }
+  }
+
+  async _broadcastSockets() {
+    if (typeof this.state.getWebSockets !== "function") return;
+    const room = this.manager.rooms.get(this.roomId);
+    if (!room) return;
+    const state = this.manager.get(this.roomId);
+    for (const socket of this.state.getWebSockets()) {
+      const authenticated = this._socketPlayer(socket);
+      if (!authenticated) {
+        try { socket.close(1008, "match session expired"); } catch {}
+        continue;
+      }
+      const attachment = authenticated.attachment;
+      const events = state.events.filter(event => Number.isSafeInteger(event.id) && event.id > (attachment.lastEventId || 0)).slice(-20);
+      try {
+        this._sendSocket(socket, "delta", {
+          eventCursor: state.eventCursor, events,
+          state: { ...state, events: [] },
+        });
+        attachment.lastEventId = state.eventCursor;
+        attachment.lastStateSequence = state.sequence;
+        socket.serializeAttachment(attachment);
+      } catch {
+        try { socket.close(1011, "match update failed"); } catch {}
+      }
+    }
+  }
+
+  async webSocketClose() {}
+  async webSocketError() {}
+
   async fetch(request) {
     await this.ready;
     const url = new URL(request.url);
+    if (request.headers.get("upgrade")?.toLowerCase() === "websocket" && url.pathname === `/api/rooms/${this.roomId}/socket`) {
+      return this._upgradeWebSocket();
+    }
     if (request.method === "GET" && url.pathname === "/internal/health") {
       return json(200, { ok: true, roomId: this.roomId, phase: this.manager.rooms.get(this.roomId)?.phase || "missing" });
     }
