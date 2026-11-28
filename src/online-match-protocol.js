@@ -1,7 +1,6 @@
 /**
- * Versioned wire contract shared by the future Durable Object match socket
- * and the Android client. HTTP remains active until the server socket endpoint
- * is implemented and enabled.
+ * Versioned wire contract shared by the Durable Object match socket
+ * and the Android client. HTTP remains the fallback transport.
  */
 export const MATCH_PROTOCOL_VERSION = 1;
 
