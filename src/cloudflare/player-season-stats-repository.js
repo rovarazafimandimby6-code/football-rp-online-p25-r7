@@ -66,6 +66,15 @@ export class D1PlayerSeasonStatsRepository {
     };
   }
 
+  async listSeasonIds(accountId) {
+    if (typeof accountId !== "string" || !UUID_RE.test(accountId)) throw new Error("INVALID_ACCOUNT_ID");
+    const rows = await this.db.prepare(
+      "SELECT season_id FROM p27_player_season_totals WHERE account_id = ? ORDER BY season_id"
+    ).bind(accountId).all();
+    return (rows?.results || []).map(row => row.season_id).filter(value =>
+      typeof value === "string" && value.length > 0 && value.length <= 64);
+  }
+
   async recordFinalizedMatch(accountId, playerId, seasonId, input = {}) {
     validateIdentity(accountId, playerId);
     const match = this.normalizeMatch(seasonId, input);
