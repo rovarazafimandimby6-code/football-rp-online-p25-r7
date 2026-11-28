@@ -25,7 +25,7 @@ class FakeD1 {
       if (current && !["lobby", "playing", "halftime"].includes(current.phase)) return { meta: { changes: 0 } };
       this.rooms.set(roomId, {
         room_id: roomId, object_name: objectName, phase, mode, room_name: name,
-        duration_minutes: duration, blue_humans: blue, red_humans: red, max_humans: 10,
+        duration_minutes: duration, blue_humans: blue, red_humans: red, max_humans: 14,
         created_at: current?.created_at ?? createdAt, updated_at: updatedAt, expires_at: expiresAt,
       });
       return { meta: { changes: 1 } };
