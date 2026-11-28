@@ -61,6 +61,11 @@ export function buildAccountRecoveryPlan(snapshot) {
     throw new Error('INVALID_RECOVERY_SNAPSHOT');
   }
   const { profile, progression, career, playerCareer, seasonStats, contract } = snapshot;
+  const attributeKeys = ['pace', 'shooting', 'passing', 'defense', 'stamina', 'control'];
+  if (!isObject(progression.attributes) || attributeKeys.some(key =>
+    !Number.isSafeInteger(progression.attributes[key]) || progression.attributes[key] < 1 || progression.attributes[key] > 99)) {
+    throw new Error('INVALID_RECOVERY_STORE_MAPPING');
+  }
   if (!isObject(profile.identity) || !isObject(profile.appearance)
     || !Number.isSafeInteger(progression.level) || progression.level < 1 || progression.level > 99
     || !Number.isSafeInteger(progression.experience) || progression.experience < 0 || progression.experience > MAX_RESOURCE
