@@ -248,7 +248,8 @@ export class P27MatchRoomDurableObject {
   _upgradeWebSocket() {
     if (!this.manager.rooms.has(this.roomId)) return json(404, { error: "ROOM_NOT_FOUND" });
     const pair = new WebSocketPair();
-    const [client, server] = Object.values(pair);
+    const client = pair[0];
+    const server = pair[1];
     this.state.acceptWebSocket(server);
     return new Response(null, { status: 101, webSocket: client });
   }
