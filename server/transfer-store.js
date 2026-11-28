@@ -3,6 +3,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import path from 'node:path';
 import { DEFAULT_CLUBS } from '../src/club-manager.js';
 
+const clean=(v,n=64)=>String(v??'').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,n);
 const strictId=(value,max=64)=>typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&!/[<>]/.test(value)&&![...value].some(ch=>ch.charCodeAt(0)<32||ch.charCodeAt(0)===127)?value:null;
 const amount=(v,d=0)=>Number.isFinite(Number(v))?Math.max(0,Math.min(1_000_000_000,Math.floor(Number(v)))):d;
 const dateMs=v=>{const n=new Date(v).getTime();return Number.isFinite(n)?n:null;};
