@@ -11,6 +11,7 @@ class ProgressionD1 {
     return {
       values: [], bind(...values) { this.values = values; return this; },
       async first() {
+        if (sql.startsWith("SELECT experience_awarded")) return db.events.get(this.values[0] + ":" + this.values[1]) || null;
         if (sql.startsWith("SELECT 1 AS applied")) return db.events.has(this.values[0] + ":" + this.values[1]) ? { applied: 1 } : null;
         if (sql.startsWith("SELECT level")) return db.rows.get(this.values[0]) || null;
         if (sql.startsWith("SELECT match_id")) return { results: [...db.events.values()].filter(x => x.account_id === this.values[0]).sort((a,b) => a.applied_at.localeCompare(b.applied_at)).map(x => ({ match_id: x.match_id })) };
@@ -131,4 +132,32 @@ test("D1 progression treats an omitted rating as neutral instead of the minimum 
   const result = await repository.grantMatchReward(accountId, { matchId: "match-neutral-rating", result: "draw" });
   assert.equal(result.reward.experience, 35);
   assert.equal(result.reward.coins, 28);
+});
+
+
+test("D1 progression rejects reused match IDs when the reward payload differs", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  await repository.grantMatchReward(accountId, { matchId: "match-payload", result: "win", minutesPlayedMs: 60_000, rating: 8 });
+  await assert.rejects(
+    repository.grantMatchReward(accountId, { matchId: "match-payload", result: "loss", minutesPlayedMs: 60_000, rating: 8 }),
+    /MATCH_REWARD_ID_CONFLICT/,
+  );
+});
+
+test("D1 progression rejects malformed match IDs, durations, and ratings", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  for (const input of [
+    { matchId: " match-1", result: "win", minutesPlayedMs: 0 },
+    { matchId: "match-1", result: "win", minutesPlayedMs: -1 },
+    { matchId: "match-1", result: "win", minutesPlayedMs: 600_001 },
+    { matchId: "match-1", result: "win", minutesPlayedMs: 0, rating: "9" },
+    { matchId: "match-1", result: "win", minutesPlayedMs: 0, rating: 11 },
+  ]) await assert.rejects(repository.grantMatchReward(accountId, input), /INVALID_MATCH_REWARD/);
+});
+
+test("D1 progression rejects fractional, string, and over-limit spend amounts", async () => {
+  const repository = new D1PlayerProgressionRepository(new ProgressionD1(), { now: fixedNow });
+  for (const amount of [0, -1, 1.5, "2", 6, NaN]) {
+    await assert.rejects(repository.spend(accountId, "pace", amount, "practice"), /INVALID_PROGRESSION_AMOUNT/);
+  }
 });
