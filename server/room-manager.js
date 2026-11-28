@@ -389,7 +389,14 @@ export class RoomManager {
   }
 
   submitInput(roomId, token, payload = {}) {
-    const { room, player } = this.authenticate(roomId, token);
+    const { player } = this.authenticate(roomId, token);
+    return this.submitInputForPlayer(roomId, player.id, payload);
+  }
+
+  submitInputForPlayer(roomId, playerId, payload = {}) {
+    const room = this.rooms.get(roomId);
+    const player = room?.players.get(playerId);
+    if (!room || !player || player.isBot) throw new Error('UNAUTHORIZED');
     if (room.phase !== 'playing') throw new Error('MATCH_NOT_PLAYING');
     if (!player.connected) throw new Error('PLAYER_DISCONNECTED');
     if (player.isOnPitch === false) throw new Error('PLAYER_ON_BENCH');
@@ -733,6 +740,46 @@ export class RoomManager {
     room.updatedAt = this.now(); room.sequence++;
     this.persistRoom(room);
     return { rotated: true, state: this.publicState(room) };
+  }
+
+
+  reconnectForPlayer(roomId, playerId) {
+    const room = this.rooms.get(roomId);
+    const player = room?.players.get(playerId);
+    if (!room || !player || player.isBot || room.phase === 'fulltime') throw new Error('UNAUTHORIZED');
+    const now = this.now();
+    const wasAiControlled = player.aiControlled === true;
+    player.lastSeen = now; player.connected = true; player.controlMode = 'human'; player.aiControlled = false; player.disconnectedAt = null;
+    player.input = { x: 0, z: 0, sprint: false };
+    if (wasAiControlled) room.events.push({ type: 'control-restored', controller: 'human', playerId: player.id, at: room.elapsedMs });
+    room.updatedAt = now;
+    this.persistRoom(room);
+    return { alive: true, reconnected: true, nextSequence: Math.max(1, player.lastInputSequence + 1), state: this.publicState(room) };
+  }
+
+  heartbeatForPlayer(roomId, playerId) {
+    const room = this.rooms.get(roomId);
+    const player = room?.players.get(playerId);
+    if (!room || !player || player.isBot || room.phase === 'fulltime') throw new Error('UNAUTHORIZED');
+    if (!player.connected || player.aiControlled || player.controlMode !== 'human') return this.reconnectForPlayer(roomId, playerId);
+    const now = this.now();
+    player.lastSeen = now;
+    room.updatedAt = now;
+    this.persistRoom(room);
+    return { alive: true, nextSequence: Math.max(1, player.lastInputSequence + 1) };
+  }
+
+  leaveForPlayer(roomId, playerId) {
+    const room = this.rooms.get(roomId);
+    const player = room?.players.get(playerId);
+    if (!room || !player || player.isBot) throw new Error('UNAUTHORIZED');
+    player.connected = false; player.controlMode = 'ai'; player.aiControlled = true;
+    player.disconnectedAt = this.now(); player.input = { x: 0, z: 0, sprint: false };
+    player.callForPassUntil = 0;
+    room.events.push({ type: 'control-takeover', controller: 'ai', skill: 'average', playerId: player.id, at: room.elapsedMs });
+    room.updatedAt = this.now();
+    this.persistRoom(room);
+    return true;
   }
 
   reconnect(roomId, token) {
