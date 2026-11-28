@@ -481,3 +481,46 @@ test('P27 session cloud : efface une session expirée pour permettre une nouvell
   assert.equal(client.account, null);
   assert.equal(values.has('fpro.account.session'), false);
 });
+
+
+test('P27 synchronisation automatique : sérialise deux flush simultanés pour éviter les PUT en double', async () => {
+  const { PlayerSyncOutbox } = await import('../src/player-sync-outbox.js');
+  const { ProfileSyncCoordinator } = await import('../src/profile-sync-coordinator.js');
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
+  const outbox = new PlayerSyncOutbox({ storage, operationIdFactory: () => 'profile-concurrent-flush-0001' });
+  let releasePut;
+  const putGate = new Promise(resolve => { releasePut = resolve; });
+  const calls = [];
+  const client = new OnlineAccountClient({
+    baseUrl: 'https://game.example', storage: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      if (options.method === 'PUT') await putGate;
+      return { ok: true, status: 200, json: async () => ({
+        profile: { identity: { displayName: 'Rova' }, appearance: {} },
+        revision: options.method === 'PUT' ? 1 : 0
+      }) };
+    }
+  });
+  client.token = 'account-token-with-more-than-32-characters';
+  client.account = { id: 'account-123', playerId: 'FRP-123456' };
+  const coordinator = new ProfileSyncCoordinator({
+    accountClient: client,
+    outbox,
+    getProfile: () => ({ identity: { displayName: 'Rova' }, appearance: {} }),
+    getLocalIdentity: () => ({ accountId: 'account-123', id: 'FRP-123456' })
+  });
+  coordinator.enqueueCurrentProfile();
+
+  const first = coordinator.flush();
+  const second = coordinator.flush();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls.length, 2);
+  releasePut();
+  const [a, b] = await Promise.all([first, second]);
+  assert.deepEqual(a, { uploaded: 1, remaining: 0, blocked: 0 });
+  assert.deepEqual(b, { uploaded: 1, remaining: 0, blocked: 0 });
+  assert.equal(calls.filter(call => call.options.method === 'PUT').length, 1);
+  assert.equal(outbox.status().pending, 0);
+});
