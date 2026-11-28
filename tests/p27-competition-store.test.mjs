@@ -675,3 +675,28 @@ test('P27 reprise officielle : classement, carrière et récompense restent uniq
   assert.deepEqual(new JsonRoomStore(dirs.rooms).readAll(),[]);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test('P27 compétitions : refuse les identifiants de rencontre tronqués et les horodatages invalides',()=>{
+ const f=setup();try{
+  const league=f.store.snapshot().competitions.find(item=>item.type==='league');
+  const fixture=league.fixtures[0];
+  assert.equal(f.store.getFixture('x'.repeat(97)),null);
+  assert.equal(f.store.recordFixtureResult('x'.repeat(97),{roomId:'valid-room',homeGoals:1,awayGoals:0}).reason,'invalid-result');
+  for(const finalizedAt of [-1,1.5,Number.MAX_SAFE_INTEGER+1,Number.NaN]){
+   assert.equal(f.store.recordFixtureResult(fixture.id,{roomId:'invalid-time-'+String(finalizedAt),homeGoals:1,awayGoals:0,finalizedAt}).reason,'invalid-result');
+  }
+  assert.equal(f.store.getFixture(fixture.id).status,'scheduled');
+ }finally{f.cleanup();}
+});
+
+test('P27 compétitions : un salon finalisé ne peut pas créditer deux rencontres différentes',()=>{
+ const f=setup();try{
+  const league=f.store.snapshot().competitions.find(item=>item.type==='league');
+  const [first,second]=league.fixtures;
+  assert.equal(f.store.recordFixtureResult(first.id,{roomId:'one-room-one-result',homeGoals:2,awayGoals:0,finalizedAt:1000}).ok,true);
+  assert.deepEqual(f.store.recordFixtureResult(second.id,{roomId:'one-room-one-result',homeGoals:0,awayGoals:3,finalizedAt:1001}),{
+   ok:false,reason:'room-already-used'
+  });
+  assert.equal(f.store.getFixture(second.id).status,'scheduled');
+ }finally{f.cleanup();}
+});
