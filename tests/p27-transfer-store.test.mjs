@@ -119,3 +119,60 @@ test('P27 prêts : un prêt actif bloque les transferts définitifs et invalide 
   assert.equal(f.store.getCareer('account-loan-transfer-lock').clubId,'toamasina-united');
  }finally{f.cleanup();}
 });
+
+
+test('P27 mercato : les identifiants de compte trop longs ne sont jamais tronqués vers une carrière existante',()=>{
+ const f=setup();
+ try{
+  const valid='a'.repeat(64),aliased=valid+'x';
+  assert.equal(f.store.signContract(valid,{clubId:'antananarivo-fc',salary:1000}).ok,true);
+  assert.equal(f.store.getCareer(aliased),null);
+  assert.equal(f.store.signContract(aliased,{clubId:'toamasina-united',salary:1000}).reason,'invalid-account');
+  assert.equal(f.store.getCareer(valid).clubId,'antananarivo-fc');
+ }finally{f.cleanup();}
+});
+
+test('P27 mercato : un identifiant de club suffixé ne peut pas désigner le club existant',()=>{
+ const f=setup();
+ try{
+  assert.equal(f.store.signContract('strict-club-id',{clubId:'antananarivo-fc-extra',salary:1000}).reason,'invalid-club');
+  assert.equal(f.store.getCareer('strict-club-id').clubId,null);
+ }finally{f.cleanup();}
+});
+
+test('P27 mercato : les identifiants d’offre suffixés ne peuvent pas accepter une offre valide',()=>{
+ const f=setup();
+ try{
+  f.store.signContract('strict-offer-id',{clubId:'antananarivo-fc',salary:1000,durationDays:180});
+  const offer=f.store.requestOffer('strict-offer-id',{toClubId:'toamasina-united'});
+  assert.equal(offer.ok,true);
+  assert.equal(f.store.acceptOffer('strict-offer-id',offer.offer.id+'x').reason,'offer-unavailable');
+  assert.equal(f.store.getCareer('strict-offer-id').clubId,'antananarivo-fc');
+  assert.equal(f.store.acceptOffer('strict-offer-id',offer.offer.id).ok,true);
+ }finally{f.cleanup();}
+});
+
+test('P27 outbox : un identifiant de commande suffixé ne clôture pas une entrée valide',()=>{
+ const f=setup();
+ try{
+  f.store.signContract('strict-outbox-id',{clubId:'antananarivo-fc',salary:1000,durationDays:180});
+  const command=f.store.pendingRosterSync()[0];
+  assert.equal(f.store.completeRosterSync(command.id+'x').reason,'sync-not-found');
+  assert.equal(f.store.pendingRosterSync().length,1);
+  assert.equal(f.store.completeRosterSync(command.id).ok,true);
+  assert.equal(f.store.pendingRosterSync().length,0);
+ }finally{f.cleanup();}
+});
+
+test('P27 historique : un identifiant joueur invalide ne se rabat pas sur un identifiant tronqué',()=>{
+ const f=setup();
+ try{
+  const playerId='p'.repeat(64);
+  f.store.signContract('strict-history-id',{clubId:'antananarivo-fc',salary:1000,durationDays:180});
+  const row=f.store.state.careers.find(item=>item.accountId==='strict-history-id');
+  row.playerId=playerId;
+  f.store.state.events.push({id:'event-history',playerId,type:'signing',at:f.now});
+  assert.equal(f.store.getPlayerHistory(playerId).length,1);
+  assert.deepEqual(f.store.getPlayerHistory(playerId+'x'),[]);
+ }finally{f.cleanup();}
+});
