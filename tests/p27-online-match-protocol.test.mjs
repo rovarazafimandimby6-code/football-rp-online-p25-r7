@@ -16,9 +16,12 @@ test('P27 match socket protocol creates versioned hello and input envelopes', ()
 
 test('P27 match socket protocol rejects malformed or out-of-range client inputs', () => {
   assert.throws(() => createMatchMessage('hello', { roomId:'bad', token:'x' }), /INVALID_MATCH_HELLO/);
+  assert.throws(() => createMatchMessage('hello', { roomId:'abcdef123456', token:'session-token', afterSequence:-2, afterEventId:0 }), /INVALID_MATCH_HELLO/);
+  assert.throws(() => createMatchMessage('hello', { roomId:'abcdef123456', token:'session-token', afterSequence:-1, afterEventId:-1 }), /INVALID_MATCH_HELLO/);
   assert.throws(() => createMatchMessage('input', { sequence:-1, x:0, z:0, sprint:false, action:null }), /INVALID_MATCH_INPUT/);
   assert.throws(() => createMatchMessage('input', { sequence:1, x:1.1, z:0, sprint:false, action:null }), /INVALID_MATCH_INPUT/);
   assert.throws(() => createMatchMessage('input', { sequence:1, x:0, z:0, sprint:false, action:'teleport' }), /INVALID_MATCH_INPUT/);
+  assert.throws(() => createMatchMessage('leave', { roomId:'abcdef123456' }), /INVALID_MATCH_LEAVE/);
 });
 
 test('P27 match socket protocol validates authoritative server messages', () => {
@@ -28,6 +31,15 @@ test('P27 match socket protocol validates authoritative server messages', () => 
   assert.throws(() => decodeMatchMessage('{bad json'), /INVALID_MATCH_MESSAGE_JSON/);
   assert.throws(() => decodeMatchMessage({ v:2, type:'snapshot', state:{ sequence:1 } }), /UNSUPPORTED_MATCH_SERVER_MESSAGE/);
   assert.throws(() => decodeMatchMessage({ v:1, type:'snapshot', state:{} }), /INVALID_MATCH_SNAPSHOT/);
+  assert.throws(() => decodeMatchMessage({ v:1, type:'delta', eventCursor:1, events:Array(101).fill({}) }), /INVALID_MATCH_DELTA/);
+  assert.throws(() => decodeMatchMessage({ v:1, type:'error', code:'DENIED', fatal:'yes' }), /INVALID_MATCH_ERROR/);
+});
+
+test('P27 match socket protocol enforces the 16 KiB message ceiling', () => {
+  assert.throws(() => encodeMatchMessage('hello', {
+    roomId:'abcdef123456', token:'session-token', afterSequence:-1, afterEventId:0, padding:'x'.repeat(17_000)
+  }), /MATCH_MESSAGE_TOO_LARGE/);
+  assert.throws(() => decodeMatchMessage(' '.repeat(16_385)), /MATCH_MESSAGE_TOO_LARGE/);
 });
 
 test('P27 match socket protocol prevents payloads from overriding envelope type/version', () => {
